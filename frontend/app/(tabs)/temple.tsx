@@ -163,15 +163,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
         style={styles.templeItemImage} 
         resizeMode="cover"
         fadeDuration={0}
-        onError={(e) => {
-          console.error('[TEMPLE IMAGE FAILED]', {
-            id: item.temple_id || item.templeId || item.id,
-            name: displayName,
-            source: imageSource,
-            error: e.nativeEvent?.error,
-          });
-          setHasError(true);
-        }}
+        onError={() => setHasError(true)}
       />
       <View style={styles.templeItemInfo}>
         <Text style={styles.templeItemName}>{displayName}</Text>
@@ -215,7 +207,6 @@ const FilterOption = React.memo(({ location, isSelected, onPress }: FilterOption
 });
 
 export default function TempleScreen() {
-  console.log('🔥🔥🔥 TEMPLE_RUNTIME_TEST_2026 🔥🔥🔥');
   const router = useRouter();
   const { t } = useTranslation();
   const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
@@ -231,10 +222,6 @@ export default function TempleScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    console.log('[CATEGORY CHANGED]', selectedCategory, charDhamSubFilter);
-  }, [selectedCategory, charDhamSubFilter]);
 
   const PAGE_SIZE = 20;
 
@@ -471,153 +458,6 @@ export default function TempleScreen() {
     }
   }, [searchQuery, selectedCategory, selectedLocations, charDhamSubFilter]);
 
-  // Fallback to API data if WatermelonDB hasn't populated displayTemples
-  useEffect(() => {
-    if (displayTemples.length === 0 && temples.length > 0) {
-      const isJyotirlinga = (t: any) => {
-        const category = (t.category || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-        return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
-      };
-
-      const isShaktiPeetha = (t: any) => {
-        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        const tName = (t.name || '').toLowerCase();
-        const category = (t.category || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-
-        if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
-          return true;
-        }
-
-        return isShaktiPeethaGlobal(tid, tName, category);
-      };
-
-      const isBadaCharDham = (t: any) => {
-        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        const category = (t.category || t.type || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-
-        if (
-          category.includes('bada char dham') || category.includes('bada_char_dham') ||
-          categoryIds.some((c: string) => c.includes('bada_char_dham')) ||
-          tags.some((tg: string) => tg.includes('bada_char_dham'))
-        ) {
-          return true;
-        }
-
-        return BADA_CHAR_DHAM_IDS.includes(tid);
-      };
-
-      const isChotaCharDham = (t: any) => {
-        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        const category = (t.category || t.type || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-
-        if (
-          category.includes('chota char dham') || category.includes('chota_char_dham') ||
-          categoryIds.some((c: string) => c.includes('chota_char_dham')) ||
-          tags.some((tg: string) => tg.includes('chota_char_dham'))
-        ) {
-          return true;
-        }
-
-        return CHOTA_CHAR_DHAM_IDS.includes(tid);
-      };
-
-      const isCharDham = (t: any) => {
-        return isBadaCharDham(t) || isChotaCharDham(t);
-      };
-
-      const isHealingTemple = (t: any) => {
-        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        const category = (t.category || t.type || '').trim().toLowerCase();
-        const name = (t.name || '').trim().toLowerCase();
-        const desc = (t.description || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-
-        if (HEALING_TEMPLE_IDS.includes(tid)) return true;
-
-        return (
-          category.includes('healing') ||
-          categoryIds.some((c: string) => c.includes('healing')) ||
-          tags.some((tg: string) => tg.includes('healing')) ||
-          name.includes('healing') ||
-          name.includes('baidyanath') ||
-          name.includes('baba dham') ||
-          desc.includes('healer') ||
-          desc.includes('healing')
-        );
-      };
-
-      let filtered = [...temples];
-      if (selectedCategory !== 'All') {
-        if (selectedCategory === 'Jyotirlinga') {
-          filtered = filtered.filter(isJyotirlinga);
-        } else if (selectedCategory === 'Shakti Peetha') {
-          filtered = filtered.filter(isShaktiPeetha);
-        } else if (selectedCategory === 'Char Dham') {
-          if (charDhamSubFilter === 'bada') {
-            filtered = filtered.filter(isBadaCharDham);
-          } else if (charDhamSubFilter === 'chota') {
-            filtered = filtered.filter(isChotaCharDham);
-          } else {
-            filtered = filtered.filter(isCharDham);
-          }
-        } else if (selectedCategory === 'Healing Temples') {
-          filtered = filtered.filter(isHealingTemple);
-        } else {
-          filtered = filtered.filter((t: any) => !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t));
-        }
-      }
-      if (searchQuery.trim().length > 0) {
-        const q = searchQuery.trim().toLowerCase();
-        filtered = filtered.filter((t: any) => 
-          (t.name || '').toLowerCase().includes(q) ||
-          (getTempleLocation(t) || '').toLowerCase().includes(q) ||
-          (t.deity || '').toLowerCase().includes(q)
-        );
-      }
-
-      // Canonical physical entity deduplication
-      const uniqueRecordsMap = new Map();
-      for (const rec of filtered) {
-        const rawId = rec.templeId || rec.temple_id || rec.id || rec.name;
-        const cKey = normalizeTempleKey(rawId);
-        if (cKey && !uniqueRecordsMap.has(cKey)) {
-          uniqueRecordsMap.set(cKey, rec);
-        } else if (!cKey && !uniqueRecordsMap.has(rawId)) {
-          uniqueRecordsMap.set(rawId, rec);
-        }
-      }
-      filtered = Array.from(uniqueRecordsMap.values());
-
-      setDisplayTemples(filtered.map((t: any) => ({
-        id: t._raw?.temple_id || t.templeId || t.temple_id || t._raw?.id || t.id,
-        temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
-        templeId: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
-        name: t.name || t._raw?.name,
-        location: getTempleLocation(t) || t.location,
-        deity: t.deity || t._raw?.deity,
-        category: t.category || t._raw?.category || 'Sacred',
-        image_url: t.imageUrl || t.image_url || t._raw?.image_url || '',
-        is_verified: t.isVerified ?? t._raw?.is_verified ?? true,
-      })));
-    }
-  }, [temples, displayTemples.length, selectedCategory, searchQuery]);
 
   // Reset pagination on filter or search parameters change
   useEffect(() => {
@@ -761,15 +601,12 @@ export default function TempleScreen() {
   }, []);
 
   const onPressAll = useCallback(() => {
-    console.log('[CATEGORY TAB PRESSED] All');
     setSelectedCategory('All');
   }, []);
   const onPressJyotirlinga = useCallback(() => {
-    console.log('[CATEGORY TAB PRESSED] Jyotirlinga');
     setSelectedCategory('Jyotirlinga');
   }, []);
   const onPressSacred = useCallback(() => {
-    console.log('[CATEGORY TAB PRESSED] Sacred');
     setSelectedCategory('Sacred');
   }, []);
 
@@ -801,7 +638,7 @@ const renderItem = useCallback(({ item }: { item: any }) => {
     );
   }, [openTempleDetails, t]);
 
-  const keyExtractor = useCallback((item: any) => item?.id || item?.temple_id || item?.templeId || `item-${Math.random()}`, []);
+  const keyExtractor = useCallback((item: any, index: number) => item?.id || item?.temple_id || item?.templeId || item?.name || `item-${index}`, []);
 
   const ListHeader = useCallback(() => (
     <View>
@@ -942,7 +779,7 @@ const renderItem = useCallback(({ item }: { item: any }) => {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
-        estimatedItemSize={140}
+        estimatedItemSize={127}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         keyExtractor={keyExtractor}

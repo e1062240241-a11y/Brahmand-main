@@ -813,6 +813,25 @@ const CATEGORY_BADGE_MAP: Record<string, { emoji: string; label: string }> = {
   'sikh': { emoji: '☬', label: 'Gurdwara' },
 };
 
+const AMENITY_MAP: Record<string, { label: string; iconName: any; iconColor: string; bgColor: string }> = {
+  parking: { label: 'Parking', iconName: 'car-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
+  locker: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
+  lockers: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
+  prasad: { label: 'Prasad Counter', iconName: 'restaurant-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
+  drinking_water: { label: 'Drinking Water', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
+  restrooms: { label: 'Restrooms', iconName: 'man-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
+  shoe_stand: { label: 'Shoe Stand', iconName: 'footsteps-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
+  wheelchair: { label: 'Wheelchair', iconName: 'body-outline', iconColor: '#7C3AED', bgColor: '#F5F3FF' },
+  dharamshala: { label: 'Dharamshala', iconName: 'home-outline', iconColor: '#0D9488', bgColor: '#F0FDFA' },
+  bhojanalaya: { label: 'Bhojanalaya', iconName: 'nutrition-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
+  puja_booking: { label: 'Puja Booking', iconName: 'calendar-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
+  medical_aid: { label: 'Medical Aid', iconName: 'medkit-outline', iconColor: '#DC2626', bgColor: '#FEF2F2' },
+  mobile_deposit: { label: 'Mobile Deposit', iconName: 'phone-portrait-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
+  transport_assistance: { label: 'Transport', iconName: 'bus-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
+  hair_tonsuring: { label: 'Tonsuring', iconName: 'cut-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
+  holy_kund: { label: 'Holy Kund', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
+};
+
 const getCategoryBadge = (category?: string) => {
   if (!category) return null;
   const lower = category.toLowerCase().trim();
@@ -988,7 +1007,8 @@ export default function TempleDetailScreen() {
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const galleryScrollRef = useRef<FlatList>(null);
 
-  const templeKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
+  const templeKey = useMemo(() => getSpecialTempleKey(temple?.name || resolvedTempleId || ''), [temple?.name, resolvedTempleId]);
+  const locationStr = useMemo(() => formatTempleLocation(temple), [temple]);
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
@@ -1192,7 +1212,7 @@ export default function TempleDetailScreen() {
  const handleShare = async () => {
  try {
  await Share.share({
- message: `🛕 ${displayName}\n📍 ${formatTempleLocation(temple)}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
+ message: `🛕 ${displayName}\n📍 ${locationStr}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
  title: displayName,
  });
  } catch (error) {
@@ -2418,11 +2438,11 @@ if (!temple) {
     ];
   };
 
-  const officialWebsiteUrl = getOfficialTempleWebsite();
-  const officialHelplineNo = getOfficialTempleHelpline();
-  const authenticFacilities = getAuthenticTempleFacilities();
-  const authenticVisitorGuidelines = getAuthenticVisitorGuidelines();
-  const authenticDarshanDetails = getAuthenticTempleDarshanDetails();
+  const officialWebsiteUrl = useMemo(() => getOfficialTempleWebsite(), [temple, resolvedTempleId, templeKey]);
+  const officialHelplineNo = useMemo(() => getOfficialTempleHelpline(), [temple, resolvedTempleId, templeKey]);
+  const authenticFacilities = useMemo(() => getAuthenticTempleFacilities(), [temple, resolvedTempleId, templeKey]);
+  const authenticVisitorGuidelines = useMemo(() => getAuthenticVisitorGuidelines(), [temple, resolvedTempleId, templeKey]);
+  const authenticDarshanDetails = useMemo(() => getAuthenticTempleDarshanDetails(), [temple, resolvedTempleId, templeKey]);
 
   const openTempleLocation = () => {
     // Clean name: e.g. "Baidyanath Temple – Deoghar" -> "Baidyanath Temple" or "Shree Baba Baidyanath Jyotirlinga Mandir Deoghar"
@@ -2432,7 +2452,7 @@ if (!temple) {
       cleanName = `${cleanName} Temple`;
     }
 
-    const locStr = formatTempleLocation(temple);
+    const locStr = locationStr;
     // If locStr contains city/state not already in cleanName, append it cleanly
     const finalQuery = locStr && !cleanName.toLowerCase().includes(locStr.toLowerCase()) 
       ? `${cleanName}, ${locStr}` 
@@ -2445,7 +2465,7 @@ if (!temple) {
     });
   };
 
-  const authenticJyotirlingaDetails = getAuthenticJyotirlingaDetails();
+  const authenticJyotirlingaDetails = useMemo(() => getAuthenticJyotirlingaDetails(), [temple, resolvedTempleId, templeKey]);
 
   const getTempleDescription = () => {
     return authenticJyotirlingaDetails?.about || temple.description || specialTempleData?.description || '';
@@ -2530,7 +2550,7 @@ if (!temple) {
                 <View style={styles.locationRow}>
                   <Ionicons name="location" size={16} color={COLORS.primary} />
                   <Text style={styles.locationText}>
-                    {formatTempleLocation(temple)}
+                    {locationStr}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -2610,25 +2630,6 @@ if (!temple) {
 
           {/* FACILITIES, AMENITIES & GOOD TO KNOW */}
           {(() => {
-            const AMENITY_MAP: Record<string, { label: string; iconName: any; iconColor: string; bgColor: string }> = {
-              parking: { label: 'Parking', iconName: 'car-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
-              locker: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-              lockers: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-              prasad: { label: 'Prasad Counter', iconName: 'restaurant-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
-              drinking_water: { label: 'Drinking Water', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
-              restrooms: { label: 'Restrooms', iconName: 'man-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
-              shoe_stand: { label: 'Shoe Stand', iconName: 'footsteps-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
-              wheelchair: { label: 'Wheelchair', iconName: 'body-outline', iconColor: '#7C3AED', bgColor: '#F5F3FF' },
-              dharamshala: { label: 'Dharamshala', iconName: 'home-outline', iconColor: '#0D9488', bgColor: '#F0FDFA' },
-              bhojanalaya: { label: 'Bhojanalaya', iconName: 'nutrition-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
-              puja_booking: { label: 'Puja Booking', iconName: 'calendar-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
-              medical_aid: { label: 'Medical Aid', iconName: 'medkit-outline', iconColor: '#DC2626', bgColor: '#FEF2F2' },
-              mobile_deposit: { label: 'Mobile Deposit', iconName: 'phone-portrait-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-              transport_assistance: { label: 'Transport', iconName: 'bus-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
-              hair_tonsuring: { label: 'Tonsuring', iconName: 'cut-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
-              holy_kund: { label: 'Holy Kund', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
-            };
-
             const formattedAmenities = authenticFacilities.map((fac: string) => {
               const mapped = AMENITY_MAP[fac];
               if (mapped) {
@@ -2690,7 +2691,7 @@ if (!temple) {
               templeId: resolvedTempleId,
               templeName: temple?.name,
               coords: resolvedCoords,
-              locationLabel: formatTempleLocation(temple),
+              locationLabel: locationStr,
               guidance: templeGuidance,
             });
 
