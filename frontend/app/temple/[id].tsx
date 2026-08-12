@@ -1222,6 +1222,39 @@ export default function TempleDetailScreen() {
     return () => { pulseAnim.stopAnimation(); };
   }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
+  useEffect(() => {
+    // Check static fallbacks immediately to show content instantly without full blocking screen loader
+    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticTemple) {
+      setTemple(staticTemple);
+    }
+    loadLocalTempleData();
+    fetchTempleData();
+  }, [id, fetchTempleData]);
+
+  useEffect(() => {
+    if (isCurrentlyLive && !isYoutubeModalVisible) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.3,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+    return () => { pulseAnim.stopAnimation(); };
+  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
+
   const handleGoBack = () => {
     try {
       if (router.canGoBack()) {

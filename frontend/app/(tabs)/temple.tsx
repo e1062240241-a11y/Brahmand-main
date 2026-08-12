@@ -23,7 +23,7 @@ import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { FONTS } from '../../src/constants/theme';
 import { DEFAULT_TEMPLE_IMAGE, resolveTempleImage } from '../../src/constants/templeImages';
-import { useTranslation } from '../../src/utils/i18n';
+import { useTranslation, translations } from '../../src/utils/i18n';
 import { normalizeTempleKey, isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
 const SafeFlashList = FlashList as any;
 
@@ -206,9 +206,78 @@ const FilterOption = React.memo(({ location, isSelected, onPress }: FilterOption
   );
 });
 
+interface TopTabSwitcherProps {
+  activeTab: 'jaap' | 'temple';
+  onPressJaap: () => void;
+  t: (key: string) => string;
+}
+
+const TopTabSwitcher = React.memo(({ activeTab, onPressJaap, t }: TopTabSwitcherProps) => {
+  return (
+    <View style={topTabStyles.topTabsContainer}>
+      <View style={topTabStyles.topTabsInner}>
+        <TouchableOpacity
+          style={[topTabStyles.topTabButton, activeTab === 'jaap' && topTabStyles.topTabButtonActive]}
+          activeOpacity={activeTab === 'jaap' ? 1 : undefined}
+          onPress={onPressJaap}
+        >
+          <Text style={[topTabStyles.topTabText, activeTab === 'jaap' && topTabStyles.topTabTextActive]}>{t('jaap')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[topTabStyles.topTabButton, activeTab === 'temple' && topTabStyles.topTabButtonActive]}
+          activeOpacity={activeTab === 'temple' ? 1 : undefined}
+        >
+          <Text style={[topTabStyles.topTabText, activeTab === 'temple' && topTabStyles.topTabTextActive]}>{t('temple')}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+const topTabStyles = StyleSheet.create({
+  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5 },
+  topTabsInner: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(243, 244, 246, 0.5)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 231, 235, 0.5)',
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  topTabButton: {
+    flex: 1,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  topTabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 2, height: 0 },
+    elevation: 5,
+  },
+  topTabText: { fontSize: 14, fontFamily: FONTS.bold, color: '#8E8E93' },
+  topTabTextActive: { color: '#EA4C0F' },
+});
+
 export default function TempleScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { language } = useTranslation();
+  const t = useCallback(
+    (key: string): string => {
+      if (key === 'language') return language;
+      return (translations as any)[language]?.[key] || (translations as any)['en']?.[key] || String(key);
+    },
+    [language]
+  );
+  const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -771,22 +840,11 @@ const renderItem = useCallback(({ item }: { item: any }) => {
     >
       <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top Tab Switcher */}
-      <View style={styles.topTabsContainer}>
-        <View style={styles.topTabsInner}>
-          <TouchableOpacity 
-            style={styles.topTabButton}
-            onPress={onPressJaapTab}
-          >
-            <Text style={styles.topTabText}>{t('jaap')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.topTabButton, styles.topTabButtonActive]}
-            activeOpacity={1}
-          >
-            <Text style={[styles.topTabText, styles.topTabTextActive]}>{t('temple')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopTabSwitcher
+        activeTab="temple"
+        onPressJaap={onPressJaapTab}
+        t={t}
+      />
 
       <SafeFlashList
         data={displayTemples}
@@ -837,36 +895,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentScroll: { flex: 1 },
-  topTabsContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5 },
-  topTabsInner: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(243, 244, 246, 0.5)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(229, 231, 235, 0.5)',
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  topTabButton: { 
-    flex: 1, 
-    height: 34, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  topTabButtonActive: { 
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 2, height: 0 },
-    elevation: 5,
-  },
-  topTabText: { fontSize: 14, fontFamily: FONTS.bold, color: '#8E8E93' },
-  topTabTextActive: { color: '#EA4C0F' },
 
   heroRowLayout: { flexDirection: 'row', width: '100%', marginBottom: 20, paddingBottom: 25 },
   heroLeftContent: { flex: 1, paddingLeft: 20, paddingTop: 15, justifyContent: 'center' },
