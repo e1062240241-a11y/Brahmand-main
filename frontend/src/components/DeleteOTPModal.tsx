@@ -157,7 +157,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
                 style={styles.resendButton}
                 onPress={handleResend}
                 accessibilityRole="button"
-                accessibilityLabel="Button"
+                accessibilityLabel="Resend OTP"
                 disabled={timer > 0 || sendingOTP || loading}
               >
                 {sendingOTP ? (

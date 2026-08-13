@@ -491,7 +491,7 @@ export function GlobalFAB() {
                         style={fabStyles.menuItemButton}
                         activeOpacity={0.8}
                         accessibilityRole="button"
-                        accessibilityLabel="Button"
+                        accessibilityLabel={t(item.key)}
                         disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
