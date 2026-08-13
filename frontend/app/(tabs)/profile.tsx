@@ -340,7 +340,6 @@ export default function ProfileScreen() {
       }
       console.error('Error message:', error?.message);
       setProfile(user || null);
-      showToast('Profile error. Check backend port 8000.');
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         console.log('[Profile] auth error, logging out');
         await logout();
