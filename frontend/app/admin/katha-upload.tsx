@@ -160,7 +160,7 @@ export default function AdminKathaUploadScreen() {
         xhr.onerror = () => {
           reject(
             new Error(
-              'Network upload error. Please ensure the Python backend server is running on http://localhost:8000'
+              `Network upload error. Please verify backend connection at ${targetUrl}`
             )
           );
         };
