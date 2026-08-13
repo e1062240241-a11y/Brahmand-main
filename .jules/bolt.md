@@ -28,3 +28,6 @@
 ## 2024-08-11 - [Optimize N+1 queries in SOS alerts resolution]
 **Learning:** Found N+1 queries in `resolve_sos` when processing responders. Iterating through responders and making individual `await db.create_document`, `await db.get_document`, and `await db.update_document` calls inside a loop creates significant latency for SOS alert resolution, potentially blocking the async event loop.
 **Action:** When handling a list of users (e.g. responders), always pre-fetch user documents using `await db.get_documents_batch`, queue up structural modifications or new records, and use `await db.batch_create_documents` and `await db.batch_update_documents` instead of calling individual methods in a loop.
+## 2024-08-13 - [Optimize N+1 query in push notification token fetching]
+**Learning:** Found N+1 query loops in `notify_community_message`, `notify_circle_message`, and `notify_circle_invite` where FCM tokens were fetched for an array of users using individual `db.get_document` calls inside a loop. This drastically increases latency for multicast messaging in circles and communities.
+**Action:** Created `get_users_fcm_tokens(user_ids: List[str])` using `await db.get_documents_batch('users', user_ids)` to retrieve user documents in one network call, thus turning N queries into 1 batch query, and refactored the notification methods to use it.
