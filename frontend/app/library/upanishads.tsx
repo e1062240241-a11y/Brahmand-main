@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -77,7 +77,7 @@ export default function UpanishadsPage() {
   const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
   
   const progress = getBookProgress(BOOK_ID);
-  const { lastReadChapter, lastReadScrollY, bookmarks } = progress;
+  const { lastReadChapter, lastReadScrollY, bookmarks, progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -92,6 +92,7 @@ export default function UpanishadsPage() {
   const [verses, setVerses] = useState<any[]>([]);
   const [totalVerses, setTotalVerses] = useState(0);
   const [initialScrollRestored, setInitialScrollRestored] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(50);
   
   const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
@@ -121,34 +122,44 @@ export default function UpanishadsPage() {
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
+
+    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
+      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
+    }
   };
 
   const handleChapterChange = (chNum: number) => {
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
+    setVisibleLimit(50);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   // Fetch chapter data from Backend
-  const fetchChapterData = async (chNum: number) => {
+  const fetchChapterData = useCallback(async (chNum: number) => {
     setLoading(true);
     try {
       const loadedVerses = await loadUpanishadChapter(chNum);
       if (loadedVerses) {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
+        const progressNow = useScriptureStore.getState().getBookProgress(BOOK_ID);
+        const isResuming = progressNow.lastReadChapter === chNum;
+        const pct = isResuming ? (progressNow.progressPercent || 0) : 0;
+        const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
+        setVisibleLimit(initialLimit);
       }
     } catch (error) {
       console.error('Failed to fetch chapter:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchChapterData(currentChapter);
-  }, [currentChapter]);
+  }, [currentChapter, fetchChapterData]);
 
   // Restore scroll position after loaded
   useEffect(() => {
@@ -413,7 +424,7 @@ export default function UpanishadsPage() {
                   </Text>
                 </View>
               ) : (
-                verses.map((verse: any, index: number) => (
+                verses.slice(0, visibleLimit).map((verse: any, index: number) => (
                   <View key={`verse-${index}`} style={styles.verseContainer}>
                     {/* Sanskrit Text */}
                     <View style={styles.sanskritWrapper}>
