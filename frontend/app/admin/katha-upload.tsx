@@ -14,12 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import api, { API_URL } from '../../src/services/api';
+import api from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
-
-const getBackendUploadUrl = () => {
-  return `${API_URL}/api/katha/admin/upload`;
-};
 
 export default function AdminKathaUploadScreen() {
   const router = useRouter();
