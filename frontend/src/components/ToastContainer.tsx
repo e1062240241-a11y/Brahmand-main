@@ -124,7 +124,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
               <TouchableOpacity
                 key={index}
                 accessibilityRole="button"
-                accessibilityLabel="Button"
+                accessibilityLabel={action.text}
                 style={[
                   styles.actionBtn,
                   actions.length > 2 && {
