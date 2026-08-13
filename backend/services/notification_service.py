@@ -15,7 +15,6 @@ class NotificationService:
     # Notification types
     TYPE_MESSAGE = "message"
     TYPE_COMMUNITY = "community"
-    TYPE_TEMPLE = "temple"
     TYPE_EVENT = "event"
     TYPE_VERIFICATION = "verification"
     TYPE_SYSTEM = "system"
@@ -127,22 +126,6 @@ class NotificationService:
             body=message_preview[:100],
             notification_type=NotificationService.TYPE_MESSAGE,
             data={"chat_id": chat_id, "chat_type": chat_type}
-        )
-    
-    @staticmethod
-    async def notify_temple_update(
-        user_id: str,
-        temple_name: str,
-        update_title: str,
-        temple_id: str
-    ):
-        """Create notification for temple update"""
-        return await NotificationService.create_notification(
-            user_id=user_id,
-            title=f"Update from {temple_name}",
-            body=update_title,
-            notification_type=NotificationService.TYPE_TEMPLE,
-            data={"temple_id": temple_id}
         )
     
     @staticmethod

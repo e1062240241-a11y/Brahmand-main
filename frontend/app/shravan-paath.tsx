@@ -375,7 +375,7 @@ export default function ShravanPaathPage() {
           {/* SECTION 3: WHAT TO EXPECT IN THIS SHIV PAATH */}
           <View style={[styles.sectionCard, { marginBottom: 2 }, Platform.OS === 'android' && { marginTop: -28 }]}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardHeaderTitle}>What to expect in this Shiv Paath</Text>
+              <Text style={styles.cardHeaderTitle}>शिव पाठ में क्या विशेष रहेगा</Text>
               <Text style={styles.cardOrnament}>⤝</Text>
             </View>
 

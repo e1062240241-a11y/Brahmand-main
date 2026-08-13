@@ -232,6 +232,11 @@ export async function initializePushNotifications(): Promise<string | null> {
     return null;
   }
 
+  // Schedule recurring morning and night scripture reading notifications
+  scheduleDailyScriptureNotifications().catch((err) => {
+    console.warn('[Push] Failed to schedule daily scripture notifications during init:', err);
+  });
+
   const saved = await saveFCMToken(token);
   return saved ? token : null;
 }
@@ -557,6 +562,76 @@ export async function scheduleShivKathaNotification(
     return null;
   }
 }
+
+/**
+ * Schedules recurring daily push notifications for Brahmand Library scripture reading:
+ * - Morning (9:00 AM)
+ *   Title: 🌅  Brahmand Library
+ *   Body: Take a moment to read a verse from your favourite scripture this morning.
+ * 
+ * - Night (10:00 PM / 22:00)
+ *   Title: 🌙  Brahmand Library
+ *   Body: Take a moment to read a verse from your favourite scripture before rest tonight.
+ */
+export async function scheduleDailyScriptureNotifications(): Promise<{ morningNotifId: string | null; nightNotifId: string | null }> {
+  if (Platform.OS === 'web') return { morningNotifId: null, nightNotifId: null };
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return { morningNotifId: null, nightNotifId: null };
+
+  const channelId = 'default_v4';
+  const soundFile = __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell');
+
+  let morningNotifId: string | null = null;
+  let nightNotifId: string | null = null;
+
+  // 1. Morning Notification (9:00 AM)
+  try {
+    morningNotifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🌅  Brahmand Library',
+        body: 'Take a moment to read a verse from your favourite scripture this morning.',
+        data: {
+          type: 'scripture_reminder',
+          timeOfDay: 'morning',
+          route: '/library',
+        },
+        sound: soundFile,
+      },
+      trigger: (Platform.OS === 'android'
+        ? { hour: 9, minute: 0, repeats: true, channelId }
+        : { hour: 9, minute: 0, repeats: true }) as any,
+    });
+    console.log(`[Push] Morning scripture notification scheduled for 9:00 AM (id: ${morningNotifId})`);
+  } catch (e) {
+    console.warn('[Push] Failed to schedule morning scripture notification:', e);
+  }
+
+  // 2. Night Notification (10:00 PM / 22:00)
+  try {
+    nightNotifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🌙  Brahmand Library',
+        body: 'Take a moment to read a verse from your favourite scripture before rest tonight.',
+        data: {
+          type: 'scripture_reminder',
+          timeOfDay: 'night',
+          route: '/library',
+        },
+        sound: soundFile,
+      },
+      trigger: (Platform.OS === 'android'
+        ? { hour: 22, minute: 0, repeats: true, channelId }
+        : { hour: 22, minute: 0, repeats: true }) as any,
+    });
+    console.log(`[Push] Night scripture notification scheduled for 10:00 PM (id: ${nightNotifId})`);
+  } catch (e) {
+    console.warn('[Push] Failed to schedule night scripture notification:', e);
+  }
+
+  return { morningNotifId, nightNotifId };
+}
+
 
 
 

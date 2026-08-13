@@ -1682,8 +1682,10 @@ export default function HomeScreen() {
       topFeaturesScrollRef={topFeaturesScrollRef}
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
+      isFocused={isFocused}
     />
   ), [
+    isFocused,
     insets.top,
     user,
     firstName,

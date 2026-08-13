@@ -1,4 +1,5 @@
 import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
+import { resolveTempleFestivals } from '../../src/data/templeFestivalResolver';
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
@@ -854,18 +855,27 @@ const getCategoryBadge = (category?: string) => {
 
 
 const getSpecialTempleKey = (nameOrId: string) => {
- const normalizedName = String(nameOrId || '').toLowerCase();
- const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([key, value]) => {
-   const keyLower = key.toLowerCase();
-   return keyLower === normalizedName ||
-     normalizedName.includes(keyLower) ||
-     keyLower.includes(normalizedName) ||
-     value.aliases.some((alias) => normalizedName.includes(alias) || alias.includes(normalizedName));
- });
- if (specialTemple) {
-   return specialTemple[0];
- }
- return '';
+  if (!nameOrId || typeof nameOrId !== 'string') return '';
+  const normalizedName = nameOrId.toLowerCase().trim();
+  if (!normalizedName || normalizedName === 'temple' || normalizedName === 'shrine') return '';
+
+  const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([key, value]) => {
+    const keyLower = key.toLowerCase();
+    if (keyLower === normalizedName) return true;
+
+    return value.aliases.some((alias) => {
+      const aliasLower = alias.toLowerCase().trim();
+      if (!aliasLower || aliasLower.length < 3) return false;
+      if (aliasLower === normalizedName) return true;
+      const regex = new RegExp(`\\b${aliasLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return regex.test(normalizedName);
+    });
+  });
+
+  if (specialTemple) {
+    return specialTemple[0];
+  }
+  return '';
 };
 
 const formatTempleLocation = (temple: any) => {
@@ -1555,8 +1565,12 @@ export default function TempleDetailScreen() {
   const getAuthenticJyotirlingaDetails = () => {
     const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
-    const keyLower = (templeKey || '').toLowerCase();
-    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+    const match = (str: string) => {
+      if (!str) return false;
+      const escaped = str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+      return regex.test(nameLower) || regex.test(idLower);
+    };
 
     if (match('somnath')) {
       return {
@@ -1750,6 +1764,17 @@ export default function TempleDetailScreen() {
         architecture: 'Spacious marble shrine complex featuring the Samadhi Mandir and Dwarkamai.',
         festivals: ['Ram Navami', 'Guru Purnima', 'Vijayadashami (Sai Punyatithi)'],
         pilgrimageCircuit: 'Maharashtra Saint Circuit'
+      };
+    }
+    if (match('renuka') || match('mahur')) {
+      return {
+        about: 'Shaktipeeth Shree Renuka Devi Temple in Mahur, Maharashtra, is one of the three and a half sacred Shakti Peethas of Maharashtra.',
+        mythologicalSignificance: 'Revered as the birthplace of Lord Parashurama and the sacred abode of Mata Renuka Devi, embodiment of Divine Motherhood and Shakti.',
+        history: 'Mentioned in the Devi Bhagavata and Skanda Purana; patronized by Yadava kings and Maratha rulers.',
+        architecture: 'Traditional hill-top temple complex built with stone steps, carved sanctum, and surrounding sacred kunds.',
+        sacredRituals: 'Maha Aarti, Kumkumarchana, Devi Shringar, and Chandi Path.',
+        festivals: ['Sharad Navratri Fair', 'Chaitra Navratri', 'Kojagiri Purnima', 'Deepavali / Dasara Yatra'],
+        pilgrimageCircuit: 'Maharashtra 3.5 Shakti Peeth Circuit, Mahur Gad Yatra'
       };
     }
     if (match('siddhivinayak')) {
@@ -2562,7 +2587,7 @@ export default function TempleDetailScreen() {
   const templeArchitecture = authenticJyotirlingaDetails?.architecture || temple?.architecture;
   const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple?.significance;
   const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple?.rituals || temple?.sacred_rituals;
-  const templeFestivals = authenticJyotirlingaDetails?.festivals || temple?.festivals || temple?.major_festivals;
+  const templeFestivals = resolveTempleFestivals({ temple, authenticFestivals: authenticJyotirlingaDetails?.festivals });
   const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple?.pilgrimage_circuit || temple?.circuit;
 
   if (loading && !temple) {
@@ -2819,7 +2844,7 @@ export default function TempleDetailScreen() {
                 significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
                 history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
                 architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
-                festivals={Array.isArray(templeFestivals) ? templeFestivals : []}
+                festivals={templeFestivals}
                 airRoute={airInfo || ""}
                 railRoute={railInfo || ""}
                 busRoute={busInfo || ""}

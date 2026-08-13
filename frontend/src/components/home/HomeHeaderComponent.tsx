@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView as ExpoVideoView } from 'expo-video';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -260,6 +261,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesScrollRef,
     topFeaturesAutoScrollIndex,
     bannerScrollRef,
+    isFocused,
 }: {
     user: any;
     firstName: string;
@@ -311,8 +313,50 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesScrollRef: any;
     topFeaturesAutoScrollIndex: any;
     bannerScrollRef: any;
+    isFocused?: boolean;
 }) {
     const router = useRouter();
+    const [videoError, setVideoError] = React.useState(false);
+
+    const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
+        player.loop = true;
+        player.muted = true;
+    });
+
+    React.useEffect(() => {
+        if (!achPlayer) return;
+
+        const statusSubscription = achPlayer.addListener('statusChange', (payload: any) => {
+            const status = typeof payload === 'string' ? payload : payload?.status;
+            const error = typeof payload === 'object' ? payload?.error : undefined;
+            if (status === 'error' || error) {
+                if (__DEV__) {
+                    console.warn('[HomeHeaderComponent] Video playback error, using WebP fallback:', error || status);
+                }
+                setVideoError(true);
+            }
+        });
+
+        return () => {
+            statusSubscription?.remove();
+        };
+    }, [achPlayer]);
+
+    React.useEffect(() => {
+        if (!achPlayer) return;
+        const activeFocused = isFocused !== false; // Default to true if undefined on initial Home mount
+        if (!activeFocused) {
+            achPlayer.pause();
+        } else if (activeFocused && !videoError) {
+            try {
+                achPlayer.play();
+            } catch (err) {
+                if (__DEV__) {
+                    console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+                }
+            }
+        }
+    }, [achPlayer, isFocused, videoError]);
     return (
         <View style={{ paddingTop: 4 }}>
 
@@ -753,63 +797,36 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
                                     >
                                         <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
-                                            {/* Divine Golden Aura Radial Glow behind Acharya's Portrait */}
-                                            <View
-                                                pointerEvents="none"
-                                                style={{
-                                                    position: 'absolute',
-                                                    right: '-12%',
-                                                    top: '-15%',
-                                                    width: '75%',
-                                                    height: '120%',
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                }}
-                                            >
-                                                {/* Outer Warm Amber Ambient Glow */}
-                                                <View
-                                                    style={{
-                                                        position: 'absolute',
-                                                        width: 190,
-                                                        height: 190,
-                                                        borderRadius: 95,
-                                                        backgroundColor: 'rgba(255, 179, 0, 0.45)',
-                                                        transform: [{ scaleX: 1.2 }],
-                                                    }}
-                                                />
-                                                {/* Inner Concentric Golden Divine Halo Core */}
-                                                <View
-                                                    style={{
-                                                        position: 'absolute',
-                                                        width: 130,
-                                                        height: 130,
-                                                        borderRadius: 65,
-                                                        backgroundColor: 'rgba(255, 223, 0, 0.65)',
-                                                    }}
-                                                />
-                                            </View>
-
+                                            {/* Local WebP Fallback (always rendered underneath video) */}
                                             <Image
-                                                source={require('../../../assets/images/panditji.webp')}
-                                                style={{
-                                                    width: '100%',
-                                                    height: '135%',
-                                                    top: -28,
-                                                    borderRadius: 16,
-                                                }}
+                                                source={require('../../../assets/images/banner1_optimized.webp')}
+                                                style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
                                                 resizeMode="cover"
                                             />
-                                            {/* Overlay Gradient for smooth image blend with banner background */}
-                                            <LinearGradient
-                                                colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.10)']}
-                                                start={{ x: 0, y: 0.5 }}
-                                                end={{ x: 0.85, y: 0.5 }}
-                                                style={StyleSheet.absoluteFillObject}
-                                                pointerEvents="none"
-                                            />
 
-                                            {/* TOP RIGHT CORNER: DYNAMIC BADGE & LIVE COUNTDOWN TIMER ACCORDING TO LIFECYCLE */}
-                                            <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
+                                            {!videoError && (
+                                                <ExpoVideoView
+                                                    player={achPlayer}
+                                                    style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
+                                                    contentFit="cover"
+                                                    nativeControls={false}
+                                                />
+                                            )}
+
+
+                                            {/* Right Speaker Portrait Cutout */}
+                                            <Image
+                                                source={require('../../../assets/images/shamik_cutout.png')}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: -24,
+                                                    bottom: -16,
+                                                    width: '54%',
+                                                    height: '128%',
+                                                    zIndex: 1,
+                                                }}
+                                                resizeMode="contain"
+                                            />
 
                                             {/* LEFT CONTENT AREA */}
                                             <View
@@ -819,13 +836,14 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     top: 0,
                                                     left: 0,
                                                     bottom: 0,
-                                                    width: '70%',
+                                                    width: '58%',
                                                     paddingLeft: 14,
-                                                    paddingRight: 6,
-                                                    paddingTop: Platform.OS === 'android' ? 1 : 2,
-                                                    paddingBottom: 2,
+                                                    paddingRight: 4,
+                                                    paddingTop: Platform.OS === 'android' ? 4 : 6,
+                                                    paddingBottom: 4,
                                                     justifyContent: 'flex-start',
                                                     alignItems: 'flex-start',
+                                                    zIndex: 2,
                                                 }}>
                                                 {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
                                                 <View style={{
@@ -850,14 +868,14 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         )}
                                                     </View>
 
-                                                    <View style={{ paddingLeft: 10 }}>
+                                                    <View style={{ paddingLeft: 0 }}>
                                                         <Text
                                                             numberOfLines={1}
                                                             style={{
                                                                 color: '#FFF8E7',
-                                                                fontSize: Platform.OS === 'ios' ? 31 : 28,
+                                                                fontSize: Platform.OS === 'ios' ? 26 : 24,
                                                                 fontWeight: '900',
-                                                                lineHeight: Platform.OS === 'ios' ? 38 : 34,
+                                                                lineHeight: Platform.OS === 'ios' ? 32 : 30,
                                                                 paddingVertical: Platform.OS === 'ios' ? 2 : 0,
                                                                 letterSpacing: 0,
                                                                 textAlign: 'left',
@@ -866,19 +884,19 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 textShadowRadius: 2,
                                                             }}
                                                         >
-                                                            श्रावण मास <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                                                            श्रावण मास <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
                                                         </Text>
                                                     </View>
 
                                                     {/* शिव कथा with iOS matra height fix & 32 lineHeight on Android */}
-                                                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'ios' ? -5 : 1 }}>
+                                                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 8, marginTop: Platform.OS === 'ios' ? -5 : 1 }}>
                                                         <Text
                                                             numberOfLines={1}
                                                             style={{
                                                                 color: '#FFE58F',
-                                                                fontSize: 24,
+                                                                fontSize: 22,
                                                                 fontWeight: '900',
-                                                                lineHeight: Platform.OS === 'ios' ? 35 : 32,
+                                                                lineHeight: Platform.OS === 'ios' ? 30 : 28,
                                                                 paddingVertical: Platform.OS === 'ios' ? 3 : 0,
                                                                 letterSpacing: 0.5,
                                                                 textAlign: 'left',
@@ -887,7 +905,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 textShadowRadius: 1,
                                                             }}
                                                         >
-                                                            <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                                                            <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
                                                         </Text>
                                                     </View>
 

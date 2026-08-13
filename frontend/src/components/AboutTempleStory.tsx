@@ -69,7 +69,7 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
   significance = 'A holy pilgrimage center blessed with ancient spiritual heritage and divine grace.',
   history = 'Tracing its origins to ancient eras, the temple was sustained and restored across generations by devout patrons.',
   architecture = 'Constructed in traditional sacred temple architectural style featuring sanctified pillars and stone carvings.',
-  festivals = ['Maha Shivratri', 'Shravan Somvar', 'Annakutotsav'],
+  festivals,
   airRoute = '',
   railRoute = '',
   busRoute = '',
@@ -107,7 +107,16 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
 
   const safeFestivals = useMemo(() => {
     if (Array.isArray(festivals) && festivals.length > 0) {
-      return festivals.map(f => (typeof f === 'string' ? f.trim() : String(f))).filter(Boolean);
+      return festivals.map(f => {
+        if (!f) return '';
+        if (typeof f === 'string') return f.trim();
+        if (typeof f === 'object' && f !== null) {
+          const obj = f as Record<string, any>;
+          const extracted = obj.name || obj.festival_name || obj.title || obj.festivalName || obj.label;
+          if (typeof extracted === 'string') return extracted.trim();
+        }
+        return '';
+      }).filter((item): item is string => Boolean(item) && item !== '[object Object]');
     }
     return [];
   }, [festivals]);

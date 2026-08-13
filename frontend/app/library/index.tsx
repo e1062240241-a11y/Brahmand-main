@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 import { useGitaStore } from '../../src/store/gitaStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { scheduleDailyScriptureNotifications } from '../../src/services/pushNotifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -78,6 +79,12 @@ function LibraryPage() {
   const gitaState = useGitaStore();
   const libraryStore = useLibraryStore();
   const observedProgress = libraryStore.getRecentBooks();
+
+  useEffect(() => {
+    scheduleDailyScriptureNotifications().catch(err => {
+      console.warn('[Library] Failed to schedule daily scripture reading notifications:', err);
+    });
+  }, []);
 
   const toggle = (id: string) =>
     setSaved(prev => {

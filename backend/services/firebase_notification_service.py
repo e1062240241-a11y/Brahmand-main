@@ -15,7 +15,6 @@ class FirebaseNotificationService:
     # Notification types
     TYPE_MESSAGE = "message"
     TYPE_COMMUNITY = "community"
-    TYPE_TEMPLE = "temple"
     TYPE_EVENT = "event"
     TYPE_VERIFICATION = "verification"
     TYPE_SYSTEM = "system"
@@ -636,30 +635,6 @@ class FirebaseNotificationService:
         )
     
     @staticmethod
-    async def notify_temple_update(
-        user_ids: List[str],
-        temple_name: str,
-        update_title: str,
-        temple_id: str
-    ):
-        """Notify temple followers of update"""
-        for user_id in user_ids:
-            await FirebaseNotificationService.create_notification(
-                user_id=user_id,
-                title=f"Update from {temple_name}",
-                body=update_title,
-                notification_type=FirebaseNotificationService.TYPE_TEMPLE,
-                data={"temple_id": temple_id}
-            )
-        
-        await FirebaseNotificationService.send_multicast(
-            user_ids=user_ids,
-            title=f"Update from {temple_name}",
-            body=update_title,
-            data={"temple_id": temple_id, "type": "temple"}
-        )
-
-    @staticmethod
     async def notify_jaap_reminder(
         user_id: str,
         title: str,
@@ -875,6 +850,101 @@ class FirebaseNotificationService:
             data=notif_data
         )
         return {"status": "success", "result": res}
+
+    @staticmethod
+    async def notify_scripture_reading_reminder(
+        user_id: str,
+        time_of_day: str = "morning",
+        notification_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Send push notification for Brahmand Library scripture reading:
+        'take a moment to read a verse from your favourite scripture at the morning and night time'
+        """
+        if time_of_day == "morning":
+            title = "🌅  Brahmand Library"
+            body = "Take a moment to read a verse from your favourite scripture this morning."
+        else:
+            title = "🌙  Brahmand Library"
+            body = "Take a moment to read a verse from your favourite scripture before rest tonight."
+
+        notif_data = {
+            "type": "scripture_reminder",
+            "time_of_day": time_of_day,
+            "route": "/library"
+        }
+
+        try:
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=title,
+                body=body,
+                notification_type="scripture_reminder",
+                data=notif_data,
+                notification_id=notification_id,
+                overwrite=False
+            )
+        except Exception as e:
+            from google.api_core.exceptions import AlreadyExists
+            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
+                logger.info(f"Skipping duplicate scripture reminder for user {user_id}")
+                return {"status": "skipped", "reason": "Already exists"}
+            logger.warning(f"Failed to create scripture reminder notification doc: {e}")
+
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            data=notif_data
+        )
+        return {"status": "success", "result": res}
+
+    @staticmethod
+    async def notify_festival_reminder(
+        user_id: str,
+        festival_name: str,
+        festival_date: str = "",
+        festival_id: str = "",
+        notification_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Send push notification for major festival celebrations.
+        """
+        title = f"🎉  {festival_name} Celebration"
+        body = f"Today is {festival_name}! Take a moment to explore rituals, katha, and temple darshan in Brahmand."
+
+        notif_data = {
+            "type": "festival_reminder",
+            "festival_id": festival_id,
+            "route": "/festival"
+        }
+
+        try:
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=title,
+                body=body,
+                notification_type="festival_reminder",
+                data=notif_data,
+                notification_id=notification_id,
+                overwrite=False
+            )
+        except Exception as e:
+            from google.api_core.exceptions import AlreadyExists
+            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
+                logger.info(f"Skipping duplicate festival reminder for user {user_id}")
+                return {"status": "skipped", "reason": "Already exists"}
+            logger.warning(f"Failed to create festival reminder notification doc: {e}")
+
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            data=notif_data
+        )
+        return {"status": "success", "result": res}
+
+
 
 
 

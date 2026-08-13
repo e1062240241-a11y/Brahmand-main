@@ -576,7 +576,7 @@ export default function KathaPage() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#1B1C1C" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Shravan Katha</Text>
+        <Text style={styles.headerTitle}>🔱 श्रावण कथा</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -599,10 +599,10 @@ export default function KathaPage() {
               {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
             </Text>
             <Text style={styles.guruSubtitle}>
-              {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • Spiritual Guru & Astrologer
+              {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
             </Text>
             <Text style={styles.scheduleText}>
-              {isUserSelectedOldEpisode ? 'Library Episode' : status.banner_message}
+              {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
             </Text>
           </View>
 
@@ -611,7 +611,7 @@ export default function KathaPage() {
           <View style={styles.librarySection}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
-            <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
+            <Text style={styles.sectionTitle}>श्रावण कथा अध्याय</Text>
           </View>
 
           {loading ? (
@@ -704,11 +704,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: DARK,
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    letterSpacing: -0.4,
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#000000', // Deep Black 3D Text
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.20)', // Subtle 3D shadow depth for black text
+    textShadowOffset: { width: 1.5, height: 1.8 },
+    textShadowRadius: 1.5,
   },
   playerContainer: {
     paddingHorizontal: 16,
@@ -909,25 +911,31 @@ const styles = StyleSheet.create({
   },
   activeDetails: {
     paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
+    width: '100%',
   },
   activeTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     color: DARK,
-    marginBottom: 4,
-    lineHeight: 24,
+    marginBottom: 6,
+    lineHeight: 25,
+    flexWrap: 'wrap',
   },
   guruSubtitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: BROWN,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 4,
+    lineHeight: 20,
+    flexWrap: 'wrap',
   },
   scheduleText: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: ORANGE,
     fontWeight: '700',
+    lineHeight: 18,
+    flexWrap: 'wrap',
   },
   librarySection: {
     paddingHorizontal: 16,
