@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from uuid import uuid4
 
 import aiohttp
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 
 from middleware.security import verify_token, optional_verify_token
@@ -506,4 +507,58 @@ async def admin_delete_katha_episode(
     return {
         "status": "success",
         "message": f"Episode {episode_id} deleted successfully"
+    }
+
+
+class SaveEpisodeRequest(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    episode_number: int
+    date: str
+    guru_name: Optional[str] = "Acharya Shamik Pathak Ji"
+    duration: Optional[str] = "00:30:00"
+    video_url: str
+    thumbnail_url: Optional[str] = ""
+    file_size_bytes: Optional[int] = 0
+
+
+@router.post("/admin/save-episode")
+async def admin_save_katha_episode(
+    payload: SaveEpisodeRequest,
+    _: bool = Depends(_verify_admin_auth)
+):
+    """
+    Saves metadata for an episode directly uploaded to Bunny CDN (supports heavy files up to 5GB+).
+    """
+    episode_id = f"saavan_katha_ep{payload.episode_number}"
+
+    episode_data = {
+        "id": episode_id,
+        "title": payload.title,
+        "description": payload.description or "",
+        "episode_number": payload.episode_number,
+        "date": payload.date,
+        "guru_name": payload.guru_name or "Acharya Shamik Pathak Ji",
+        "duration": payload.duration or "00:30:00",
+        "video_url": payload.video_url,
+        "thumbnail_url": payload.thumbnail_url or "",
+        "file_size_bytes": payload.file_size_bytes or 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    IN_MEMORY_EPISODES[episode_id] = episode_data
+
+    db = await get_firestore()
+    if db:
+        try:
+            db.collection("katha_episodes").document(episode_id).set(episode_data)
+            logger.info(f"[admin/save-episode] Saved episode record to Firestore: {episode_id}")
+        except Exception as err:
+            logger.error(f"[admin/save-episode] Firestore error: {err}")
+            raise HTTPException(status_code=500, detail="Failed to save episode to database")
+
+    return {
+        "status": "success",
+        "message": f"Episode {payload.episode_number} saved successfully",
+        "episode": episode_data
     }

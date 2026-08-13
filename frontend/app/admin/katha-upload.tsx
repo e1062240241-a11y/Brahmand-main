@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { API_URL } from '../../src/services/api';
+import api, { API_URL } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
 const getBackendUploadUrl = () => {
@@ -76,106 +76,130 @@ export default function AdminKathaUploadScreen() {
     }
 
     setUploading(true);
-    setProgressMsg('Preparing video stream upload to Bunny.net...');
+    setProgressMsg('Preparing direct high-speed upload to Bunny.net CDN...');
 
     try {
-      const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
-      formData.append('episode_number', episodeNumber);
-      formData.append('date', date);
-      formData.append('guru_name', guruName);
-      formData.append('duration', duration);
+      const bunnyHost = 'sg.storage.bunnycdn.com';
+      const bunnyZone = 'brahmand';
+      const accessKey = '47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314';
+      const pullZoneUrl = 'https://brahmandfeed23.b-cdn.net';
 
-      // Append real video file
+      // 1. Prepare video file payload
+      let videoPayload: any = null;
+      let videoSize = selectedVideo.size || 0;
+
       if (Platform.OS === 'web') {
         if (selectedVideo.file) {
-          formData.append('file', selectedVideo.file, selectedVideo.name || `ep_${episodeNumber}.mp4`);
+          videoPayload = selectedVideo.file;
         } else {
-          const response = await fetch(selectedVideo.uri);
-          const blob = await response.blob();
-          formData.append('file', blob, selectedVideo.name || `ep_${episodeNumber}.mp4`);
+          const resp = await fetch(selectedVideo.uri);
+          videoPayload = await resp.blob();
         }
       } else {
-        formData.append('file', {
-          uri: selectedVideo.uri,
-          name: selectedVideo.name || `ep_${episodeNumber}.mp4`,
-          type: selectedVideo.mimeType || 'video/mp4',
-        } as any);
+        const resp = await fetch(selectedVideo.uri);
+        videoPayload = await resp.blob();
       }
 
-      // Append thumbnail if present
-      if (selectedThumb) {
-        if (Platform.OS === 'web') {
-          if (selectedThumb.file) {
-            formData.append('thumbnail', selectedThumb.file, selectedThumb.name || 'thumb.webp');
-          } else {
-            const thumbResp = await fetch(selectedThumb.uri);
-            const thumbBlob = await thumbResp.blob();
-            formData.append('thumbnail', thumbBlob, selectedThumb.name || 'thumb.webp');
-          }
-        } else {
-          formData.append('thumbnail', {
-            uri: selectedThumb.uri,
-            name: selectedThumb.name || 'thumb.webp',
-            type: selectedThumb.mimeType || 'image/jpeg',
-          } as any);
-        }
+      if (videoPayload && videoPayload.size) {
+        videoSize = videoPayload.size;
       }
 
-      const targetUrl = getBackendUploadUrl();
+      const fileExt = selectedVideo.name?.split('.').pop() || 'mp4';
+      const videoFileName = `ep_${episodeNumber}_${Date.now()}.${fileExt}`;
+      const videoObjectPath = `katha/acharya_shamik/saavan_katha/${videoFileName}`;
+      const videoUploadUrl = `https://${bunnyHost}/${bunnyZone}/${videoObjectPath}`;
+      const finalCdnVideoUrl = `${pullZoneUrl}/${videoObjectPath}`;
 
-      const serverResult: any = await new Promise((resolve, reject) => {
+      // 2. Upload video file directly to Bunny CDN via XHR PUT
+      await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', targetUrl, true);
-
-        if (adminToken) {
-          xhr.setRequestHeader('Authorization', `Bearer ${adminToken}`);
-        } else {
-          xhr.setRequestHeader('X-Admin-Key', 'brahmand_saavan_katha_admin_2026');
-        }
+        xhr.open('PUT', videoUploadUrl, true);
+        xhr.setRequestHeader('AccessKey', accessKey);
+        xhr.setRequestHeader('Content-Type', selectedVideo.mimeType || 'video/mp4');
 
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             const percent = Math.round((evt.loaded / evt.total) * 100);
             const loadedMB = (evt.loaded / (1024 * 1024)).toFixed(1);
             const totalMB = (evt.total / (1024 * 1024)).toFixed(1);
-            setProgressMsg(`Streaming to Bunny.net: ${percent}% (${loadedMB}MB / ${totalMB}MB)...`);
+            setProgressMsg(`Direct CDN Upload: ${percent}% (${loadedMB}MB / ${totalMB}MB)...`);
           }
         };
 
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const resJson = JSON.parse(xhr.responseText);
-              resolve(resJson);
-            } catch (_e) {
-              resolve({ status: 'success', message: 'Uploaded successfully' });
-            }
+            resolve(true);
           } else {
-            reject(new Error(`Server error (${xhr.status}): ${xhr.responseText}`));
+            reject(new Error(`Bunny CDN upload failed (${xhr.status}): ${xhr.responseText}`));
           }
         };
 
         xhr.onerror = () => {
-          reject(
-            new Error(
-              `Network upload error. Please verify backend connection at ${targetUrl}`
-            )
-          );
+          reject(new Error('Network error uploading video file directly to Bunny CDN.'));
         };
 
-        xhr.send(formData as any);
+        xhr.send(videoPayload);
       });
 
-      const uploadedUrl = serverResult?.episode?.video_url || 'Bunny.net CDN';
-      const uploadedMB = serverResult?.episode?.file_size_bytes
-        ? `${(serverResult.episode.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
-        : 'Uploaded';
+      // 3. Upload thumbnail directly to Bunny CDN if provided
+      let finalCdnThumbUrl = '';
+      if (selectedThumb) {
+        try {
+          setProgressMsg('Uploading thumbnail image...');
+          let thumbPayload: any = null;
+          if (Platform.OS === 'web' && selectedThumb.file) {
+            thumbPayload = selectedThumb.file;
+          } else {
+            const thumbResp = await fetch(selectedThumb.uri);
+            thumbPayload = await thumbResp.blob();
+          }
+
+          const thumbExt = selectedThumb.name?.split('.').pop() || 'webp';
+          const thumbFileName = `thumb_ep_${episodeNumber}_${Date.now()}.${thumbExt}`;
+          const thumbObjectPath = `katha/acharya_shamik/saavan_katha/${thumbFileName}`;
+          const thumbUploadUrl = `https://${bunnyHost}/${bunnyZone}/${thumbObjectPath}`;
+          finalCdnThumbUrl = `${pullZoneUrl}/${thumbObjectPath}`;
+
+          await new Promise((resolve) => {
+            const txhr = new XMLHttpRequest();
+            txhr.open('PUT', thumbUploadUrl, true);
+            txhr.setRequestHeader('AccessKey', accessKey);
+            txhr.setRequestHeader('Content-Type', selectedThumb.mimeType || 'image/jpeg');
+
+            txhr.onload = () => {
+              if (txhr.status >= 200 && txhr.status < 300) {
+                resolve(true);
+              } else {
+                resolve(false);
+              }
+            };
+            txhr.onerror = () => resolve(false);
+            txhr.send(thumbPayload);
+          });
+        } catch (_tErr) {
+          console.warn('[AdminUpload] Thumbnail upload failed, skipping');
+        }
+      }
+
+      // 4. Save metadata record to Backend & Firestore
+      setProgressMsg('Saving episode metadata to Firestore...');
+      await api.post('/katha/admin/save-episode', {
+        title: title.trim(),
+        description: description.trim(),
+        episode_number: parseInt(episodeNumber, 10) || 1,
+        date: date,
+        guru_name: guruName,
+        duration: duration,
+        video_url: finalCdnVideoUrl,
+        thumbnail_url: finalCdnThumbUrl,
+        file_size_bytes: videoSize,
+      });
+
+      const uploadedMB = (videoSize / (1024 * 1024)).toFixed(1);
 
       Alert.alert(
         'Success! 🎉',
-        `Day ${episodeNumber} Saavan Katha video (${uploadedMB}) uploaded successfully to Bunny.net!\n\nCDN URL:\n${uploadedUrl}`
+        `Day ${episodeNumber} Saavan Katha video (${uploadedMB} MB) uploaded successfully to Bunny.net!\n\nCDN URL:\n${finalCdnVideoUrl}`
       );
       setTitle('');
       setDescription('');
