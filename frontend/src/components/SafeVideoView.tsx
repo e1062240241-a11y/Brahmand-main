@@ -155,18 +155,20 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
     const { player, ExpoVideoModule, source, posterSource, fallback, ...restProps } = this.props;
 
     if (Platform.OS === 'web' && source) {
+      const fitMode = this.props.contentFit || 'fill';
+      const cssObjectFit = fitMode === 'contain' ? 'contain' : (fitMode === 'cover' ? 'cover' : 'fill');
       return (
         <video
           src={source}
-          controls
+          controls={false}
           autoPlay
           playsInline
           style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: cssObjectFit,
             borderRadius: 12,
-            backgroundColor: '#000',
+            backgroundColor: 'transparent',
           }}
         />
       );

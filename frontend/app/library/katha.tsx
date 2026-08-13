@@ -357,38 +357,33 @@ export default function KathaPage() {
     }
   };
 
-  // Initial fetch
-  useEffect(() => {
-    fetchKathaData();
-  }, []);
-
-  // When screen comes back into focus (e.g. after admin upload),
-  // silently refresh the episode list ONLY — do NOT reset active player
+  // Refetch status and episodes whenever screen is focused or polled
   useEffect(() => {
     if (!isFocused) return;
-    const refreshEpisodesOnly = async () => {
-      try {
-        const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
-        if (epRes.ok) {
-          const epJson = await epRes.json();
-          if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
-            setEpisodes(epJson.episodes);
-            // Only update active episode if none is set yet
-            setActiveEpisode(prev => {
-              if (prev) return prev;
-              const latestEp = epJson.episodes.reduce((p: KathaEpisode, c: KathaEpisode) => {
-                return (p.episode_number || 0) > (c.episode_number || 0) ? p : c;
-              });
-              return latestEp;
+    fetchKathaData();
+
+    const interval = setInterval(() => {
+      fetch(`${API_BASE_URL}/api/katha/status`)
+        .then(res => res.json())
+        .then(statusJson => {
+          if (statusJson.status === 'success') {
+            setStatus({
+              is_live: statusJson.is_live,
+              mode: statusJson.mode,
+              title: statusJson.title,
+              guru_name: statusJson.guru_name,
+              banner_message: statusJson.banner_message,
+              next_stream_at: statusJson.next_stream_at,
+              current_broadcast_start_time: statusJson.current_broadcast_start_time,
+              server_time_ist: statusJson.server_time_ist,
+              active_video_url: statusJson.active_video_url || statusJson.prefetched_video_url,
             });
-            console.log('[KathaPage] isFocused refresh: episodes updated:', epJson.episodes.length);
           }
-        }
-      } catch (_e) {}
-    };
-    // Delay slightly to avoid running on first mount (initial fetch handles that)
-    const t = setTimeout(refreshEpisodesOnly, 300);
-    return () => clearTimeout(t);
+        })
+        .catch(() => {});
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [isFocused]);
 
   const onRefresh = () => {
@@ -437,7 +432,7 @@ export default function KathaPage() {
               posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
               style={styles.videoPlayer}
               nativeControls={false}
-              contentFit="cover"
+              contentFit={isModal ? "contain" : "fill"}
             />
           ) : (
             <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
@@ -757,7 +752,7 @@ const styles = StyleSheet.create({
   },
   playerWrapper: {
     width: '100%',
-    height: 220,
+    aspectRatio: 1216 / 2160,
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#000',
@@ -881,7 +876,10 @@ const styles = StyleSheet.create({
   fullscreenPlayerWrapper: {
     width: '100%',
     height: '100%',
+    aspectRatio: undefined as any,
     borderRadius: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   landscapeModalContainer: {
     flex: 1,

@@ -150,7 +150,7 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
 
 
 _KATHA_STATUS_CACHE = {"timestamp": 0, "response": None}
-CACHE_TTL_SECONDS = 15  # 15s in-memory response cache under high concurrency
+CACHE_TTL_SECONDS = 1  # 1s instant in-memory status response update
 
 
 def _parse_duration_seconds(dur: Any) -> int:
@@ -298,10 +298,73 @@ async def get_katha_status():
     return res_payload
 
 
+async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
+    """Auto-discover files uploaded directly to Bunny CDN storage host and populate episodes."""
+    discovered: Dict[str, Any] = {}
+    if not BUNNY_ACCESS_KEY:
+        return discovered
+
+    try:
+        url = f"https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}/katha/acharya_shamik/saavan_katha/"
+        headers = {"AccessKey": BUNNY_ACCESS_KEY}
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    items = await resp.json()
+
+                    thumb_map: Dict[int, str] = {}
+                    for item in items:
+                        obj_name = item.get("ObjectName", "")
+                        if obj_name.startswith("thumb_"):
+                            import re
+                            tm = re.search(r"ep[_-]?(\d+)", obj_name, re.IGNORECASE)
+                            if tm:
+                                ep_n = int(tm.group(1))
+                                thumb_map[ep_n] = f"{BUNNY_PULL_ZONE_URL}/katha/acharya_shamik/saavan_katha/{obj_name}"
+
+                    for item in items:
+                        if item.get("IsDirectory"):
+                            continue
+                        obj_name = item.get("ObjectName", "")
+                        if not obj_name or not obj_name.endswith((".mp4", ".mov", ".mkv", ".webm", ".hevc")):
+                            continue
+
+                        ep_num = 1
+                        import re
+                        m = re.search(r"ep(?:isode)?[_-]?(\d+)", obj_name, re.IGNORECASE)
+                        if m:
+                            ep_num = int(m.group(1))
+
+                        ep_id = f"saavan_katha_ep{ep_num}"
+                        file_bytes = item.get("Length", 0)
+                        cdn_url = f"{BUNNY_PULL_ZONE_URL}/katha/acharya_shamik/saavan_katha/{obj_name}"
+                        thumb_url = thumb_map.get(ep_num, "")
+
+                        discovered[ep_id] = {
+                            "id": ep_id,
+                            "title": f"Shravan Shiv Katha — Day {ep_num}",
+                            "description": "Acharya Shamik Pathak Ji Shravan Maas Shiv Katha Live Broadcast & Archive.",
+                            "episode_number": ep_num,
+                            "date": "2026-08-13",
+                            "guru_name": "Acharya Shamik Pathak Ji",
+                            "duration": "00:15:00",
+                            "video_url": cdn_url,
+                            "thumbnail_url": thumb_url,
+                            "file_size_bytes": file_bytes,
+                            "created_at": item.get("DateCreated", datetime.now(timezone.utc).isoformat())
+                        }
+    except Exception as err:
+        logger.warning(f"Failed to auto-sync from Bunny CDN: {err}")
+
+    return discovered
+
+
 @router.get("/episodes")
 async def get_katha_episodes():
     """
-    Fetch published Saavan Katha episodes directly from Firestore database.
+    Fetch published Saavan Katha episodes directly from Firestore database,
+    with automatic CDN discovery fallback if database records are empty.
     """
     merged: Dict[str, Any] = {**IN_MEMORY_EPISODES}
 
@@ -324,6 +387,18 @@ async def get_katha_episodes():
                     merged[doc.id] = d
         except Exception as err:
             logger.warning(f"[TRACE /episodes] Firestore fetch fallback triggered: {err}")
+
+    if not merged:
+        cdn_episodes = await _sync_episodes_from_bunny_cdn()
+        if cdn_episodes:
+            merged.update(cdn_episodes)
+            IN_MEMORY_EPISODES.update(cdn_episodes)
+            if db:
+                for ep_id, ep_data in cdn_episodes.items():
+                    try:
+                        db.collection("katha_episodes").document(ep_id).set(ep_data)
+                    except Exception:
+                        pass
 
     if merged:
         episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0))

@@ -594,7 +594,7 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
   let morningNotifId: string | null = null;
   let nightNotifId: string | null = null;
 
-  // 1. Morning Notification (9:00 AM)
+  // 1. Morning Notification (8:00 AM)
   try {
     morningNotifId = await Notifications.scheduleNotificationAsync({
       content: {
@@ -609,41 +609,41 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
       },
       trigger: {
         type: 'daily',
-        hour: 9,
+        hour: 8,
         minute: 0,
         repeats: true,
         channelId,
       } as any,
     });
-    console.log(`[Push] Morning scripture notification scheduled for 9:00 AM (id: ${morningNotifId})`);
+    console.log(`[Push] Morning scripture notification scheduled for 8:00 AM (id: ${morningNotifId})`);
   } catch (e) {
     console.warn('[Push] Failed to schedule morning scripture notification:', e);
   }
 
-  // 2. Night Notification (10:00 PM / 22:00)
+  // 2. Evening Notification (8:00 PM / 20:00)
   try {
     nightNotifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🌙  Brahmand Library',
-        body: 'Take a moment to read a verse from your favourite scripture before rest tonight.',
+        body: 'Take a moment to read a verse from your favourite scripture this evening.',
         data: {
           type: 'scripture_reminder',
-          timeOfDay: 'night',
+          timeOfDay: 'evening',
           route: '/library',
         },
         sound: soundFile,
       },
       trigger: {
         type: 'daily',
-        hour: 22,
+        hour: 20,
         minute: 0,
         repeats: true,
         channelId,
       } as any,
     });
-    console.log(`[Push] Night scripture notification scheduled for 10:00 PM (id: ${nightNotifId})`);
+    console.log(`[Push] Evening scripture notification scheduled for 8:00 PM (id: ${nightNotifId})`);
   } catch (e) {
-    console.warn('[Push] Failed to schedule night scripture notification:', e);
+    console.warn('[Push] Failed to schedule evening scripture notification:', e);
   }
 
   return { morningNotifId, nightNotifId };
