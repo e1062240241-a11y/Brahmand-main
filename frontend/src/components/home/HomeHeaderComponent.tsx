@@ -277,6 +277,25 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 }) {
     const router = useRouter();
     const [videoError, setVideoError] = React.useState(false);
+    const [kathaStatus, setKathaStatus] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        const fetchKathaStatus = async () => {
+            try {
+                const res = await api.get('/katha/status');
+                if (res.data && isMounted) {
+                    setKathaStatus(res.data);
+                }
+            } catch (_e) {}
+        };
+        fetchKathaStatus();
+        const interval = setInterval(fetchKathaStatus, 10000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
@@ -711,8 +730,27 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 } else if (now.getTime() > campaignEnd.getTime()) {
                                     // After full 1-month campaign completes (After 11 Sept 9:30 AM IST)
                                     eventStatus = 'campaign_completed';
+                                } else if (kathaStatus) {
+                                    if (kathaStatus.is_live) {
+                                        eventStatus = 'live';
+                                    } else if (kathaStatus.is_prefetch_window) {
+                                        eventStatus = 'starting_soon';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    } else if (kathaStatus.mode === 'UPCOMING') {
+                                        eventStatus = 'upcoming';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    } else {
+                                        eventStatus = 'between_streams';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    }
                                 } else {
-                                    // Within Campaign (13 Aug to 11 Sep): Check daily 8:00 AM & 8:00 PM IST windows
+                                    // Within Campaign (13 Aug to 11 Sep): Fallback local calculation
                                     const currentMinutes = now.getHours() * 60 + now.getMinutes();
                                     
                                     const mStart = 8 * 60; // 8:00 AM IST (480 mins)

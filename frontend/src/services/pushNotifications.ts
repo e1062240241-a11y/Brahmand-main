@@ -326,9 +326,11 @@ export async function scheduleEventReminderNotification(
         },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
-      trigger: Platform.OS === 'android'
-        ? { seconds: secondsUntilReminder, channelId } as any
-        : { seconds: secondsUntilReminder } as any,
+      trigger: {
+        seconds: secondsUntilReminder,
+        channelId,
+        type: 'timeInterval',
+      } as any,
     });
     console.log(`[Push] Event reminder scheduled in ${secondsUntilReminder}s (notifId: ${notifId})`);
     return notifId;
@@ -378,9 +380,11 @@ export async function scheduleLocalNotification(
       // Android ignores this — it uses the channel's sound setting instead.
       sound: __DEV__ ? true : (Platform.OS === 'ios' ? iosSoundFile : androidSoundFile),
     },
-    trigger: (Platform.OS === 'android'
-      ? { channelId }
-      : { seconds: 1 }) as any,
+    trigger: {
+      seconds: 1,
+      channelId,
+      type: 'timeInterval',
+    } as any,
   });
 }
 
@@ -477,9 +481,11 @@ export async function scheduleLibraryReadingNotification(
         },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
-      trigger: (Platform.OS === 'android'
-        ? { seconds: delay, channelId }
-        : { seconds: delay }) as any,
+      trigger: {
+        seconds: delay,
+        channelId,
+        type: 'timeInterval',
+      } as any,
     });
 
     try {
@@ -601,9 +607,13 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
         },
         sound: soundFile,
       },
-      trigger: (Platform.OS === 'android'
-        ? { hour: 9, minute: 0, repeats: true, channelId }
-        : { hour: 9, minute: 0, repeats: true }) as any,
+      trigger: {
+        type: 'daily',
+        hour: 9,
+        minute: 0,
+        repeats: true,
+        channelId,
+      } as any,
     });
     console.log(`[Push] Morning scripture notification scheduled for 9:00 AM (id: ${morningNotifId})`);
   } catch (e) {
@@ -623,9 +633,13 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
         },
         sound: soundFile,
       },
-      trigger: (Platform.OS === 'android'
-        ? { hour: 22, minute: 0, repeats: true, channelId }
-        : { hour: 22, minute: 0, repeats: true }) as any,
+      trigger: {
+        type: 'daily',
+        hour: 22,
+        minute: 0,
+        repeats: true,
+        channelId,
+      } as any,
     });
     console.log(`[Push] Night scripture notification scheduled for 10:00 PM (id: ${nightNotifId})`);
   } catch (e) {

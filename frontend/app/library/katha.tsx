@@ -633,6 +633,16 @@ export default function KathaPage() {
             <Text style={styles.scheduleText}>
               {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
             </Text>
+
+            {/* Description Box */}
+            {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
+              <View style={styles.descriptionBox}>
+                <Text style={styles.descriptionLabel}>📖 कथा विवरण / सार</Text>
+                <Text style={styles.descriptionText}>
+                  {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
         {/* Episode Library Section (Only shown when Off-Air) */}
@@ -988,6 +998,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
     flexWrap: 'wrap',
+  },
+  descriptionBox: {
+    marginTop: 10,
+    backgroundColor: '#FFF8F3',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+  },
+  descriptionLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FF6B00',
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 13,
+    color: '#5A4136',
+    lineHeight: 19,
+    fontWeight: '500',
   },
   librarySection: {
     paddingHorizontal: 16,
