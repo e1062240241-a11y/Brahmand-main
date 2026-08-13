@@ -151,17 +151,7 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
 _KATHA_STATUS_CACHE = {"timestamp": 0, "response": None}
 CACHE_TTL_SECONDS = 15  # 15s in-memory response cache under high concurrency
 
-@router.get("/status")
-async def get_katha_status():
-    """
-    Returns current broadcast status for Acharya Shamik Pathak Ji Shravan Katha.
-    Features 15-second in-memory response caching to protect DB from traffic spikes,
-    and a 3-minute advance pre-fetch window (7:57 AM, 5:12 PM, 7:57 PM IST) so clients
-    can silently cache stream URLs before live time.
-    """
-    import time
-    now_ts = time.time()
-    if _KATHA_STATUS_CACHE["response"] and (now_ts - _KATHA_STATUS_CACHE["timestamp"] < CACHE_TTL_SECONDS):
+
 def _parse_duration_seconds(dur: Any) -> int:
     """Parse duration integer or string 'HH:MM:SS' / 'MM:SS' into total seconds (default 30m if unspecified)."""
     if not dur:
@@ -189,7 +179,7 @@ async def get_katha_status():
     Dynamic live broadcast window matches the EXACT duration of the active uploaded video!
     """
     now_ts = datetime.now(timezone.utc).timestamp()
-    if (now_ts - _KATHA_STATUS_CACHE["timestamp"]) < 15 and _KATHA_STATUS_CACHE["response"]:
+    if (now_ts - _KATHA_STATUS_CACHE["timestamp"]) < CACHE_TTL_SECONDS and _KATHA_STATUS_CACHE["response"]:
         return _KATHA_STATUS_CACHE["response"]
 
     now_ist = datetime.now(IST)
