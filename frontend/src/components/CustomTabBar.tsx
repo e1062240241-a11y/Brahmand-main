@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, interpolate, useSharedValue, withSequence, withTiming, withSpring } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -279,23 +279,102 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                 { left: realCenterX - realW / 2, width: realW },
               ]}
             >
-              {isFocused ? (
-                <View style={styles.activeSlotContent}>
-                  {renderTabIcon(route.name, true)}
-                  <Text style={styles.activeLabel} numberOfLines={1} adjustsFontSizeToFit>
-                    {TAB_META[route.name]?.labelKey ? t(TAB_META[route.name].labelKey) : ''}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveSlotContent}>
-                  {renderTabIcon(route.name, false)}
-                </View>
-              )}
+              <TabItemContent
+                routeName={route.name}
+                isFocused={isFocused}
+                labelKey={TAB_META[route.name]?.labelKey}
+                t={t}
+                renderTabIcon={renderTabIcon}
+              />
             </Pressable>
           );
         })}
       </View>
     </Animated.View>
+  );
+}
+
+function TabItemContent({
+  routeName,
+  isFocused,
+  labelKey,
+  t,
+  renderTabIcon,
+}: {
+  routeName: string;
+  isFocused: boolean;
+  labelKey?: string;
+  t: (key: string) => string;
+  renderTabIcon: (name: string, focused: boolean) => React.ReactNode;
+}) {
+  const iconScale = useSharedValue(isFocused ? 1 : 0.85);
+  const fillProgress = useSharedValue(isFocused ? 1 : 0);
+  const textTranslateX = useSharedValue(isFocused ? 0 : 8);
+  const textOpacity = useSharedValue(isFocused ? 1 : 0);
+
+  React.useEffect(() => {
+    if (isFocused) {
+      iconScale.value = withSequence(
+        withTiming(1.22, { duration: 130 }),
+        withSpring(1, { damping: 12, stiffness: 220 })
+      );
+      fillProgress.value = withTiming(1, { duration: 280 });
+      textTranslateX.value = withTiming(0, { duration: 250 });
+      textOpacity.value = withTiming(1, { duration: 250 });
+    } else {
+      iconScale.value = withTiming(0.85, { duration: 150 });
+      fillProgress.value = withTiming(0, { duration: 180 });
+      textTranslateX.value = withTiming(8, { duration: 150 });
+      textOpacity.value = withTiming(0, { duration: 150 });
+    }
+  }, [isFocused]);
+
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+
+  const activeFillStyle = useAnimatedStyle(() => {
+    const heightPercentage = interpolate(fillProgress.value, [0, 1], [0, 100]);
+    return {
+      height: `${heightPercentage}%`,
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: textTranslateX.value }],
+    opacity: textOpacity.value,
+  }));
+
+  return isFocused ? (
+    <View style={styles.activeSlotContent}>
+      <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
+        {/* Base inactive icon (white) */}
+        <View style={StyleSheet.absoluteFill}>
+          {renderTabIcon(routeName, false)}
+        </View>
+
+        {/* Top to Bottom Saffron Fill Layer */}
+        <Animated.View style={[styles.fillClipContainer, activeFillStyle]}>
+          <View style={styles.fillInnerIconWrapper}>
+            {renderTabIcon(routeName, true)}
+          </View>
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.Text
+        style={[styles.activeLabel, animatedTextStyle]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {labelKey ? t(labelKey) : ''}
+      </Animated.Text>
+    </View>
+  ) : (
+    <View style={styles.inactiveSlotContent}>
+      <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
+        {renderTabIcon(routeName, false)}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -339,5 +418,26 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255, 138, 0, 0.7)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
+  },
+  iconContainer: {
+    width: 22,
+    height: 22,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fillClipContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    overflow: 'hidden',
+  },
+  fillInnerIconWrapper: {
+    width: 22,
+    height: 22,
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
 });

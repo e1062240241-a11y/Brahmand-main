@@ -97,11 +97,11 @@ export default function KathaPage() {
   const [duration, setDuration] = useState(0);
   const [seekBarWidth, setSeekBarWidth] = useState(1);
   const hideControlsTimer = useRef<any>(null);
-
-  const isUserSelectedOldEpisode = activeEpisode && activeEpisode.id !== status.active_episode_id;
+  const [userSelectedEpisode, setUserSelectedEpisode] = useState<KathaEpisode | null>(null);
+  const isUserSelectedOldEpisode = !!userSelectedEpisode;
   const activeVideoUrl = isUserSelectedOldEpisode
-    ? activeEpisode.video_url
-    : (status.active_video_url || '');
+    ? (userSelectedEpisode?.video_url || '')
+    : (status.active_video_url || activeEpisode?.video_url || '');
 
   // We want to pause initially if it's live and we haven't synced yet
   const shouldInitialPause = status.is_live && !isUserSelectedOldEpisode && !hasSyncedLive;
@@ -110,46 +110,57 @@ export default function KathaPage() {
     try {
       p.loop = false;
       p.muted = false;
-      if (shouldInitialPause) {
-        p.pause();
-        setIsPlaying(false);
-      } else {
-        p.play();
-      }
+      p.play();
+      setIsPlaying(true);
     } catch (_e) {}
   });
 
+  // Live Sync & Auto-Play Logic
   useEffect(() => {
-    if (isPlayerValid(player)) {
-      // Live Sync Logic
-      if (status.is_live && status.server_time_ist && status.current_broadcast_start_time && !hasSyncedLive && !isUserSelectedOldEpisode) {
-        // Only attempt to seek if video has loaded its duration and is ready
-        if (player.status === 'readyToPlay' || player.status === 'playing') {
-          const serverTime = new Date(status.server_time_ist).getTime();
-          const startTime = new Date(status.current_broadcast_start_time).getTime();
-          // We use absolute seekTo (which is mapped to currentTime on web/expo-video if needed, but seekBy from 0 is also fine)
-          const offsetSeconds = Math.max(0, (serverTime - startTime) / 1000);
+    if (!isPlayerValid(player) || !activeVideoUrl) return;
 
-          if (offsetSeconds > 0) {
-            // Initially the video is at 0:00 (paused)
-            try {
-              if (player.seekTo) {
-                player.seekTo(offsetSeconds);
-              } else if (player.seekBy) {
-                player.seekBy(offsetSeconds);
-              } else {
-                player.currentTime = offsetSeconds;
+    let attempts = 0;
+    const syncAndPlay = () => {
+      try {
+        if (!isPlayerValid(player)) return;
+
+        // Auto-play
+        player.play();
+        setIsPlaying(true);
+
+        // Calculate live broadcast offset using real-time device clock vs broadcast start time
+        if (status.is_live && !isUserSelectedOldEpisode) {
+          if (status.current_broadcast_start_time) {
+            const realTimeNowMs = Date.now();
+            const startTimeMs = new Date(status.current_broadcast_start_time).getTime();
+            const offsetSeconds = Math.max(0, (realTimeNowMs - startTimeMs) / 1000);
+
+            if (offsetSeconds > 0) {
+              const currentPos = typeof player.currentTime === 'number' ? player.currentTime : 0;
+              if (Math.abs(currentPos - offsetSeconds) > 1.5) {
+                try {
+                  player.currentTime = offsetSeconds;
+                } catch (_e) {
+                  try {
+                    if (typeof player.seekTo === 'function') player.seekTo(offsetSeconds);
+                  } catch (_e2) {}
+                }
               }
-            } catch(_e) {}
-
-            setHasSyncedLive(true);
-            setIsPlaying(true);
-            player.play();
+            }
           }
         }
-      }
-    }
-  }, [activeVideoUrl, player, status, player?.status, hasSyncedLive, isUserSelectedOldEpisode]);
+      } catch (_e) {}
+    };
+
+    syncAndPlay();
+    const interval = setInterval(() => {
+      attempts++;
+      syncAndPlay();
+      if (attempts >= 6) clearInterval(interval);
+    }, 600);
+
+    return () => clearInterval(interval);
+  }, [player, activeVideoUrl, status.is_live, status.server_time_ist, status.current_broadcast_start_time, isUserSelectedOldEpisode]);
 
   // Track playback time and duration every 500ms
   useEffect(() => {
@@ -263,6 +274,8 @@ export default function KathaPage() {
 
   const handleSeek = (e: any) => {
     resetControlsTimer();
+    // Strictly block seeking during live broadcast
+    if (status.is_live && !isUserSelectedOldEpisode) return;
     if (!isPlayerValid(player) || duration <= 0 || seekBarWidth <= 0) return;
     const clickX = e.nativeEvent.locationX;
     const percentage = Math.max(0, Math.min(1, clickX / seekBarWidth));
@@ -297,7 +310,14 @@ export default function KathaPage() {
             next_stream_at: statusJson.next_stream_at,
             current_broadcast_start_time: statusJson.current_broadcast_start_time,
             server_time_ist: statusJson.server_time_ist,
+            active_video_url: statusJson.active_video_url || statusJson.prefetched_video_url,
           });
+          if (statusJson.prefetched_video_url) {
+            try {
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              AsyncStorage.setItem('PREFETCHED_KATHA_URL', statusJson.prefetched_video_url);
+            } catch (_e) {}
+          }
         }
       }
 
@@ -377,6 +397,7 @@ export default function KathaPage() {
   };
 
   const handleSelectEpisode = (ep: KathaEpisode) => {
+    setUserSelectedEpisode(ep);
     setActiveEpisode(ep);
     setIsPlaying(true);
     if (scrollViewRef.current) {
@@ -469,8 +490,16 @@ export default function KathaPage() {
 
             {/* Bottom Control Bar */}
             <View style={styles.hotstarBottomBar} pointerEvents="box-none">
-              {/* Seek Bar & Progress Display for Recorded / Off-Air Episodes */}
-              {(!status.is_live || isUserSelectedOldEpisode) && duration > 0 && (
+              {/* Live Broadcast Elapsed Timer Display (Non-Seekable) */}
+              {status.is_live && !isUserSelectedOldEpisode && (
+                <View style={styles.liveTimerContainer} pointerEvents="none">
+                  <View style={styles.liveDotSmall} />
+                  <Text style={styles.liveTimerText}>LIVE • {formatTime(currentTime)}</Text>
+                </View>
+              )}
+
+              {/* Seek Bar & Progress Display for Recorded Library Episodes */}
+              {isUserSelectedOldEpisode && duration > 0 && (
                 <View style={styles.seekBarContainer} pointerEvents="auto">
                   <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
                   <Pressable
@@ -777,18 +806,41 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 12,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFF',
+  liveTimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  liveDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF0000',
     marginRight: 6,
+  },
+  liveTimerText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   badgeText: {
     color: '#FFF',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFF',
+    marginRight: 6,
   },
   centerPlayBtn: {
     alignSelf: 'center',

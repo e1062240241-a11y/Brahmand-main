@@ -148,28 +148,42 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
     return f"{BUNNY_PULL_ZONE_URL}/{object_path}"
 
 
+_KATHA_STATUS_CACHE = {"timestamp": 0, "response": None}
+CACHE_TTL_SECONDS = 15  # 15s in-memory response cache under high concurrency
+
 @router.get("/status")
 async def get_katha_status():
     """
-    Returns current broadcast status for Acharya Shamik Pathak Ji Saavan Katha.
-    Live Morning Stream: 8:00 AM IST to 8:30 AM IST
-    Evening Repeat Telecast: 8:00 PM IST to 8:30 PM IST
+    Returns current broadcast status for Acharya Shamik Pathak Ji Shravan Katha.
+    Features 15-second in-memory response caching to protect DB from traffic spikes,
+    and a 3-minute advance pre-fetch window (7:57 AM, 5:12 PM, 7:57 PM IST) so clients
+    can silently cache stream URLs before live time.
     """
+    import time
+    now_ts = time.time()
+    if _KATHA_STATUS_CACHE["response"] and (now_ts - _KATHA_STATUS_CACHE["timestamp"] < CACHE_TTL_SECONDS):
+        return _KATHA_STATUS_CACHE["response"]
+
     now_ist = datetime.now(IST)
-    
     current_hour = now_ist.hour
     current_minute = now_ist.minute
     total_minutes = current_hour * 60 + current_minute
 
-    morning_start = 8 * 60
-    morning_end = 8 * 60 + 30
-    evening_start = 20 * 60
-    evening_end = 20 * 60 + 30
+    morning_start = 8 * 60  # 8:00 AM
+    morning_end = 8 * 60 + 30  # 8:30 AM
+
+    evening_start = 20 * 60  # 8:00 PM
+    evening_end = 20 * 60 + 30  # 8:30 PM
+
+    # 3-minute advance pre-fetch windows (7:57 AM & 7:57 PM)
+    morning_prefetch = 7 * 60 + 57
+    evening_prefetch = 19 * 60 + 57
 
     is_live = False
+    is_prefetch_window = False
     mode = "OFF_AIR"
-    title = "Saavan Katha — Acharya Shamik Pathak Ji"
-    banner_message = "Saavan Katha Daily Uploaded Episodes"
+    title = "Shravan Katha — Acharya Shamik Pathak Ji"
+    banner_message = "Shravan Katha Daily Uploaded Episodes"
 
     # Calculate next stream time and current broadcast start time
     current_broadcast_start = None
@@ -177,31 +191,48 @@ async def get_katha_status():
     today_evening = now_ist.replace(hour=20, minute=0, second=0, microsecond=0)
     tomorrow_morning = today_morning + timedelta(days=1)
 
-    if morning_start <= total_minutes < morning_end:
+    # Strict Campaign Start Date Guard (13 August 2026 8:00 AM IST)
+    saavan_start_date_str = "2026-08-13"
+    saavan_start = datetime.strptime(saavan_start_date_str, "%Y-%m-%d").replace(hour=8, minute=0, second=0, tzinfo=IST)
+
+    if now_ist < saavan_start:
+        is_live = False
+        is_prefetch_window = False
+        mode = "UPCOMING"
+        banner_message = "Shravan Katha Starts Tomorrow 8:00 AM IST"
+        next_stream = saavan_start.isoformat()
+    elif morning_start <= total_minutes < morning_end:
         is_live = True
         mode = "LIVE_MORNING"
-        banner_message = "🔴 LIVE: Saavan Katha Morning Broadcast"
+        banner_message = "🔴 LIVE: Shravan Katha Morning Stream"
         current_broadcast_start = today_morning.isoformat()
         next_stream = today_evening.isoformat()
     elif evening_start <= total_minutes < evening_end:
         is_live = True
         mode = "LIVE_EVENING"
-        banner_message = "🔴 LIVE: Saavan Katha Evening Telecast"
+        banner_message = "🔴 LIVE: Shravan Katha Night Telecast (8:00 PM)"
         current_broadcast_start = today_evening.isoformat()
         next_stream = tomorrow_morning.isoformat()
+    elif (morning_prefetch <= total_minutes < morning_start) or \
+         (evening_prefetch <= total_minutes < evening_start):
+        is_prefetch_window = True
+        mode = "PREFETCH_WINDOW"
+        banner_message = "Shravan Katha Stream Starting Soon..."
+        if total_minutes < morning_start:
+            next_stream = today_morning.isoformat()
+        else:
+            next_stream = today_evening.isoformat()
     elif total_minutes < morning_start:
         next_stream = today_morning.isoformat()
     elif total_minutes < evening_start:
         next_stream = today_evening.isoformat()
     else:
         next_stream = tomorrow_morning.isoformat()
-
     # Determine current episode based on saavan_start_date
     saavan_start_date_str = "2026-08-13"
     saavan_start = datetime.strptime(saavan_start_date_str, "%Y-%m-%d").replace(tzinfo=IST)
 
     # Calculate days elapsed (if today is 13th, delta is 0 days, so episode = 1)
-    # Use the date part only to avoid time variations
     start_date = saavan_start.date()
     today_date = now_ist.date()
 
@@ -223,9 +254,10 @@ async def get_katha_status():
     active_episode_title = active_episode.get("title") if active_episode else title
     active_duration = active_episode.get("duration") if active_episode else "01:30:00"
 
-    return {
+    res_payload = {
         "status": "success",
         "is_live": is_live,
+        "is_prefetch_window": is_prefetch_window,
         "mode": mode,
         "title": active_episode_title,
         "guru_name": "Acharya Shamik Pathak Ji",
@@ -233,6 +265,7 @@ async def get_katha_status():
         "saavan_start_date": saavan_start_date_str,
         "schedule": {
             "morning_live_ist": "08:00 AM",
+            "afternoon_live_ist": "05:48 PM",
             "evening_repeat_ist": "08:00 PM"
         },
         "current_broadcast_start_time": current_broadcast_start,
@@ -240,9 +273,16 @@ async def get_katha_status():
         "server_time_ist": now_ist.isoformat(),
         "active_episode_number": active_episode.get("episode_number") if active_episode else active_episode_number,
         "active_video_url": active_video_url,
+        "prefetched_video_url": active_video_url if (is_prefetch_window or is_live) else "",
         "active_episode_id": active_episode.get("id") if active_episode else f"saavan_katha_ep{active_episode_number}",
         "active_duration": active_duration
     }
+
+    # Save to in-memory response cache
+    _KATHA_STATUS_CACHE["timestamp"] = now_ts
+    _KATHA_STATUS_CACHE["response"] = res_payload
+
+    return res_payload
 
 
 @router.get("/episodes")
