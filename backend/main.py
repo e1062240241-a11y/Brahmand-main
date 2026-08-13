@@ -5469,7 +5469,8 @@ async def submit_personality_verification(data: dict, token_data: dict = Depends
         }
     except Exception as e:
         logger.error(f"Failed to submit personality verification: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.get("/user/profile-completion")
@@ -6664,7 +6665,8 @@ async def create_community(
         raise
     except Exception as e:
         logger.error(f"Error initiating community creation request: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 @api_router.post("/communities/requests/{request_id}/respond")
 async def respond_to_community_request(
@@ -6835,7 +6837,8 @@ async def respond_to_community_request(
         raise
     except Exception as e:
         logger.error(f"Error responding to community request: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/communities/join")
@@ -6853,7 +6856,8 @@ async def join_community_by_code(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error joining community: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.get("/communities/my-creation-requests")
@@ -6920,7 +6924,8 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/communities/requests/{request_id}/resend-invite")
@@ -7006,7 +7011,8 @@ async def resend_community_invite(
         raise
     except Exception as e:
         logger.error(f"Error resending community invite: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/communities/{community_id}/join")
@@ -7038,7 +7044,8 @@ async def join_community_direct(
         raise
     except Exception as e:
         logger.error(f"Error joining community direct: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.get("/communities/discover")
@@ -10953,7 +10960,8 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.get("/ai/chat/history")
@@ -10967,7 +10975,8 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
             return {"messages": chat_doc.to_dict().get("messages", [])}
         return {"messages": []}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.delete("/ai/chat/history")
@@ -10979,7 +10988,8 @@ async def delete_chat_history(token_data: dict = Depends(verify_token)):
         db.collection('krishna_chats').document(user_id).delete()
         return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Internal error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] = None, lon: Optional[float] = None) -> tuple[float, float]:
@@ -11247,7 +11257,8 @@ async def send_blood_request_otp(request: OTPRequest):
         raise exc
     except Exception as exc:
         logger.exception(f"[Blood Request OTP] NattyFish SMS sending unexpected error: {exc}")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.error(f"Internal error: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
     # Save verification state
     record_data = {
