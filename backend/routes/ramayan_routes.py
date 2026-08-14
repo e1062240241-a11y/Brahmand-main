@@ -1,11 +1,9 @@
-import json
-import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
-router = APIRouter(prefix="/library/ramayan", tags=["Ramayan"])
+from services.library_loader import ChapterFileBook
 
 RAMAYAN_DATA_DIR = (
     Path(__file__).resolve().parent.parent
@@ -23,33 +21,10 @@ RAMAYAN_KAANDA_FILES: Dict[int, str] = {
     7: "7_uttarakanda.json",
 }
 
-_ramayan_kaanda_cache: Dict[int, List[Dict[str, Any]]] = {}
-_ramayan_all_summary_cache = None
-_ramayan_all_full_cache = None
 
-
-def _load_ramayan_kaanda(kaanda_number: int) -> List[Dict[str, Any]]:
-    if kaanda_number in _ramayan_kaanda_cache:
-        return _ramayan_kaanda_cache[kaanda_number]
-
-    if kaanda_number not in RAMAYAN_KAANDA_FILES:
-        raise HTTPException(status_code=404, detail="Invalid Ramayan kaanda number")
-
-    kaanda_path = RAMAYAN_DATA_DIR / RAMAYAN_KAANDA_FILES[kaanda_number]
-    if not kaanda_path.exists():
-        raise HTTPException(status_code=404, detail="Ramayan kaanda file not found")
-
-    try:
-        with kaanda_path.open("r", encoding="utf-8") as file:
-            payload = json.load(file)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to load Ramayan kaanda")
-
-    if not isinstance(payload, list):
-        raise HTTPException(status_code=500, detail="Invalid Ramayan kaanda format")
-
+def _normalize_ramayan_kaanda(rows: List[Any], kaanda_number: int) -> List[Dict[str, Any]]:
     normalized: List[Dict[str, Any]] = []
-    for row in payload:
+    for row in rows:
         if not isinstance(row, dict):
             continue
         verse_number = row.get("shloka")
@@ -66,65 +41,17 @@ def _load_ramayan_kaanda(kaanda_number: int) -> List[Dict[str, Any]]:
                 "translations": {},
             }
         )
-
-    _ramayan_kaanda_cache[kaanda_number] = normalized
     return normalized
 
 
-@router.get("/chapter/{kaanda_number}")
-async def get_ramayan_kaanda(kaanda_number: int):
-    if kaanda_number in _ramayan_kaanda_cache:
-        verses = _ramayan_kaanda_cache[kaanda_number]
-    else:
-        verses = await asyncio.to_thread(_load_ramayan_kaanda, kaanda_number)
-    return {
-        "book": "ramayan",
-        "chapter": kaanda_number,
-        "total_verses": len(verses),
-        "verses": verses,
-    }
+_loader = ChapterFileBook(
+    book="ramayan",
+    book_title="Ramayan",
+    chapter_label="Kaanda",
+    data_dir=RAMAYAN_DATA_DIR,
+    chapter_count=7,
+    chapter_file=lambda n: RAMAYAN_DATA_DIR / RAMAYAN_KAANDA_FILES[n],
+    normalize=_normalize_ramayan_kaanda,
+)
 
-
-@router.get("/all")
-async def get_ramayan_all(summary: bool = True):
-    global _ramayan_all_summary_cache, _ramayan_all_full_cache
-    if summary and _ramayan_all_summary_cache is not None:
-        return _ramayan_all_summary_cache
-    if not summary and _ramayan_all_full_cache is not None:
-        return _ramayan_all_full_cache
-
-    results = []
-    tasks = []
-    for i in range(1, 8):
-        if i in _ramayan_kaanda_cache:
-            results.append((i, _ramayan_kaanda_cache[i]))
-        else:
-            tasks.append((i, asyncio.to_thread(_load_ramayan_kaanda, i)))
-            
-    if tasks:
-        indices, awaitables = zip(*tasks)
-        loaded = await asyncio.gather(*awaitables)
-        for idx, res in zip(indices, loaded):
-            results.append((idx, res))
-            
-    results.sort(key=lambda x: x[0])
-    ordered_results = [res for idx, res in results]
-
-    if summary:
-        chapters = {
-            i: {
-                "chapter": i,
-                "total_verses": len(res),
-                "verses_summary": f"Kaanda {i} contains {len(res)} verses."
-            }
-            for i, res in enumerate(ordered_results, start=1)
-        }
-    else:
-        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
-        
-    response_data = {"book": "ramayan", "chapters": chapters}
-    if summary:
-        _ramayan_all_summary_cache = response_data
-    else:
-        _ramayan_all_full_cache = response_data
-    return response_data
+router = _loader.build_router(prefix="/library/ramayan", tags=["Ramayan"])

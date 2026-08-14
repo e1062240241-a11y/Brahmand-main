@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from uuid import uuid4
 
 import aiohttp
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 
 from middleware.security import verify_token, optional_verify_token
@@ -149,90 +150,45 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
 
 
 _KATHA_STATUS_CACHE = {"timestamp": 0, "response": None}
-CACHE_TTL_SECONDS = 15  # 15s in-memory response cache under high concurrency
+CACHE_TTL_SECONDS = 1  # 1s instant in-memory status response update
+
+
+def _parse_duration_seconds(dur: Any) -> int:
+    """Parse duration integer or string 'HH:MM:SS' / 'MM:SS' into total seconds (default 30m if unspecified)."""
+    if not dur:
+        return 1800
+    if isinstance(dur, (int, float)):
+        return int(dur)
+    try:
+        s_dur = str(dur).strip()
+        if s_dur.replace('.', '').isdigit():
+            return int(float(s_dur))
+        parts = s_dur.split(":")
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(float(parts[2]))
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + int(float(parts[1]))
+    except Exception:
+        pass
+    return 1800
+
 
 @router.get("/status")
 async def get_katha_status():
     """
-    Returns current broadcast status for Acharya Shamik Pathak Ji Shravan Katha.
-    Features 15-second in-memory response caching to protect DB from traffic spikes,
-    and a 3-minute advance pre-fetch window (7:57 AM, 5:12 PM, 7:57 PM IST) so clients
-    can silently cache stream URLs before live time.
+    Returns current Katha lifecycle status.
+    Dynamic live broadcast window matches the EXACT duration of the active uploaded video!
     """
-    import time
-    now_ts = time.time()
-    if _KATHA_STATUS_CACHE["response"] and (now_ts - _KATHA_STATUS_CACHE["timestamp"] < CACHE_TTL_SECONDS):
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if (now_ts - _KATHA_STATUS_CACHE["timestamp"]) < CACHE_TTL_SECONDS and _KATHA_STATUS_CACHE["response"]:
         return _KATHA_STATUS_CACHE["response"]
 
     now_ist = datetime.now(IST)
-    current_hour = now_ist.hour
-    current_minute = now_ist.minute
-    total_minutes = current_hour * 60 + current_minute
 
-    morning_start = 8 * 60  # 8:00 AM
-    morning_end = 8 * 60 + 30  # 8:30 AM
-
-    evening_start = 20 * 60  # 8:00 PM
-    evening_end = 20 * 60 + 30  # 8:30 PM
-
-    # 3-minute advance pre-fetch windows (7:57 AM & 7:57 PM)
-    morning_prefetch = 7 * 60 + 57
-    evening_prefetch = 19 * 60 + 57
-
-    is_live = False
-    is_prefetch_window = False
-    mode = "OFF_AIR"
-    title = "Shravan Katha — Acharya Shamik Pathak Ji"
-    banner_message = "Shravan Katha Daily Uploaded Episodes"
-
-    # Calculate next stream time and current broadcast start time
-    current_broadcast_start = None
-    today_morning = now_ist.replace(hour=8, minute=0, second=0, microsecond=0)
-    today_evening = now_ist.replace(hour=20, minute=0, second=0, microsecond=0)
-    tomorrow_morning = today_morning + timedelta(days=1)
-
-    # Strict Campaign Start Date Guard (13 August 2026 8:00 AM IST)
+    # 1. Determine current episode based on saavan_start_date (13 Aug 2026)
     saavan_start_date_str = "2026-08-13"
     saavan_start = datetime.strptime(saavan_start_date_str, "%Y-%m-%d").replace(hour=8, minute=0, second=0, tzinfo=IST)
 
-    if now_ist < saavan_start:
-        is_live = False
-        is_prefetch_window = False
-        mode = "UPCOMING"
-        banner_message = "Shravan Katha Starts Tomorrow 8:00 AM IST"
-        next_stream = saavan_start.isoformat()
-    elif morning_start <= total_minutes < morning_end:
-        is_live = True
-        mode = "LIVE_MORNING"
-        banner_message = "🔴 LIVE: Shravan Katha Morning Stream"
-        current_broadcast_start = today_morning.isoformat()
-        next_stream = today_evening.isoformat()
-    elif evening_start <= total_minutes < evening_end:
-        is_live = True
-        mode = "LIVE_EVENING"
-        banner_message = "🔴 LIVE: Shravan Katha Night Telecast (8:00 PM)"
-        current_broadcast_start = today_evening.isoformat()
-        next_stream = tomorrow_morning.isoformat()
-    elif (morning_prefetch <= total_minutes < morning_start) or \
-         (evening_prefetch <= total_minutes < evening_start):
-        is_prefetch_window = True
-        mode = "PREFETCH_WINDOW"
-        banner_message = "Shravan Katha Stream Starting Soon..."
-        if total_minutes < morning_start:
-            next_stream = today_morning.isoformat()
-        else:
-            next_stream = today_evening.isoformat()
-    elif total_minutes < morning_start:
-        next_stream = today_morning.isoformat()
-    elif total_minutes < evening_start:
-        next_stream = today_evening.isoformat()
-    else:
-        next_stream = tomorrow_morning.isoformat()
-    # Determine current episode based on saavan_start_date
-    saavan_start_date_str = "2026-08-13"
-    saavan_start = datetime.strptime(saavan_start_date_str, "%Y-%m-%d").replace(tzinfo=IST)
-
-    # Calculate days elapsed (if today is 13th, delta is 0 days, so episode = 1)
     start_date = saavan_start.date()
     today_date = now_ist.date()
 
@@ -245,14 +201,70 @@ async def get_katha_status():
 
     # Find active episode
     active_episode = next((ep for ep in episodes if ep.get("episode_number") == active_episode_number), None)
-
-    # Fallback to last uploaded episode if future day has no video yet
     if not active_episode and episodes:
         active_episode = episodes[-1]
 
     active_video_url = active_episode.get("video_url") if active_episode else ""
-    active_episode_title = active_episode.get("title") if active_episode else title
-    active_duration = active_episode.get("duration") if active_episode else "01:30:00"
+    active_episode_title = active_episode.get("title") if active_episode else "Shravan Katha — Acharya Shamik Pathak Ji"
+    raw_duration = active_episode.get("duration") if active_episode else 1800
+    duration_seconds = _parse_duration_seconds(raw_duration)
+
+    # Format active_duration string for response
+    mins, secs = divmod(duration_seconds, 60)
+    hrs, mins = divmod(mins, 60)
+    active_duration_str = f"{hrs:02d}:{mins:02d}:{secs:02d}" if hrs > 0 else f"{mins:02d}:{secs:02d}"
+
+    # Calculate exact dynamic broadcast timestamps based on video duration
+    today_morning_start = now_ist.replace(hour=8, minute=0, second=0, microsecond=0)
+    today_morning_end = today_morning_start + timedelta(seconds=duration_seconds)
+    today_morning_prefetch = today_morning_start - timedelta(minutes=3)
+
+    today_evening_start = now_ist.replace(hour=20, minute=0, second=0, microsecond=0)
+    today_evening_end = today_evening_start + timedelta(seconds=duration_seconds)
+    today_evening_prefetch = today_evening_start - timedelta(minutes=3)
+
+    tomorrow_morning_start = today_morning_start + timedelta(days=1)
+
+    is_live = False
+    is_prefetch_window = False
+    mode = "OFF_AIR"
+    banner_message = "Shravan Katha Daily Uploaded Episodes"
+    current_broadcast_start = None
+    next_stream = tomorrow_morning_start.isoformat()
+
+    if now_ist < saavan_start:
+        is_live = False
+        is_prefetch_window = False
+        mode = "UPCOMING"
+        banner_message = "Shravan Katha Starts Tomorrow 8:00 AM IST"
+        next_stream = saavan_start.isoformat()
+    elif today_morning_start <= now_ist < today_morning_end:
+        is_live = True
+        mode = "LIVE_MORNING"
+        banner_message = "🔴 LIVE: Shravan Katha Morning Stream"
+        current_broadcast_start = today_morning_start.isoformat()
+        next_stream = today_evening_start.isoformat()
+    elif today_evening_start <= now_ist < today_evening_end:
+        is_live = True
+        mode = "LIVE_EVENING"
+        banner_message = "🔴 LIVE: Shravan Katha Night Telecast (8:00 PM)"
+        current_broadcast_start = today_evening_start.isoformat()
+        next_stream = tomorrow_morning_start.isoformat()
+    elif (today_morning_prefetch <= now_ist < today_morning_start) or \
+         (today_evening_prefetch <= now_ist < today_evening_start):
+        is_prefetch_window = True
+        mode = "PREFETCH_WINDOW"
+        banner_message = "Shravan Katha Stream Starting Soon..."
+        if now_ist < today_morning_start:
+            next_stream = today_morning_start.isoformat()
+        else:
+            next_stream = today_evening_start.isoformat()
+    elif now_ist < today_morning_start:
+        next_stream = today_morning_start.isoformat()
+    elif now_ist < today_evening_start:
+        next_stream = today_evening_start.isoformat()
+    else:
+        next_stream = tomorrow_morning_start.isoformat()
 
     res_payload = {
         "status": "success",
@@ -265,7 +277,6 @@ async def get_katha_status():
         "saavan_start_date": saavan_start_date_str,
         "schedule": {
             "morning_live_ist": "08:00 AM",
-            "afternoon_live_ist": "05:48 PM",
             "evening_repeat_ist": "08:00 PM"
         },
         "current_broadcast_start_time": current_broadcast_start,
@@ -275,7 +286,9 @@ async def get_katha_status():
         "active_video_url": active_video_url,
         "prefetched_video_url": active_video_url if (is_prefetch_window or is_live) else "",
         "active_episode_id": active_episode.get("id") if active_episode else f"saavan_katha_ep{active_episode_number}",
-        "active_duration": active_duration
+        "active_duration": active_duration_str,
+        "active_duration_seconds": duration_seconds,
+        "description": active_episode.get("description", "") if active_episode else ""
     }
 
     # Save to in-memory response cache
@@ -285,10 +298,73 @@ async def get_katha_status():
     return res_payload
 
 
+async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
+    """Auto-discover files uploaded directly to Bunny CDN storage host and populate episodes."""
+    discovered: Dict[str, Any] = {}
+    if not BUNNY_ACCESS_KEY:
+        return discovered
+
+    try:
+        url = f"https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}/katha/acharya_shamik/saavan_katha/"
+        headers = {"AccessKey": BUNNY_ACCESS_KEY}
+        connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    items = await resp.json()
+
+                    thumb_map: Dict[int, str] = {}
+                    for item in items:
+                        obj_name = item.get("ObjectName", "")
+                        if obj_name.startswith("thumb_"):
+                            import re
+                            tm = re.search(r"ep[_-]?(\d+)", obj_name, re.IGNORECASE)
+                            if tm:
+                                ep_n = int(tm.group(1))
+                                thumb_map[ep_n] = f"{BUNNY_PULL_ZONE_URL}/katha/acharya_shamik/saavan_katha/{obj_name}"
+
+                    for item in items:
+                        if item.get("IsDirectory"):
+                            continue
+                        obj_name = item.get("ObjectName", "")
+                        if not obj_name or not obj_name.endswith((".mp4", ".mov", ".mkv", ".webm", ".hevc")):
+                            continue
+
+                        ep_num = 1
+                        import re
+                        m = re.search(r"ep(?:isode)?[_-]?(\d+)", obj_name, re.IGNORECASE)
+                        if m:
+                            ep_num = int(m.group(1))
+
+                        ep_id = f"saavan_katha_ep{ep_num}"
+                        file_bytes = item.get("Length", 0)
+                        cdn_url = f"{BUNNY_PULL_ZONE_URL}/katha/acharya_shamik/saavan_katha/{obj_name}"
+                        thumb_url = thumb_map.get(ep_num, "")
+
+                        discovered[ep_id] = {
+                            "id": ep_id,
+                            "title": f"Shravan Shiv Katha — Day {ep_num}",
+                            "description": "Acharya Shamik Pathak Ji Shravan Maas Shiv Katha Live Broadcast & Archive.",
+                            "episode_number": ep_num,
+                            "date": "2026-08-13",
+                            "guru_name": "Acharya Shamik Pathak Ji",
+                            "duration": "00:15:00",
+                            "video_url": cdn_url,
+                            "thumbnail_url": thumb_url,
+                            "file_size_bytes": file_bytes,
+                            "created_at": item.get("DateCreated", datetime.now(timezone.utc).isoformat())
+                        }
+    except Exception as err:
+        logger.warning(f"Failed to auto-sync from Bunny CDN: {err}")
+
+    return discovered
+
+
 @router.get("/episodes")
 async def get_katha_episodes():
     """
-    Fetch published Saavan Katha episodes directly from Firestore database.
+    Fetch published Saavan Katha episodes directly from Firestore database,
+    with automatic CDN discovery fallback if database records are empty.
     """
     merged: Dict[str, Any] = {**IN_MEMORY_EPISODES}
 
@@ -311,6 +387,18 @@ async def get_katha_episodes():
                     merged[doc.id] = d
         except Exception as err:
             logger.warning(f"[TRACE /episodes] Firestore fetch fallback triggered: {err}")
+
+    if not merged:
+        cdn_episodes = await _sync_episodes_from_bunny_cdn()
+        if cdn_episodes:
+            merged.update(cdn_episodes)
+            IN_MEMORY_EPISODES.update(cdn_episodes)
+            if db:
+                for ep_id, ep_data in cdn_episodes.items():
+                    try:
+                        db.collection("katha_episodes").document(ep_id).set(ep_data)
+                    except Exception:
+                        pass
 
     if merged:
         episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0))
@@ -494,4 +582,58 @@ async def admin_delete_katha_episode(
     return {
         "status": "success",
         "message": f"Episode {episode_id} deleted successfully"
+    }
+
+
+class SaveEpisodeRequest(BaseModel):
+    title: str
+    description: Optional[str] = ""
+    episode_number: int
+    date: str
+    guru_name: Optional[str] = "Acharya Shamik Pathak Ji"
+    duration: Optional[str] = "00:30:00"
+    video_url: str
+    thumbnail_url: Optional[str] = ""
+    file_size_bytes: Optional[int] = 0
+
+
+@router.post("/admin/save-episode")
+async def admin_save_katha_episode(
+    payload: SaveEpisodeRequest,
+    _: bool = Depends(_verify_admin_auth)
+):
+    """
+    Saves metadata for an episode directly uploaded to Bunny CDN (supports heavy files up to 5GB+).
+    """
+    episode_id = f"saavan_katha_ep{payload.episode_number}"
+
+    episode_data = {
+        "id": episode_id,
+        "title": payload.title,
+        "description": payload.description or "",
+        "episode_number": payload.episode_number,
+        "date": payload.date,
+        "guru_name": payload.guru_name or "Acharya Shamik Pathak Ji",
+        "duration": payload.duration or "00:30:00",
+        "video_url": payload.video_url,
+        "thumbnail_url": payload.thumbnail_url or "",
+        "file_size_bytes": payload.file_size_bytes or 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    IN_MEMORY_EPISODES[episode_id] = episode_data
+
+    db = await get_firestore()
+    if db:
+        try:
+            db.collection("katha_episodes").document(episode_id).set(episode_data)
+            logger.info(f"[admin/save-episode] Saved episode record to Firestore: {episode_id}")
+        except Exception as err:
+            logger.error(f"[admin/save-episode] Firestore error: {err}")
+            raise HTTPException(status_code=500, detail="Failed to save episode to database")
+
+    return {
+        "status": "success",
+        "message": f"Episode {payload.episode_number} saved successfully",
+        "episode": episode_data
     }

@@ -122,20 +122,20 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
 
     let badgeBg = 'rgba(216, 90, 0, 0.9)';
     let badgeBorder = 'rgba(255, 215, 0, 0.5)';
-    let badgeText = timeLeftStr ? `Starts in ${timeLeftStr}` : 'FREE REGISTRATION';
-    let badgeIcon = timeLeftStr ? '⏰' : '🔱';
+    let badgeText = 'FREE REGISTRATION';
+    let badgeIcon = '🔱';
 
     if (eventStatus === 'live') {
         return null;
     } else if (eventStatus === 'starting_soon') {
         badgeBg = '#E65100';
         badgeBorder = 'rgba(255, 235, 59, 0.8)';
-        badgeText = timeLeftStr ? `STARTING SOON (${timeLeftStr})` : 'STARTING SOON';
+        badgeText = 'STARTING SOON';
         badgeIcon = '🔴';
     } else if (eventStatus === 'between_streams') {
         badgeBg = 'rgba(30, 25, 20, 0.88)';
         badgeBorder = '#FFD700';
-        badgeText = timeLeftStr ? `Next Live in ${timeLeftStr}` : 'REPLAY AVAILABLE';
+        badgeText = '8:00 AM & 8:00 PM';
         badgeIcon = '📺';
     } else if (eventStatus === 'campaign_completed' || eventStatus === 'ended') {
         badgeBg = 'rgba(40, 40, 40, 0.85)';
@@ -222,6 +222,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesAutoScrollIndex,
     bannerScrollRef,
     isFocused,
+    kathaStatus,
 }: {
     user: any;
     firstName: string;
@@ -274,6 +275,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesAutoScrollIndex: any;
     bannerScrollRef: any;
     isFocused?: boolean;
+    kathaStatus?: any;
 }) {
     const router = useRouter();
     const [videoError, setVideoError] = React.useState(false);
@@ -704,17 +706,36 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 let eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed' = 'upcoming';
                                 let targetLiveTime = campaignStart;
 
-                                if (now.getTime() < campaignStart.getTime()) {
-                                    // Before campaign officially launches (Today 12 Aug) -> Upcoming targeting 13 Aug 8:00 AM IST
+                                if (kathaStatus) {
+                                    if (kathaStatus.is_live) {
+                                        eventStatus = 'live';
+                                    } else if (kathaStatus.is_prefetch_window) {
+                                        eventStatus = 'starting_soon';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    } else if (kathaStatus.mode === 'UPCOMING') {
+                                        eventStatus = 'upcoming';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    } else {
+                                        eventStatus = 'between_streams';
+                                        if (kathaStatus.next_stream_at) {
+                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                        }
+                                    }
+                                } else if (now.getTime() < campaignStart.getTime()) {
+                                    // Before campaign officially launches -> Upcoming targeting 13 Aug 8:00 AM IST
                                     eventStatus = 'upcoming';
                                     targetLiveTime = campaignStart;
                                 } else if (now.getTime() > campaignEnd.getTime()) {
-                                    // After full 1-month campaign completes (After 11 Sept 9:30 AM IST)
+                                    // After full 1-month campaign completes
                                     eventStatus = 'campaign_completed';
                                 } else {
-                                    // Within Campaign (13 Aug to 11 Sep): Check daily 8:00 AM & 8:00 PM IST windows
+                                    // Within Campaign (13 Aug to 11 Sep): Fallback local calculation
                                     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                                    
+
                                     const mStart = 8 * 60; // 8:00 AM IST (480 mins)
                                     const mEnd = 9 * 60 + 30; // 9:30 AM IST (570 mins)
                                     const mSoon = 7 * 60 + 45; // 7:45 AM IST
@@ -749,7 +770,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     }
                                 }
 
-                                const isLive = eventStatus === 'live';
+                                const isLive = Boolean(kathaStatus?.is_live || eventStatus === 'live');
 
                                 return (
                                     <View
@@ -812,8 +833,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 </View>
                                             )}
 
-                                            {/* TOP RIGHT CORNER: DYNAMIC BADGE & LIVE COUNTDOWN TIMER ACCORDING TO LIFECYCLE */}
-                                            <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
+                                            {/* TOP RIGHT CORNER: REMOVED TIMER BADGE */}
 
                                             {/* LEFT CONTENT AREA */}
                                             <View
@@ -997,7 +1017,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 }}
                                                             >
                                                                 <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', marginRight: 4 }}>▶</Text>
-                                                                <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>Watch Now</Text>
+                                                                <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>🔴 LIVE NOW</Text>
                                                             </Pressable>
                                                         ) : (eventStatus as any) === 'campaign_completed' ? (
                                                             <Pressable
@@ -1041,7 +1061,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     const isCurrentlyNotified = !!reminders['shravan_katha'];
                                                                     await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
                                                                     if (!isCurrentlyNotified) {
-                                                                        scheduleShravanKatha15MinReminder().catch(() => {});
+                                                                        scheduleShravanKatha15MinReminder().catch(() => { });
                                                                     }
                                                                     router.push({
                                                                         pathname: '/shravan-paath',
@@ -1056,8 +1076,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 }}
                                                             />
                                                         )}
-
-                                                         {/* Dynamic Countdown / Live Badge Aligned next to Notify Button */}
                                                         <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
                                                     </View>
                                                 </View>

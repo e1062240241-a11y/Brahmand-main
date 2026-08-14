@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -18,7 +18,6 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
-import { useGitaStore } from '../../src/store/gitaStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { scheduleDailyScriptureNotifications } from '../../src/services/pushNotifications';
 
@@ -72,13 +71,43 @@ function LibraryPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [showCursorCircle, setShowCursorCircle] = useState(false);
   const [cursorX, setCursorX] = useState(0);
   const lastTapRef = useRef(0);
-  const gitaState = useGitaStore();
-  const libraryStore = useLibraryStore();
-  const observedProgress = libraryStore.getRecentBooks();
+  const progresses = useLibraryStore(s => s.progresses);
+  const observedProgress = useMemo(() => {
+    const books = Object.values(progresses || {});
+    return books.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
+  }, [progresses]);
+  const recentBooks = useMemo(() => {
+    let recent = (observedProgress || []).map((p: any) => {
+      const bookId = p.bookId || p.id;
+      return {
+        id: bookId === 'gita' ? 'bhagvad-geeta' : bookId,
+        chapterName: p.chapterName,
+        chapterNum: p.chapterNum,
+        lastReadPage: p.lastReadPage,
+        totalPages: p.totalPages,
+        progressPercent: p.progressPercent,
+        lastOpenedTime: p.lastOpenedTime,
+      };
+    });
+
+    recent = recent.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
+    const seenIds = new Set<string>();
+    return recent.filter(b => {
+      if (seenIds.has(b.id)) return false;
+      seenIds.add(b.id);
+      return true;
+    });
+  }, [observedProgress]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 200);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     scheduleDailyScriptureNotifications().catch(err => {
@@ -103,6 +132,7 @@ function LibraryPage() {
   };
 
   const handleSelectionChange = (e: any) => {
+    if (!showCursorCircle) return;
     const { start } = e.nativeEvent.selection;
     const textBeforeCursor = query.substring(0, start);
     const charWidth = 8.5;
@@ -110,9 +140,11 @@ function LibraryPage() {
     setCursorX(Math.min(xOffset + textBeforeCursor.length * charWidth, Dimensions.get('window').width - 80));
   };
 
-  const books = query.trim()
-    ? BOOKS.filter(b => b.title.toLowerCase().includes(query.toLowerCase()))
-    : BOOKS;
+  const books = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return BOOKS;
+    return BOOKS.filter(b => b.title.toLowerCase().includes(q));
+  }, [debouncedQuery]);
 
   return (
     <View style={styles.root}>
@@ -198,48 +230,7 @@ function LibraryPage() {
         </View>
 
         {/* ── Dynamic Continue Reading (All Books) ── */}
-        {(() => {
-          let recentBooks = (observedProgress || []).map((p: any) => {
-            const bookId = p.bookId || p.id;
-            return {
-              id: bookId === 'gita' ? 'bhagvad-geeta' : bookId,
-              chapterName: p.chapterName,
-              chapterNum: p.chapterNum,
-              lastReadPage: p.lastReadPage,
-              totalPages: p.totalPages,
-              progressPercent: p.progressPercent,
-              lastOpenedTime: p.lastOpenedTime
-            };
-          });
-          
-          // Fallback migration for Bhagavad Gita if not in libraryStore yet
-          if (!recentBooks.find(b => b.id === 'bhagvad-geeta') && (gitaState.progressPercent > 0 || gitaState.lastReadChapter > 1)) {
-            recentBooks.push({
-              id: 'bhagvad-geeta',
-              chapterName: `Chapter ${gitaState.lastReadChapter}`,
-              chapterNum: gitaState.lastReadChapter,
-              lastReadPage: 1, // Approximation
-              totalPages: 100,
-              progressPercent: gitaState.progressPercent,
-              lastOpenedTime: Date.now() - 10000, // Slightly older so current ones take precedence
-            });
-          }
-
-          // Sort first by lastOpenedTime descending
-          recentBooks = recentBooks.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
-
-          // Deduplicate based on book ID (keeping the most recently opened record)
-          const seenIds = new Set<string>();
-          recentBooks = recentBooks.filter(b => {
-            if (seenIds.has(b.id)) {
-              return false;
-            }
-            seenIds.add(b.id);
-            return true;
-          });
-
-          if (recentBooks.length > 0) {
-            return (
+        {recentBooks.length > 0 && (
               <View style={[styles.sectionWrapper, { marginTop: 16 }]}>
                 <View style={styles.sectionHead}>
                   <View style={styles.headLeft}>
@@ -263,7 +254,7 @@ function LibraryPage() {
                       >
                         <Image source={BOOK_COVERS[book.id] || BOOK_COVERS['upanishads']} style={styles.gitaProgressImg} resizeMode="cover" />
                         <View style={styles.gitaProgressContent}>
-                          <Text style={styles.gitaProgressTitle}>{BOOKS.find(b => b.id === book.id)?.title || book.id}</Text>
+                          <Text style={styles.gitaProgressTitle}>{bookMeta?.title || book.id}</Text>
                           <Text style={styles.gitaProgressSub}>{book.chapterName} • Page {book.lastReadPage}</Text>
                           
                           <View style={styles.gitaProgressBarContainer}>
@@ -280,10 +271,7 @@ function LibraryPage() {
                   })}
                 </ScrollView>
               </View>
-            );
-          }
-          return null;
-        })()}
+        )}
 
         {/* ── Featured Collection ── */}
         <View style={styles.sectionWrapper}>

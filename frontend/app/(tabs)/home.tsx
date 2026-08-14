@@ -78,6 +78,20 @@ export default function HomeScreen() {
   }, [router]);
 
   const [, setIsHomeInitialized] = useState(false);
+  const [kathaStatus, setKathaStatus] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchKathaStatus = async () => {
+      try {
+        const res = await api.get('/katha/status');
+        if (res.data && isMounted) setKathaStatus(res.data);
+      } catch (_e) {}
+    };
+    fetchKathaStatus();
+    const interval = setInterval(fetchKathaStatus, 3000);
+    return () => { isMounted = false; clearInterval(interval); };
+  }, [isFocused]);
 
 
 
@@ -1683,6 +1697,7 @@ export default function HomeScreen() {
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
       isFocused={isFocused}
+      kathaStatus={kathaStatus}
     />
   ), [
     isFocused,
@@ -1714,6 +1729,7 @@ export default function HomeScreen() {
     handleSetReminder,
     handleLiveJaapNavigation,
     safeCommunityRequests,
+    kathaStatus,
     resolveHomeCommunityItem,
     findCityCommunity,
     findLocalCommunity

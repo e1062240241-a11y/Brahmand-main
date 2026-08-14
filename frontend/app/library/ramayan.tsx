@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -125,7 +125,7 @@ export default function RamayanPage() {
   };
 
   // Fetch chapter data from Backend
-  const fetchChapterData = async (chNum: number) => {
+  const fetchChapterData = useCallback(async (chNum: number) => {
     setLoading(true);
     try {
       const loadedVerses = await loadRamayanChapter(chNum);
@@ -133,8 +133,9 @@ export default function RamayanPage() {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
         // Set initial visible limit based on saved reading progress
-        const isResuming = lastReadChapter === chNum;
-        const pct = isResuming ? (progressPercent || 0) : 0;
+        const progressNow = useScriptureStore.getState().getBookProgress(BOOK_ID);
+        const isResuming = progressNow.lastReadChapter === chNum;
+        const pct = isResuming ? (progressNow.progressPercent || 0) : 0;
         const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
         setVisibleLimit(initialLimit);
       }
@@ -143,11 +144,11 @@ export default function RamayanPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchChapterData(currentChapter);
-  }, [currentChapter]);
+  }, [currentChapter, fetchChapterData]);
 
   // Restore scroll position after loaded
   useEffect(() => {
