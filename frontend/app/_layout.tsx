@@ -27,6 +27,7 @@ import { SyncManager } from '../src/database/syncManager';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
+import { clearLegacyLibraryCache } from '../src/services/library-cdn';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 import { setAudioModeAsync } from 'expo-audio';
@@ -740,6 +741,10 @@ export default function RootLayout() {
         console.warn('[NavigationBar] Failed to set relative position:', e);
       });
     }
+  }, []);
+
+  useEffect(() => {
+    clearLegacyLibraryCache();
   }, []);
 
   const lastNavColorRef = useRef<string>('');

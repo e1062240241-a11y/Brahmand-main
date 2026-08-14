@@ -49,7 +49,7 @@ class SanatanLokUser(HttpUser):
     @task(2)
     def read_gita_all_summary(self):
         """Simulate reading summary of all chapters (Public)."""
-        self.client.get("/api/library/bhagavad-gita/all?summary=true", name="/api/library/bhagavad-gita/all?summary=true")
+        self.client.get("/api/library/bhagavad-gita/all", name="/api/library/bhagavad-gita/all")
 
     @task(3)
     def list_temples(self):

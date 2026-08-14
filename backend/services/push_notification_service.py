@@ -62,6 +62,24 @@ class PushNotificationService:
                     token = tokens[0]
             return token
         return None
+
+    @staticmethod
+    async def get_users_fcm_tokens(user_ids: List[str]) -> List[str]:
+        """Get FCM tokens for multiple users from Firestore in a single batch query"""
+        db = await _get_db()
+        users = await db.get_documents_batch('users', user_ids)
+
+        tokens = []
+        for user in users:
+            if user:
+                token = user.get('fcm_token')
+                if not token:
+                    user_tokens = user.get('fcm_tokens', [])
+                    if user_tokens:
+                        token = user_tokens[0]
+                if token:
+                    tokens.append(token)
+        return tokens
     
     @staticmethod
     async def save_user_fcm_token(user_id: str, fcm_token: str) -> bool:
@@ -414,12 +432,8 @@ class PushNotificationService:
         if not member_ids:
             return {'success_count': 0, 'failure_count': 0}
         
-        # Get FCM tokens for all members
-        tokens = []
-        for member_id in member_ids:
-            token = await cls.get_user_fcm_token(member_id)
-            if token:
-                tokens.append(token)
+        # ⚡ Bolt Optimization: Batch fetch FCM tokens to prevent N+1 queries
+        tokens = await cls.get_users_fcm_tokens(member_ids)
         
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}
@@ -501,11 +515,8 @@ class PushNotificationService:
         if not actual_member_ids:
             return {'success_count': 0, 'failure_count': 0}
             
-        tokens = []
-        for member_id in actual_member_ids:
-            token = await cls.get_user_fcm_token(member_id)
-            if token:
-                tokens.append(token)
+        # ⚡ Bolt Optimization: Batch fetch FCM tokens to prevent N+1 queries
+        tokens = await cls.get_users_fcm_tokens(actual_member_ids)
                 
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}
@@ -563,12 +574,8 @@ class PushNotificationService:
         if not member_ids:
             return {'success_count': 0, 'failure_count': 0}
         
-        # Get FCM tokens for all members
-        tokens = []
-        for member_id in member_ids:
-            token = await cls.get_user_fcm_token(member_id)
-            if token:
-                tokens.append(token)
+        # ⚡ Bolt Optimization: Batch fetch FCM tokens to prevent N+1 queries
+        tokens = await cls.get_users_fcm_tokens(member_ids)
         
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}

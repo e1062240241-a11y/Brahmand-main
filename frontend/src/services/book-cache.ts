@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BOOK_CACHE_PREFIX = 'book-json-cache:v1';
+const BOOK_CACHE_PREFIX = 'book-json-cache:v2';
 const BOOK_LOAD_TIMEOUT_MS = 10000;
 
 type LoadCachedBookContentOptions<T> = {
@@ -44,6 +44,14 @@ const writeCachedVerses = async <T>(key: string, verses: T[]) => {
     }));
   } catch (error) {
     console.warn('Failed to cache book content:', error);
+  }
+};
+
+export const removeCachedBookContent = async (cacheKey: string) => {
+  try {
+    await AsyncStorage.removeItem(`${BOOK_CACHE_PREFIX}:${cacheKey}`);
+  } catch (error) {
+    console.warn('Failed to clear cached book content:', error);
   }
 };
 

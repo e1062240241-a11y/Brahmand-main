@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -118,7 +118,7 @@ export default function BhagavadGita3DPage() {
   const progressGeeta = getBookProgress('bhagvad-geeta');
   const progressGita = getBookProgress('gita');
   const progress = (progressGeeta.lastReadChapter > 1 || progressGeeta.progressPercent > 0 || progressGeeta.bookmarks.length > 0) ? progressGeeta : progressGita;
-  const { lastReadChapter, lastReadScrollY, bookmarks } = progress;
+  const { lastReadChapter, lastReadScrollY, bookmarks, progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -133,6 +133,7 @@ export default function BhagavadGita3DPage() {
   const [verses, setVerses] = useState<any[]>([]);
   const [totalVerses, setTotalVerses] = useState(0);
   const [initialScrollRestored, setInitialScrollRestored] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(50);
   
   const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
@@ -162,23 +163,33 @@ export default function BhagavadGita3DPage() {
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
+
+    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
+      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
+    }
   };
 
   const handleChapterChange = (chNum: number) => {
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
+    setVisibleLimit(50);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
   // Fetch chapter data from Backend with prefetching and memory cleanup
-  const fetchChapterData = async (chNum: number) => {
+  const fetchChapterData = useCallback(async (chNum: number) => {
     setLoading(true);
     try {
       const loadedVerses = await loadBhagavadGitaChapter(chNum);
       if (loadedVerses) {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
+        const progressNow = useScriptureStore.getState().getBookProgress(BOOK_ID);
+        const isResuming = progressNow.lastReadChapter === chNum;
+        const pct = isResuming ? (progressNow.progressPercent || 0) : 0;
+        const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
+        setVisibleLimit(initialLimit);
 
         // Memory & performance optimization: cleanup distant chapters & prefetch next
         cleanupBhagavadGitaChapters(chNum);
@@ -191,11 +202,11 @@ export default function BhagavadGita3DPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchChapterData(currentChapter);
-  }, [currentChapter]);
+  }, [currentChapter, fetchChapterData]);
 
   // Restore scroll position after loaded
   useEffect(() => {
@@ -460,7 +471,7 @@ export default function BhagavadGita3DPage() {
                   </Text>
                 </View>
               ) : (
-                verses.map((verse: any, index: number) => {
+                verses.slice(0, visibleLimit).map((verse: any, index: number) => {
                   const cleanSanskrit = (verse.text || '').replace(/[\u1CD0-\u1CFF\u0951-\u0952]/g, '');
                   return (
                     <View key={`verse-${index}`} style={styles.verseContainer}>

@@ -1,69 +1,49 @@
-import { getUpanishadsChapter, API_URL } from '../../src/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUpanishadsChapter } from '../../src/services/api';
+import { LIBRARY_CDN_BASE } from './library-cdn';
+import { loadCachedBookContent, removeCachedBookContent } from './book-cache';
+import upanishadsData from '../../assets/data/upanishads_data.json';
 
-const CDN_BASE = `${API_URL}/api/library-cdn`;
+const BOOK_NAME = 'upanishads';
 const TOTAL_CHAPTERS = 20;
-const PREFETCH_AHEAD = 3;
-const RAW_PREFIX = 'raw:upanishads:';
-const PARSED_PREFIX = 'parsed:upanishads:';
+const PREFETCH_AHEAD = 1;
 
-const normalizeUpanishadVerse = (verse: any) => ({
+const normalizeUpanishadVerse = (verse: any): any => ({
   ...verse,
   translations: typeof verse?.translations === 'object' && verse?.translations !== null ? verse.translations : {},
 });
 
-const storeRawChapter = async (num: number, rawJson: string) => {
-  await AsyncStorage.setItem(`${RAW_PREFIX}${num}`, rawJson);
-};
+const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
-const getRawChapter = async (num: number): Promise<string | null> => {
-  return AsyncStorage.getItem(`${RAW_PREFIX}${num}`);
-};
-
-const parseChapter = async (num: number): Promise<any[] | null> => {
-  const parsed = await AsyncStorage.getItem(`${PARSED_PREFIX}${num}`);
-  if (parsed) { try { return JSON.parse(parsed).verses; } catch { return null; } }
-  const raw = await getRawChapter(num);
-  if (!raw) return null;
+const fetchUpanishadsChapter = async (num: number) => {
   try {
-    const data = JSON.parse(raw);
-    const verses = Array.isArray(data?.verses) ? data.verses.map(normalizeUpanishadVerse) : [];
-    await AsyncStorage.setItem(`${PARSED_PREFIX}${num}`, JSON.stringify({ verses }));
-    return verses;
-  } catch { return null; }
+    const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
+    if (res.ok) return res.json();
+  } catch {}
+  const localVerses = (upanishadsData as any[]).filter((v) => v?.chapter === num);
+  if (localVerses.length) {
+    return { book: BOOK_NAME, chapter: num, total_verses: localVerses.length, verses: localVerses };
+  }
+  const apiRes = await getUpanishadsChapter(num);
+  return apiRes.data;
 };
 
-const clearParsedChapter = async (num: number) => {
-  await AsyncStorage.removeItem(`${PARSED_PREFIX}${num}`);
-};
-
-const fetchAndStoreRaw = async (num: number): Promise<boolean> => {
-  try {
-    try {
-      const res = await fetch(`${CDN_BASE}/upanishads/chapter-${num}.json`);
-      if (res.ok) { await storeRawChapter(num, await res.text()); return true; }
-    } catch {}
-    const res = await getUpanishadsChapter(num);
-    await storeRawChapter(num, JSON.stringify(res.data));
-    return true;
-  } catch { return false; }
-};
+export const loadUpanishadChapter = (chapterNumber: number) =>
+  loadCachedBookContent({
+    cacheKey: chapterCacheKey(chapterNumber),
+    fetcher: () => fetchUpanishadsChapter(chapterNumber),
+    extractVerses: (data: any) => data?.verses ?? [],
+    normalizeVerse: normalizeUpanishadVerse,
+    timeoutMessage: `Timed out loading ${BOOK_NAME} chapter ${chapterNumber}`,
+  });
 
 export const prefetchUpanishadsChapters = (from: number, count: number = PREFETCH_AHEAD) => {
   for (let i = from; i <= Math.min(from + count - 1, TOTAL_CHAPTERS); i++) {
-    getRawChapter(i).then(raw => { if (!raw) fetchAndStoreRaw(i); });
+    loadUpanishadChapter(i).catch(() => {});
   }
-};
-
-export const loadUpanishadChapter = async (chapterNumber: number) => {
-  const cached = await parseChapter(chapterNumber);
-  if (cached?.length) return cached;
-  await fetchAndStoreRaw(chapterNumber);
-  return parseChapter(chapterNumber) || [];
 };
 
 export const cleanupUpanishadsChapters = (currentChapter: number) => {
   for (let i = Math.max(1, currentChapter - 2); i < currentChapter; i++) {
-    clearParsedChapter(i);
+    removeCachedBookContent(chapterCacheKey(i));
   }
 };

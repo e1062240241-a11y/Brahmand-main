@@ -69,6 +69,7 @@ gcloud run deploy "$BACKEND_SERVICE" \
   --env-vars-file "$ROOT_DIR/backend/.gcloud.env.yaml" \
   --memory "4096Mi" \
   --cpu "2" \
+  --timeout 900 \
   --min-instances 1 \
   --max-instances 1
 

@@ -1,0 +1,3 @@
+## 2024-08-14 - UploadPostModal Explicit Accessibility
+**Learning:** In React Native, `TouchableOpacity` elements containing only child `<Text>` nodes are often inferred as buttons by some screen readers, but explicitly adding `accessibilityRole="button"` and `accessibilityLabel` ensures deterministic behavior and clearer screen reader readouts (e.g. reading just the username instead of reading out the entire mention component).
+**Action:** Always explicitly define `accessibilityRole="button"` and provide a clean `accessibilityLabel` when using custom button components or wrappers like `TouchableOpacity`.

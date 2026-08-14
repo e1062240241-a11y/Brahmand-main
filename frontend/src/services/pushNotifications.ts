@@ -326,9 +326,11 @@ export async function scheduleEventReminderNotification(
         },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
-      trigger: Platform.OS === 'android'
-        ? { seconds: secondsUntilReminder, channelId } as any
-        : { seconds: secondsUntilReminder } as any,
+      trigger: {
+        seconds: secondsUntilReminder,
+        channelId,
+        type: 'timeInterval',
+      } as any,
     });
     console.log(`[Push] Event reminder scheduled in ${secondsUntilReminder}s (notifId: ${notifId})`);
     return notifId;
@@ -378,9 +380,11 @@ export async function scheduleLocalNotification(
       // Android ignores this — it uses the channel's sound setting instead.
       sound: __DEV__ ? true : (Platform.OS === 'ios' ? iosSoundFile : androidSoundFile),
     },
-    trigger: (Platform.OS === 'android'
-      ? { channelId }
-      : { seconds: 1 }) as any,
+    trigger: {
+      seconds: 1,
+      channelId,
+      type: 'timeInterval',
+    } as any,
   });
 }
 
@@ -477,9 +481,11 @@ export async function scheduleLibraryReadingNotification(
         },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
-      trigger: (Platform.OS === 'android'
-        ? { seconds: delay, channelId }
-        : { seconds: delay }) as any,
+      trigger: {
+        seconds: delay,
+        channelId,
+        type: 'timeInterval',
+      } as any,
     });
 
     try {
@@ -588,7 +594,7 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
   let morningNotifId: string | null = null;
   let nightNotifId: string | null = null;
 
-  // 1. Morning Notification (9:00 AM)
+  // 1. Morning Notification (8:00 AM)
   try {
     morningNotifId = await Notifications.scheduleNotificationAsync({
       content: {
@@ -601,35 +607,43 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
         },
         sound: soundFile,
       },
-      trigger: (Platform.OS === 'android'
-        ? { hour: 9, minute: 0, repeats: true, channelId }
-        : { hour: 9, minute: 0, repeats: true }) as any,
+      trigger: {
+        type: 'daily',
+        hour: 8,
+        minute: 0,
+        repeats: true,
+        channelId,
+      } as any,
     });
-    console.log(`[Push] Morning scripture notification scheduled for 9:00 AM (id: ${morningNotifId})`);
+    console.log(`[Push] Morning scripture notification scheduled for 8:00 AM (id: ${morningNotifId})`);
   } catch (e) {
     console.warn('[Push] Failed to schedule morning scripture notification:', e);
   }
 
-  // 2. Night Notification (10:00 PM / 22:00)
+  // 2. Evening Notification (8:00 PM / 20:00)
   try {
     nightNotifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🌙  Brahmand Library',
-        body: 'Take a moment to read a verse from your favourite scripture before rest tonight.',
+        body: 'Take a moment to read a verse from your favourite scripture this evening.',
         data: {
           type: 'scripture_reminder',
-          timeOfDay: 'night',
+          timeOfDay: 'evening',
           route: '/library',
         },
         sound: soundFile,
       },
-      trigger: (Platform.OS === 'android'
-        ? { hour: 22, minute: 0, repeats: true, channelId }
-        : { hour: 22, minute: 0, repeats: true }) as any,
+      trigger: {
+        type: 'daily',
+        hour: 20,
+        minute: 0,
+        repeats: true,
+        channelId,
+      } as any,
     });
-    console.log(`[Push] Night scripture notification scheduled for 10:00 PM (id: ${nightNotifId})`);
+    console.log(`[Push] Evening scripture notification scheduled for 8:00 PM (id: ${nightNotifId})`);
   } catch (e) {
-    console.warn('[Push] Failed to schedule night scripture notification:', e);
+    console.warn('[Push] Failed to schedule evening scripture notification:', e);
   }
 
   return { morningNotifId, nightNotifId };
