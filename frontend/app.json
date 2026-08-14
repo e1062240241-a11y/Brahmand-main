@@ -5,6 +5,11 @@
     "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/splash-composed.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "scheme": "sanatanlok",
     "userInterfaceStyle": "light",
     "ios": {
@@ -130,9 +135,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-composed.png",
-          "imageWidth": 180,
+          "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#FFEEE5"
+          "backgroundColor": "#000000"
         }
       ],
       [
