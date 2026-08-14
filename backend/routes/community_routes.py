@@ -14,7 +14,7 @@ async def get_user_communities(token_data: dict = Depends(verify_token)):
     try:
         return await CommunityService.get_user_communities(token_data["user_id"])
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Community not found or operation invalid.")
 
 
 @router.post("")
@@ -29,7 +29,9 @@ async def create_community(
             data.dict()
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import logging
+        logging.getLogger(__name__).exception("Failed to create user community")
+        raise HTTPException(status_code=500, detail="Failed to create community. An internal server error occurred.")
 
 
 @router.get("/discover")
@@ -53,7 +55,7 @@ async def get_community(
     try:
         return await CommunityService.get_community(community_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Community not found or operation invalid.")
 
 
 @router.post("/join")
@@ -68,7 +70,7 @@ async def join_community_by_code(
             data.get("code", "")
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Community not found or operation invalid.")
 
 
 @router.post("/{community_id}/agree-rules")

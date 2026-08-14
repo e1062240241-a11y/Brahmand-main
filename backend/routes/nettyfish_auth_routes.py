@@ -27,7 +27,7 @@ async def send_nettyfish_otp(request: OTPRequest):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Invalid phone number. An error occurred.")
 
     otp = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=5)
@@ -69,7 +69,7 @@ async def send_nettyfish_otp(request: OTPRequest):
         raise he
     except Exception as e:
         logger.error(f"Failed to send Nettyfish SMS: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to send OTP SMS: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send OTP SMS. An internal server error occurred.")
 
     return {"status": "success", "message": "OTP sent successfully"}
 
@@ -86,7 +86,7 @@ async def verify_nettyfish_otp(request: OTPVerify):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Invalid phone number. An error occurred.")
 
     collection_ref = db.collection("otp_verifications")
     docs = collection_ref.where(filter=FieldFilter("phone", "==", mobile)).where(filter=FieldFilter("purpose", "==", purpose)).limit(1).get()

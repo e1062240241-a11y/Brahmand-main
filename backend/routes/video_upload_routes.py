@@ -130,7 +130,8 @@ def _probe_video_metadata(input_path: str) -> dict:
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=400, detail=f"Unable to inspect uploaded video: {exc.stderr.strip() if exc.stderr else str(exc)}")
+        logger.error(f"Unable to inspect uploaded video: {exc.stderr.strip() if exc.stderr else str(exc)}")
+        raise HTTPException(status_code=400, detail="Unable to inspect uploaded video. The file may be corrupted or invalid.")
     except Exception as exc:
         logger.warning(f"_probe_video_metadata execution error: {exc}")
         raise RuntimeError(f"Failed to execute ffprobe binary: {exc}")
@@ -221,7 +222,8 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
     try:
         subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=500, detail=f"Video compression failed: {exc.stderr.strip() if exc.stderr else str(exc)}")
+        logger.error(f"Video compression failed: {exc.stderr.strip() if exc.stderr else str(exc)}")
+        raise HTTPException(status_code=500, detail="Video compression failed. An internal server error occurred.")
     except Exception as exc:
         logger.warning(f"_compress_video execution error: {exc}")
         raise RuntimeError(f"Failed to execute ffmpeg binary: {exc}")
@@ -405,7 +407,7 @@ async def _upload_and_compress_video_impl(
         raise
     except Exception as exc:
         logger.exception("Video upload pipeline failed for user_id=%s", token_data.get("user_id"))
-        raise HTTPException(status_code=500, detail=f"Video upload failed: {str(exc)}")
+        raise HTTPException(status_code=500, detail="Video upload failed. An internal server error occurred.")
     finally:
         await file.close()
         if input_path and os.path.exists(input_path):

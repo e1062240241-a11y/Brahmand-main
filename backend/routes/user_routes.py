@@ -17,7 +17,7 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     try:
         return await UserService.get_profile(token_data["user_id"])
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="User not found or operation invalid.")
 
 
 @router.get("")
@@ -30,7 +30,9 @@ async def get_all_users(
     try:
         return await UserService.get_all_users(limit=limit, offset=offset)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import logging
+        logging.getLogger(__name__).exception("User route operation failed")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
 
 
 @router.put("/profile")
@@ -45,7 +47,7 @@ async def update_profile(
             update.dict(exclude_none=True)
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.put("/profile/extended")
@@ -60,7 +62,7 @@ async def update_extended_profile(
             update.dict(exclude_none=True)
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.post("/location")
@@ -75,7 +77,7 @@ async def setup_location(
             location.dict()
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.post("/dual-location")
@@ -91,7 +93,7 @@ async def setup_dual_location(
             locations.office_location
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.get("/search/{sl_id}")
@@ -103,7 +105,7 @@ async def search_user_by_sl_id(
     try:
         return await UserService.search_by_sl_id(sl_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="User not found or operation invalid.")
 
 
 @router.get("/verification-status")
@@ -126,7 +128,7 @@ async def request_verification(
             data.get("id_number")
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.get("/profile-completion")
@@ -141,7 +143,7 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
     try:
         return await UserService.get_horoscope(token_data["user_id"])
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid request parameters.")
 
 
 @router.post("/personality-verification")
@@ -156,4 +158,6 @@ async def submit_personality_verification(
             data
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import logging
+        logging.getLogger(__name__).exception("User route operation failed")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
