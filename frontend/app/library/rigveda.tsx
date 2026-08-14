@@ -29,7 +29,7 @@ import Animated, {
   Extrapolate,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { useScriptureStore } from '../../src/store/scriptureStore';
+import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { loadRigvedaChapter } from '../../src/services/rigveda-service';
 
@@ -61,13 +61,15 @@ export default function RigvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+      const scrollViewRef = useRef<ScrollView>(null);
+  const pendingProgressRef = useRef<any>(null);
+  const lastDbWriteRef = useRef(0);
+  const pendingProgressRef = useRef<any>(null);
   
-  const { updateProgress } = useLibraryStore();
-  const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
+  const { updateProgress, getBookProgress, setLastRead, toggleBookmark } = useLibraryStore();
   
   const progress = getBookProgress(BOOK_ID);
-  const { lastReadChapter, lastReadScrollY, bookmarks, progressPercent } = progress;
+  const { chapterNum: lastReadChapter, lastReadScrollY = 0, bookmarks = [], progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -100,18 +102,43 @@ export default function RigvedaPage() {
     const clampedProgress = Math.min(Math.max(progressVal, 0), 100);
     
     setScrollProgress(clampedProgress);
-    setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
+
+    pendingProgressRef.current = {
+      scrollY,
+      clampedProgress,
+      contentH,
+      layoutH
+    };
+
+    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
+      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
+    }
+  };
+
+  const commitProgress = () => {
+    if (!pendingProgressRef.current) return;
+    const { scrollY, clampedProgress, contentH, layoutH } = pendingProgressRef.current;
     
-    // Update Library Store
+    setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
     updateProgress({
       id: BOOK_ID,
-      chapterName: CHAPTER_TITLES[currentChapter] || `मण्डल ${currentChapter}`,
+      chapterName: `अध्याय ${currentChapter}`,
       chapterNum: currentChapter,
       lastReadPage: Math.max(1, Math.min(Math.ceil(contentH / (layoutH || 1)), Math.ceil((clampedProgress / 100) * Math.max(1, Math.ceil(contentH / (layoutH || 1)) - 1)) + 1)),
       totalPages: Math.max(1, Math.ceil(contentH / (layoutH || 1))),
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
+    pendingProgressRef.current = null;
+  };
+
+    pendingProgressRef.current = progressData;
+
+    const now = Date.now();
+    if (now - lastDbWriteRef.current > 1000) {
+      lastDbWriteRef.current = now;
+      updateProgress(progressData);
+    }
 
     if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
       setVisibleLimit(prev => Math.min(prev + 50, verses.length));
@@ -119,6 +146,11 @@ export default function RigvedaPage() {
   };
 
   const handleChapterChange = (chNum: number) => {
+    commitProgress();
+    if (pendingProgressRef.current) {
+      updateProgress(pendingProgressRef.current);
+      pendingProgressRef.current = null;
+    }
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
@@ -134,8 +166,8 @@ export default function RigvedaPage() {
       if (loadedVerses) {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
-        const progressNow = useScriptureStore.getState().getBookProgress(BOOK_ID);
-        const isResuming = progressNow.lastReadChapter === chNum;
+        const progressNow = useLibraryStore.getState().getBookProgress(BOOK_ID);
+        const isResuming = progressNow.chapterNum === chNum;
         const pct = isResuming ? (progressNow.progressPercent || 0) : 0;
         const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
         setVisibleLimit(initialLimit);
@@ -164,6 +196,24 @@ export default function RigvedaPage() {
   }, [loading, verses, initialScrollRestored]);
 
   // Animation values
+
+  // Flush pending DB writes on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingProgressRef.current) {
+        updateProgress(pendingProgressRef.current);
+      }
+    };
+  }, []);
+
+
+  // Flush pending DB writes on unmount
+  useEffect(() => {
+    return () => {
+      commitProgress();
+    };
+  }, []);
+
   const floatingY = useSharedValue(0);
   const openProgress = useSharedValue(0);
   const glowOpacity = useSharedValue(0);
@@ -188,6 +238,7 @@ export default function RigvedaPage() {
       if (nextAppState === 'active') {
         startFloating();
       } else {
+        commitProgress();
         cancelAnimation(floatingY);
       }
     });
@@ -385,6 +436,8 @@ export default function RigvedaPage() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             onScroll={handleScroll}
+            onScrollEndDrag={commitProgress}
+            onMomentumScrollEnd={commitProgress}
             scrollEventThrottle={16}
             onContentSizeChange={(_, h) => setContentHeight(h)}
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
@@ -405,7 +458,7 @@ export default function RigvedaPage() {
               ) : verses.length === 0 ? (
                 <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
                   <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    सामग्री लोड करने में विफल। कृपया पुनः प्रयास करें।
+                    इस अध्याय की सामग्री अभी उपलब्ध नहीं है
                   </Text>
                 </View>
               ) : (

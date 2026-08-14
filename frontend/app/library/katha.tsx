@@ -293,8 +293,8 @@ export default function KathaPage() {
   };
 
   const fetchKathaData = async () => {
-    console.log('[KathaPage] API_BASE_URL =', API_BASE_URL);
-    console.log('[KathaPage] Fetching:', `${API_BASE_URL}/api/katha/episodes`);
+    // console.log('[KathaPage] API_BASE_URL =', API_BASE_URL);
+    // console.log('[KathaPage] Fetching:', `${API_BASE_URL}/api/katha/episodes`);
     try {
       // 1. Fetch status
       const statusRes = await fetch(`${API_BASE_URL}/api/katha/status`);
@@ -322,12 +322,12 @@ export default function KathaPage() {
       }
 
       // 2. Fetch episodes
-      console.log('[KathaPage] Fetching episodes from:', `${API_BASE_URL}/api/katha/episodes`);
+      // console.log('[KathaPage] Fetching episodes from:', `${API_BASE_URL}/api/katha/episodes`);
       const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
-      console.log('[KathaPage] Episodes response status:', epRes.status);
+      // console.log('[KathaPage] Episodes response status:', epRes.status);
       if (epRes.ok) {
         const epJson = await epRes.json();
-        console.log('[KathaPage] Episodes received:', JSON.stringify(epJson.episodes?.map((e: any) => ({ id: e.id, title: e.title, video_url: e.video_url }))));
+        // console.log('[KathaPage] Episodes received:', JSON.stringify(epJson.episodes?.map((e: any) => ({ id: e.id, title: e.title, video_url: e.video_url }))));
         if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
           setEpisodes(epJson.episodes);
 
@@ -336,7 +336,7 @@ export default function KathaPage() {
             return (prev.episode_number || 0) > (current.episode_number || 0) ? prev : current;
           });
           setActiveEpisode(latestEp);
-          console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
+          // console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
         } else {
           console.warn('[KathaPage] API returned empty episodes');
           setEpisodes([]);
