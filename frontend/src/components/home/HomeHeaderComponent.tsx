@@ -735,7 +735,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 } else {
                                     // Within Campaign (13 Aug to 11 Sep): Fallback local calculation
                                     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                                    
+
                                     const mStart = 8 * 60; // 8:00 AM IST (480 mins)
                                     const mEnd = 9 * 60 + 30; // 9:30 AM IST (570 mins)
                                     const mSoon = 7 * 60 + 45; // 7:45 AM IST
@@ -1061,7 +1061,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     const isCurrentlyNotified = !!reminders['shravan_katha'];
                                                                     await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
                                                                     if (!isCurrentlyNotified) {
-                                                                        scheduleShravanKatha15MinReminder().catch(() => {});
+                                                                        scheduleShravanKatha15MinReminder().catch(() => { });
                                                                     }
                                                                     router.push({
                                                                         pathname: '/shravan-paath',
