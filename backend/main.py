@@ -15394,45 +15394,60 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
         if feeds.get('created'):
             logger.warning("[sync/push] Ignoring %d feeds.created entries from user %s — posts must be created via upload API", len(feeds['created']), user_id)
 
-        for post_data in feeds.get('updated', []):
-            try:
-                post_id = post_data.get('id')
-                if not post_id:
-                    continue
-                post_ref = db.client.collection('posts').document(post_id)
-                post_snapshot = post_ref.get()
-                if post_snapshot.exists:
-                    existing_data = post_snapshot.to_dict()
-                    # Only allow the post owner to update their own post
-                    if existing_data.get('user_id') != user_id:
-                        logger.warning("[sync/push] User %s tried to update post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
-                        continue
-                    # Only update safe fields (caption, counts)
-                    update_fields = {"updated_at": datetime.utcnow()}
-                    if 'caption' in post_data and post_data['caption'] is not None:
-                        update_fields['caption'] = post_data['caption']
-                    post_ref.update(update_fields)
-                else:
-                    # Post doesn't exist in Firestore — do NOT re-create it.
-                    # It was likely deleted via the delete API.
-                    logger.warning("[sync/push] User %s tried to update non-existent post %s — skipped (not re-creating)", user_id, post_id)
-            except Exception as e:
-                logger.error("Error pushing feed updated: %s", e)
+        # ⚡ Bolt Optimization: Batch fetch & update/delete for feed posts
+        try:
+            feed_updated = feeds.get('updated', [])
+            feed_deleted = feeds.get('deleted', [])
 
-        for post_id in feeds.get('deleted', []):
-            try:
-                # Ownership check: only allow deleting posts the user owns
-                post_ref = db.client.collection('posts').document(post_id)
-                post_snapshot = post_ref.get()
-                if post_snapshot.exists:
-                    existing_data = post_snapshot.to_dict()
-                    if existing_data.get('user_id') != user_id:
-                        logger.warning("[sync/push] User %s tried to delete post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
+            # Collect all IDs
+            post_ids_to_fetch = set()
+
+            for post_data in feed_updated:
+                if post_data.get('id'):
+                    post_ids_to_fetch.add(post_data['id'])
+            for pid in feed_deleted:
+                if pid:
+                    post_ids_to_fetch.add(pid)
+
+            if post_ids_to_fetch:
+                existing_posts = await db.get_documents_batch('posts', list(post_ids_to_fetch))
+                existing_posts_map = {p['id']: p for p in existing_posts if p and 'id' in p}
+
+                updates = []
+                for post_data in feed_updated:
+                    post_id = post_data.get('id')
+                    if not post_id:
                         continue
-                    post_ref.delete()
-                # If post doesn't exist, nothing to delete — that's fine
-            except Exception as e:
-                logger.error("Error pushing feed deleted: %s", e)
+                    existing_data = existing_posts_map.get(post_id)
+                    if existing_data:
+                        if existing_data.get('user_id') != user_id:
+                            logger.warning("[sync/push] User %s tried to update post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
+                            continue
+                        update_fields = {"updated_at": datetime.utcnow()}
+                        if 'caption' in post_data and post_data['caption'] is not None:
+                            update_fields['caption'] = post_data['caption']
+                        updates.append((post_id, update_fields))
+                    else:
+                        logger.warning("[sync/push] User %s tried to update non-existent post %s — skipped (not re-creating)", user_id, post_id)
+
+                if updates:
+                    await db.batch_update_documents('posts', updates)
+
+                deletes = []
+                for post_id in feed_deleted:
+                    if not post_id:
+                        continue
+                    existing_data = existing_posts_map.get(post_id)
+                    if existing_data:
+                        if existing_data.get('user_id') != user_id:
+                            logger.warning("[sync/push] User %s tried to delete post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
+                            continue
+                        deletes.append(post_id)
+
+                if deletes:
+                    await db.batch_delete_documents('posts', deletes)
+        except Exception as e:
+            logger.error("Error pushing feed updates/deletes: %s", e)
 
     if 'chats' in changes:
         chats = changes['chats']
