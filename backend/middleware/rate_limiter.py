@@ -93,6 +93,9 @@ async def rate_limit_dependency(
     key_prefix: str = "api"
 ):
     """FastAPI dependency for rate limiting"""
+    allowed = await limiter.check_rate_limit(request, limit=limit, window=window, key_prefix=key_prefix)
+    if not allowed:
+        raise HTTPException(status_code=429, detail="Too many requests")
     return True
 
 
