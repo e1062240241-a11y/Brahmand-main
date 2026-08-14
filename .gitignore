@@ -378,6 +378,8 @@ scratch/
 .gradle/
 .deploy/
 .agents/
+.jules/
+.Jules/
 tmp_home/
 frontend/.expo_home/
 frontend/.gradle/
