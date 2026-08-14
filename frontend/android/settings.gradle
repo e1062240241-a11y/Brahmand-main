@@ -1,12 +1,4 @@
 pluginManagement {
-  // Ensure node is discoverable in PATH when run from IDEs or GUI environments
-  def nodeDir = new File(providers.exec {
-    commandLine("sh", "-c", "command -v node || which node || echo /usr/local/bin/node")
-  }.standardOutput.asText.get().trim()).parent
-  if (nodeDir) {
-    System.setProperty("PATH", "${nodeDir}:${System.getenv('PATH') ?: ''}")
-  }
-
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
