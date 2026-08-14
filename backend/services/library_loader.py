@@ -5,6 +5,14 @@ from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 
+def _read_json_safe(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as file:
+            return json.load(file)
+    except Exception:
+        raise HTTPException(status_code=500, detail=invalid_msg)
 
 def _read_json(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
     if not path.exists():
@@ -15,16 +23,13 @@ def _read_json(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
     except Exception:
         raise HTTPException(status_code=500, detail=invalid_msg)
 
-
 def _ensure_list(rows: Any, invalid_msg: str) -> list:
     if not isinstance(rows, list):
         raise HTTPException(status_code=500, detail=invalid_msg)
     return rows
 
-
 class ChapterFileBook:
     """Book stored as one JSON file per chapter, loaded lazily and cached in memory."""
-
     def __init__(
         self,
         *,
@@ -53,17 +58,17 @@ class ChapterFileBook:
             return self._cache[number]
 
         if number < 1 or number > self.chapter_count:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Invalid {self.book_title} {self.chapter_label} number",
-            )
+            return [] # gracefully return empty for invalid/missing
 
         invalid_msg = f"Invalid {self.book_title} {self.chapter_label} format"
-        payload = _read_json(
+        payload = _read_json_safe(
             self.chapter_file(number),
             not_found_msg=f"{self.book_title} {self.chapter_label} file not found",
             invalid_msg=invalid_msg,
         )
+        if payload is None:
+            return []
+
         rows = payload if self.rows_from is None else self.rows_from(payload)
         rows = _ensure_list(rows, invalid_msg)
 
@@ -135,10 +140,8 @@ class ChapterFileBook:
 
         return router
 
-
 class SingleFileBook:
     """Book stored as one (or more) whole-file JSON list(s), filtered by chapter on demand."""
-
     def __init__(
         self,
         *,
@@ -180,12 +183,13 @@ class SingleFileBook:
         invalid_msg = f"Invalid {self.book_title} data format"
         all_rows: list = []
         for path in self.data_files:
-            payload = _read_json(
+            payload = _read_json_safe(
                 path,
                 not_found_msg=f"{self.book_title} data file not found",
                 invalid_msg=invalid_msg,
             )
-            all_rows.extend(_ensure_list(payload, invalid_msg))
+            if payload:
+                all_rows.extend(_ensure_list(payload, invalid_msg))
 
         self._all_rows = self.normalize_rows(all_rows) if self.normalize_rows else all_rows
         return self._all_rows
@@ -197,8 +201,7 @@ class SingleFileBook:
             all_rows = self._all_rows
 
         verses = self.filter_chapter(all_rows, number)
-        if not verses:
-            raise HTTPException(status_code=404, detail=f"{self.book_title} chapter not found")
+        # gracefully return empty array instead of 404
         return verses
 
     async def get_all(self) -> Dict[str, Any]:
