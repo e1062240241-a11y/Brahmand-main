@@ -4,6 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../database';
 
+export interface ScriptureBookmark {
+  chapter: number;
+  scrollY: number;
+  timestamp: number;
+  title?: string;
+}
+
 export type LibraryBookProgress = {
   id: string;
   chapterName: string;
@@ -12,64 +19,155 @@ export type LibraryBookProgress = {
   totalPages: number;
   progressPercent: number;
   lastOpenedTime: number;
+  lastReadScrollY?: number;
+  bookmarks?: ScriptureBookmark[];
 };
 
 const LEGACY_GITA_STORAGE_KEY = 'gita-storage';
 const GITA_BOOK_ID = 'bhagvad-geeta';
+const LEGACY_SCRIPTURE_STORAGE_KEY = 'scripture-storage';
 
-async function migrateLegacyGitaProgress() {
+async function migrateLegacyProgress() {
   try {
-    const raw = await AsyncStorage.getItem(LEGACY_GITA_STORAGE_KEY);
-    if (!raw) return;
+    const rawGita = await AsyncStorage.getItem(LEGACY_GITA_STORAGE_KEY);
+    if (rawGita) {
+      const parsed = JSON.parse(rawGita);
+      const gita = parsed && parsed.state ? parsed.state : {};
+      const lastReadChapter = Number(gita.lastReadChapter) || 1;
+      const progressPercent = Number(gita.progressPercent) || 0;
 
-    const parsed = JSON.parse(raw);
-    const gita = parsed && parsed.state ? parsed.state : {};
-    const lastReadChapter = Number(gita.lastReadChapter) || 1;
-    const progressPercent = Number(gita.progressPercent) || 0;
-
-    if (progressPercent <= 0 && lastReadChapter <= 1) return;
-
-    const current = useLibraryStore.getState().progresses || {};
-    if (current[GITA_BOOK_ID]) {
-      // Library already has (fresher) Gita progress — never overwrite it.
+      if (progressPercent > 0 || lastReadChapter > 1) {
+        const current = useLibraryStore.getState().progresses || {};
+        if (!current[GITA_BOOK_ID]) {
+          useLibraryStore.setState((state) => ({
+            progresses: {
+              ...state.progresses,
+              [GITA_BOOK_ID]: {
+                id: GITA_BOOK_ID,
+                chapterName: `Chapter ${lastReadChapter}`,
+                chapterNum: lastReadChapter,
+                lastReadPage: 1,
+                totalPages: 100,
+                progressPercent,
+                lastOpenedTime: Date.now() - 10000,
+              },
+            },
+          }));
+        }
+      }
       await AsyncStorage.removeItem(LEGACY_GITA_STORAGE_KEY);
-      return;
     }
 
-    useLibraryStore.setState((state) => ({
-      progresses: {
-        ...state.progresses,
-        [GITA_BOOK_ID]: {
-          id: GITA_BOOK_ID,
-          chapterName: `Chapter ${lastReadChapter}`,
-          chapterNum: lastReadChapter,
-          lastReadPage: 1,
-          totalPages: 100,
-          progressPercent,
-          lastOpenedTime: Date.now() - 10000,
-        },
-      },
-    }));
+    const rawScripture = await AsyncStorage.getItem(LEGACY_SCRIPTURE_STORAGE_KEY);
+    if (rawScripture) {
+      const parsed = JSON.parse(rawScripture);
+      const books = parsed && parsed.state && parsed.state.books ? parsed.state.books : {};
 
-    await AsyncStorage.removeItem(LEGACY_GITA_STORAGE_KEY);
+      const currentProgresses = useLibraryStore.getState().progresses || {};
+      const updatedProgresses = { ...currentProgresses };
+      let migrated = false;
+
+      for (const [bookId, bookData] of Object.entries<any>(books)) {
+        if (!updatedProgresses[bookId]) {
+          updatedProgresses[bookId] = {
+            id: bookId,
+            chapterName: `Chapter ${bookData.lastReadChapter || 1}`,
+            chapterNum: bookData.lastReadChapter || 1,
+            lastReadPage: 1,
+            totalPages: 100,
+            progressPercent: bookData.progressPercent || 0,
+            lastOpenedTime: Date.now() - 10000,
+            lastReadScrollY: bookData.lastReadScrollY || 0,
+            bookmarks: bookData.bookmarks || [],
+            title: bookData.title || ''
+          };
+          migrated = true;
+        } else {
+          // Merge bookmarks and scrollY
+          updatedProgresses[bookId] = {
+            ...updatedProgresses[bookId],
+            lastReadScrollY: updatedProgresses[bookId].lastReadScrollY ?? bookData.lastReadScrollY,
+            bookmarks: updatedProgresses[bookId].bookmarks ?? bookData.bookmarks,
+          };
+          migrated = true;
+        }
+      }
+
+      if (migrated) {
+        useLibraryStore.setState({ progresses: updatedProgresses });
+      }
+
+      await AsyncStorage.removeItem(LEGACY_SCRIPTURE_STORAGE_KEY);
+    }
+
   } catch (err) {
-    console.warn('[LibraryStore] Legacy Gita migration failed:', err);
+    console.warn('[LibraryStore] Legacy migration failed:', err);
   }
 }
 
 interface LibraryState {
   progresses: Record<string, LibraryBookProgress>;
+
+  getBookProgress: (bookId: string) => LibraryBookProgress;
+  setLastRead: (bookId: string, chapter: number, scrollY: number, progressPercent: number) => void;
   updateProgress: (progress: LibraryBookProgress) => void;
+
+  toggleBookmark: (bookId: string, chapter: number, scrollY: number, title?: string) => void;
+  removeBookmark: (bookId: string, chapter: number) => void;
+  clearAllBookmarks: (bookId: string) => void;
 }
+
+const DEFAULT_BOOK_PROGRESS: LibraryBookProgress = {
+  id: '',
+  chapterName: '',
+  chapterNum: 1,
+  lastReadPage: 1,
+  totalPages: 100,
+  progressPercent: 0,
+  lastOpenedTime: 0,
+  lastReadScrollY: 0,
+  bookmarks: [],
+};
 
 export const useLibraryStore = create<LibraryState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       progresses: {},
+
+      getBookProgress: (bookId) => {
+        const p = get().progresses[bookId];
+        return p || { ...DEFAULT_BOOK_PROGRESS, id: bookId };
+      },
+
+      setLastRead: (bookId, chapter, scrollY, progressPercent) => set((state) => {
+        const currentProgress = state.progresses[bookId] || { ...DEFAULT_BOOK_PROGRESS, id: bookId };
+        return {
+          progresses: {
+            ...state.progresses,
+            [bookId]: {
+              ...currentProgress,
+              chapterNum: chapter,
+              lastReadScrollY: scrollY,
+              progressPercent,
+              lastOpenedTime: Date.now()
+            },
+          },
+        };
+      }),
+
       updateProgress: async (progress) => {
-        set((state) => ({
-          progresses: { ...state.progresses, [progress.id]: progress }
-        }));
+        set((state) => {
+          const existing = state.progresses[progress.id];
+          return {
+            progresses: {
+              ...state.progresses,
+              [progress.id]: {
+                ...(existing || {}),
+                ...progress
+              }
+            }
+          };
+        });
 
         if (progress.progressPercent >= 0.95) {
           try {
@@ -110,13 +208,65 @@ export const useLibraryStore = create<LibraryState>()(
           console.warn('[LibraryStore] Failed to persist progress to DB:', err);
         }
       },
+
+      toggleBookmark: (bookId, chapter, scrollY, title) => set((state) => {
+        const currentProgress = state.progresses[bookId] || { ...DEFAULT_BOOK_PROGRESS, id: bookId };
+        const bookmarks = currentProgress.bookmarks || [];
+        const exists = bookmarks.find((b) => b.chapter === chapter);
+
+        let newBookmarks: ScriptureBookmark[];
+        if (exists) {
+          newBookmarks = bookmarks.filter((b) => b.chapter !== chapter);
+        } else {
+          newBookmarks = [
+            ...bookmarks,
+            { chapter, scrollY, timestamp: Date.now(), title },
+          ];
+        }
+
+        return {
+          progresses: {
+            ...state.progresses,
+            [bookId]: {
+              ...currentProgress,
+              bookmarks: newBookmarks,
+            },
+          },
+        };
+      }),
+
+      removeBookmark: (bookId, chapter) => set((state) => {
+        const currentProgress = state.progresses[bookId] || { ...DEFAULT_BOOK_PROGRESS, id: bookId };
+        return {
+          progresses: {
+            ...state.progresses,
+            [bookId]: {
+              ...currentProgress,
+              bookmarks: (currentProgress.bookmarks || []).filter((b) => b.chapter !== chapter),
+            },
+          },
+        };
+      }),
+
+      clearAllBookmarks: (bookId) => set((state) => {
+        const currentProgress = state.progresses[bookId] || { ...DEFAULT_BOOK_PROGRESS, id: bookId };
+        return {
+          progresses: {
+            ...state.progresses,
+            [bookId]: {
+              ...currentProgress,
+              bookmarks: [],
+            },
+          },
+        };
+      }),
     }),
     {
       name: 'brahmand-library-progress',
       storage: createJSONStorage(() => AsyncStorage),
       onRehydrateStorage: () => (state, error) => {
         if (!error) {
-          migrateLegacyGitaProgress();
+          migrateLegacyProgress();
         }
       },
     }
