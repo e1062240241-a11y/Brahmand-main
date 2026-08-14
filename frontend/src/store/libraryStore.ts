@@ -14,15 +14,57 @@ export type LibraryBookProgress = {
   lastOpenedTime: number;
 };
 
+const LEGACY_GITA_STORAGE_KEY = 'gita-storage';
+const GITA_BOOK_ID = 'bhagvad-geeta';
+
+async function migrateLegacyGitaProgress() {
+  try {
+    const raw = await AsyncStorage.getItem(LEGACY_GITA_STORAGE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    const gita = parsed && parsed.state ? parsed.state : {};
+    const lastReadChapter = Number(gita.lastReadChapter) || 1;
+    const progressPercent = Number(gita.progressPercent) || 0;
+
+    if (progressPercent <= 0 && lastReadChapter <= 1) return;
+
+    const current = useLibraryStore.getState().progresses || {};
+    if (current[GITA_BOOK_ID]) {
+      // Library already has (fresher) Gita progress — never overwrite it.
+      await AsyncStorage.removeItem(LEGACY_GITA_STORAGE_KEY);
+      return;
+    }
+
+    useLibraryStore.setState((state) => ({
+      progresses: {
+        ...state.progresses,
+        [GITA_BOOK_ID]: {
+          id: GITA_BOOK_ID,
+          chapterName: `Chapter ${lastReadChapter}`,
+          chapterNum: lastReadChapter,
+          lastReadPage: 1,
+          totalPages: 100,
+          progressPercent,
+          lastOpenedTime: Date.now() - 10000,
+        },
+      },
+    }));
+
+    await AsyncStorage.removeItem(LEGACY_GITA_STORAGE_KEY);
+  } catch (err) {
+    console.warn('[LibraryStore] Legacy Gita migration failed:', err);
+  }
+}
+
 interface LibraryState {
   progresses: Record<string, LibraryBookProgress>;
   updateProgress: (progress: LibraryBookProgress) => void;
-  getRecentBooks: () => LibraryBookProgress[];
 }
 
 export const useLibraryStore = create<LibraryState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       progresses: {},
       updateProgress: async (progress) => {
         set((state) => ({
@@ -68,15 +110,15 @@ export const useLibraryStore = create<LibraryState>()(
           console.warn('[LibraryStore] Failed to persist progress to DB:', err);
         }
       },
-      getRecentBooks: () => {
-        const progresses = get().progresses || {};
-        const books = Object.values(progresses);
-        return books.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
-      }
     }),
     {
       name: 'brahmand-library-progress',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state, error) => {
+        if (!error) {
+          migrateLegacyGitaProgress();
+        }
+      },
     }
   )
 );
