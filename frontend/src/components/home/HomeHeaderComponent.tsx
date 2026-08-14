@@ -790,6 +790,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
                                                     contentFit="cover"
                                                     nativeControls={false}
+                                                    allowsVideoFrameAnalysis={false}
                                                 />
                                             )}
 

@@ -420,6 +420,7 @@ export function GlobalFAB() {
     pathname === '/privacy-policy' ||
     pathname === '/shravan-paath' ||
     pathname.includes('shravan-paath') ||
+    pathname.includes('katha') ||
     pathname.includes('privacy') ||
     pathname.includes('terms') ||
     pathname.includes('guidelines')

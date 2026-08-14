@@ -81,6 +81,7 @@ export default function HomeScreen() {
   const [kathaStatus, setKathaStatus] = useState<any>(null);
 
   useEffect(() => {
+    if (!isFocused) return;
     let isMounted = true;
     const fetchKathaStatus = async () => {
       try {
@@ -89,8 +90,7 @@ export default function HomeScreen() {
       } catch (_e) {}
     };
     fetchKathaStatus();
-    const interval = setInterval(fetchKathaStatus, 3000);
-    return () => { isMounted = false; clearInterval(interval); };
+    return () => { isMounted = false; };
   }, [isFocused]);
 
 

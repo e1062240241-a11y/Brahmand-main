@@ -150,7 +150,7 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
 
 
 _KATHA_STATUS_CACHE = {"timestamp": 0, "response": None}
-CACHE_TTL_SECONDS = 1  # 1s instant in-memory status response update
+CACHE_TTL_SECONDS = 60  # 60s in-memory status response cache
 
 
 def _parse_duration_seconds(dur: Any) -> int:
@@ -388,13 +388,13 @@ async def get_katha_episodes():
         except Exception as err:
             logger.warning(f"[TRACE /episodes] Firestore fetch fallback triggered: {err}")
 
-    if not merged:
-        cdn_episodes = await _sync_episodes_from_bunny_cdn()
-        if cdn_episodes:
-            merged.update(cdn_episodes)
-            IN_MEMORY_EPISODES.update(cdn_episodes)
-            if db:
-                for ep_id, ep_data in cdn_episodes.items():
+    cdn_episodes = await _sync_episodes_from_bunny_cdn()
+    if cdn_episodes:
+        for ep_id, ep_data in cdn_episodes.items():
+            if ep_id not in merged:
+                merged[ep_id] = ep_data
+                IN_MEMORY_EPISODES[ep_id] = ep_data
+                if db:
                     try:
                         db.collection("katha_episodes").document(ep_id).set(ep_data)
                     except Exception:

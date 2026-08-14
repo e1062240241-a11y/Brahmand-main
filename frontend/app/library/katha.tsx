@@ -15,6 +15,7 @@ import {
   StatusBar,
   AppState,
   AppStateStatus,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -97,27 +98,38 @@ export default function KathaPage() {
   const [duration, setDuration] = useState(0);
   const [seekBarWidth, setSeekBarWidth] = useState(1);
   const hideControlsTimer = useRef<any>(null);
+  const playScale = useRef(new Animated.Value(1)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [userSelectedEpisode, setUserSelectedEpisode] = useState<KathaEpisode | null>(null);
   const isUserSelectedOldEpisode = !!userSelectedEpisode;
   const activeVideoUrl = isUserSelectedOldEpisode
     ? (userSelectedEpisode?.video_url || '')
-    : (status.active_video_url || activeEpisode?.video_url || '');
-
-  // We want to pause initially if it's live and we haven't synced yet
-  const shouldInitialPause = status.is_live && !isUserSelectedOldEpisode && !hasSyncedLive;
+    : (status.is_live ? (status.active_video_url || activeEpisode?.video_url || '') : '');
 
   const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
     try {
       p.loop = false;
       p.muted = false;
-      p.play();
-      setIsPlaying(true);
+      if (status.is_live || isUserSelectedOldEpisode) {
+        p.play();
+        setIsPlaying(true);
+      } else {
+        p.pause();
+        setIsPlaying(false);
+      }
     } catch (_e) {}
   });
 
   // Live Sync & Auto-Play Logic
   useEffect(() => {
     if (!isPlayerValid(player) || !activeVideoUrl) return;
+    if (!status.is_live && !isUserSelectedOldEpisode) {
+      try {
+        player.pause();
+        setIsPlaying(false);
+      } catch (_e) {}
+      return;
+    }
 
     let attempts = 0;
     const syncAndPlay = () => {
@@ -226,6 +238,20 @@ export default function KathaPage() {
 
   const togglePlayPause = () => {
     resetControlsTimer();
+    Animated.sequence([
+      Animated.timing(playScale, {
+        toValue: 0.75,
+        duration: 90,
+        useNativeDriver: true,
+      }),
+      Animated.spring(playScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     if (!isPlayerValid(player)) return;
     try {
       if (isPlaying) {
@@ -357,33 +383,10 @@ export default function KathaPage() {
     }
   };
 
-  // Refetch status and episodes whenever screen is focused or polled
+  // Fetch status and episodes when screen is focused
   useEffect(() => {
     if (!isFocused) return;
     fetchKathaData();
-
-    const interval = setInterval(() => {
-      fetch(`${API_BASE_URL}/api/katha/status`)
-        .then(res => res.json())
-        .then(statusJson => {
-          if (statusJson.status === 'success') {
-            setStatus({
-              is_live: statusJson.is_live,
-              mode: statusJson.mode,
-              title: statusJson.title,
-              guru_name: statusJson.guru_name,
-              banner_message: statusJson.banner_message,
-              next_stream_at: statusJson.next_stream_at,
-              current_broadcast_start_time: statusJson.current_broadcast_start_time,
-              server_time_ist: statusJson.server_time_ist,
-              active_video_url: statusJson.active_video_url || statusJson.prefetched_video_url,
-            });
-          }
-        })
-        .catch(() => {});
-    }, 10000);
-
-    return () => clearInterval(interval);
   }, [isFocused]);
 
   const onRefresh = () => {
@@ -444,13 +447,18 @@ export default function KathaPage() {
           <Pressable style={styles.hotstarOverlay} onPress={toggleShowHideControls}>
             {/* Top Badge Info & Landscape Back Button */}
             <View style={styles.hotstarTopRow} pointerEvents="box-none">
-              {isModal ? (
-                <TouchableOpacity style={styles.landscapeBackBtn} onPress={toggleRotation}>
-                  <Ionicons name="arrow-back" size={22} color="#FFF" />
-                </TouchableOpacity>
-              ) : (
-                <View style={{ width: 1 }} />
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {isModal && (
+                  <TouchableOpacity style={styles.landscapeBackBtn} onPress={toggleRotation}>
+                    <Ionicons name="arrow-back" size={22} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+                {/* Top Left Day Katha Video Clean Text with Red Vertical Line */}
+                <View style={{ width: 3.5, height: 16, backgroundColor: '#FF0000', borderRadius: 2, marginRight: 6 }} />
+                <Text style={styles.topLeftKathaTitle}>
+                  {activeEpisode ? `DAY ${activeEpisode.episode_number} • KATHA VIDEO` : 'KATHA VIDEO'}
+                </Text>
+              </View>
 
               {status.is_live ? (
                 <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
@@ -469,19 +477,25 @@ export default function KathaPage() {
               )}
             </View>
 
-            {/* Center Big Play/Pause Button */}
-            <TouchableOpacity
-              style={styles.centerPlayBtn}
-              activeOpacity={0.8}
+            {/* Center Big Play/Pause Button (No Circle, Thicker Icon, Smooth Scale Animation) */}
+            <Pressable
               onPress={togglePlayPause}
+              style={{ alignSelf: 'center', padding: 20 }}
             >
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={32}
-                color="#FFF"
-                style={{ marginLeft: isPlaying ? 0 : 3 }}
-              />
-            </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: playScale }] }}>
+                <Ionicons
+                  name={isPlaying ? "pause" : "play"}
+                  size={52}
+                  color="#FFFFFF"
+                  style={{
+                    marginLeft: isPlaying ? 0 : 5,
+                    textShadowColor: 'rgba(0,0,0,0.6)',
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 6,
+                  }}
+                />
+              </Animated.View>
+            </Pressable>
 
             {/* Bottom Control Bar */}
             <View style={styles.hotstarBottomBar} pointerEvents="box-none">
@@ -534,26 +548,19 @@ export default function KathaPage() {
                       color="#FFF"
                     />
                   </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.bottomControlBtn}
-                    onPress={toggleRotation}
-                  >
-                    <Ionicons
-                      name={isModal ? "contract-outline" : "expand-outline"}
-                      size={20}
-                      color="#FFF"
-                    />
-                  </TouchableOpacity>
                 </View>
 
-                {/* Katha Video Label */}
-                <View style={styles.liveStreamLabelWrap}>
-                  <Ionicons name="play-circle-outline" size={12} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.liveStreamLabelText}>
-                    {activeEpisode ? `DAY ${activeEpisode.episode_number} • KATHA VIDEO` : 'KATHA VIDEO'}
-                  </Text>
-                </View>
+                {/* Video Rotate / Fullscreen Button on Right Bottom */}
+                <TouchableOpacity
+                  style={styles.bottomControlBtn}
+                  onPress={toggleRotation}
+                >
+                  <Ionicons
+                    name={isModal ? "contract-outline" : "expand-outline"}
+                    size={20}
+                    color="#FFF"
+                  />
+                </TouchableOpacity>
               </View>
             </View>
           </Pressable>
@@ -604,41 +611,87 @@ export default function KathaPage() {
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {/* Main Player & Hotstar Custom Minimalist Controls */}
-        <View style={styles.playerContainer}>
-          {renderPlayerContent(false)}
-        </View>
-
-          {/* Active Episode Details */}
-          <View style={styles.activeDetails}>
-            <Text style={styles.activeTitle}>
-              {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
-            </Text>
-            <Text style={styles.guruSubtitle}>
-              {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
-            </Text>
-            <Text style={styles.scheduleText}>
-              {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
-            </Text>
-
-            {/* Description Box */}
-            {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
-              <View style={styles.descriptionBox}>
-                <Text style={styles.descriptionLabel}>📖 कथा विवरण / सार</Text>
-                <Text style={styles.descriptionText}>
-                  {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
-                </Text>
+        {/* Main Player & Hotstar Custom Minimalist Controls (Rendered when LIVE or when user selects an episode) */}
+        {(status.is_live || isUserSelectedOldEpisode) && (
+          <>
+            <Animated.View style={[
+              styles.playerContainer,
+              {
+                transform: [
+                  {
+                    scale: scrollY.interpolate({
+                      inputRange: [0, 180],
+                      outputRange: [1, 0.93],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                  {
+                    translateY: scrollY.interpolate({
+                      inputRange: [0, 200],
+                      outputRange: [0, 15],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ],
+              }
+            ]}>
+              <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+                {renderPlayerContent(false)}
+                {/* Scroll-driven Black Overlay Mask */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      backgroundColor: '#000000',
+                      opacity: scrollY.interpolate({
+                        inputRange: [0, 150, 400],
+                        outputRange: [0, 0.15, 0.35],
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ]}
+                />
               </View>
-            ) : null}
-          </View>
+            </Animated.View>
+
+            {/* Active Episode Details */}
+            <View style={styles.activeDetails}>
+              <Text style={styles.activeTitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
+              </Text>
+              <Text style={styles.guruSubtitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
+              </Text>
+              <Text style={styles.scheduleText}>
+                {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
+              </Text>
+
+              {/* Description Text */}
+              {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
+                <View style={styles.descriptionBox}>
+                  <Text style={styles.descriptionText}>
+                    {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </>
+        )}
 
         {/* Episode Library Section (Only shown when Off-Air) */}
         {!status.is_live && (
@@ -649,53 +702,59 @@ export default function KathaPage() {
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 30 }} />
+            <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
           ) : episodes.length > 0 ? (
-            episodes.map((ep) => {
-              const isSelected = activeEpisode?.id === ep.id;
-              return (
-                <TouchableOpacity
-                  key={ep.id}
-                  style={[styles.episodeCard, isSelected && styles.episodeCardSelected]}
-                  activeOpacity={0.88}
-                  onPress={() => handleSelectEpisode(ep)}
-                >
-                  <View style={styles.thumbnailBox}>
-                    <Image
-                      source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
-                      style={styles.thumbnailImg}
-                      resizeMode="cover"
-                      onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
-                    />
-                    <View style={styles.playOverlay}>
-                      <Ionicons
-                        name={isSelected && isPlaying ? "pause" : "play"}
-                        size={20}
-                        color="#FFF"
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalGridContainer}
+            >
+              {episodes.map((ep) => {
+                const isSelected = activeEpisode?.id === ep.id;
+                return (
+                  <TouchableOpacity
+                    key={ep.id}
+                    style={[styles.episodeBoxCard, isSelected && styles.episodeCardSelected]}
+                    activeOpacity={0.88}
+                    onPress={() => handleSelectEpisode(ep)}
+                  >
+                    <View style={styles.thumbnailBox}>
+                      <Image
+                        source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
+                        style={styles.thumbnailImg}
+                        resizeMode="cover"
+                        onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                       />
+                      <View style={styles.playOverlay}>
+                        <Ionicons
+                          name={isSelected && isPlaying ? "pause" : "play"}
+                          size={22}
+                          color="#FFF"
+                        />
+                      </View>
+                      <View style={styles.durationTag}>
+                        <Text style={styles.durationText}>{ep.duration}</Text>
+                      </View>
                     </View>
-                    <View style={styles.durationTag}>
-                      <Text style={styles.durationText}>{ep.duration}</Text>
+
+                    <View style={styles.boxEpisodeMeta}>
+                      <View style={styles.epHeaderRow}>
+                        <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
+                        <Text style={styles.epDate}>{ep.date}</Text>
+                      </View>
+
+                      <Text style={styles.epTitle} numberOfLines={2}>
+                        {ep.title}
+                      </Text>
+
+                      <Text style={styles.epGuru} numberOfLines={1}>
+                        {ep.guru_name}
+                      </Text>
                     </View>
-                  </View>
-
-                  <View style={styles.episodeMeta}>
-                    <View style={styles.epHeaderRow}>
-                      <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
-                      <Text style={styles.epDate}>{ep.date}</Text>
-                    </View>
-
-                    <Text style={styles.epTitle} numberOfLines={2}>
-                      {ep.title}
-                    </Text>
-
-                    <Text style={styles.epGuru} numberOfLines={1}>
-                      {ep.guru_name}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
@@ -703,7 +762,7 @@ export default function KathaPage() {
           )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -917,26 +976,24 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   seekBarTrackBackground: {
-    height: 4,
+    height: 2.5,
     backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
+    borderRadius: 1.5,
     overflow: 'hidden',
   },
   seekBarProgress: {
-    height: 4,
-    backgroundColor: '#FF6B00',
-    borderRadius: 2,
+    height: 2.5,
+    backgroundColor: '#FF0000',
+    borderRadius: 1.5,
   },
   seekBarThumb: {
     position: 'absolute',
-    top: 3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF6B00',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    marginLeft: -5,
+    top: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF0000',
+    marginLeft: -4,
   },
   bottomLeftControls: {
     flexDirection: 'row',
@@ -945,6 +1002,16 @@ const styles = StyleSheet.create({
   },
   bottomControlBtn: {
     padding: 6,
+  },
+  topLeftKathaTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Roboto-Bold' : 'sans-serif-medium',
+    letterSpacing: 0.6,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   liveStreamLabelWrap: {
     flexDirection: 'row',
@@ -999,23 +1066,18 @@ const styles = StyleSheet.create({
   },
   descriptionBox: {
     marginTop: 10,
-    backgroundColor: '#FFF8F3',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 0, 0.25)',
   },
   descriptionLabel: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FF6B00',
     marginBottom: 4,
   },
   descriptionText: {
     fontSize: 13,
-    color: '#5A4136',
-    lineHeight: 19,
-    fontWeight: '500',
+    color: '#4A3B32',
+    lineHeight: 20,
+    fontWeight: '400',
   },
   librarySection: {
     paddingHorizontal: 16,
@@ -1032,28 +1094,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: DARK,
   },
-  episodeCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF8F3',
+  horizontalGridContainer: {
+    paddingRight: 16,
+    gap: 12,
+  },
+  episodeBoxCard: {
+    width: 190,
+    backgroundColor: '#FFFFF0', // Light Yellow tint
     borderRadius: 16,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,0,0.15)',
+    padding: 9,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,107,0,0.2)', // Light neutral/subtle border by default
     elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
   },
   episodeCardSelected: {
-    borderColor: ORANGE,
-    backgroundColor: '#FFF0E5',
-    borderWidth: 1.5,
+    borderColor: '#7B2CBF', // Vibrant Purple border on selected card
+    backgroundColor: '#FFFDEB',
+    borderWidth: 2.2,
+    elevation: 4,
+    shadowColor: '#7B2CBF',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  boxEpisodeMeta: {
+    marginTop: 8,
   },
   thumbnailBox: {
-    width: 120,
-    height: 80,
+    width: '100%',
+    height: 110,
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',

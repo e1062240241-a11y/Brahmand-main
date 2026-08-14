@@ -444,31 +444,40 @@ const ChatScreen = ({
           const tableName = type === 'community' ? 'community_messages' : 'chats';
           const collection = database.get(tableName);
           const filterId = type === 'community' ? `community_${id}_${subgroup}` : id;
+          const batchOps: any[] = [];
 
           for (const msg of fetchedMsgs) {
             const msgId = msg.id || msg._id;
             try {
               const existing = await collection.find(msgId);
-              await existing.update((record: any) => {
-                record.content = msg.content;
-                record.senderName = msg.sender_name || msg.sender;
-              });
+              batchOps.push(
+                existing.prepareUpdate((record: any) => {
+                  record.content = msg.content;
+                  record.senderName = msg.sender_name || msg.sender;
+                })
+              );
             } catch (_e) {
-              await collection.create((record: any) => {
-                record._raw.id = msgId;
-                if (type === 'community') {
-                  record.community_id = filterId;
-                } else {
-                  record.chatId = filterId;
-                }
-                record.senderId = msg.sender_id || '';
-                record.senderName = msg.sender_name || msg.sender || 'Unknown';
-                record.content = msg.content || msg.text || '';
-                record.messageType = msg.message_type || 'text';
-                record.created_at = new Date(msg.created_at || msg.timestamp || Date.now());
-                record.updated_at = new Date();
-              });
+              batchOps.push(
+                collection.prepareCreate((record: any) => {
+                  record._raw.id = msgId;
+                  if (type === 'community') {
+                    record.community_id = filterId;
+                  } else {
+                    record.chatId = filterId;
+                  }
+                  record.senderId = msg.sender_id || '';
+                  record.senderName = msg.sender_name || msg.sender || 'Unknown';
+                  record.content = msg.content || msg.text || '';
+                  record.messageType = msg.message_type || 'text';
+                  record.created_at = new Date(msg.created_at || msg.timestamp || Date.now());
+                  record.updated_at = new Date();
+                })
+              );
             }
+          }
+
+          if (batchOps.length > 0) {
+            await database.batch(batchOps);
           }
         });
       }

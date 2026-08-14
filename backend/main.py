@@ -15588,7 +15588,7 @@ async def home_init(request: Request, seen_ids: str = '', token_data: dict = Dep
 
     async def _get_feed():
         try:
-            feed_res = await get_posts_feed(request=request, limit=10, offset=0, tab='for_you', seen_ids=seen_ids, token_data=token_data)
+            feed_res = await get_posts_feed(request=request, limit=10, after='', tab='for_you', seen_ids=seen_ids, token_data=token_data)
             return {"items": feed_res.get("items", []), "has_more": feed_res.get("has_more", False)}
         except Exception as e:
             import logging
