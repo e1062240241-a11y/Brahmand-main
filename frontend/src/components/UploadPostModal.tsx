@@ -319,6 +319,8 @@ const M3OutlinedInput = ({
               key={user.id}
               style={styles.mentionItem}
               onPress={() => handleSelectMention(user)}
+              accessibilityRole="button"
+              accessibilityLabel={user.name || "Unknown"}
             >
               <Text style={styles.mentionName}>{user.name || "Unknown"}</Text>
               <Text style={styles.mentionSL}>
@@ -1352,6 +1354,8 @@ export const UploadPostModal = ({
                 <TouchableOpacity
                   style={styles.draftBtn}
                   onPress={handleSaveDraft}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
                 >
                   <Text style={styles.draftBtnText}>
                     {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
@@ -1368,6 +1372,8 @@ export const UploadPostModal = ({
                     onPressOut={canUpload ? handleBtnPressOut : undefined}
                     disabled={!canUpload}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("createPost")}
                   >
                     {canUpload ? (
                       <LinearGradient
