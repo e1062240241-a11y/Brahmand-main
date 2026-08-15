@@ -100,15 +100,22 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/plugin-proposal-decorators": "^7.29.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.1.1",
+    "@types/pg": "^8.21.0",
     "@types/react": "~19.2.10",
+    "@types/uuid": "^10.0.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
+    "better-sqlite3": "^13.0.3",
     "crypto-browserify": "^3.12.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.1",
     "patch-package": "^6.5.1",
+    "pg": "^8.23.0",
     "stream-browserify": "^3.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2",
+    "uuid": "^14.0.1",
     "vm-browserify": "^1.1.2"
   },
   "optionalDependencies": {

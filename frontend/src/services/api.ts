@@ -1871,6 +1871,20 @@ export const getNearbyTemples = (lat?: number, lng?: number) =>
 
 export const getTemple = (templeId: string) => api.get(`/temples/${templeId}`);
 
+export const getTempleFromBackend = async (slugOrId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/api/v1/temples/${encodeURIComponent(slugOrId)}`);
+    if (!response.ok) {
+      if (response.status === 404) return null; // Temple not found in DB
+      throw new Error(`Backend error: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.warn('[API] Backend fetch failed, falling back to local rules:', error);
+    return null; // Return null to trigger local fallback
+  }
+};
+
 
 export const followUser = (userId: string) =>
   api.post(`/users/${userId}/follow`);
@@ -2762,3 +2776,4 @@ export const deleteComment = (commentId: string) => {
 };
 
 export default api;
+

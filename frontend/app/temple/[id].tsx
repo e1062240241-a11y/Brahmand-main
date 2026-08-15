@@ -1,5 +1,18 @@
+import templeDataDump from '../../src/constants/templeDataDump.json';
 import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
 import { resolveTempleFestivals } from '../../src/data/templeFestivalResolver';
+import { DEFAULT_TEMPLE_LOCATIONS, SPECIAL_TEMPLE_DATA } from '../../src/data/templeStaticData';
+import { FALLBACK_TEMPLE_BY_ID } from '../../src/data/templeFallbackData';
+import { getMapEmbedUrl, getMapSearchUrl, getMapHtml } from '../../src/utils/templeMapUtils';
+import { getYoutubeVideoId, getYoutubeAppUrl, getYoutubeEmbedUrl, getYoutubeMobileUrl, getYoutubeHtml } from '../../src/utils/youtubeUtils';
+import { CATEGORY_BADGE_MAP, AMENITY_MAP, GUIDELINE_ICONS } from '../../src/data/templeDisplayMaps';
+import {
+  getCategoryBadge,
+  getSpecialTempleKey,
+  formatTempleLocation,
+  getTempleAartiSessions,
+  checkIsAartiLive,
+} from '../../src/data/templeHelpers';
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
@@ -9,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple } from '../../src/services/api';
+import { getTemple, getTempleFromBackend } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -21,990 +34,64 @@ import { TempleFacilitiesSection } from '../../src/components/TempleFacilitiesSe
 import { DarshanAartiTimeline } from '../../src/components/DarshanAartiTimeline';
 import { AboutTempleStory } from '../../src/components/AboutTempleStory';
 
-const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
- 'ISKCON Mira Road': 'Mira Road, Thane',
- 'Shirdi Sai Baba Temple': 'Shirdi, Maharashtra',
- 'Tirupati Balaji Temple – Andhra Pradesh': 'Tirupati, Andhra Pradesh',
- 'Vaishno Devi Temple – Jammu & Kashmir': 'Katra, Jammu & Kashmir',
- 'Shree Siddhivinayak Ganapati Temple': 'Prabhadevi, Mumbai',
- 'Jagannath Temple – Puri': 'Puri, Odisha',
- 'Golden Temple – Amritsar': 'Amritsar, Punjab',
- 'Meenakshi Temple – Madurai': 'Madurai, Tamil Nadu',
- 'ISKCON Temple Bangalore – Karnataka': 'Rajajinagar, Bengaluru',
- 'Somnath Temple – Gujarat': 'Prabhas Patan, Gujarat',
- 'Kedarnath Temple – Uttarakhand': 'Rudraprayag, Uttarakhand',
- 'Mahakaleshwar Temple – Ujjain': 'Ujjain, Madhya Pradesh',
- 'Kashi Vishwanath Temple – Varanasi': 'Varanasi, Uttar Pradesh',
- 'Bhimashankar Temple – Maharashtra': 'Pune district, Maharashtra',
- 'Ramanathaswamy Temple – Rameswaram': 'Rameswaram, Tamil Nadu',
- 'Grishneshwar Temple – Ellora': 'Ellora, Maharashtra',
- 'Shri Mahalakshmi Mandir': 'Mahalaxmi, Mumbai',
- 'Omkareshwar Temple – Madhya Pradesh': 'Khandwa, Madhya Pradesh',
- 'Trimbakeshwar Temple – Nashik': 'Nashik, Maharashtra',
- 'Nageshwar Temple – Dwarka': 'Dwarka, Gujarat',
- 'Mallikarjuna Temple – Srisailam': 'Srisailam, Andhra Pradesh',
- 'Baidyanath Temple – Deoghar': 'Deoghar, Jharkhand',
- 'ISKCON Juhu Mumbai': 'Juhu, Mumbai',
- 'ISKCON MiraRd': 'Mira Road, Thane',
- 'MIRA ROAD': 'Mira Road, Thane',
-};
 const isWeb = Platform.OS === 'web';
-
-const SPECIAL_TEMPLE_DATA: Record<string, {
-  aliases: string[];
-  locationLabel: string;
-  coords: { latitude: number; longitude: number };
-  aartiSessions: { title: string; time: string }[];
-  description: string;
-  guidance: string;
-  youtubeUrl?: string;
-  establishedYear?: string;
-  entryFee?: string;
-  bestTimeToVisit?: string;
-}> = {
- 'ISKCON Mira Road': {
- aliases: ['mira road', 'iskcon mira', 'iskon borivali', 'iskcon borivali', 'radhagiridhari', 'borivali', 'brovali'],
- locationLabel: 'Mira Road, Thane',
- coords: { latitude: 19.2694199, longitude: 72.8716525 },
- establishedYear: '2015 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
- aartiSessions: [
- { title: 'Mangala Aarti', time: '4:30 AM' },
- { title: 'Tulsi Puja', time: '5:00 AM - 5:15 AM' },
- { title: 'Sringar Darshan Aarti', time: '7:15 AM - 7:30 AM' },
- { title: 'Guru Puja', time: '7:25 AM - 7:45 AM' },
- ],
- description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari, offering daily worship, bhajans, classes, and community service. The temple is known for its peaceful atmosphere, devotional programs, vegetarian prasadam, and regular festivals celebrating Krishna consciousness. Visitors can take part in congregational chanting, scripture study, and cultural programs organized for families and children.',
- guidance: 'Guidance: To reach ISKCON Mira Road, travel to Mira Road station and take a short taxi or auto-rickshaw ride toward Elderao Nagar. The temple is located near Radha Girdhari Mandir, close to the Mira Road bus depot and main Mira Bhayandar road. From Thane, use the Dahisar–Mira Road route; from Bhayandar, follow the highway toward Mira Road. Parking is available nearby and the temple is well signposted from local landmarks.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCKsPhfStsvK9NKPjXj0DLvg',
- },
- 'Shirdi Sai Baba Temple': {
- aliases: ['shirdi', 'sai baba', 'saibaba', 'shirdi sai', 'sai baba samadhi mandir'],
- locationLabel: 'Shirdi, Maharashtra',
- coords: { latitude: 19.7661782, longitude: 74.4769973 },
- establishedYear: '1922 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:00 AM' },
- { title: 'Dwarkamai Aarti', time: '6:30 AM' },
- { title: 'Rajbhog Aarti', time: '11:30 AM' },
- { title: 'Dhoop Aarti', time: '5:00 PM' },
- { title: 'Shej Aarti', time: '10:30 PM' },
- ],
- description: 'Shri Sai Baba Samadhi Mandir in Shirdi is a revered pilgrimage center built around the final resting place of Shirdi Sai Baba. The temple complex draws devotees from across India for daily darshan, sacred aarti ceremonies, and prasadam distribution, and it includes the nearby Dwarkamai and Chavadi sites associated with Sai Baba’s life.',
- guidance: 'Guidance: To reach Shirdi Sai Baba Temple, arrive at Shirdi railway station or Shirdi airport and take a short taxi or auto-rickshaw to the main temple complex. The Samadhi Mandir is located in central Shirdi near the main road, and marked local signs guide visitors to the temple, Dwarkamai, and Chavadi. During festivals, allow extra time for darshan and follow the designated queues and visitor lanes.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
- },
-  'Somnath Temple – Gujarat': {
-    aliases: ['somnath', 'prabhas patan', 'jyotirling-somnath', 'someshwar mahadev'],
-    locationLabel: 'Prabhas Patan, Gir Somnath, Gujarat',
-    coords: { latitude: 20.888, longitude: 70.4012 },
-    establishedYear: 'Ancient (Rebuilt 1951)',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '7:00 AM' },
-      { title: 'Madhyan Aarti', time: '12:00 PM' },
-      { title: 'Sandhya Aarti', time: '7:00 PM' },
-    ],
-    description: 'Somnath Temple is the first among the twelve sacred Jyotirling shrines of Lord Shiva (Someshwar Mahadev), located at Prabhas Patan in Gir Somnath on the Gujarat coast.',
-    guidance: 'Guidance: To reach Somnath Temple, travel to Veraval railway station (about 7 km) or Diu airport (about 80 km), then continue by taxi or local transport to Prabhas Patan.',
-    youtubeUrl: 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
-  },
-  'Kedarnath Temple – Uttarakhand': {
-    aliases: ['kedarnath', 'kedar baba'],
-    locationLabel: 'Rudraprayag, Uttarakhand',
-    coords: { latitude: 30.7352, longitude: 79.0669 },
-    establishedYear: '8th Century CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'May to June & Sep to Oct',
-    aartiSessions: [
-      { title: 'Morning Aarti', time: '6:00 AM' },
-      { title: 'Shiv Sahasranama Puja', time: '6:00 PM' },
-      { title: 'Evening Aarti', time: '7:30 PM' },
-    ],
-    description: 'Kedarnath Jyotirling (Kedar Baba) in the Himalayas is among the holiest Shiva shrines and a core destination of Char Dham pilgrimage in Rudraprayag, Uttarakhand.',
-    guidance: 'Guidance: Reach Kedarnath via Haridwar/Rishikesh to Sonprayag-Gaurikund by road, then complete the trek or use approved pony/palanquin/helicopter services.',
-    youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
-  },
-  'Mahakaleshwar Temple – Ujjain': {
-    aliases: ['mahakaleshwar', 'ujjain jyotirling', 'mahakal mandir'],
-    locationLabel: 'Ujjain, Madhya Pradesh',
-    coords: { latitude: 23.1828, longitude: 75.7682 },
-    establishedYear: 'Ancient (Rebuilt 1734)',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Bhasma Aarti', time: '4:00 AM' },
-      { title: 'Madhyahna Aarti', time: '10:30 AM' },
-      { title: 'Sandhya Aarti', time: '6:00 PM' },
-    ],
-    description: 'Mahakaleshwar Jyotirling (Mahakal Mandir) in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti.',
-    guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti.',
-    youtubeUrl: 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
-  },
-  'Kashi Vishwanath Temple – Varanasi': {
-    aliases: ['kashi vishwanath', 'vishwanath temple varanasi', 'golden temple of kashi'],
-    locationLabel: 'Varanasi, Uttar Pradesh',
-    coords: { latitude: 25.3109, longitude: 83.0107 },
-    establishedYear: 'Ancient (Rebuilt 1780)',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '3:00 AM' },
-      { title: 'Bhog Aarti', time: '11:15 AM' },
-      { title: 'Sapt Rishi Aarti', time: '7:00 PM' },
-    ],
-    description: 'Kashi Vishwanath Jyotirling (Golden Temple of Kashi) at Varanasi is dedicated to Lord Vishwanath on the banks of holy river Ganga.',
-    guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area.',
-    youtubeUrl: 'https://www.youtube.com/watch?v=kYJqO005yK0',
-  },
-  'Bhimashankar Temple – Maharashtra': {
-    aliases: ['bhimashankar', 'bhimashankar mahadev'],
-    locationLabel: 'Khed Taluka, Pune, Maharashtra',
-    coords: { latitude: 19.0714, longitude: 73.553 },
-    establishedYear: '13th Century CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to February',
-    aartiSessions: [
-      { title: 'Kakada Aarti', time: '4:30 AM' },
-      { title: 'Madhyan Aarti', time: '12:00 PM' },
-      { title: 'Shej Aarti', time: '9:30 PM' },
-    ],
-    description: 'Bhimashankar Jyotirling (Bhimashankar Mahadev) is located in Khed Taluka, Pune district in the Sahyadri hills.',
-    guidance: 'Guidance: Travel via Pune to Bhimashankar by road; daytime travel is recommended due to hilly terrain.',
-    youtubeUrl: 'https://www.youtube.com/live/O5ohAPCGsho?si=mBlZWBRol0q79N-Z',
-  },
-  'Ramanathaswamy Temple – Rameswaram': {
-    aliases: ['ramanathaswamy', 'rameswaram jyotirling', 'rameshwaram jyotirlinga'],
-    locationLabel: 'Rameswaram, Tamil Nadu',
-    coords: { latitude: 9.2881, longitude: 79.3174 },
-    establishedYear: '12th Century CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to April',
-    aartiSessions: [
-      { title: 'Spatika Linga Darshan', time: '5:00 AM' },
-      { title: 'Kala Santhi Puja', time: '10:00 AM' },
-      { title: 'Ardha Jama Puja', time: '8:30 PM' },
-    ],
-    description: 'Ramanathaswamy Temple in Rameswaram is dedicated to Lord Ramanathaswamy, famous for its 22 holy teerthams and grand corridors.',
-    guidance: 'Guidance: Reach Rameswaram by rail/road from Madurai and proceed to the main temple streets.',
-    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
-  },
-  'Grishneshwar Temple – Ellora': {
-    aliases: ['grishneshwar', 'ghrushneshwar', 'ellora jyotirling', 'ghushmeshwar'],
-    locationLabel: 'Near Ellora, Chhatrapati Sambhajinagar, Maharashtra',
-    coords: { latitude: 20.0258, longitude: 75.178 },
-    establishedYear: '1768 CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '5:30 AM' },
-      { title: 'Madhyan Aarti', time: '12:00 PM' },
-      { title: 'Sandhya Aarti', time: '7:30 PM' },
-    ],
-    description: 'Grishneshwar Jyotirling (Ghushmeshwar) near Ellora in Chhatrapati Sambhajinagar is the twelfth sacred Jyotirling shrine.',
-    guidance: 'Guidance: Reach Chhatrapati Sambhajinagar (Aurangabad) and continue by road toward Ellora caves area.',
-    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
-  },
-  'Omkareshwar Temple – Madhya Pradesh': {
-    aliases: ['omkareshwar', 'omkar mandhata'],
-    locationLabel: 'Khandwa District, Madhya Pradesh',
-    coords: { latitude: 22.2456, longitude: 76.151 },
-    establishedYear: '11th Century CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '5:00 AM' },
-      { title: 'Madhyan Bhog', time: '12:20 PM' },
-      { title: 'Sandhya Aarti', time: '8:00 PM' },
-    ],
-    description: 'Omkareshwar Jyotirling (Omkar Mandhata) is situated on Mandhata island in the Narmada river, Khandwa district.',
-    guidance: 'Guidance: Reach Indore/Khandwa, then travel by road to Omkareshwar. Bridges and boats connect the island.',
-    youtubeUrl: 'https://shriomkareshwar.org/LiveDarshan.aspx?utm_source=chatgpt.com',
-  },
-  'Trimbakeshwar Temple – Nashik': {
-    aliases: ['trimbakeshwar', 'tryambakeshwar', 'trimbakeshwar mahadev'],
-    locationLabel: 'Nashik, Maharashtra',
-    coords: { latitude: 19.9419, longitude: 73.5298 },
-    establishedYear: '1755 CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'July to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '5:30 AM' },
-      { title: 'Madhyan Aarti', time: '1:00 PM' },
-      { title: 'Sandhya Aarti', time: '7:00 PM' },
-    ],
-    description: 'Trimbakeshwar Shiva Temple (Trimbakeshwar Mahadev) near Nashik is a prominent Jyotirling shrine at the source of Godavari river.',
-    guidance: 'Guidance: Reach Nashik city and continue by road to Trimbak town.',
-    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
-  },
-  'Nageshwar Temple – Dwarka': {
-    aliases: ['nageshwar', 'nagnath', 'dwarka jyotirling', 'nagnath mahadev'],
-    locationLabel: 'Dwarka, Gujarat',
-    coords: { latitude: 22.4707, longitude: 69.086 },
-    establishedYear: 'Ancient (Rebuilt 1996)',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '5:00 AM' },
-      { title: 'Madhyan Aarti', time: '12:00 PM' },
-      { title: 'Sandhya Aarti', time: '7:00 PM' },
-    ],
-    description: 'Nageshwar Jyotirling (Nagnath Mahadev) near Dwarka is dedicated to Lord Nageshwar on the coastal route of Gujarat.',
-    guidance: 'Guidance: Reach Dwarka by rail/road, then proceed to Nageshwar temple via local transport on Dwarka route.',
-    youtubeUrl: 'https://livedarshanhub.com/temple/nageshwar-jyotirlinga-temple/?utm_source=chatgpt.com',
-  },
-  'Mallikarjuna Temple – Srisailam': {
-    aliases: ['mallikarjuna', 'srisailam jyotirling', 'sri bhramaramba mallikarjuna', 'mallikarjuna swamy'],
-    locationLabel: 'Srisailam, Andhra Pradesh',
-    coords: { latitude: 16.0728, longitude: 78.8686 },
-    establishedYear: '2nd Century CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to February',
-    aartiSessions: [
-      { title: 'Suprabhata Seva', time: '4:30 AM' },
-      { title: 'Maha Mangala Aarti', time: '12:00 PM' },
-      { title: 'Ratri Aarti', time: '8:30 PM' },
-    ],
-    description: 'Mallikarjuna Swamy Temple at Srisailam is dedicated to Lord Mallikarjuna and Sri Bhramaramba Devi in Andhra Pradesh.',
-    guidance: 'Guidance: Reach Hyderabad/Kurnool and continue to Srisailam by road through ghat sections.',
-    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
-  },
-  'Baidyanath Temple – Deoghar': {
-    aliases: ['baidyanath', 'vaidyanath', 'deoghar jyotirling', 'baba dham'],
-    locationLabel: 'Deoghar, Jharkhand',
-    coords: { latitude: 24.4844, longitude: 86.6994 },
-    establishedYear: '1596 CE',
-    entryFee: 'Free Entry',
-    bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '4:00 AM' },
-      { title: 'Bhog Aarti', time: '1:00 PM' },
-      { title: 'Sandhya Aarti', time: '6:30 PM' },
-    ],
-    description: 'Baidyanath Temple (Baba Dham) in Deoghar, Jharkhand is dedicated to Lord Baidyanath.',
-    guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex.',
-    youtubeUrl: 'https://www.youtube.com/live/gMoEnxZtxzg?si=9mVi5xNLD9CmPuDH-',
-  },
- 'Tirupati Balaji Temple – Andhra Pradesh': {
- aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
- locationLabel: 'Tirupati, Andhra Pradesh',
- coords: { latitude: 13.6833, longitude: 79.3476 },
- establishedYear: '300 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'September to March',
- aartiSessions: [
- { title: 'Suprabhatam', time: '3:00 AM' },
- { title: 'Thomala Seva', time: '3:30 AM' },
- { title: 'Ekantha Seva', time: '1:30 AM' },
- ],
- description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
- guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
- youtubeUrl: 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6',
- },
- 'Vaishno Devi Temple – Jammu & Kashmir': {
- aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
- locationLabel: 'Katra, Jammu & Kashmir',
- coords: { latitude: 33.0308, longitude: 74.9492 },
- establishedYear: 'Ancient',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'March to October',
- aartiSessions: [
- { title: 'Morning Aarti', time: '6:20 AM' },
- { title: 'Bhog Aarti', time: '12:00 PM' },
- { title: 'Evening Aarti', time: '7:20 PM' },
- ],
- description: 'Vaishno Devi Temple in the Trikuta hills is one of the most revered Shakti pilgrimage destinations. Devotees undertake the sacred yatra from Katra to the Bhawan for darshan of the holy pindis.',
- guidance: 'Guidance: Travel to Katra by rail/road and complete yatra registration before starting the trek. Use official pony, palki, battery car, or helicopter services as needed, and follow route advisories during peak season.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC5SVw4I1kK4xB0h60Tdk5lQ',
- },
- 'Shree Siddhivinayak Ganapati Temple': {
-  aliases: ['siddhivinayak', 'prabhadevi ganpati', 'siddhivinayak temple mumbai', 'shree siddhivinayak ganapati temple'],
-  locationLabel: 'Prabhadevi, Mumbai',
-  coords: { latitude: 19.0166, longitude: 72.8302 },
- establishedYear: '1801 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
-  aartiSessions: [
-  { title: 'Kakad Aarti', time: '5:30 AM' },
-  { title: 'Madhyan Aarti', time: '12:00 PM' },
-  { title: 'Shej Aarti', time: '8:45 PM' },
-  ],
-  description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
-  guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
-  youtubeUrl: 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
-  },
- 'Jagannath Temple – Puri': {
- aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
- locationLabel: 'Puri, Odisha',
- coords: { latitude: 19.8049, longitude: 85.8189 },
- establishedYear: '1161 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to February',
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:30 AM' },
- { title: 'Madhyan Dhupa', time: '1:00 PM' },
- { title: 'Sandhya Dhupa', time: '7:00 PM' },
- ],
- description: 'Jagannath Temple in Puri is a sacred Vaishnav pilgrimage center and one of the Char Dham sites, renowned for its elaborate daily rituals and the globally known Rath Yatra festival.',
- guidance: 'Guidance: Reach Puri by rail/road and proceed to the Grand Road temple zone. Plan darshan with local timing advisories, and account for larger crowds during festival periods and weekends.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCxnh8tVFUMlhruMpa7Bycng',
- },
- 'Golden Temple – Amritsar': {
- aliases: ['golden temple', 'harmandir sahib', 'amritsar golden temple'],
- locationLabel: 'Amritsar, Punjab',
- coords: { latitude: 31.6200, longitude: 74.8765 },
- establishedYear: '1589 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
- aartiSessions: [
- { title: 'Prakash Ceremony', time: '4:00 AM' },
- { title: 'Asa Di Vaar Kirtan', time: '5:00 AM' },
- { title: 'Sukhasan Ceremony', time: '10:00 PM' },
- ],
- description: 'The Golden Temple (Sri Harmandir Sahib) in Amritsar is the holiest Sikh shrine, known for continuous kirtan, sacred sarovar, and the community langar that welcomes all visitors.',
- guidance: 'Guidance: Reach Amritsar city by rail/air and travel to the heritage zone near Harmandir Sahib. Cover your head, follow shrine etiquette, and use designated footwear and queue areas.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w',
- },
- 'Meenakshi Temple – Madurai': {
- aliases: ['meenakshi temple', 'madurai meenakshi', 'meenakshi amman'],
- locationLabel: 'Madurai, Tamil Nadu',
- coords: { latitude: 9.9195, longitude: 78.1193 },
- establishedYear: '6th Century CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
- aartiSessions: [
- { title: 'Thiruvanandal Pooja', time: '5:00 AM' },
- { title: 'Uchikala Pooja', time: '10:30 AM' },
- { title: 'Ardhajama Pooja', time: '9:00 PM' },
-],
- description: 'Meenakshi Temple in Madurai is a landmark Dravidian temple complex dedicated to Goddess Meenakshi and Lord Sundareswarar, celebrated for its architecture and daily ritual schedule.',
- guidance: 'Guidance: Reach Madurai junction/airport and continue to the temple streets in the old city. Prefer early morning or late evening slots for smoother darshan and easier movement around the complex.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
- },
-  'ISKCON Temple Bangalore – Karnataka': {
-  aliases: ['iskcon bangalore', 'iskcon temple bangalore', 'rajajinagar iskcon', 'iskconharekrishnahill', 'hare krishna hill', 'harekrishnahill'],
-  locationLabel: 'Rajajinagar, Bengaluru',
-  coords: { latitude: 13.0098, longitude: 77.5511 },
- establishedYear: '1997 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
-  aartiSessions: [
-  { title: 'Mangala Aarti', time: '4:30 AM' },
-  { title: 'Darshan Aarti', time: '7:15 AM' },
-  { title: 'Sandhya Aarti', time: '7:00 PM' },
-  ],
-  description: 'ISKCON Temple Bangalore is a major devotional center dedicated to Sri Radha Krishna, offering daily darshan, kirtan, spiritual classes, and festival celebrations for devotees and families.',
-  guidance: 'Guidance: Reach Rajajinagar via metro or city roads and use the designated temple entry gates. Visit during non-peak evening hours for shorter queues and better access to darshan halls.',
-  youtubeUrl: 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
-  },
- 'Shri Mahalakshmi Mandir': {
-  aliases: ['mahalaxmi', 'mahalakshmi', 'mahalakshmi temple', 'mahalakshmi mumbai', 'mahalakshmi mandir', 'shri mahalakshmi mandir'],
-  locationLabel: 'Mahalaxmi, Mumbai',
-  coords: { latitude: 18.9774, longitude: 72.8066 },
- establishedYear: '1831 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
-  aartiSessions: [
-  { title: 'Morning Aarti', time: '7:00 AM' },
-  { title: 'Dhoop Aarti', time: '6:30 PM' },
-  { title: 'Shej Aarti', time: '10:00 PM' },
-  ],
-  description: 'Shri Mahalakshmi Mandir is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
-  guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
-  youtubeUrl: 'https://youtu.be/DHRoHpI_rcI',
-  },
-  'ISKCON Juhu Mumbai': {
-    aliases: ['iskcon juhu', 'iskcon mumbai', 'juhu temple', 'radha rasabihari', 'iskconjuhutemple', 'iskconjuhu', 'juhutemple'],
-    locationLabel: 'Juhu, Mumbai',
-    coords: { latitude: 19.1128, longitude: 72.8274 },
- establishedYear: '1978 CE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'Year-round',
-    aartiSessions: [
-      { title: 'Mangala Aarti', time: '4:30 AM' },
-      { title: 'Darshan Aarti', time: '7:15 AM' },
-      { title: 'Sandhya Aarti', time: '7:00 PM' },
-    ],
-    description: 'Shri Shri Radha Rasabihari Ji Temple, ISKCON Mumbai, is a beautiful spiritual haven located near Juhu beach.',
-    guidance: 'Guidance: Reach Vile Parle or Andheri railway station, then take an auto-rickshaw or taxi to Juhu.',
-    youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC1vJ4RlWSHP6n0xL2G1tkYQ',
-  },
-  'Shri Dwarkadhish Temple – Dwarka': {
-    aliases: ['dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
-    locationLabel: 'Dwarka, Gujarat',
-    coords: { latitude: 22.2378, longitude: 68.9678 },
- establishedYear: '200 BCE',
- entryFee: 'Free Entry',
- bestTimeToVisit: 'October to March',
-    aartiSessions: [
-      { title: 'Mangla Aarti', time: '6:30 AM' },
-      { title: 'Shringar Aarti', time: '10:30 AM' },
-      { title: 'Sandhya Aarti', time: '7:30 PM' },
-      { title: 'Shayan Aarti', time: '8:30 PM' },
-    ],
-    description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat. It is one of the premier Char Dham pilgrimage sites.',
-    guidance: 'Guidance: Located in Dwarka city center. Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti offers a sublime spiritual experience.',
-    youtubeUrl: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
-  },
-};
-
-const getMapEmbedUrl = (coords: { latitude: number; longitude: number }) =>
- `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}&output=embed`;
-
-const getMapSearchUrl = (coords: { latitude: number; longitude: number }) =>
- `https://www.google.com/maps/search/?api=1&query=${coords.latitude},${coords.longitude}`;
-
-const getMapHtml = (coords: { latitude: number; longitude: number }) => `
-<html>
-  <body style="margin: 0; padding: 0;">
-  <iframe
-  width="100%"
-  height="100%"
-  frameborder="0"
-  style="border:0;"
-  src="${getMapEmbedUrl(coords)}"
-  allowfullscreen
-  />
-  </body>
-</html>`;
-
-const getYoutubeHtml = (embedUrl: string) => `
-<html>
-  <body style="margin: 0; padding: 0; background: #000;">
-  <iframe
-  width="100%"
-  height="100%"
-  frameborder="0"
-  style="border:0;"
-  src="${embedUrl}"
-  allow="autoplay; encrypted-media"
-  allowfullscreen
-  />
-  </body>
-</html>`;
-
-const STATIC_TEMPLE_DETAILS: Record<string, any> = {
-  'jyotirling-somnath-temple-gujarat': {
-  name: 'Somnath Temple – Gujarat',
-  deity: 'Lord Shiva',
-  established_year: '1951 CE (Ancient origin)',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'September to March',
-  description: 'Somnath Jyotirling on the western coast of Gujarat is one of the most revered Shiva temples and a major pilgrimage site.',
-  location: 'Prabhas Patan, Gujarat',
-  aarti_timings: { 'Mangala Aarti': '7:00 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-kedarnath-temple-uttarakhand': {
-  name: 'Kedarnath Temple – Uttarakhand',
-  deity: 'Lord Shiva',
-  established_year: '8th Century CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'May to June & Sep to Oct',
-  description: 'Kedarnath Jyotirling in the Himalayas is a sacred shrine visited during the Char Dham yatra season.',
-  location: 'Rudraprayag, Uttarakhand',
-  aarti_timings: { 'Morning Aarti': '6:00 AM', 'Shiv Sahasranama Puja': '6:00 PM', 'Evening Aarti': '7:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-mahakaleshwar-temple-ujjain': {
-  name: 'Mahakaleshwar Temple – Ujjain',
-  deity: 'Lord Shiva',
-  established_year: '1734 CE (Ancient origin)',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its unique Bhasma Aarti and deep spiritual significance.',
-  location: 'Ujjain, Madhya Pradesh',
-  aarti_timings: { 'Bhasma Aarti': '4:00 AM', 'Madhyahna Aarti': '10:30 AM', 'Sandhya Aarti': '6:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-kashi-vishwanath-temple-varanasi': {
-  name: 'Kashi Vishwanath Temple – Varanasi',
-  deity: 'Lord Shiva',
-  established_year: '1780 CE (Ancient origin)',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines on the banks of the Ganga.',
-  location: 'Varanasi, Uttar Pradesh',
-  aarti_timings: { 'Mangala Aarti': '3:00 AM', 'Bhog Aarti': '11:15 AM', 'Sapt Rishi Aarti': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-bhimashankar-temple-maharashtra': {
-  name: 'Bhimashankar Temple – Maharashtra',
-  deity: 'Lord Shiva',
-  established_year: '13th Century CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to February',
-  description: 'Bhimashankar Jyotirling is located in the Sahyadri hills and is revered for its natural and spiritual setting.',
-  location: 'Pune district, Maharashtra',
-  aarti_timings: { 'Kakada Aarti': '4:30 AM', 'Madhyan Aarti': '12:00 PM', 'Shej Aarti': '9:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-ramanathaswamy-temple-rameswaram': {
-  name: 'Ramanathaswamy Temple – Rameswaram',
-  deity: 'Lord Shiva',
-  established_year: '12th Century CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to April',
-  description: 'Ramanathaswamy Temple in Rameswaram is a major Jyotirling pilgrimage destination known for its long temple corridors.',
-  location: 'Rameswaram, Tamil Nadu',
-  aarti_timings: { 'Spatika Linga Darshan': '5:00 AM', 'Kala Santhi Puja': '10:00 AM', 'Ardha Jama Puja': '8:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-grishneshwar-temple-ellora': {
-  name: 'Grishneshwar Temple – Ellora',
-  deity: 'Lord Shiva',
-  established_year: '1768 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Grishneshwar Jyotirling near Ellora is one of the twelve sacred Jyotirling shrines dedicated to Lord Shiva.',
-  location: 'Ellora, Maharashtra',
-  aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-omkareshwar-temple-madhya-pradesh': {
-  name: 'Omkareshwar Temple – Madhya Pradesh',
-  deity: 'Lord Shiva',
-  established_year: '11th Century CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Omkareshwar Jyotirling is located on the Narmada river island and is an important center of Shiva worship.',
-  location: 'Khandwa, Madhya Pradesh',
-  aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Madhyan Bhog': '12:20 PM', 'Sandhya Aarti': '8:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'jyotirling-trimbakeshwar-temple-nashik': {
-    name: 'Trimbakeshwar Temple – Nashik',
-    deity: 'Lord Shiva',
-    established_year: '1755 CE',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'July to March',
-    description: 'Trimbakeshwar Jyotirling near Nashik is famed for its historic architecture and its association with the Godavari origin.',
-    location: 'Nashik, Maharashtra',
-    aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Aarti': '1:00 PM', 'Sandhya Aarti': '7:00 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-  'jyotirling-nageshwar-temple-dwarka': {
-    name: 'Nageshwar Temple – Dwarka',
-    deity: 'Lord Shiva',
-    established_year: '1996 CE (Ancient origin)',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'October to March',
-    description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple and an important stop for pilgrims in Gujarat.',
-    location: 'Dwarka, Gujarat',
-    aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:00 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-  'jyotirling-mallikarjuna-temple-srisailam': {
-    name: 'Mallikarjuna Temple – Srisailam',
-    deity: 'Lord Shiva',
-    established_year: '2nd Century CE',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'October to February',
-    description: 'Mallikarjuna Jyotirling at Srisailam is a major pilgrimage center combining rich history and devotional traditions.',
-    location: 'Srisailam, Andhra Pradesh',
-    aarti_timings: { 'Suprabhata Seva': '4:30 AM', 'Maha Mangala Aarti': '12:00 PM', 'Ratri Aarti': '8:30 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-  'jyotirling-baidyanath-temple-deoghar': {
-  name: 'Baidyanath Temple – Deoghar',
-  deity: 'Lord Shiva',
-  established_year: '1596 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during Shravan.',
-  location: 'Deoghar, Jharkhand',
-  aarti_timings: { 'Mangala Aarti': '4:00 AM', 'Bhog Aarti': '1:00 PM', 'Sandhya Aarti': '6:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-tirupati-balaji-temple-andhra-pradesh': {
-  name: 'Tirupati Balaji Temple – Andhra Pradesh',
-  deity: 'Lord Venkateswara',
-  established_year: '300 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'September to March',
-  description: 'Tirupati Balaji Temple at Tirumala is among the most visited pilgrimage shrines in India and is dedicated to Lord Venkateswara.',
-  location: 'Tirupati, Andhra Pradesh',
-  aarti_timings: { 'Suprabhatam': '3:00 AM', 'Thomala Seva': '3:30 AM', 'Ekantha Seva': '1:30 AM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-vaishno-devi-temple-jammu-kashmir': {
-  name: 'Vaishno Devi Temple – Jammu & Kashmir',
-  deity: 'Maa Vaishno Devi',
-  established_year: 'Ancient',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'March to October',
-  description: 'Vaishno Devi Temple in the Trikuta hills is a revered Shakti pilgrimage destination attracting devotees year-round.',
-  location: 'Katra, Jammu & Kashmir',
-  aarti_timings: { 'Morning Aarti': '6:20 AM', 'Bhog Aarti': '12:00 PM', 'Evening Aarti': '7:20 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-siddhivinayak-temple-mumbai': {
-  name: 'Shree Siddhivinayak Ganapati Temple',
-  deity: 'Lord Ganesha',
-  established_year: '1801 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Siddhivinayak Temple in Mumbai is one of the most prominent Ganesha temples, known for its devotional significance and regular darshan queues.',
-  location: 'Prabhadevi, Mumbai',
-  aarti_timings: { 'Kakad Aarti': '5:30 AM', 'Madhyan Aarti': '12:00 PM', 'Shej Aarti': '8:45 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-shirdi-sai-baba-temple-maharashtra': {
-  name: 'Shirdi Sai Baba Temple – Maharashtra',
-  deity: 'Sai Baba',
-  established_year: '1922 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Shirdi Sai Baba Temple is a major pilgrimage destination associated with the life and teachings of Sai Baba.',
-  location: 'Shirdi, Maharashtra',
-  aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Dwarkamai Aarti': '6:30 AM', 'Rajbhog Aarti': '11:30 AM', 'Dhoop Aarti': '5:00 PM', 'Shej Aarti': '10:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-jagannath-temple-puri': {
-  name: 'Jagannath Temple – Puri',
-  deity: 'Lord Jagannath',
-  established_year: '1161 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to February',
-  description: 'Jagannath Temple in Puri is one of the most sacred Vaishnav temples and is renowned worldwide for the annual Rath Yatra.',
-  location: 'Puri, Odisha',
-  aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Dhupa': '1:00 PM', 'Sandhya Dhupa': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-golden-temple-amritsar': {
-  name: 'Golden Temple – Amritsar',
-  deity: 'Sri Harmandir Sahib',
-  established_year: '1589 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'The Golden Temple in Amritsar is the holiest Sikh shrine, celebrated for its serene sarovar, kirtan, and community langar.',
-  location: 'Amritsar, Punjab',
-  aarti_timings: { 'Prakash Ceremony': '4:00 AM', 'Asa Di Vaar Kirtan': '5:00 AM', 'Sukhasan Ceremony': '10:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-meenakshi-temple-madurai': {
-  name: 'Meenakshi Temple – Madurai',
-  deity: 'Meenakshi & Sundareswarar',
-  established_year: '6th Century CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Meenakshi Temple in Madurai is a historic South Indian temple complex known for its grand gopurams and daily puja traditions.',
-  location: 'Madurai, Tamil Nadu',
-  aarti_timings: { 'Thiruvanandal Pooja': '5:00 AM', 'Uchikala Pooja': '10:30 AM', 'Ardhajama Pooja': '9:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-iskcon-temple-bangalore-karnataka': {
-  name: 'ISKCON Temple Bangalore – Karnataka',
-  deity: 'Sri Radha Krishna',
-  established_year: '1997 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'ISKCON Temple Bangalore is a major devotional center offering darshan, kirtan, spiritual classes, and festive celebrations.',
-  location: 'Rajajinagar, Bengaluru',
-  aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Darshan Aarti': '7:15 AM', 'Sandhya Aarti': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-iskcon-mira-road-thane': {
-  name: 'ISKCON Mira Road – Thane',
-  deity: 'Radha Giridhari',
-  established_year: '2015 CE',
-  entry_fee: 'Free Entry',
-  best_time_to_visit: 'October to March',
-  description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari.',
-  location: 'Mira Road, Thane',
-  aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Tulsi Puja': '5:00 AM', 'Sringar Darshan Aarti': '7:15 AM', 'Guru Puja': '7:25 AM' },
-  timings: {},
-  contact: '',
-  is_following: false,
-  },
-  'other-iskcon-temple-mumbai': {
-    name: 'ISKCON Juhu Mumbai',
-    deity: 'Radha Rasabihari',
-    established_year: '1978 CE',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'Year-round',
-    description: 'Shri Shri Radha Rasabihari Ji Temple, ISKCON Mumbai, is a beautiful spiritual haven located near Juhu beach.',
-    location: 'Juhu, Mumbai',
-    aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Darshan Aarti': '7:15 AM', 'Sandhya Aarti': '7:00 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-  'other-mahalaxmi-temple': {
-    name: 'Shri Mahalakshmi Mandir',
-    deity: 'Goddess Mahalaxmi',
-    established_year: '1831 CE',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'October to March',
-    description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area.',
-    location: 'Mahalaxmi, Mumbai',
-    aarti_timings: { 'Morning Aarti': '7:00 AM', 'Dhoop Aarti': '6:30 PM', 'Shej Aarti': '10:00 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-  'other-shri-dwarkadhish-temple-dwarka': {
-    name: 'Shri Dwarkadhish Temple – Dwarka',
-    deity: 'Lord Krishna (Dwarkadhish)',
-    established_year: '200 BCE',
-    entry_fee: 'Free Entry',
-    best_time_to_visit: 'October to March',
-    description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat.',
-    location: 'Dwarka, Gujarat',
-    aarti_timings: { 'Mangla Aarti': '6:30 AM', 'Shringar Aarti': '10:30 AM', 'Sandhya Aarti': '7:30 PM', 'Shayan Aarti': '8:30 PM' },
-    timings: {},
-    contact: '',
-    is_following: false,
-  },
-};
-
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const CATEGORY_BADGE_MAP: Record<string, { emoji: string; label: string }> = {
-  'jyotirlinga': { emoji: '🔱', label: 'Jyotirlinga' },
-  'char dham': { emoji: '🕉', label: 'Char Dham' },
-  'shakti peeth': { emoji: '🌺', label: 'Shakti Peeth' },
-  'divya desam': { emoji: '🏛', label: 'Divya Desam' },
-  'sacred': { emoji: '🙏', label: 'Sacred Temple' },
-  'iskcon': { emoji: '🙏', label: 'ISKCON' },
-  'sikh': { emoji: '☬', label: 'Gurdwara' },
-};
-
-const AMENITY_MAP: Record<string, { label: string; iconName: any; iconColor: string; bgColor: string }> = {
-  parking: { label: 'Parking', iconName: 'car-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
-  locker: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-  lockers: { label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-  prasad: { label: 'Prasad Counter', iconName: 'restaurant-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
-  drinking_water: { label: 'Drinking Water', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
-  restrooms: { label: 'Restrooms', iconName: 'man-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
-  shoe_stand: { label: 'Shoe Stand', iconName: 'footsteps-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
-  wheelchair: { label: 'Wheelchair', iconName: 'body-outline', iconColor: '#7C3AED', bgColor: '#F5F3FF' },
-  dharamshala: { label: 'Dharamshala', iconName: 'home-outline', iconColor: '#0D9488', bgColor: '#F0FDFA' },
-  bhojanalaya: { label: 'Bhojanalaya', iconName: 'nutrition-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
-  puja_booking: { label: 'Puja Booking', iconName: 'calendar-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
-  medical_aid: { label: 'Medical Aid', iconName: 'medkit-outline', iconColor: '#DC2626', bgColor: '#FEF2F2' },
-  mobile_deposit: { label: 'Mobile Deposit', iconName: 'phone-portrait-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-  transport_assistance: { label: 'Transport', iconName: 'bus-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
-  hair_tonsuring: { label: 'Tonsuring', iconName: 'cut-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
-  holy_kund: { label: 'Holy Kund', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
-};
-
-const GUIDELINE_ICONS: Record<string, { iconName: any; iconColor: string; badgeBg: string }> = {
-  '🎟️': { iconName: 'ticket-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
-  '⏳': { iconName: 'time-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
-  '👕': { iconName: 'shirt-outline', iconColor: '#7C3AED', badgeBg: '#F5F3FF' },
-  '📵': { iconName: 'phone-portrait-outline', iconColor: '#DC2626', badgeBg: '#FEF2F2' },
-  '👞': { iconName: 'footsteps-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
-  '♿': { iconName: 'body-outline', iconColor: '#059669', badgeBg: '#ECFDF5' },
-  '🚻': { iconName: 'home-outline', iconColor: '#0D9488', badgeBg: '#F0FDFA' },
-  '👥': { iconName: 'people-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
-};
-
-const getCategoryBadge = (category?: string) => {
-  if (!category) return null;
-  const lower = category.toLowerCase().trim();
-  for (const [key, value] of Object.entries(CATEGORY_BADGE_MAP)) {
-    if (lower.includes(key)) return value;
-  }
-  return { emoji: '🛕', label: category };
-};
-
-
-const getSpecialTempleKey = (nameOrId: string) => {
-  if (!nameOrId || typeof nameOrId !== 'string') return '';
-  const normalizedName = nameOrId.toLowerCase().trim();
-  if (!normalizedName || normalizedName === 'temple' || normalizedName === 'shrine') return '';
-
-  const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([key, value]) => {
-    const keyLower = key.toLowerCase();
-    if (keyLower === normalizedName) return true;
-
-    return value.aliases.some((alias) => {
-      const aliasLower = alias.toLowerCase().trim();
-      if (!aliasLower || aliasLower.length < 3) return false;
-      if (aliasLower === normalizedName) return true;
-      const regex = new RegExp(`\\b${aliasLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-      return regex.test(normalizedName);
+const mapBackendResponseToFrontend = (backendData: any) => {
+  // Convert aarti_sessions array to aarti_timings object for legacy compatibility
+  const aarti_timings: Record<string, string> = {};
+  if (backendData.aarti_sessions) {
+    backendData.aarti_sessions.forEach((s: any) => {
+      aarti_timings[s.title] = s.time_start;
     });
-  });
-
-  if (specialTemple) {
-    return specialTemple[0];
   }
-  return '';
+
+  const loc = backendData.location || {};
+  const locationStr = [loc.area, loc.city, loc.state].filter(Boolean).join(', ');
+
+  return {
+    id: backendData.slug || backendData.id,
+    temple_id: backendData.slug || backendData.id,
+    name: backendData.name,
+    deity: backendData.deity,
+    category: backendData.category,
+    description: backendData.metadata?.about || backendData.description || '',
+    guidance: backendData.guidance || '',
+    location: locationStr,
+    coords: loc.latitude ? { latitude: loc.latitude, longitude: loc.longitude } : null,
+    established_year: backendData.established_year,
+    entry_fee: backendData.entry_fee,
+    best_time_to_visit: backendData.best_time_to_visit,
+    website: backendData.official_links?.websites?.[0] || null,
+    contact: backendData.official_links?.helplines?.[0] || backendData.contact || null,
+    timings: backendData.darshan_details ? {
+      opening: backendData.darshan_details.opening_time,
+      closing: backendData.darshan_details.closing_time
+    } : {},
+    facilities: backendData.facilities || [],
+    festivals: backendData.metadata?.festivals || [],
+    history: backendData.metadata?.history,
+    architecture: backendData.metadata?.architecture,
+    significance: backendData.metadata?.mythological_significance,
+    sacred_rituals: backendData.metadata?.sacred_rituals,
+    pilgrimage_circuit: backendData.metadata?.pilgrimage_circuit,
+    aarti_timings: aarti_timings,
+    is_verified: backendData.is_verified || false,
+    is_following: false,
+    // Map media for images and YouTube live streams
+    image_url: backendData.media?.[0]?.url || null,
+    youtube_url: backendData.media?.find((m: any) => m.media_type === 'live_stream' || m.media_type === 'video')?.url || null,
+  };
 };
 
-const formatTempleLocation = (temple: any) => {
- const location = temple?.location;
- const specialKey = getSpecialTempleKey(temple?.name);
- if (!location || (typeof location === 'object' && Object.keys(location).length === 0)) {
- if (specialKey) {
- return DEFAULT_TEMPLE_LOCATIONS[specialKey];
- }
- return DEFAULT_TEMPLE_LOCATIONS[temple?.name] || 'Unknown location';
- }
- if (typeof location === 'string') return location;
- const fallback = [location.area, location.city, location.state, location.country]
- .filter(Boolean)
- .join(', ');
- if (fallback) return fallback;
- if (specialKey) {
- return DEFAULT_TEMPLE_LOCATIONS[specialKey];
- }
- return Object.values(location || {})
- .filter((value) => typeof value === 'string' && value.trim())
- .join(', ') || DEFAULT_TEMPLE_LOCATIONS[temple?.name] || 'Unknown location';
-};
-
-const getTempleAartiSessions = (timings: Record<string, string>, templeName: string) => {
-  const order = ['morning', 'afternoon', 'evening'];
-  const entries = Object.entries(timings || {}).filter(([, value]) => value);
-  const ordered = order
-  .map((key) => entries.find(([name]) => name.toLowerCase() === key))
-  .filter(Boolean) as [string, string][];
-  const rest = entries.filter(([name]) => !order.includes(name.toLowerCase()));
-  const sessions = [...ordered, ...rest];
-  if (sessions.length > 0) return sessions;
-
-  const specialKey = getSpecialTempleKey(templeName);
-  const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
-  if (specialTemple?.aartiSessions?.length) {
-  return specialTemple.aartiSessions.map(({ title, time }) => [title, time] as [string, string]);
-  }
-  return [];
-};
-
-const checkIsAartiLive = (sessions: [string, string][]) => {
-  if (!sessions || sessions.length === 0) return false;
-  const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const istTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
-  const currentMinutes = istTime.getHours() * 60 + istTime.getMinutes();
-
-  for (const session of sessions) {
-    const timeStr = session[1].split('-')[0].trim();
-    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-    if (match) {
-      let hour = parseInt(match[1], 10);
-      const min = parseInt(match[2], 10);
-      const period = match[3].toUpperCase();
-
-      if (period === 'PM' && hour !== 12) hour += 12;
-      if (period === 'AM' && hour === 12) hour = 0;
-
-      const sessionMinutes = hour * 60 + min;
-      let diff = currentMinutes - sessionMinutes;
-      if (diff < -720) diff += 1440;
-      if (diff > 720) diff -= 1440;
-
-      if (diff >= -15 && diff <= 45) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-function getYoutubeVideoId(url: string) {
-  if (!url) return null;
-  if (url.includes('live_stream')) return null; // Prevent matching "live_stream" as 11-char video ID
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
-}
-
-function getYoutubeAppUrl(url: string) {
-  if (!url) return '';
-  if (url.includes('channel=')) {
-    const channelId = url.split('channel=')[1].split('&')[0];
-    return `https://www.youtube.com/channel/${channelId}/live`;
-  }
-  if (url.includes('@')) {
-    const handle = url.split('@')[1].split('/')[0].split('?')[0];
-    return `https://www.youtube.com/@${handle}/live`;
-  }
-  return url;
-}
-
-function getYoutubeEmbedUrl(url: string) {
-  if (!url) return '';
-  if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1&enablejsapi=1&origin=https://www.youtube.com&playsinline=1';
-  }
-  if (url.includes('embed/')) {
-    return url;
-  }
-  const videoId = getYoutubeVideoId(url);
-  if (videoId) {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=https://www.youtube.com&playsinline=1&rel=0`;
-  }
-  if (url.includes('@')) {
-    const handle = url.split('@')[1].split('/')[0].split('?')[0];
-    return `https://www.youtube.com/@${handle}/live`;
-  }
-  return url;
-}
-
-function getYoutubeMobileUrl(url: string) {
-  if (url.includes('embed?listType=playlist&list=')) {
-    const listId = url.split('&list=')[1].split('&')[0];
-    return `https://m.youtube.com/playlist?list=${listId}`;
-  }
-  // ponytail: Use the clean embed URL on native too since it is verified working on web
-  return getYoutubeEmbedUrl(url);
-}
 
 export default function TempleDetailScreen() {
- const { id, autoplayAarti } = useLocalSearchParams<{ id: string; autoplayAarti?: string }>();
- const { t } = useTranslation();
- const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
- const router = useRouter();
- const [temple, setTemple] = useState<any>(null);
- const [loading, setLoading] = useState(true);
+  const { id, autoplayAarti } = useLocalSearchParams<{ id: string; autoplayAarti?: string }>();
+  const { t } = useTranslation();
+  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
+  const router = useRouter();
+  const [temple, setTemple] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
@@ -1074,7 +161,7 @@ export default function TempleDetailScreen() {
         try {
           const rec = await database.get('temples').find(resolvedTempleId);
           if (rec) localTemples = [rec];
-        } catch (_) {}
+        } catch (_) { }
       }
       if (localTemples && localTemples.length > 0) {
         const t = localTemples[0] as any;
@@ -1103,39 +190,64 @@ export default function TempleDetailScreen() {
   };
 
   const fetchTempleData = useCallback(async () => {
+    let finalTempleData: any = null;
+
+    // 🕵️ SMART DETECTION: Is this a local WatermelonDB ID or a Backend Slug?
+    // Local IDs are usually 16-20 alphanumeric chars with NO hyphens.
+    const isLocalWatermelonId = /^[a-zA-Z0-9]{10,25}$/.test(resolvedTempleId) && !resolvedTempleId.includes('-');
+
     try {
-      const templeRes = await getTemple(resolvedTempleId);
-      if (templeRes?.data) {
-        setTemple(templeRes.data);
-      } else {
-        const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
-        if (staticTemple) {
-          setTemple(staticTemple);
-        } else {
-          setTemple((prev: any) => prev || {
-            id: resolvedTempleId,
-            name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-            location: '',
-            deity: '',
-            category: 'Sacred',
-            description: '',
-            guidance: '',
-            aarti_timings: {},
-            is_following: false,
-            is_verified: false,
-          });
+      // 1. ONLY call the backend if it's a real slug (not a local ID)
+      if (!isLocalWatermelonId) {
+        const backendData = await getTempleFromBackend(resolvedTempleId);
+        if (backendData) {
+          finalTempleData = mapBackendResponseToFrontend(backendData);
         }
       }
 
-      // Sync fetched details into WatermelonDB
-      if (templeRes?.data) {
-        // Run the DB write in the background (non-blocking) so it doesn't delay UI render.
-        // Error handling is preserved via .catch().
+      // 2. If backend failed OR we skipped it (because it's a local ID), use the JSON Dump!
+      if (!finalTempleData) {
+        // Get the local temple name from WatermelonDB to help us search the dump
+        let localName = '';
+        try {
+          const localRecord = await database.get('temples').find(resolvedTempleId).catch(() => null);
+          if (localRecord) localName = (localRecord as any)._raw.name || '';
+        } catch (e) {}
+
+        // Search the JSON dump by Name or Slug
+        const dumpedTemple = (templeDataDump as any[]).find((t: any) => 
+          (localName && t.name.toLowerCase() === localName.toLowerCase()) || 
+          t.slug === resolvedTempleId ||
+          t.id === resolvedTempleId
+        );
+
+        if (dumpedTemple) {
+          console.log('✅ [FALLBACK] Loaded rich data from local JSON dump for:', dumpedTemple.name);
+          finalTempleData = mapBackendResponseToFrontend(dumpedTemple);
+        }
+      }
+
+      // 3. Absolute final fallback (Legacy API / Static Data)
+      if (!finalTempleData) {
+        const templeRes = await getTemple(resolvedTempleId).catch(() => null);
+        if (templeRes?.data) {
+          finalTempleData = templeRes.data;
+        } else {
+          const fallbackTemple = FALLBACK_TEMPLE_BY_ID[resolvedTempleId];
+          if (fallbackTemple) finalTempleData = fallbackTemple;
+        }
+      }
+
+      if (finalTempleData) {
+        setTemple(finalTempleData);
+        
+        // Sync to WatermelonDB
         database.write(async () => {
           const templeCollection = database.get('temples');
-          const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
-          const tData = templeRes.data;
-
+          const tData = finalTempleData;
+          const targetQueryId = tData.slug || tData.temple_id || resolvedTempleId;
+          const localTemples = await templeCollection.query(Q.where('temple_id', targetQueryId)).fetch();
+          
           if (localTemples.length > 0) {
             await localTemples[0].update((record: any) => {
               record.name = tData.name || '';
@@ -1150,10 +262,11 @@ export default function TempleDetailScreen() {
               record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
               record.isFollowing = tData.is_following || false;
               record.isVerified = tData.is_verified || false;
+              if (tData.temple_id || tData.slug) record.templeId = tData.slug || tData.temple_id; 
             });
           } else {
             await templeCollection.create((record: any) => {
-              record.templeId = resolvedTempleId;
+              record.templeId = targetQueryId;
               record.name = tData.name || '';
               record.location = tData.location || '';
               record.deity = tData.deity || '';
@@ -1171,26 +284,19 @@ export default function TempleDetailScreen() {
         }).catch((dbError: any) => {
           console.error('Error syncing temple details to WatermelonDB:', dbError);
         });
-      }
-    } catch (error) {
-      const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
-      if (staticTemple) {
-        setTemple(staticTemple);
+        
       } else {
-        // Offline/local fallback for temple details
+        // Minimal placeholder if absolutely nothing is found
         setTemple((prev: any) => prev || {
           id: resolvedTempleId,
           name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-          location: '',
-          deity: '',
-          category: 'Sacred',
-          description: '',
-          guidance: '',
-          aarti_timings: {},
-          is_following: false,
-          is_verified: false,
+          location: '', deity: '', category: 'Sacred',
+          description: '', guidance: '', aarti_timings: {},
+          is_following: false, is_verified: false,
         });
       }
+    } catch (error) {
+      console.error('Error fetching temple data:', error);
     } finally {
       setLoading(false);
     }
@@ -1199,44 +305,11 @@ export default function TempleDetailScreen() {
   useEffect(() => {
     setLoading(true);
     // Check static fallbacks immediately to show content instantly without full blocking screen loader
-    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    const staticTemple = FALLBACK_TEMPLE_BY_ID[resolvedTempleId];
     if (staticTemple) {
       setTemple(staticTemple);
     } else {
       setTemple(null);
-    }
-    loadLocalTempleData();
-    fetchTempleData();
-  }, [id, fetchTempleData]);
-
-  useEffect(() => {
-    if (isCurrentlyLive && !isYoutubeModalVisible) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.3,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-    }
-    return () => { pulseAnim.stopAnimation(); };
-  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
-
-  useEffect(() => {
-    // Check static fallbacks immediately to show content instantly without full blocking screen loader
-    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
-    if (staticTemple) {
-      setTemple(staticTemple);
     }
     loadLocalTempleData();
     fetchTempleData();
@@ -1279,16 +352,16 @@ export default function TempleDetailScreen() {
 
 
 
- const handleShare = async () => {
- try {
- await Share.share({
- message: `🛕 ${displayName}\n📍 ${locationStr}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
- title: displayName,
- });
- } catch (error) {
- console.error('Error sharing temple:', error);
- }
- };
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🛕 ${displayName}\n📍 ${locationStr}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
+        title: displayName,
+      });
+    } catch (error) {
+      console.error('Error sharing temple:', error);
+    }
+  };
 
   // All hook declarations proceed unconditionally above early returns to strictly honor React Rules of Hooks
 
@@ -1644,16 +717,6 @@ export default function TempleDetailScreen() {
         architecture: 'Classic Nagara-style temple with Hemadpanti influences.',
         festivals: ['Mahashivaratri', 'Shravan Month', 'Kartik Festivals'],
         pilgrimageCircuit: 'Jyotirlinga Circuit, Sahyadri Shiva Circuit'
-      };
-    }
-    if (match('kashi') || match('vishwanath')) {
-      return {
-        about: "Located in Varanasi, one of the world's oldest continuously inhabited cities, Kashi Vishwanath is considered the spiritual capital of India.",
-        mythologicalSignificance: 'It is believed that Lord Shiva personally resides in Kashi and grants liberation (moksha) to devotees.',
-        history: 'The temple has undergone several reconstructions. The current structure was built by Queen Ahilyabai Holkar in 1780.',
-        architecture: 'North Indian temple architecture with a gold-plated spire and dome.',
-        festivals: ['Dev Deepawali', 'Mahashivaratri', 'Shravan Month'],
-        pilgrimageCircuit: 'Jyotirlinga Circuit, Moksha Puri, Kashi Kshetra'
       };
     }
     if (match('trimbakeshwar')) {
@@ -2519,12 +1582,12 @@ export default function TempleDetailScreen() {
 
     const locStr = locationStr;
     // If locStr contains city/state not already in cleanName, append it cleanly
-    const finalQuery = locStr && !cleanName.toLowerCase().includes(locStr.toLowerCase()) 
-      ? `${cleanName}, ${locStr}` 
+    const finalQuery = locStr && !cleanName.toLowerCase().includes(locStr.toLowerCase())
+      ? `${cleanName}, ${locStr}`
       : cleanName;
 
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(finalQuery)}`;
-    
+
     Linking.openURL(url).catch((error) => {
       console.warn('Unable to open map URL', error);
     });
@@ -2559,7 +1622,7 @@ export default function TempleDetailScreen() {
       if (firstSentence) return `${firstSentence}.`;
     }
 
-    const staticDetail = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    const staticDetail = FALLBACK_TEMPLE_BY_ID[resolvedTempleId];
     if (staticDetail?.description) {
       const firstSentence = staticDetail.description.split('.')[0].trim();
       if (firstSentence) return `${firstSentence}.`;
@@ -2624,431 +1687,431 @@ export default function TempleDetailScreen() {
   }
 
   return (
-  <View style={styles.container}>
-    <LinearGradient 
-      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-      locations={[0, 0.1058, 0.2212]}
-      style={StyleSheet.absoluteFill}
-    >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Floating Back Button */}
-        <View style={styles.floatingBackButtonContainer}>
-          <TouchableOpacity onPress={handleGoBack} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={24} color="#111" />
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.1058, 0.2212]}
+        style={StyleSheet.absoluteFill}
+      >
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          {/* Floating Back Button */}
+          <View style={styles.floatingBackButtonContainer}>
+            <TouchableOpacity onPress={handleGoBack} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="arrow-back" size={24} color="#111" />
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Temple Info Card — Enhanced Hero */}
-          {/* 1. HERO & CONTENT CARD (Prompt Spec Compliant) */}
-          {(() => {
-            const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
-            const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
-            const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
-            const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
-              ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? 'Free Entry' : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
-              : (specialTemple?.entryFee || 'Free Entry');
-            const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            {/* Temple Info Card — Enhanced Hero */}
+            {/* 1. HERO & CONTENT CARD (Prompt Spec Compliant) */}
+            {(() => {
+              const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
+              const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
+              const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
+              const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
+                ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? 'Free Entry' : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
+                : (specialTemple?.entryFee || 'Free Entry');
+              const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
-            const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
-            const specialCat = (specialTemple as any)?.category;
-            const categoryBadge = getCategoryBadge(temple?.category || specialCat) || { label: temple?.category || specialCat || 'Sacred Shrine' };
+              const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
+              const specialCat = (specialTemple as any)?.category;
+              const categoryBadge = getCategoryBadge(temple?.category || specialCat) || { label: temple?.category || specialCat || 'Sacred Shrine' };
 
-            return (
-              <View style={styles.infoCard}>
-                {/* 1. HERO SECTION */}
-                <TouchableOpacity
-                  style={styles.heroImageContainer}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    setActiveGalleryIndex(0);
-                    setGalleryModalVisible(true);
-                  }}
-                >
-                  <ExpoImage
-                    source={templeImageSource}
-                    style={styles.heroImage}
-                    contentFit="cover"
-                    contentPosition="top"
-                    transition={200}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.45)']}
-                    style={styles.heroImageOverlay}
-                  />
-                  <View style={styles.expandImageBadge}>
-                    <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
-                    <Text style={styles.expandImageBadgeText}>Tap to view photo</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Floating Action Share FAB (Overlapping Hero & Content) */}
-                <TouchableOpacity
-                  style={styles.floatingShareFab}
-                  onPress={handleShare}
-                  activeOpacity={0.85}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                {/* 2. CONTENT SECTION */}
-                <View style={styles.heroInfoContent}>
-                  {/* Deity Pill Badge */}
-                  <View style={styles.deityPillBadge}>
-                    <Text style={styles.deityPillBadgeText}>{deityLabel}</Text>
-                  </View>
-
-                  {/* Title: Temple Name */}
-                  <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
-
-                  {/* Description: 2-3 lines */}
-                  {resolvedShortSummary ? (
-                    <Text style={styles.shortSummaryText} numberOfLines={3}>{resolvedShortSummary}</Text>
-                  ) : null}
-
-                  {/* 3. TAG ROW */}
-                  <View style={styles.tagRowContainer}>
-                    {categoryBadge && (
-                      <View style={styles.amberTagPill}>
-                        <Ionicons name="sparkles-outline" size={13} color="#D97706" />
-                        <Text style={styles.amberTagPillText}>{categoryBadge.label}</Text>
-                      </View>
-                    )}
-                    <View style={styles.greenTagPill}>
-                      <Ionicons name="shield-checkmark-outline" size={13} color="#16A34A" />
-                      <Text style={styles.greenTagPillText}>
-                        {temple?.heritage_status || 'Heritage Site'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* 4. LOCATION CARD */}
+              return (
+                <View style={styles.infoCard}>
+                  {/* 1. HERO SECTION */}
                   <TouchableOpacity
-                    style={styles.locationCardBox}
-                    onPress={openTempleLocation}
-                    activeOpacity={0.8}
+                    style={styles.heroImageContainer}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      setActiveGalleryIndex(0);
+                      setGalleryModalVisible(true);
+                    }}
                   >
-                    <Ionicons name="location-sharp" size={16} color="#EA580C" />
-                    <Text style={styles.locationCardText} numberOfLines={2}>
-                      {formatTempleLocation(temple)}
-                    </Text>
+                    <ExpoImage
+                      source={templeImageSource}
+                      style={styles.heroImage}
+                      contentFit="cover"
+                      contentPosition="top"
+                      transition={200}
+                    />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.45)']}
+                      style={styles.heroImageOverlay}
+                    />
+                    <View style={styles.expandImageBadge}>
+                      <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
+                      <Text style={styles.expandImageBadgeText}>Tap to view photo</Text>
+                    </View>
                   </TouchableOpacity>
 
-                  {/* 5. INFO STAT GRID */}
-                  <View style={styles.infoStatGrid}>
-                    <View style={styles.statBoxCol}>
-                      <Ionicons name="time-outline" size={16} color="#D97706" />
-                      <Text style={styles.statBoxLabel}>AGE</Text>
-                      <Text style={styles.statBoxValue} numberOfLines={1}>{estYear}</Text>
-                    </View>
-                    <View style={styles.statBoxCol}>
-                      <Ionicons name="ticket-outline" size={16} color="#2563EB" />
-                      <Text style={styles.statBoxLabel}>ENTRY</Text>
-                      <Text style={styles.statBoxValue} numberOfLines={1}>{entryFee}</Text>
-                    </View>
-                    <View style={styles.statBoxCol}>
-                      <Ionicons name="calendar-outline" size={16} color="#059669" />
-                      <Text style={styles.statBoxLabel}>BEST TIME</Text>
-                      <Text style={styles.statBoxValue} numberOfLines={1}>{bestTime}</Text>
-                    </View>
-                  </View>
-
-                  {/* 6. PRIMARY CTA */}
+                  {/* Floating Action Share FAB (Overlapping Hero & Content) */}
                   <TouchableOpacity
-                    style={styles.primaryCtaButton}
-                    onPress={openTempleLocation}
+                    style={styles.floatingShareFab}
+                    onPress={handleShare}
                     activeOpacity={0.85}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="map-outline" size={18} color="#FFFFFF" />
-                    <Text style={styles.primaryCtaButtonText}>
-                      {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in maps'}
-                    </Text>
+                    <Ionicons name="share-outline" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
+
+                  {/* 2. CONTENT SECTION */}
+                  <View style={styles.heroInfoContent}>
+                    {/* Deity Pill Badge */}
+                    <View style={styles.deityPillBadge}>
+                      <Text style={styles.deityPillBadgeText}>{deityLabel}</Text>
+                    </View>
+
+                    {/* Title: Temple Name */}
+                    <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
+
+                    {/* Description: 2-3 lines */}
+                    {resolvedShortSummary ? (
+                      <Text style={styles.shortSummaryText} numberOfLines={3}>{resolvedShortSummary}</Text>
+                    ) : null}
+
+                    {/* 3. TAG ROW */}
+                    <View style={styles.tagRowContainer}>
+                      {categoryBadge && (
+                        <View style={styles.amberTagPill}>
+                          <Ionicons name="sparkles-outline" size={13} color="#D97706" />
+                          <Text style={styles.amberTagPillText}>{categoryBadge.label}</Text>
+                        </View>
+                      )}
+                      <View style={styles.greenTagPill}>
+                        <Ionicons name="shield-checkmark-outline" size={13} color="#16A34A" />
+                        <Text style={styles.greenTagPillText}>
+                          {temple?.heritage_status || 'Heritage Site'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* 4. LOCATION CARD */}
+                    <TouchableOpacity
+                      style={styles.locationCardBox}
+                      onPress={openTempleLocation}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="location-sharp" size={16} color="#EA580C" />
+                      <Text style={styles.locationCardText} numberOfLines={2}>
+                        {formatTempleLocation(temple)}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* 5. INFO STAT GRID */}
+                    <View style={styles.infoStatGrid}>
+                      <View style={styles.statBoxCol}>
+                        <Ionicons name="time-outline" size={16} color="#D97706" />
+                        <Text style={styles.statBoxLabel}>AGE</Text>
+                        <Text style={styles.statBoxValue} numberOfLines={1}>{estYear}</Text>
+                      </View>
+                      <View style={styles.statBoxCol}>
+                        <Ionicons name="ticket-outline" size={16} color="#2563EB" />
+                        <Text style={styles.statBoxLabel}>ENTRY</Text>
+                        <Text style={styles.statBoxValue} numberOfLines={1}>{entryFee}</Text>
+                      </View>
+                      <View style={styles.statBoxCol}>
+                        <Ionicons name="calendar-outline" size={16} color="#059669" />
+                        <Text style={styles.statBoxLabel}>BEST TIME</Text>
+                        <Text style={styles.statBoxValue} numberOfLines={1}>{bestTime}</Text>
+                      </View>
+                    </View>
+
+                    {/* 6. PRIMARY CTA */}
+                    <TouchableOpacity
+                      style={styles.primaryCtaButton}
+                      onPress={openTempleLocation}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="map-outline" size={18} color="#FFFFFF" />
+                      <Text style={styles.primaryCtaButtonText}>
+                        {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in maps'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            );
-          })()}
+              );
+            })()}
 
-          {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
-          <DarshanAartiTimeline
-            openingTime={authenticDarshanDetails?.opening || '4:00 AM'}
-            closingTime={authenticDarshanDetails?.closing || '9:00 PM'}
-            vipInfoText={authenticDarshanDetails?.vipDarshan || 'VIP / special darshan available'}
-          />
+            {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
+            <DarshanAartiTimeline
+              openingTime={authenticDarshanDetails?.opening || '4:00 AM'}
+              closingTime={authenticDarshanDetails?.closing || '9:00 PM'}
+              vipInfoText={authenticDarshanDetails?.vipDarshan || 'VIP / special darshan available'}
+            />
 
-          {/* FACILITIES, AMENITIES & GOOD TO KNOW */}
-          {(() => {
-            const formattedAmenities = authenticFacilities.map((fac: string) => {
-              const mapped = AMENITY_MAP[fac];
-              if (mapped) {
-                return { id: fac, ...mapped };
-              }
-              const label = fac.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-              return {
-                id: fac,
-                label,
-                iconName: 'checkmark-circle-outline' as const,
-                iconColor: '#2563EB',
-                bgColor: '#EFF6FF',
-              };
-            });
-
-            const hasTopShoeAmenity = authenticFacilities.some(f => f.includes('shoe') || f.includes('footwear'));
-
-            const formattedGuidelines = authenticVisitorGuidelines
-              .filter(g => {
-                if (!hasTopShoeAmenity) return true;
-                const titleLower = (g.title || '').toLowerCase();
-                // Filter out duplicate shoe stand section from guidelines if already shown in top amenities grid
-                return !(titleLower.includes('shoe') || titleLower.includes('footwear'));
-              })
-              .map((g, idx) => {
-                const iconMeta = GUIDELINE_ICONS[g.icon] || { iconName: 'information-circle-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' };
+            {/* FACILITIES, AMENITIES & GOOD TO KNOW */}
+            {(() => {
+              const formattedAmenities = authenticFacilities.map((fac: string) => {
+                const mapped = AMENITY_MAP[fac];
+                if (mapped) {
+                  return { id: fac, ...mapped };
+                }
+                const label = fac.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 return {
-                  id: `g-${idx}`,
-                  title: g.title,
-                  iconName: iconMeta.iconName,
-                  iconColor: iconMeta.iconColor,
-                  badgeBg: iconMeta.badgeBg,
-                  content: Array.isArray(g.points) ? g.points.join('\n• ') : String(g.points),
+                  id: fac,
+                  label,
+                  iconName: 'checkmark-circle-outline' as const,
+                  iconColor: '#2563EB',
+                  bgColor: '#EFF6FF',
                 };
               });
 
-            return (
-              <TempleFacilitiesSection
-                amenities={formattedAmenities.length > 0 ? formattedAmenities : undefined}
-                guidelines={formattedGuidelines.length > 0 ? formattedGuidelines : undefined}
-              />
-            );
-          })()}
-          {/* ABOUT TEMPLE STORY & TRAVEL ROUTE VISUALIZATION */}
-          {(() => {
-            const travelData = resolveTempleTransport({
-              temple,
-              templeId: resolvedTempleId,
-              templeName: temple?.name,
-              coords: resolvedCoords,
-              locationLabel: locationStr,
-              guidance: templeGuidance,
-            });
+              const hasTopShoeAmenity = authenticFacilities.some(f => f.includes('shoe') || f.includes('footwear'));
 
-            const airInfo = travelData.air;
-            const railInfo = travelData.rail;
-            const busInfo = travelData.bus;
-            return (
-              <AboutTempleStory
-                templeName={temple?.name || 'Temple Shrine'}
-                subtitle={temple?.location || 'Sacred Pilgrimage Landmark'}
-                introDescription={templeDescription || 'A profound center of devotion, revered for centuries by millions of pilgrims seeking spiritual liberation.'}
-                significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
-                history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
-                architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
-                festivals={templeFestivals}
-                airRoute={airInfo || ""}
-                railRoute={railInfo || ""}
-                busRoute={busInfo || ""}
-              />
-            );
-          })()}
+              const formattedGuidelines = authenticVisitorGuidelines
+                .filter(g => {
+                  if (!hasTopShoeAmenity) return true;
+                  const titleLower = (g.title || '').toLowerCase();
+                  // Filter out duplicate shoe stand section from guidelines if already shown in top amenities grid
+                  return !(titleLower.includes('shoe') || titleLower.includes('footwear'));
+                })
+                .map((g, idx) => {
+                  const iconMeta = GUIDELINE_ICONS[g.icon] || { iconName: 'information-circle-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' };
+                  return {
+                    id: `g-${idx}`,
+                    title: g.title,
+                    iconName: iconMeta.iconName,
+                    iconColor: iconMeta.iconColor,
+                    badgeBg: iconMeta.badgeBg,
+                    content: Array.isArray(g.points) ? g.points.join('\n• ') : String(g.points),
+                  };
+                });
+
+              return (
+                <TempleFacilitiesSection
+                  amenities={formattedAmenities.length > 0 ? formattedAmenities : undefined}
+                  guidelines={formattedGuidelines.length > 0 ? formattedGuidelines : undefined}
+                />
+              );
+            })()}
+            {/* ABOUT TEMPLE STORY & TRAVEL ROUTE VISUALIZATION */}
+            {(() => {
+              const travelData = resolveTempleTransport({
+                temple,
+                templeId: resolvedTempleId,
+                templeName: temple?.name,
+                coords: resolvedCoords,
+                locationLabel: locationStr,
+                guidance: templeGuidance,
+              });
+
+              const airInfo = travelData.air;
+              const railInfo = travelData.rail;
+              const busInfo = travelData.bus;
+              return (
+                <AboutTempleStory
+                  templeName={temple?.name || 'Temple Shrine'}
+                  subtitle={temple?.location || 'Sacred Pilgrimage Landmark'}
+                  introDescription={templeDescription || 'A profound center of devotion, revered for centuries by millions of pilgrims seeking spiritual liberation.'}
+                  significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
+                  history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
+                  architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
+                  festivals={templeFestivals}
+                  airRoute={airInfo || ""}
+                  railRoute={railInfo || ""}
+                  busRoute={busInfo || ""}
+                />
+              );
+            })()}
 
 
 
 
 
-          {/* 15. OFFICIAL LINKS & VERIFIED HELPLINES */}
-          {(officialWebsiteUrl || officialHelplineNo) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>
-                  {t('language') === 'hi' ? 'आधिकारिक पोर्टल एवं हेल्पलाइन' : 'Official Portal & Helpline'}
+            {/* 15. OFFICIAL LINKS & VERIFIED HELPLINES */}
+            {(officialWebsiteUrl || officialHelplineNo) && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>
+                    {t('language') === 'hi' ? 'आधिकारिक पोर्टल एवं हेल्पलाइन' : 'Official Portal & Helpline'}
+                  </Text>
+                </View>
+
+                <View style={styles.officialLinksContainer}>
+                  {/* Official Website Link */}
+                  {officialWebsiteUrl && (
+                    <TouchableOpacity
+                      style={styles.officialLinkCard}
+                      onPress={() => Linking.openURL(officialWebsiteUrl)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.officialIconCircle, { backgroundColor: '#EFF6FF' }]}>
+                        <Ionicons name="globe" size={22} color="#2563EB" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.officialCardTitle}>
+                            {t('language') === 'hi' ? 'आधिकारिक वेबसाइट' : 'Official Trust Website'}
+                          </Text>
+                          <Ionicons name="checkmark-circle-sharp" size={16} color="#059669" />
+                        </View>
+                        <Text style={styles.officialCardSubtext} numberOfLines={1}>
+                          {officialWebsiteUrl.replace('https://', '').replace('http://', '').replace('www.', '')}
+                        </Text>
+                      </View>
+                      <Ionicons name="open-outline" size={18} color="#2563EB" />
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Verified Helpline Number */}
+                  {officialHelplineNo && (
+                    <TouchableOpacity
+                      style={styles.officialLinkCard}
+                      onPress={() => {
+                        const firstNum = officialHelplineNo.split('/')[0].replace(/[^0-9+]/g, '');
+                        Linking.openURL(`tel:${firstNum}`);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.officialIconCircle, { backgroundColor: '#ECFDF5' }]}>
+                        <Ionicons name="call" size={22} color="#059669" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={styles.officialCardTitle}>
+                            {t('language') === 'hi' ? 'सत्यापित हेल्पलाइन नंबर' : 'Verified Helpline & Support'}
+                          </Text>
+                          <Ionicons name="shield-checkmark" size={16} color="#059669" />
+                        </View>
+                        <Text style={styles.officialCardSubtext}>
+                          📞 {officialHelplineNo}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* 16. BRAND-NEW PREMIUM PILGRIMAGE TRAVEL EXPERIENCE */}
+            <PilgrimageTravelSection
+              templeId={typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''}
+              templeName={temple?.name || ''}
+              location={temple?.location || ''}
+              category={temple?.category || ''}
+              coords={temple?.coords}
+            />
+
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
+
+      <Modal
+        visible={isYoutubeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsYoutubeModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop} pointerEvents="box-none">
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {isYoutubeUrl
+                  ? (t('language') === 'hi' ? 'लाइव आरती' : 'Live Aarti')
+                  : (t('language') === 'hi' ? 'लाइव दर्शन' : 'Live Darshan')}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {isYoutubeUrl && resolvedYoutubeUrl && (
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))}
+                    style={{ padding: 4 }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="logo-youtube" size={22} color="#FF0000" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
+                  <Ionicons name="close" size={20} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.youtubeModalBody}>
+              {isWeb ? (
+                <iframe
+                  title="Live Aarti"
+                  src={resolvedYoutubeUrl ? getYoutubeEmbedUrl(resolvedYoutubeUrl) : ''}
+                  style={styles.youtubeFrame}
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
+              ) : (
+                isYoutubeModalVisible ? youtubeWebViewContent : null
+              )}
+            </View>
+            {resolvedYoutubeUrl ? (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0F0', paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#FFE0E0', gap: 8 }}
+                onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="logo-youtube" size={20} color="#FF0000" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#D32F2F' }}>
+                  {t('language') === 'hi' ? 'यूट्यूब ऐप में डायरेक्ट देखें' : 'Watch Directly in YouTube App'}
                 </Text>
-              </View>
+                <Ionicons name="open-outline" size={14} color="#D32F2F" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
-              <View style={styles.officialLinksContainer}>
-                {/* Official Website Link */}
-                {officialWebsiteUrl && (
-                  <TouchableOpacity
-                    style={styles.officialLinkCard}
-                    onPress={() => Linking.openURL(officialWebsiteUrl)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.officialIconCircle, { backgroundColor: '#EFF6FF' }]}>
-                      <Ionicons name="globe" size={22} color="#2563EB" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.officialCardTitle}>
-                          {t('language') === 'hi' ? 'आधिकारिक वेबसाइट' : 'Official Trust Website'}
-                        </Text>
-                        <Ionicons name="checkmark-circle-sharp" size={16} color="#059669" />
-                      </View>
-                      <Text style={styles.officialCardSubtext} numberOfLines={1}>
-                        {officialWebsiteUrl.replace('https://', '').replace('http://', '').replace('www.', '')}
-                      </Text>
-                    </View>
-                    <Ionicons name="open-outline" size={18} color="#2563EB" />
-                  </TouchableOpacity>
-                )}
-
-                {/* Verified Helpline Number */}
-                {officialHelplineNo && (
-                  <TouchableOpacity
-                    style={styles.officialLinkCard}
-                    onPress={() => {
-                      const firstNum = officialHelplineNo.split('/')[0].replace(/[^0-9+]/g, '');
-                      Linking.openURL(`tel:${firstNum}`);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.officialIconCircle, { backgroundColor: '#ECFDF5' }]}>
-                      <Ionicons name="call" size={22} color="#059669" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.officialCardTitle}>
-                          {t('language') === 'hi' ? 'सत्यापित हेल्पलाइन नंबर' : 'Verified Helpline & Support'}
-                        </Text>
-                        <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                      </View>
-                      <Text style={styles.officialCardSubtext}>
-                        📞 {officialHelplineNo}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                  </TouchableOpacity>
-                )}
-              </View>
+      {/* Gallery Fullscreen Modal */}
+      <Modal
+        visible={galleryModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGalleryModalVisible(false)}
+      >
+        <View style={styles.galleryModalBackdrop}>
+          <TouchableOpacity
+            style={styles.galleryModalClose}
+            onPress={() => setGalleryModalVisible(false)}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+          >
+            <Ionicons name="close" size={28} color="#FFF" />
+          </TouchableOpacity>
+          <FlatList
+            data={templeImages}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={activeGalleryIndex}
+            getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+            keyExtractor={(_, index) => `fullscreen-${index}`}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setActiveGalleryIndex(idx);
+            }}
+            renderItem={({ item }) => {
+              const imgSrc = typeof item === 'string' ? { uri: item } : item;
+              return (
+                <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
+                  <ExpoImage source={imgSrc} style={styles.galleryFullImage} contentFit="contain" />
+                </View>
+              );
+            }}
+          />
+          {/* Pagination dots */}
+          {templeImages.length > 1 && (
+            <View style={styles.galleryPagination}>
+              {templeImages.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.galleryDot,
+                    i === activeGalleryIndex && styles.galleryDotActive,
+                  ]}
+                />
+              ))}
             </View>
           )}
-
-          {/* 16. BRAND-NEW PREMIUM PILGRIMAGE TRAVEL EXPERIENCE */}
-          <PilgrimageTravelSection
-            templeId={typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''}
-            templeName={temple?.name || ''}
-            location={temple?.location || ''}
-            category={temple?.category || ''}
-            coords={temple?.coords}
-          />
-
-        </ScrollView>
-    </SafeAreaView>
-  </LinearGradient>
-
-  <Modal
-  visible={isYoutubeModalVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setIsYoutubeModalVisible(false)}
-  >
-  <View style={styles.modalBackdrop} pointerEvents="box-none">
-  <View style={styles.modalCard}>
-  <View style={styles.modalHeader}>
-  <Text style={styles.modalTitle}>
-    {isYoutubeUrl 
-      ? (t('language') === 'hi' ? 'लाइव आरती' : 'Live Aarti') 
-      : (t('language') === 'hi' ? 'लाइव दर्शन' : 'Live Darshan')}
-  </Text>
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-    {isYoutubeUrl && resolvedYoutubeUrl && (
-      <TouchableOpacity 
-        onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))} 
-        style={{ padding: 4 }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="logo-youtube" size={22} color="#FF0000" />
-      </TouchableOpacity>
-    )}
-    <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
-      <Ionicons name="close" size={20} color={COLORS.text} />
-    </TouchableOpacity>
-  </View>
-  </View>
-  <View style={styles.youtubeModalBody}>
-  {isWeb ? (
-  <iframe
-  title="Live Aarti"
-  src={resolvedYoutubeUrl ? getYoutubeEmbedUrl(resolvedYoutubeUrl) : ''}
-  style={styles.youtubeFrame}
-  frameBorder="0"
-  allow="autoplay; encrypted-media"
-  allowFullScreen
-  />
-  ) : (
-  isYoutubeModalVisible ? youtubeWebViewContent : null
-  )}
-  </View>
-  {resolvedYoutubeUrl ? (
-    <TouchableOpacity 
-      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0F0', paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#FFE0E0', gap: 8 }}
-      onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))}
-      activeOpacity={0.8}
-    >
-      <Ionicons name="logo-youtube" size={20} color="#FF0000" />
-      <Text style={{ fontSize: 13, fontWeight: '600', color: '#D32F2F' }}>
-        {t('language') === 'hi' ? 'यूट्यूब ऐप में डायरेक्ट देखें' : 'Watch Directly in YouTube App'}
-      </Text>
-      <Ionicons name="open-outline" size={14} color="#D32F2F" />
-    </TouchableOpacity>
-  ) : null}
-  </View>
-  </View>
-  </Modal>
-
-  {/* Gallery Fullscreen Modal */}
-  <Modal
-    visible={galleryModalVisible}
-    transparent
-    animationType="fade"
-    onRequestClose={() => setGalleryModalVisible(false)}
-  >
-    <View style={styles.galleryModalBackdrop}>
-      <TouchableOpacity
-        style={styles.galleryModalClose}
-        onPress={() => setGalleryModalVisible(false)}
-        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-      >
-        <Ionicons name="close" size={28} color="#FFF" />
-      </TouchableOpacity>
-      <FlatList
-        data={templeImages}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={activeGalleryIndex}
-        getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
-        keyExtractor={(_, index) => `fullscreen-${index}`}
-        onMomentumScrollEnd={(e) => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-          setActiveGalleryIndex(idx);
-        }}
-        renderItem={({ item }) => {
-          const imgSrc = typeof item === 'string' ? { uri: item } : item;
-          return (
-            <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
-              <ExpoImage source={imgSrc} style={styles.galleryFullImage} contentFit="contain" />
-            </View>
-          );
-        }}
-      />
-      {/* Pagination dots */}
-      {templeImages.length > 1 && (
-        <View style={styles.galleryPagination}>
-          {templeImages.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.galleryDot,
-                i === activeGalleryIndex && styles.galleryDotActive,
-              ]}
-            />
-          ))}
         </View>
-      )}
+      </Modal>
     </View>
-  </Modal>
-  </View>
- );
+  );
 }
 
 const styles = StyleSheet.create({
@@ -3532,12 +2595,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 16,
   },
- verifiedText: {
- fontSize: 12,
- color: COLORS.success,
- fontWeight: '600',
- marginLeft: SPACING.xs,
- },
+  verifiedText: {
+    fontSize: 12,
+    color: COLORS.success,
+    fontWeight: '600',
+    marginLeft: SPACING.xs,
+  },
   section: {
     paddingHorizontal: 16,
     marginBottom: 8,
@@ -3549,23 +2612,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     letterSpacing: -0.3,
   },
- timingRow: {
- flexDirection: 'row',
- justifyContent: 'space-between',
- paddingVertical: SPACING.xs,
- borderBottomWidth: 1,
- borderBottomColor: COLORS.divider,
- },
- timingLabel: {
- fontSize: 14,
- color: COLORS.textSecondary,
- },
- timingValue: {
- fontSize: 14,
- color: COLORS.text,
- fontWeight: '500',
- },
- aartiGrid: {
+  timingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  timingLabel: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  timingValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  aartiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -3588,51 +2651,51 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '800',
   },
- youtubeLinkButton: {
- marginTop: SPACING.sm,
- paddingVertical: SPACING.sm,
- paddingHorizontal: SPACING.md,
- borderRadius: 20,
- backgroundColor: `${COLORS.primary}12`,
- alignSelf: 'flex-start',
- },
- youtubeLinkText: {
- fontSize: 14,
- color: COLORS.primary,
- fontWeight: '700',
- },
- morningAartiText: {
- fontSize: 14,
- color: COLORS.primary,
- fontWeight: '600',
- marginBottom: SPACING.sm,
- },
- afternoonAartiText: {
- fontSize: 14,
- color: COLORS.primary,
- fontWeight: '600',
- marginTop: SPACING.sm,
- textAlign: 'left',
- },
- afternoonAartiDetailText: {
- fontSize: 13,
- color: COLORS.textSecondary,
- marginTop: SPACING.xs,
- textAlign: 'left',
- },
- eveningAartiText: {
- fontSize: 14,
- color: COLORS.primary,
- fontWeight: '600',
- marginTop: SPACING.sm,
- textAlign: 'left',
- },
- usthapanaAartiText: {
- fontSize: 13,
- color: COLORS.textSecondary,
- marginTop: SPACING.xs,
- textAlign: 'left',
- },
+  youtubeLinkButton: {
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 20,
+    backgroundColor: `${COLORS.primary}12`,
+    alignSelf: 'flex-start',
+  },
+  youtubeLinkText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  morningAartiText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginBottom: SPACING.sm,
+  },
+  afternoonAartiText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: SPACING.sm,
+    textAlign: 'left',
+  },
+  afternoonAartiDetailText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: 'left',
+  },
+  eveningAartiText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: SPACING.sm,
+    textAlign: 'left',
+  },
+  usthapanaAartiText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: 'left',
+  },
   descriptionText: {
     fontSize: 15,
     color: '#4B5563',
@@ -3640,36 +2703,36 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'justify',
   },
- mapSection: {
- marginHorizontal: SPACING.md,
- marginBottom: SPACING.md,
- },
- mapWrapper: {
- width: '100%',
- height: 180,
- borderRadius: BORDER_RADIUS.lg,
- overflow: 'hidden',
- borderWidth: 1,
- borderColor: COLORS.border,
- },
- mapBox: {
- width: '100%',
- height: '100%',
- backgroundColor: COLORS.background,
- },
- mapOverlay: {
- position: 'absolute',
- bottom: 0,
- left: 0,
- right: 0,
- padding: SPACING.sm,
- backgroundColor: `${COLORS.background}CC`,
- },
- mapOverlayText: {
- fontSize: 12,
- color: COLORS.textSecondary,
- textAlign: 'center',
- },
+  mapSection: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  mapWrapper: {
+    width: '100%',
+    height: 180,
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  mapBox: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.background,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: SPACING.sm,
+    backgroundColor: `${COLORS.background}CC`,
+  },
+  mapOverlayText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -3747,717 +2810,717 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
- noPostsText: {
- fontSize: 14,
- color: COLORS.textLight,
- textAlign: 'center',
- paddingVertical: SPACING.md,
- },
- postCard: {
- backgroundColor: COLORS.background,
- padding: SPACING.md,
- borderRadius: BORDER_RADIUS.md,
- marginBottom: SPACING.sm,
- },
- postTitle: {
- fontSize: 15,
- fontWeight: '600',
- color: COLORS.text,
- marginBottom: SPACING.xs,
- },
- postContent: {
- fontSize: 14,
- color: COLORS.textSecondary,
- lineHeight: 20,
- },
- postDate: {
- fontSize: 12,
- color: COLORS.textLight,
- marginTop: SPACING.sm,
- },
- badgeRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   justifyContent: 'center',
-   gap: 8,
-   flexWrap: 'wrap',
-   marginTop: 10,
-   marginBottom: 4,
- },
- heritageBadge: {
-   backgroundColor: '#FEF3C7',
-   borderWidth: 1,
-   borderColor: '#FDE68A',
-   borderRadius: 20,
-   paddingHorizontal: 12,
-   paddingVertical: 5,
- },
- heritageBadgeText: {
-   fontSize: 12,
-   fontWeight: '700',
-   color: '#B45309',
- },
- quickFactsGrid: {
-   flexDirection: 'row',
-   flexWrap: 'wrap',
-   gap: 10,
- },
- protocolCard: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 16,
-   padding: 16,
-   gap: 14,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
- },
- protocolStepRow: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   gap: 12,
- },
- protocolBadge: {
-   width: 28,
-   height: 28,
-   borderRadius: 14,
-   backgroundColor: COLORS.primary,
-   justifyContent: 'center',
-   alignItems: 'center',
-   marginTop: 1,
- },
- protocolBadgeText: {
-   color: '#FFFFFF',
-   fontWeight: '800',
-   fontSize: 13,
- },
- protocolStepText: {
-   fontSize: 14,
-   color: '#374151',
-   lineHeight: 21,
-   fontWeight: '600',
-   flex: 1,
- },
- architectureCard: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 16,
-   padding: 16,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
- },
- scripturesRow: {
-   flexDirection: 'row',
-   gap: 10,
-   paddingVertical: 4,
- },
- scriptureChip: {
-   backgroundColor: '#FFF8F0',
-   borderWidth: 1,
-   borderColor: '#FFD8B8',
-   borderRadius: 20,
-   paddingHorizontal: 14,
-   paddingVertical: 8,
- },
- scriptureChipText: {
-   fontSize: 13,
-   fontWeight: '700',
-   color: '#C2410C',
- },
- transportCard: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 16,
-   padding: 16,
-   gap: 12,
-   marginBottom: 12,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
- },
- transportRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 10,
- },
- transportIcon: {
-   fontSize: 18,
- },
- transportText: {
-   fontSize: 14,
-   fontWeight: '600',
-   color: '#1F2937',
-   flex: 1,
- },
- travelTipsCard: {
-   backgroundColor: '#EFF6FF',
-   borderWidth: 1,
-   borderColor: '#BFDBFE',
-   borderRadius: 16,
-   padding: 16,
-   marginBottom: 12,
-   gap: 6,
- },
- travelTipsTitle: {
-   fontSize: 14,
-   fontWeight: '800',
-   color: '#1D4ED8',
-   marginBottom: 4,
- },
- travelTipText: {
-   fontSize: 13,
-   color: '#1E40AF',
-   lineHeight: 20,
-   fontWeight: '500',
- },
- facilitiesGrid: {
-   flexDirection: 'row',
-   flexWrap: 'wrap',
-   gap: 8,
- },
- facilityChip: {
-   backgroundColor: '#F3F4F6',
-   borderWidth: 1,
-   borderColor: '#E5E7EB',
-   borderRadius: 20,
-   paddingHorizontal: 12,
-   paddingVertical: 6,
- },
- facilityText: {
-   fontSize: 13,
-   fontWeight: '600',
-   color: '#374151',
- },
- teerthCard: {
-   width: 220,
-   backgroundColor: '#FFFFFF',
-   borderRadius: 16,
-   padding: 14,
-   marginRight: 12,
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
-   gap: 4,
- },
- teerthHeader: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 6,
- },
- teerthName: {
-   fontSize: 15,
-   fontWeight: '700',
-   color: '#1F2937',
-   flex: 1,
- },
- teerthDistance: {
-   fontSize: 12,
-   fontWeight: '600',
-   color: COLORS.primary,
-   marginTop: 2,
- },
- teerthRelevance: {
-   fontSize: 12,
-   color: '#6B7280',
-   lineHeight: 17,
-   marginTop: 2,
- },
- sectionHeaderRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 8,
-   marginBottom: 12,
- },
- checklistRow: {
-   flexDirection: 'row',
-   flexWrap: 'wrap',
-   gap: 8,
-   marginBottom: 12,
- },
- checkChip: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#ECFDF5',
-   borderWidth: 1,
-   borderColor: '#A7F3D0',
-   borderRadius: 16,
-   paddingHorizontal: 10,
-   paddingVertical: 5,
-   gap: 6,
- },
- checkChipText: {
-   fontSize: 12,
-   fontWeight: '700',
-   color: '#047857',
- },
- protocolStepContainer: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   gap: 12,
- },
- protocolLeftCol: {
-   alignItems: 'center',
-   width: 28,
- },
- protocolTimelineConnector: {
-   width: 2,
-   flex: 1,
-   backgroundColor: '#FED7AA',
-   marginVertical: 4,
- },
- protocolContentBox: {
-   flex: 1,
-   backgroundColor: '#FFF7ED',
-   borderWidth: 1,
-   borderColor: '#FFEDD5',
-   borderRadius: 12,
-   padding: 12,
-   marginBottom: 10,
- },
- protocolStepTitle: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#C2410C',
-   marginBottom: 2,
- },
- significanceCard: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 18,
-   padding: 16,
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
- },
- richTextChunk: {
-   marginBottom: 10,
- },
- highlightCalloutBox: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   backgroundColor: '#FEF3C7',
-   borderWidth: 1,
-   borderColor: '#FDE68A',
-   borderRadius: 12,
-   padding: 12,
-   gap: 10,
-   marginTop: 6,
- },
- calloutTitle: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#92400E',
-   marginBottom: 2,
- },
- calloutText: {
-   fontSize: 13,
-   fontWeight: '600',
-   color: '#B45309',
-   lineHeight: 19,
- },
- historyCardContainer: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 18,
-   padding: 16,
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
- },
- historyTimelineHeader: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#FEF3C7',
-   borderWidth: 1,
-   borderColor: '#FDE68A',
-   borderRadius: 12,
-   paddingHorizontal: 12,
-   paddingVertical: 8,
-   marginBottom: 14,
-   gap: 8,
- },
- historyTimelineHeaderText: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#92400E',
- },
- historyTimelineCard: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   gap: 12,
-   marginBottom: 12,
- },
- timelinePoint: {
-   alignItems: 'center',
-   width: 16,
-   marginTop: 4,
- },
- timelineDot: {
-   width: 10,
-   height: 10,
-   borderRadius: 5,
-   backgroundColor: COLORS.primary,
- },
- timelineLine: {
-   width: 2,
-   height: 40,
-   backgroundColor: '#FED7AA',
-   marginTop: 2,
- },
- historyCardBody: {
-   flex: 1,
-   backgroundColor: '#FAFAFA',
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   borderRadius: 12,
-   padding: 12,
- },
- historyMilestoneTag: {
-   fontSize: 12,
-   fontWeight: '800',
-   color: '#C2410C',
-   marginBottom: 4,
- },
- historyCardText: {
-   fontSize: 13,
-   fontWeight: '500',
-   color: '#374151',
-   lineHeight: 20,
- },
- architectureContainerCard: {
-   backgroundColor: '#FFFFFF',
-   borderRadius: 18,
-   padding: 16,
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.05,
-   shadowRadius: 8,
-   elevation: 2,
-   gap: 12,
- },
- archStyleRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   justifyContent: 'space-between',
-   flexWrap: 'wrap',
-   gap: 8,
- },
- archStyleBadge: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#F3E8FF',
-   borderWidth: 1,
-   borderColor: '#DDD6FE',
-   borderRadius: 16,
-   paddingHorizontal: 12,
-   paddingVertical: 6,
-   gap: 6,
- },
- archStyleBadgeText: {
-   fontSize: 12,
-   fontWeight: '800',
-   color: '#6D28D9',
- },
- archCalloutBox: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   backgroundColor: '#FFF7ED',
-   borderWidth: 1,
-   borderColor: '#FFEDD5',
-   borderRadius: 12,
-   padding: 12,
-   gap: 10,
- },
- archCalloutTitle: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#C2410C',
-   marginBottom: 4,
- },
- archCalloutBody: {
-   fontSize: 13,
-   fontWeight: '500',
-   color: '#4B5563',
-   lineHeight: 20,
- },
- archFeaturesGrid: {
-   flexDirection: 'row',
-   flexWrap: 'wrap',
-   gap: 8,
- },
- archFeatureItem: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#F9FAFB',
-   borderWidth: 1,
-   borderColor: '#E5E7EB',
-   borderRadius: 12,
-   paddingHorizontal: 10,
-   paddingVertical: 6,
-   gap: 6,
- },
- archFeatureText: {
-   fontSize: 12,
-   fontWeight: '700',
-   color: '#374151',
- },
- sthalaMahatmyaCard: {
-   backgroundColor: '#FFFBEB',
-   borderWidth: 1,
-   borderColor: '#FDE68A',
-   borderRadius: 18,
-   padding: 16,
-   gap: 12,
- },
- sthalaHeaderRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 10,
- },
- sthalaIcon: {
-   fontSize: 22,
- },
- sthalaTitle: {
-   fontSize: 14,
-   fontWeight: '800',
-   color: '#92400E',
- },
- sthalaSubtext: {
-   fontSize: 12,
-   fontWeight: '500',
-   color: '#B45309',
-   marginTop: 2,
- },
- scripturesWrapRow: {
-   flexDirection: 'row',
-   flexWrap: 'wrap',
-   gap: 8,
- },
- scriptureCardChip: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#FFFFFF',
-   borderWidth: 1,
-   borderColor: '#FDBA74',
-   borderRadius: 16,
-   paddingHorizontal: 12,
-   paddingVertical: 6,
-   gap: 6,
- },
- scriptureCardChipText: {
-   fontSize: 12,
-   fontWeight: '700',
-   color: '#C2410C',
- },
- prasadRitualsContainer: {
-   gap: 12,
- },
- featuredPrasadCard: {
-   backgroundColor: '#FFF7ED',
-   borderWidth: 1,
-   borderColor: '#FFEDD5',
-   borderRadius: 16,
-   padding: 14,
-   gap: 8,
- },
- prasadBadgeRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 10,
- },
- prasadIcon: {
-   fontSize: 24,
- },
- prasadHeaderLabel: {
-   fontSize: 11,
-   fontWeight: '800',
-   color: '#EA580C',
-   textTransform: 'uppercase',
-   letterSpacing: 0.5,
- },
- prasadValueText: {
-   fontSize: 15,
-   fontWeight: '800',
-   color: '#9A3412',
- },
- prasadSubInfo: {
-   fontSize: 12,
-   fontWeight: '500',
-   color: '#C2410C',
-   lineHeight: 17,
- },
- ritualsHighlightCard: {
-   backgroundColor: '#FFFFFF',
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   borderRadius: 16,
-   padding: 14,
-   gap: 8,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.04,
-   shadowRadius: 6,
-   elevation: 2,
- },
- ritualHeaderRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 8,
-   marginBottom: 4,
- },
- ritualHeaderTitle: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#9A3412',
- },
- ritualRowItem: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 8,
-   paddingVertical: 2,
- },
- ritualRowText: {
-   fontSize: 13,
-   fontWeight: '600',
-   color: '#374151',
- },
- transportGridContainer: {
-   gap: 10,
-   marginBottom: 12,
- },
- transportDetailCard: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#FFFFFF',
-   borderWidth: 1,
-   borderColor: '#F3F4F6',
-   borderRadius: 14,
-   padding: 12,
-   gap: 12,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.04,
-   shadowRadius: 6,
-   elevation: 2,
- },
- transportIconBadge: {
-   width: 36,
-   height: 36,
-   borderRadius: 18,
-   backgroundColor: '#FFF7ED',
-   justifyContent: 'center',
-   alignItems: 'center',
- },
- transportTypeLabel: {
-   fontSize: 11,
-   fontWeight: '700',
-   color: '#9CA3AF',
-   textTransform: 'uppercase',
- },
- transportValueText: {
-   fontSize: 14,
-   fontWeight: '700',
-   color: '#1F2937',
-   marginTop: 2,
- },
- travelTipsUpgradedCard: {
-   backgroundColor: '#FEF3C7',
-   borderWidth: 1,
-   borderColor: '#FDE68A',
-   borderRadius: 16,
-   padding: 14,
-   marginBottom: 12,
-   gap: 8,
- },
- travelTipsHeaderRow: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   gap: 8,
- },
- travelTipsHeaderTitle: {
-   fontSize: 13,
-   fontWeight: '800',
-   color: '#92400E',
- },
- tipItemRow: {
-   flexDirection: 'row',
-   alignItems: 'flex-start',
-   gap: 8,
- },
- travelTipUpgradedText: {
-   fontSize: 13,
-   fontWeight: '600',
-   color: '#B45309',
-   lineHeight: 19,
-   flex: 1,
- },
- officialLinksContainer: {
-   gap: 10,
- },
- officialLinkCard: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   backgroundColor: '#FFFFFF',
-   borderWidth: 1,
-   borderColor: '#E5E7EB',
-   borderRadius: 16,
-   padding: 14,
-   gap: 12,
-   shadowColor: '#000',
-   shadowOffset: { width: 0, height: 2 },
-   shadowOpacity: 0.04,
-   shadowRadius: 6,
-   elevation: 2,
- },
- officialIconCircle: {
-   width: 42,
-   height: 42,
-   borderRadius: 21,
-   justifyContent: 'center',
-   alignItems: 'center',
- },
- officialCardTitle: {
-   fontSize: 14,
-   fontWeight: '800',
-   color: '#1F2937',
- },
- officialCardSubtext: {
-   fontSize: 13,
-   fontWeight: '600',
-   color: '#4B5563',
-   marginTop: 2,
- },
- disclaimerContainer: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   justifyContent: 'center',
-   gap: 6,
-   marginHorizontal: 20,
-   marginTop: 16,
-   marginBottom: 24,
-   paddingHorizontal: 12,
-   paddingVertical: 10,
-   backgroundColor: 'rgba(243, 244, 246, 0.7)',
-   borderRadius: 12,
-   borderWidth: 1,
-   borderColor: '#E5E7EB',
- },
+  noPostsText: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    textAlign: 'center',
+    paddingVertical: SPACING.md,
+  },
+  postCard: {
+    backgroundColor: COLORS.background,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+  },
+  postTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  postContent: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  postDate: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: SPACING.sm,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  heritageBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  heritageBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  quickFactsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  protocolCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  protocolStepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  protocolBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  protocolBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  protocolStepText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 21,
+    fontWeight: '600',
+    flex: 1,
+  },
+  architectureCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  scripturesRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  scriptureChip: {
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1,
+    borderColor: '#FFD8B8',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  scriptureChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#C2410C',
+  },
+  transportCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  transportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  transportIcon: {
+    fontSize: 18,
+  },
+  transportText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    flex: 1,
+  },
+  travelTipsCard: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    gap: 6,
+  },
+  travelTipsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1D4ED8',
+    marginBottom: 4,
+  },
+  travelTipText: {
+    fontSize: 13,
+    color: '#1E40AF',
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  facilitiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  facilityChip: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  facilityText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  teerthCard: {
+    width: 220,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 4,
+  },
+  teerthHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  teerthName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  teerthDistance: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginTop: 2,
+  },
+  teerthRelevance: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  checklistRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  checkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 6,
+  },
+  checkChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#047857',
+  },
+  protocolStepContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  protocolLeftCol: {
+    alignItems: 'center',
+    width: 28,
+  },
+  protocolTimelineConnector: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#FED7AA',
+    marginVertical: 4,
+  },
+  protocolContentBox: {
+    flex: 1,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  protocolStepTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#C2410C',
+    marginBottom: 2,
+  },
+  significanceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  richTextChunk: {
+    marginBottom: 10,
+  },
+  highlightCalloutBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginTop: 6,
+  },
+  calloutTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  calloutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
+    lineHeight: 19,
+  },
+  historyCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  historyTimelineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 14,
+    gap: 8,
+  },
+  historyTimelineHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  historyTimelineCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  timelinePoint: {
+    alignItems: 'center',
+    width: 16,
+    marginTop: 4,
+  },
+  timelineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+  },
+  timelineLine: {
+    width: 2,
+    height: 40,
+    backgroundColor: '#FED7AA',
+    marginTop: 2,
+  },
+  historyCardBody: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 12,
+  },
+  historyMilestoneTag: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#C2410C',
+    marginBottom: 4,
+  },
+  historyCardText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+    lineHeight: 20,
+  },
+  architectureContainerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  archStyleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  archStyleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  archStyleBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#6D28D9',
+  },
+  archCalloutBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  archCalloutTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#C2410C',
+    marginBottom: 4,
+  },
+  archCalloutBody: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+  archFeaturesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  archFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  archFeatureText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  sthalaMahatmyaCard: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+  },
+  sthalaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sthalaIcon: {
+    fontSize: 22,
+  },
+  sthalaTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  sthalaSubtext: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#B45309',
+    marginTop: 2,
+  },
+  scripturesWrapRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  scriptureCardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  scriptureCardChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C2410C',
+  },
+  prasadRitualsContainer: {
+    gap: 12,
+  },
+  featuredPrasadCard: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+  },
+  prasadBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  prasadIcon: {
+    fontSize: 24,
+  },
+  prasadHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EA580C',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  prasadValueText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  prasadSubInfo: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#C2410C',
+    lineHeight: 17,
+  },
+  ritualsHighlightCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  ritualHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  ritualHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#9A3412',
+  },
+  ritualRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  ritualRowText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  transportGridContainer: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  transportDetailCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  transportIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  transportTypeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+  },
+  transportValueText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 2,
+  },
+  travelTipsUpgradedCard: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    gap: 8,
+  },
+  travelTipsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  travelTipsHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  tipItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  travelTipUpgradedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
+    lineHeight: 19,
+    flex: 1,
+  },
+  officialLinksContainer: {
+    gap: 10,
+  },
+  officialLinkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  officialIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  officialCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  officialCardSubtext: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginTop: 2,
+  },
+  disclaimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(243, 244, 246, 0.7)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   disclaimerText: {
     fontSize: 11,
     fontWeight: '500',

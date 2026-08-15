@@ -36,6 +36,9 @@ import * as ExpoLinking from 'expo-linking';
 
 import { useLanguageStore } from '../src/utils/i18n';
 import { safeNavigate } from '../src/utils/safeNavigation';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Safe global navigation back override to prevent "GO_BACK was not handled by any navigator" error
 try {
@@ -735,6 +738,14 @@ export default function RootLayout() {
   useNotificationResponseHandler();
   useMutedNotificationFilter();
 
+  const [isRootReady, setIsRootReady] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && fontsReady && isRootReady) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isLoading, fontsReady, isRootReady]);
+
   useEffect(() => {
     if (Platform.OS === 'android') {
       NavigationBar.setPositionAsync('relative').catch((e) => {
@@ -1252,7 +1263,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }} onLayout={() => setIsRootReady(true)}>
       <SafeAreaProvider>
         <StatusBar
           style={isDarkScreen ? 'light' : 'dark'}
