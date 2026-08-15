@@ -16285,7 +16285,12 @@ async def _jaap_reminder_worker():
 
                     # 3. Execute fallback queries concurrently
                     if fallback_tasks:
-                        results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+                        results = []
+                        # ⚡ Bolt Optimization: Chunk concurrent fallback_tasks to prevent overwhelming the event loop/DB connections
+                        chunk_size = 50
+                        for i in range(0, len(fallback_tasks), chunk_size):
+                            chunk_results = await asyncio.gather(*fallback_tasks[i:i + chunk_size], return_exceptions=True)
+                            results.extend(chunk_results)
 
                         for r, result in zip(fallback_reminders, results):
                             uid = r['uid']
