@@ -1,5 +1,5 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {Platform,
   RefreshControl,
   StyleSheet,
@@ -248,6 +248,85 @@ export default function PanchangScreen() {
   const getHoraSource = () => payload?.hora || payload?.sources?.hora_muhurta?.hora || payload?.sources?.hora_muhurta;
   const getPlanetsSource = () => payload?.planets || payload?.sources?.planet_panchang;
 
+  // Memoized computed lists — previously re-derived on every render (tab
+  // switch, date change, any state update). Now only recompute when their
+  // inputs actually change.
+  const overview = useMemo(() => {
+    const advanced = getAdvancedPanchang();
+    const base = payload?.overview?.length ? payload.overview : [
+      { label: 'Tithi', value: advanced?.tithi?.details?.tithi_name, icon: 'moon' },
+      { label: 'Nakshatra', value: advanced?.nakshatra?.details?.nak_name, icon: 'star' },
+      { label: 'Yoga', value: advanced?.yog?.details?.yog_name, icon: 'planet' },
+      { label: 'Karana', value: advanced?.karan?.details?.karan_name, icon: 'planet' },
+    ].filter((i: any) => i.value);
+    // Remove Paksha / Pakaha from the overview list as requested
+    return base.filter((item: any) => !item.label.toLowerCase().includes('paksha') && !item.label.toLowerCase().includes('pakaha'));
+  }, [payload]);
+
+  const staticChoghadiyaList = useMemo(() => [
+    { muhurta: 'Char', time: '06:00 - 07:30', is_good: true },
+    { muhurta: 'Amrit', time: '07:30 - 09:30', is_good: true },
+    { muhurta: 'Amrit', time: '09:00 - 10:30', is_good: true },
+    { muhurta: 'Kaal', time: '10:30 - 12:00', is_good: false },
+    { muhurta: 'Shubh', time: '12:00 - 13:30', is_good: true },
+    { muhurta: 'Rog', time: '13:00 - 15:30', is_good: false },
+    { muhurta: 'Labh', time: '15:00 - 16:30', is_good: true },
+    { muhurta: 'Udveg', time: '16:00 - 18:30', is_good: false },
+  ], []);
+
+  const goodMuhurtas = useMemo(() => ['Amrit', 'Shubh', 'Labh', 'Char', 'Chara'], []);
+
+  const activeChoghadiyaList = useMemo(() => {
+    const chaughadiyaSource = getChaughadiyaSource();
+    const choghadiyaList = chaughadiyaSource?.[choghadiyaMode] || chaughadiyaSource?.day || chaughadiyaSource?.night;
+    return choghadiyaList
+      ? choghadiyaList.map((m: any) => ({
+          muhurta: m.muhurta || '',
+          time: m.time || '',
+          is_good: goodMuhurtas.includes(m.muhurta),
+        }))
+      : staticChoghadiyaList;
+  }, [payload, choghadiyaMode, goodMuhurtas, staticChoghadiyaList]);
+
+  const horaList = useMemo(() => {
+    const staticHoraList = [
+      { time: '05:45 AM - 06:45 AM', hora: 'Sun', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '06:45 AM - 07:45 AM', hora: 'Venus', nature: { text: 'GOOD', type: 'good' } },
+      { time: '07:45 AM - 08:45 AM', hora: 'Mercury', nature: { text: 'NEUTRAL', type: 'neutral' } },
+      { time: '08:45 AM - 09:45 AM', hora: 'Moon', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '09:45 AM - 10:45 AM', hora: 'Saturn', nature: { text: 'MALEFIC', type: 'bad' } },
+      { time: '10:45 AM - 11:45 AM', hora: 'Jupiter', nature: { text: 'BENEFIC', type: 'good' } },
+      { time: '11:45 AM - 12:45 PM', hora: 'Mars', nature: { text: 'BAD', type: 'bad' } },
+    ];
+    const planetNatures: Record<string, { text: string; type: 'good' | 'neutral' | 'bad' }> = {
+      Sun: { text: 'BENEFIC', type: 'good' },
+      Moon: { text: 'BENEFIC', type: 'good' },
+      Mars: { text: 'BAD', type: 'bad' },
+      Mercury: { text: 'NEUTRAL', type: 'neutral' },
+      Jupiter: { text: 'BENEFIC', type: 'good' },
+      Venus: { text: 'GOOD', type: 'good' },
+      Saturn: { text: 'MALEFIC', type: 'bad' },
+    };
+    const getPlanetNature = (planetName: string) => {
+      const normalized = (planetName || '').trim();
+      const capitalized = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+      return planetNatures[capitalized] || { text: 'NEUTRAL', type: 'neutral' };
+    };
+    const horaSource = getHoraSource();
+    const rawHoraList = horaSource
+      ? [...(horaSource.day || []), ...(horaSource.night || [])].map((item: any) => ({
+          ...item,
+          hora: item.hora || item.name || '',
+          nature: getPlanetNature(item.hora || item.name || ''),
+        }))
+      : staticHoraList;
+    return rawHoraList.map((item: any) => {
+      const rawHora = item.hora || '';
+      const normalizedHora = rawHora.charAt(0).toUpperCase() + rawHora.slice(1).toLowerCase();
+      return { ...item, hora: normalizedHora };
+    });
+  }, [payload]);
+
   const formatDateLabel = (date: Date) => {
     const day = date.getDate();
     let suffix = 'th';
@@ -305,44 +384,12 @@ export default function PanchangScreen() {
 
   const renderPanchangTab = () => {
     const advanced = getAdvancedPanchang();
-    const chaughadiyaSource = getChaughadiyaSource();
     
     if (!advanced && !payload?.overview) {
       return <Text style={styles.emptyText}>No data available for this date</Text>;
     }
 
-    let overview = payload?.overview?.length ? payload.overview : [
-      { label: 'Tithi', value: advanced?.tithi?.details?.tithi_name, icon: 'moon' },
-      { label: 'Nakshatra', value: advanced?.nakshatra?.details?.nak_name, icon: 'star' },
-      { label: 'Yoga', value: advanced?.yog?.details?.yog_name, icon: 'planet' },
-      { label: 'Karana', value: advanced?.karan?.details?.karan_name, icon: 'planet' },
-    ].filter((i: any) => i.value);
-
-    // Remove Paksha / Pakaha from the overview list as requested
-    overview = overview.filter((item: any) => !item.label.toLowerCase().includes('paksha') && !item.label.toLowerCase().includes('pakaha'));
-
-    // Choghadiya cards mapping for display (day vs night)
-    const choghadiyaList = chaughadiyaSource?.[choghadiyaMode] || chaughadiyaSource?.day || chaughadiyaSource?.night;
-
-    const staticChoghadiyaList = [
-      { muhurta: 'Char', time: '06:00 - 07:30', is_good: true },
-      { muhurta: 'Amrit', time: '07:30 - 09:30', is_good: true },
-      { muhurta: 'Amrit', time: '09:00 - 10:30', is_good: true },
-      { muhurta: 'Kaal', time: '10:30 - 12:00', is_good: false },
-      { muhurta: 'Shubh', time: '12:00 - 13:30', is_good: true },
-      { muhurta: 'Rog', time: '13:00 - 15:30', is_good: false },
-      { muhurta: 'Labh', time: '15:00 - 16:30', is_good: true },
-      { muhurta: 'Udveg', time: '16:00 - 18:30', is_good: false },
-    ];
-
-    const goodMuhurtas = ['Amrit', 'Shubh', 'Labh', 'Char', 'Chara'];
-    const activeChoghadiyaList = choghadiyaList
-      ? choghadiyaList.map((m: any) => ({
-          muhurta: m.muhurta || '',
-          time: m.time || '',
-          is_good: goodMuhurtas.includes(m.muhurta),
-        }))
-      : staticChoghadiyaList;
+    // overview, activeChoghadiyaList, staticChoghadiyaList are memoized above.
 
     return (
       <View style={styles.tabContent}>
@@ -461,50 +508,7 @@ export default function PanchangScreen() {
       Mars: require('../assets/images/zodiac/su/mars.webp'),
     };
 
-    const staticHoraList = [
-      { time: '05:45 AM - 06:45 AM', hora: 'Sun', nature: { text: 'BENEFIC', type: 'good' } },
-      { time: '06:45 AM - 07:45 AM', hora: 'Venus', nature: { text: 'GOOD', type: 'good' } },
-      { time: '07:45 AM - 08:45 AM', hora: 'Mercury', nature: { text: 'NEUTRAL', type: 'neutral' } },
-      { time: '08:45 AM - 09:45 AM', hora: 'Moon', nature: { text: 'BENEFIC', type: 'good' } },
-      { time: '09:45 AM - 10:45 AM', hora: 'Saturn', nature: { text: 'MALEFIC', type: 'bad' } },
-      { time: '10:45 AM - 11:45 AM', hora: 'Jupiter', nature: { text: 'BENEFIC', type: 'good' } },
-      { time: '11:45 AM - 12:45 PM', hora: 'Mars', nature: { text: 'BAD', type: 'bad' } },
-    ];
-
-    const planetNatures: Record<string, { text: string; type: 'good' | 'neutral' | 'bad' }> = {
-      Sun: { text: 'BENEFIC', type: 'good' },
-      Moon: { text: 'BENEFIC', type: 'good' },
-      Mars: { text: 'BAD', type: 'bad' },
-      Mercury: { text: 'NEUTRAL', type: 'neutral' },
-      Jupiter: { text: 'BENEFIC', type: 'good' },
-      Venus: { text: 'GOOD', type: 'good' },
-      Saturn: { text: 'MALEFIC', type: 'bad' },
-    };
-
-    const getPlanetNature = (planetName: string) => {
-      const normalized = (planetName || '').trim();
-      const capitalized = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
-      return planetNatures[capitalized] || { text: 'NEUTRAL', type: 'neutral' };
-    };
-
-    const horaSource = getHoraSource();
-    const rawHoraList = horaSource
-      ? [...(horaSource.day || []), ...(horaSource.night || [])].map((item: any) => ({
-          ...item,
-          hora: item.hora || item.name || '',
-          nature: getPlanetNature(item.hora || item.name || ''),
-        }))
-      : staticHoraList;
-
-    const horaList = rawHoraList.map((item: any) => {
-      const rawHora = item.hora || '';
-      const normalizedHora = rawHora.charAt(0).toUpperCase() + rawHora.slice(1).toLowerCase();
-      return {
-        ...item,
-        hora: normalizedHora,
-      };
-    });
-
+    // horaList is memoized above (depends only on payload).
     const currentHoraIdx = findActiveHoraIdx(horaList, selectedDate);
 
     return (

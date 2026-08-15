@@ -147,8 +147,6 @@ _sandbox_auth_cache = {
     "expires_at": None,
 }
 
-_panchang_prefetch_task: Optional[asyncio.Task] = None
-
 HOSPITAL_SEARCH_FALLBACK = [
     "AIIMS Delhi",
     "Apollo Hospitals, Chennai",
@@ -173,28 +171,11 @@ HOSPITAL_SEARCH_FALLBACK = [
 ]
 
 
-def _seconds_until_next_midnight(tz_name: str) -> int:
-    now = datetime.now(ZoneInfo(tz_name))
-    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    return max(30, int((next_midnight - now).total_seconds()))
-
-
-async def _run_panchang_prefetch_once():
-    db = await get_db()
-    result = await astrology_api_service.get_full_panchang(19.2056, 25.2056)  # Default coordinates for prefetch
-    logger.info("Panchang prefetch complete: %s", result)
-
-
-async def _panchang_midnight_prefetch_loop():
-    tz_name = "Asia/Kolkata"
-    while True:
-        wait_seconds = _seconds_until_next_midnight(tz_name)
-        logger.info("Panchang prefetch scheduler sleeping for %s seconds", wait_seconds)
-        await asyncio.sleep(wait_seconds)
-        try:
-            await _run_panchang_prefetch_once()
-        except Exception as exc:
-            logger.warning("Scheduled Panchang prefetch failed: %s", exc)
+# Panchang midnight prefetch has been removed: the 24h TTL cache already keeps
+# each date+coords warm for the whole day, so a scheduled prefetch for a single
+# hard-coded coordinate (previously Atlantic Ocean coords) added no value and
+# only burned an API call. If per-city prefetch is needed later, re-introduce a
+# top-cities loop here instead of a single default coordinate.
 
 
 # Lifespan
@@ -249,8 +230,8 @@ async def lifespan(app: FastAPI):
     except Exception as _rag_diag_err:
         logger.error("[RAG-Startup] Diagnostics failed to run: %s", _rag_diag_err)
 
-    _panchang_prefetch_task = None
-    logger.info("Panchang prefetch loop disabled")
+    # Panchang midnight prefetch intentionally not started (see comment above).
+    logger.info("Panchang prefetch loop disabled (relies on 24h TTL cache)")
     
     # Ensure Shri Dwarkadhish Temple and ISKCON exist/update in backend DB
     async def seed_missing_temples():
@@ -284,12 +265,6 @@ async def lifespan(app: FastAPI):
     global _shared_client_session
     if _shared_client_session and not _shared_client_session.closed:
         await _shared_client_session.close()
-    if _panchang_prefetch_task:
-        _panchang_prefetch_task.cancel()
-        try:
-            await _panchang_prefetch_task
-        except asyncio.CancelledError:
-            pass
     await task_queue.stop()
     if hasattr(firebase_manager, 'close'):
         await getattr(firebase_manager, 'close')()
@@ -11001,7 +10976,8 @@ def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] 
         resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
 
     if resolved_lat is None or resolved_lng is None:
-        resolved_lat, resolved_lng = 19.2056, 25.2056
+        # Fallback to Delhi (India center) — NOT the Atlantic Ocean.
+        resolved_lat, resolved_lng = 28.6139, 77.2090
 
     return float(resolved_lat), float(resolved_lng)
 
@@ -11023,15 +10999,17 @@ async def get_panchang(
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         
-        # Use provided coords or fallback to default
-        resolved_lat = lat if lat is not None else 19.2056
-        resolved_lng = lng if lng is not None else 25.2056
+        # Use provided coords or fallback to Delhi (India center)
+        resolved_lat = lat if lat is not None else 28.6139
+        resolved_lng = lng if lng is not None else 77.2090
         
-        # Fetch using the AstrologyAPI service (Primary provider now)
+        # Fetch using the AstrologyAPI service (Primary provider now).
+        # Pass force_refresh through so pull-to-refresh bypasses the backend cache.
         payload = await astrology_api_service.get_full_panchang(
             lat=resolved_lat,
             lon=resolved_lng,
-            date_obj=date_obj
+            date_obj=date_obj,
+            force_refresh=force_refresh,
         )
         
         # Format the payload for the frontend

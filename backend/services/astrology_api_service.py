@@ -1,7 +1,7 @@
 """Astrology API (astrologyapi.com) aggregation service."""
 import asyncio
 import logging
-import requests
+import httpx
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from config.settings import settings
@@ -29,22 +29,18 @@ class AstrologyApiService:
         self._request_lock = asyncio.Lock()
 
     def _cache_key(self, lat: float, lon: float, date_str: str) -> str:
-        return f"astrology_api:panchang:{date_str}:{round(lat, 3)}:{round(lon, 3)}"
+        # ~10km precision: same panchang data within ~10km, so coarser keys maximize cache hits.
+        return f"astrology_api:panchang:{date_str}:{round(lat, 1)}:{round(lon, 1)}"
 
     async def _fetch_endpoint(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         url = f"{self.BASE_URL}{endpoint}"
-        
-        # AstrologyAPI Access Token auth uses x-astrologyapi-key header
         headers = {
             "Content-Type": "application/json",
             "x-astrologyapi-key": self._token,
         }
-
-        def _request():
-            return requests.post(url, headers=headers, json=data, timeout=15)
-
         try:
-            response = await asyncio.to_thread(_request)
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.post(url, headers=headers, json=data)
             if response.status_code >= 400:
                 logger.error("Astrology API error: %s - %s", response.status_code, response.text)
                 return {"error": f"Status {response.status_code}: {response.text}"}
@@ -222,74 +218,88 @@ class AstrologyApiService:
         lat: float, 
         lon: float, 
         date_obj: Optional[datetime] = None,
-        tz: float = 5.5
+        tz: float = 5.5,
+        force_refresh: bool = False,
     ) -> Dict[str, Any]:
         dt = date_obj or datetime.now()
         date_str = dt.strftime("%Y-%m-%d")
         
         cache_key = self._cache_key(lat, lon, date_str)
-        cached = await cache_manager.get(cache_key)
-        if cached:
-            return cached
 
-        payload = {
-            "day": dt.day,
-            "month": dt.month,
-            "year": dt.year,
-            "hour": dt.hour,
-            "min": dt.minute,
-            "lat": lat,
-            "lon": lon,
-            "tzone": tz
-        }
+        if not force_refresh:
+            cached = await cache_manager.get(cache_key)
+            if cached:
+                return cached
 
-        # Fetch all endpoints in parallel to avoid frontend timeout
-        tasks = []
-        keys = list(self.ENDPOINTS.keys())
-        for key in keys:
-            tasks.append(self._fetch_endpoint(self.ENDPOINTS[key], payload))
-        
-        task_results = await asyncio.gather(*tasks)
-        
-        results = {}
-        errors = {}
-        for i, res in enumerate(task_results):
-            key = keys[i]
-            if isinstance(res, dict) and "error" in res:
-                errors[key] = res["error"]
-            else:
-                if key in ("chaughadiya_muhurta", "hora_muhurta"):
-                    raw_data = res.get(key.split('_')[0]) if isinstance(res, dict) and key.split('_')[0] in res else res
-                    results[key] = self._transform_muhurtas(raw_data)
-                elif key == "planet_panchang" and isinstance(res, list):
-                    # Normalize planet fields
-                    transformed = []
-                    for p in res:
-                        if not isinstance(p, dict):
-                            continue
-                        clean_p = {**p}
-                        if "name" not in clean_p and "planet_name" in p:
-                            clean_p["name"] = p["planet_name"]
-                        if "full_degree" not in clean_p and "fullDegree" in p:
-                            clean_p["full_degree"] = p["fullDegree"]
-                        transformed.append(clean_p)
-                    results[key] = transformed
+        # Lock to prevent thundering herd: only one batch of API calls for the
+        # same date+coords even if 1000 users hit a cold cache at 6 AM.
+        async with self._request_lock:
+            # Double-check: another request may have populated cache while we waited
+            if not force_refresh:
+                cached = await cache_manager.get(cache_key)
+                if cached:
+                    return cached
+
+            payload = {
+                "day": dt.day,
+                "month": dt.month,
+                "year": dt.year,
+                "hour": dt.hour,
+                "min": dt.minute,
+                "lat": lat,
+                "lon": lon,
+                "tzone": tz
+            }
+
+            # Fetch all endpoints in parallel to avoid frontend timeout
+            tasks = []
+            keys = list(self.ENDPOINTS.keys())
+            for key in keys:
+                tasks.append(self._fetch_endpoint(self.ENDPOINTS[key], payload))
+            
+            task_results = await asyncio.gather(*tasks)
+
+            results = {}
+            errors = {}
+            for i, res in enumerate(task_results):
+                key = keys[i]
+                if isinstance(res, dict) and "error" in res:
+                    errors[key] = res["error"]
                 else:
-                    results[key] = res
+                    if key in ("chaughadiya_muhurta", "hora_muhurta"):
+                        raw_data = res.get(key.split('_')[0]) if isinstance(res, dict) and key.split('_')[0] in res else res
+                        results[key] = self._transform_muhurtas(raw_data)
+                    elif key == "planet_panchang" and isinstance(res, list):
+                        # Normalize planet fields
+                        transformed = []
+                        for p in res:
+                            if not isinstance(p, dict):
+                                continue
+                            clean_p = {**p}
+                            if "name" not in clean_p and "planet_name" in p:
+                                clean_p["name"] = p["planet_name"]
+                            if "full_degree" not in clean_p and "fullDegree" in p:
+                                clean_p["full_degree"] = p["fullDegree"]
+                            transformed.append(clean_p)
+                        results[key] = transformed
+                    else:
+                        results[key] = res
 
-        aggregated = {
-            "date": date_str,
-            "coordinates": {"latitude": lat, "longitude": lon},
-            "sources": results,
-            "errors": errors,
-            "summary": self._build_summary(results),
-            "detail_sections": self._build_detail_sections(results),
-            "fetched_at": datetime.utcnow().isoformat() + "Z",
-            "provider": "astrology_api"
-        }
+            aggregated = {
+                "date": date_str,
+                "coordinates": {"latitude": lat, "longitude": lon},
+                "sources": results,
+                "errors": errors,
+                "summary": self._build_summary(results),
+                "detail_sections": self._build_detail_sections(results),
+                "fetched_at": datetime.utcnow().isoformat() + "Z",
+                "provider": "astrology_api"
+            }
 
-        await cache_manager.set(cache_key, aggregated, ttl=86400)
-        return aggregated
+            # Write cache inside the lock so blocked waiters always hit it on
+            # their double-check, instead of re-fetching from the API.
+            await cache_manager.set(cache_key, aggregated, ttl=86400)
+            return aggregated
 
     async def get_daily_horoscope(self, zodiac_name: str, timezone: float = 5.5) -> Dict[str, Any]:
         """Fetch daily horoscope for a given sun sign."""
@@ -306,11 +316,9 @@ class AstrologyApiService:
         }
         payload = {"timezone": timezone}
 
-        def _request():
-            return requests.post(url, headers=headers, json=payload, timeout=15)
-
         try:
-            response = await asyncio.to_thread(_request)
+            async with httpx.AsyncClient(timeout=15) as client:
+                response = await client.post(url, headers=headers, json=payload)
             if response.status_code >= 400:
                 logger.error("Astrology API Horoscope error: %s - %s", response.status_code, response.text)
                 return {"error": f"Status {response.status_code}: {response.text}"}
