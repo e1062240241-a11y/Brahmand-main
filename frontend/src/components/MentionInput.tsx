@@ -117,6 +117,8 @@ export const MentionInput = ({
               key={item.id}
               style={styles.mentionItem}
               onPress={() => handleSelectMention(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Select user ${item.name || item.sl_id || item.phone || "unknown"}`}
             >
               <Avatar name={item.name || 'U'} photo={item.photo} size={28} />
               <View style={styles.mentionItemText}>
