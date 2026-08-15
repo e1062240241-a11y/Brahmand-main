@@ -21,6 +21,7 @@ export type LibraryBookProgress = {
   lastOpenedTime: number;
   lastReadScrollY?: number;
   bookmarks?: ScriptureBookmark[];
+  title?: string;
 };
 
 const LEGACY_GITA_STORAGE_KEY = 'gita-storage';

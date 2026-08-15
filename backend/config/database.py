@@ -101,6 +101,9 @@ async def get_database():
         await db_manager.initialize()
     return db_manager.db
 
+# Alias for get_database
+get_db = get_database
+
 async def get_redis():
     """Get Redis/cache instance"""
     if not db_manager._initialized:
@@ -110,3 +113,4 @@ async def get_redis():
 def get_db_manager():
     """Get database manager instance"""
     return db_manager
+

@@ -119,7 +119,7 @@ export default function RamayanPage() {
     setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
     updateProgress({
       id: BOOK_ID,
-      chapterName: KAND_NAMES[currentChapter - 1] || `काण्ड ${currentChapter}`,
+      chapterName: KANDA_NAMES[currentChapter - 1] || `काण्ड ${currentChapter}`,
       chapterNum: currentChapter,
       lastReadPage: Math.max(1, Math.min(Math.ceil(contentH / (layoutH || 1)), Math.ceil((clampedProgress / 100) * Math.max(1, Math.ceil(contentH / (layoutH || 1)) - 1)) + 1)),
       totalPages: Math.max(1, Math.ceil(contentH / (layoutH || 1))),
@@ -127,20 +127,6 @@ export default function RamayanPage() {
       lastOpenedTime: Date.now(),
     });
     pendingProgressRef.current = null;
-  };
-
-    pendingProgressRef.current = progressData;
-
-    const now = Date.now();
-    if (now - lastDbWriteRef.current > 1000) {
-      lastDbWriteRef.current = now;
-      updateProgress(progressData);
-    }
-
-    // Lazy-load more verses when scrolling near the bottom
-    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
-      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
-    }
   };
 
   const handleChapterChange = (chNum: number) => {
