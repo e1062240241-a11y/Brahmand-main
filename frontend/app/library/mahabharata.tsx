@@ -190,7 +190,6 @@ export default function MahabharataPage() {
   // Animation values
 
   // Flush pending DB writes on unmount
-  // Flush pending DB writes on unmount
   useEffect(() => {
     return () => {
       commitProgress();

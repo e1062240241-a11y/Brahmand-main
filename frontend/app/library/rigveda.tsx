@@ -61,9 +61,8 @@ export default function RigvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-      const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const pendingProgressRef = useRef<any>(null);
-  const lastDbWriteRef = useRef(0);
   
   const { updateProgress, getBookProgress, setLastRead, toggleBookmark } = useLibraryStore();
   
@@ -182,16 +181,6 @@ export default function RigvedaPage() {
   }, [loading, verses, initialScrollRestored]);
 
   // Animation values
-
-  // Flush pending DB writes on unmount
-  useEffect(() => {
-    return () => {
-      if (pendingProgressRef.current) {
-        updateProgress(pendingProgressRef.current);
-      }
-    };
-  }, []);
-
 
   // Flush pending DB writes on unmount
   useEffect(() => {

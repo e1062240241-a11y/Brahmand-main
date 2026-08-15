@@ -179,7 +179,6 @@ export default function RamayanPage() {
   // Animation values
 
   // Flush pending DB writes on unmount
-  // Flush pending DB writes on unmount
   useEffect(() => {
     return () => {
       commitProgress();
