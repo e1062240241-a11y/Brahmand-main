@@ -25,7 +25,7 @@ export const Badge: React.FC<BadgeProps> = ({ name, size = 'small' }) => {
   const fontSize = size === 'small' ? 10 : 12;
 
   return (
-    <View style={[styles.badge, { backgroundColor: `${config.color}20` }]}>
+    <View style={[styles.badge, { backgroundColor: `${config.color}20` }]} accessibilityRole="text" accessibilityLabel={`Badge: ${name}`}>
       <Ionicons name={config.icon} size={iconSize} color={config.color} />
       <Text style={[styles.text, { color: config.color, fontSize }]}>{name}</Text>
     </View>
