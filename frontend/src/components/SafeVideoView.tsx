@@ -123,6 +123,7 @@ interface SafeVideoViewProps {
   contentFit?: any;
   nativeControls?: boolean;
   allowsPictureInPicture?: boolean;
+  allowsVideoFrameAnalysis?: boolean;
   playsInline?: boolean;
   useExoShutter?: boolean;
   onFirstFrameRender?: () => void;
@@ -187,6 +188,7 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
     return (
       <VideoViewComponent
         player={player}
+        allowsVideoFrameAnalysis={this.props.allowsVideoFrameAnalysis ?? false}
         {...restProps}
       />
     );

@@ -7776,6 +7776,8 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
             'members': sorted_members,
             'created_at': now,
             'last_message': (message.content or "")[:100],  # Preview of last message
+            'last_sender_id': sender_id,
+            'last_message_status': 'delivered',
             'updated_at': now,
             'request_status': 'pending',
             'request_by': sender_id,
@@ -7788,6 +7790,8 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
         # Update chat with last message
         await db.update_document('chats', chat_id, {
             'last_message': (message.content or "")[:100],
+            'last_sender_id': sender_id,
+            'last_message_status': 'delivered',
             'updated_at': now
         })
     
@@ -7900,19 +7904,24 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
             
             other = users_map[other_id]
             
-            # We still need last message for status/sender
-            try:
-                last_messages = await db.get_chat_messages(chat['id'], 1)
-                last_msg = last_messages[0] if last_messages else None
-            except Exception:
-                last_msg = None
-            
+            # ⚡ Bolt Optimization: Use cached last_sender_id from chat doc instead of N+1 query to messages subcollection
+            last_message_sender_id = chat.get('last_sender_id')
             last_message_status = None
-            last_message_sender_id = None
-            if last_msg:
-                last_message_sender_id = last_msg.get('sender_id')
-                if last_message_sender_id == user_id:
-                    last_message_status = last_msg.get('status', 'delivered')
+
+            # Since legacy chats might not have last_sender_id, we fall back to a query if needed,
+            # but for active chats it will be O(1).
+            if not last_message_sender_id:
+                try:
+                    last_messages = await db.get_chat_messages(chat['id'], 1)
+                    if last_messages:
+                        last_message_sender_id = last_messages[0].get('sender_id')
+                        if last_message_sender_id == user_id:
+                            last_message_status = last_messages[0].get('status', 'delivered')
+                except Exception:
+                    pass
+            elif last_message_sender_id == user_id:
+                # We can assume 'delivered' if we don't have explicit status tracking on the chat doc yet
+                last_message_status = chat.get('last_message_status', 'delivered')
                     
             return {
                 "conversation_id": chat['id'],
@@ -8215,6 +8224,12 @@ async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_tok
     
     if updates_to_apply:
         await db.batch_update_chat_messages(chat_id, updates_to_apply)
+
+        # ⚡ Bolt Optimization: Update the denormalized status on the chat document
+        await db.update_document('chats', chat_id, {
+            'last_message_status': 'read',
+            'updated_at': datetime.utcnow()
+        })
 
     return {"message": f"Marked {len(updates_to_apply)} messages as read"}
 
@@ -15589,7 +15604,7 @@ async def home_init(request: Request, seen_ids: str = '', token_data: dict = Dep
 
     async def _get_feed():
         try:
-            feed_res = await get_posts_feed(request=request, limit=10, offset=0, tab='for_you', seen_ids=seen_ids, token_data=token_data)
+            feed_res = await get_posts_feed(request=request, limit=10, after='', tab='for_you', seen_ids=seen_ids, token_data=token_data)
             return {"items": feed_res.get("items", []), "has_more": feed_res.get("has_more", False)}
         except Exception as e:
             import logging

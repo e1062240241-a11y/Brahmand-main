@@ -29,7 +29,7 @@ import Animated, {
   Extrapolate,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { useScriptureStore } from '../../src/store/scriptureStore';
+import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { loadYajurvedaChapter } from '../../src/services/yajurveda-service';
 
@@ -48,13 +48,12 @@ export default function YajurvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+    const scrollViewRef = useRef<ScrollView>(null);
   
-  const { updateProgress } = useLibraryStore();
-  const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
+  const { updateProgress, getBookProgress, setLastRead, toggleBookmark } = useLibraryStore();
   
   const progress = getBookProgress(BOOK_ID);
-  const { lastReadChapter, lastReadScrollY, bookmarks, progressPercent } = progress;
+  const { chapterNum: lastReadChapter, lastReadScrollY = 0, bookmarks = [], progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -78,6 +77,9 @@ export default function YajurvedaPage() {
     toggleBookmark(BOOK_ID, currentChapter, 0, title);
   };
 
+  // Holds the latest progress values to commit on scroll end or unmount
+  const pendingProgressRef = useRef<any>(null);
+
   const handleScroll = (event: any) => {
     const scrollY = event.nativeEvent.contentOffset.y;
     const contentH = event.nativeEvent.contentSize.height;
@@ -87,9 +89,24 @@ export default function YajurvedaPage() {
     const clampedProgress = Math.min(Math.max(progressVal, 0), 100);
     
     setScrollProgress(clampedProgress);
-    setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
+
+    pendingProgressRef.current = {
+      scrollY,
+      clampedProgress,
+      contentH,
+      layoutH
+    };
+
+    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
+      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
+    }
+  };
+
+  const commitProgress = () => {
+    if (!pendingProgressRef.current) return;
+    const { scrollY, clampedProgress, contentH, layoutH } = pendingProgressRef.current;
     
-    // Update Library Store
+    setLastRead(BOOK_ID, currentChapter, scrollY, clampedProgress);
     updateProgress({
       id: BOOK_ID,
       chapterName: `अध्याय ${currentChapter}`,
@@ -99,6 +116,16 @@ export default function YajurvedaPage() {
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
+    pendingProgressRef.current = null;
+  };
+
+    pendingProgressRef.current = progressData;
+
+    const now = Date.now();
+    if (now - lastDbWriteRef.current > 1000) {
+      lastDbWriteRef.current = now;
+      updateProgress(progressData);
+    }
 
     if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
       setVisibleLimit(prev => Math.min(prev + 50, verses.length));
@@ -106,6 +133,7 @@ export default function YajurvedaPage() {
   };
 
   const handleChapterChange = (chNum: number) => {
+    commitProgress();
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
@@ -121,8 +149,8 @@ export default function YajurvedaPage() {
       if (loadedVerses) {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
-        const progressNow = useScriptureStore.getState().getBookProgress(BOOK_ID);
-        const isResuming = progressNow.lastReadChapter === chNum;
+        const progressNow = useLibraryStore.getState().getBookProgress(BOOK_ID);
+        const isResuming = progressNow.chapterNum === chNum;
         const pct = isResuming ? (progressNow.progressPercent || 0) : 0;
         const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
         setVisibleLimit(initialLimit);
@@ -151,6 +179,15 @@ export default function YajurvedaPage() {
   }, [loading, verses, initialScrollRestored]);
 
   // Animation values
+
+  // Flush pending DB writes on unmount
+  // Flush pending DB writes on unmount
+  useEffect(() => {
+    return () => {
+      commitProgress();
+    };
+  }, []);
+
   const floatingY = useSharedValue(0);
   const openProgress = useSharedValue(0);
   const glowOpacity = useSharedValue(0);
@@ -175,6 +212,7 @@ export default function YajurvedaPage() {
       if (nextAppState === 'active') {
         startFloating();
       } else {
+        commitProgress();
         cancelAnimation(floatingY);
       }
     });
@@ -376,6 +414,8 @@ export default function YajurvedaPage() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             onScroll={handleScroll}
+            onScrollEndDrag={commitProgress}
+            onMomentumScrollEnd={commitProgress}
             scrollEventThrottle={16}
             onContentSizeChange={(_, h) => setContentHeight(h)}
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
@@ -398,35 +438,19 @@ export default function YajurvedaPage() {
               ) : verses.length === 0 ? (
                 <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
                   <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    सामग्री लोड करने में विफल। कृपया पुनः प्रयास करें।
+                    इस अध्याय की सामग्री अभी उपलब्ध नहीं है
                   </Text>
                 </View>
               ) : (
                 verses.slice(0, visibleLimit).map((verse: any, index: number) => (
-                  <View key={`verse-${index}`} style={styles.verseContainer}>
-                    {/* Sanskrit Text */}
-                    <View style={styles.sanskritWrapper}>
-                      <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.text}</Text>
-                      <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
-                    </View>
-
-                    {/* Hindi Translation */}
-                    {(verse.translations?.hindi || verse.translations?.english) ? (
-                      <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-                        <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
-                        {verse.translations.hindi || verse.translations.english}
-                      </Text>
-                    ) : null}
-
-                    {/* Divider */}
-                    {index < verses.length - 1 && (
-                      <View style={styles.dividerContainer}>
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                      </View>
-                    )}
-                  </View>
+                  <VerseCard
+                    key={`verse-${index}`}
+                    verse={verse}
+                    nightMode={nightMode}
+                    index={index}
+                    isLast={index === verses.length - 1}
+                    bookId="yajurveda"
+                  />
                 ))
               )}
               

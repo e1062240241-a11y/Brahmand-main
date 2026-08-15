@@ -84,7 +84,7 @@ export default function SacredScriptures() {
               style={styles.startReadingBtn}
               onPress={() => router.push('/library/continue-reading' as any)}
             >
-              <Text style={styles.startReadingText}>Begin Journey</Text>
+              <Text style={styles.startReadingText}>Continue Reading</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           </View>

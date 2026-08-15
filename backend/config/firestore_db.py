@@ -339,6 +339,7 @@ class FirestoreDB:
         if self.use_mock:
             import uuid
             coll = self._mock_collections.setdefault(collection, {})
+            cache_mapping = {}
             for data in docs:
                 doc_id = str(uuid.uuid4())
                 generated_ids.append(doc_id)
@@ -349,8 +350,13 @@ class FirestoreDB:
                     data_copy['updated_at'] = now_iso
                 data_copy['id'] = doc_id
                 coll[doc_id] = data_copy
+                cache_mapping[f"{collection}:{doc_id}"] = fast_copy(data_copy)
+
+            if cache_mapping:
+                await self._cache.set_many(cache_mapping)
             return generated_ids
 
+        created_docs = []
         def _batch():
             batch = self.client.batch()
             coll_ref = self.client.collection(collection)
@@ -365,10 +371,22 @@ class FirestoreDB:
                     data_copy['updated_at'] = now_iso
 
                 batch.set(doc_ref, data_copy)
+                created_docs.append(data_copy)
             batch.commit()
             return generated_ids
 
-        return await self._run_sync(_batch)
+        result_ids = await self._run_sync(_batch)
+
+        # Cache the newly created documents
+        if result_ids and created_docs:
+            cache_mapping = {}
+            for doc_id, doc_data in zip(result_ids, created_docs):
+                doc_copy = fast_copy(doc_data)
+                doc_copy['id'] = doc_id
+                cache_mapping[f"{collection}:{doc_id}"] = doc_copy
+            await self._cache.set_many(cache_mapping)
+
+        return result_ids
 
     async def get_document(self, collection: str, doc_id: str) -> Optional[Dict[str, Any]]:
         """Get a document by ID with caching"""
