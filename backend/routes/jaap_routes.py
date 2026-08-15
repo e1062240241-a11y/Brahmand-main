@@ -3,9 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
-from google.cloud.firestore_v1.base_query import FieldFilter
 from middleware.security import verify_token
-from config.firebase_config import get_firestore
+from config.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -80,25 +79,19 @@ async def record_jaap(
         raise HTTPException(status_code=400, detail="mantra_type is required")
 
     mantra_type = mantra_type.lower()
-    db = await get_firestore()
+    db = await get_db()
 
     # Get User Name
     user_name = "Priya Devotee"
     try:
-        user_doc = db.collection('users').document(user_id).get()
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
+        user_data = await db.get_document('users', user_id)
+        if user_data:
             user_name = user_data.get("name") or user_data.get("full_name") or user_data.get("displayName") or "Priya Devotee"
     except Exception as e:
         logger.warning(f"Error fetching user name for certificate: {e}")
 
     # Fetch existing stats or create default
-    stats_ref = db.collection('user_jaap_stats').document(user_id)
-    stats_doc = stats_ref.get()
-    
-    stats_data = {}
-    if stats_doc.exists:
-        stats_data = stats_doc.to_dict()
+    stats_data = await db.get_document('user_jaap_stats', user_id) or {}
 
     # Get overall totals
     total_chants = stats_data.get("total_chants", 0) + count_increment
@@ -119,7 +112,7 @@ async def record_jaap(
     }
 
     # Save stats
-    stats_ref.set(stats_data)
+    await db.create_document('user_jaap_stats', stats_data, doc_id=user_id, overwrite=True)
 
     # Check for unlocked certificates
     newly_unlocked = []
@@ -130,8 +123,8 @@ async def record_jaap(
         count_threshold = milestone_config["counts"][tier]
         if new_count >= count_threshold:
             cert_id = f"{user_id}_{mantra_type}_{tier}_count"
-            cert_ref = db.collection('jaap_certificates').document(cert_id)
-            if not cert_ref.get().exists:
+            existing_cert = await db.get_document('jaap_certificates', cert_id)
+            if not existing_cert:
                 # Generate unique serial number
                 serial_num = f"SL-{mantra_type.upper()}-{tier.upper()}-C{str(uuid.uuid4().hex[:6]).upper()}"
                 cert_data = {
@@ -147,15 +140,15 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                cert_ref.set(cert_data)
+                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
                 newly_unlocked.append(cert_data)
 
         # 2. Duration milestone
         duration_threshold = milestone_config["durations"][tier]
         if new_duration >= duration_threshold:
             cert_id = f"{user_id}_{mantra_type}_{tier}_duration"
-            cert_ref = db.collection('jaap_certificates').document(cert_id)
-            if not cert_ref.get().exists:
+            existing_cert = await db.get_document('jaap_certificates', cert_id)
+            if not existing_cert:
                 # Generate unique serial number
                 serial_num = f"SL-{mantra_type.upper()}-{tier.upper()}-T{str(uuid.uuid4().hex[:6]).upper()}"
                 cert_data = {
@@ -171,7 +164,7 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                cert_ref.set(cert_data)
+                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
                 newly_unlocked.append(cert_data)
 
     return {
@@ -194,13 +187,11 @@ async def get_certificates(token_data: dict = Depends(verify_token)):
     Get all earned certificates for the current user.
     """
     user_id = token_data["user_id"]
-    db = await get_firestore()
+    db = await get_db()
     
     certs = []
     try:
-        cert_docs = db.collection('jaap_certificates').where(filter=FieldFilter('user_id', '==', user_id)).stream()
-        for doc in cert_docs:
-            certs.append(doc.to_dict())
+        certs = await db.query_documents('jaap_certificates', filters=[('user_id', '==', user_id)])
     except Exception as e:
         logger.error(f"Error fetching user certificates: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch certificates")
@@ -216,14 +207,14 @@ async def get_jaap_stats(token_data: dict = Depends(verify_token)):
     Get all jaap statistics for the current user.
     """
     user_id = token_data["user_id"]
-    db = await get_firestore()
+    db = await get_db()
 
     try:
-        stats_doc = db.collection('user_jaap_stats').document(user_id).get()
-        if stats_doc.exists:
+        stats_data = await db.get_document('user_jaap_stats', user_id)
+        if stats_data:
             return {
                 "status": "success",
-                "stats": stats_doc.to_dict()
+                "stats": stats_data
             }
         return {
             "status": "success",
