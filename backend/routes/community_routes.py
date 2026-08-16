@@ -1,4 +1,6 @@
 """Community Routes"""
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
 from models.schemas import CommunityCreate
@@ -29,7 +31,8 @@ async def create_community(
             data.dict()
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @router.get("/discover")

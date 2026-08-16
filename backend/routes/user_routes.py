@@ -1,4 +1,6 @@
 """User Routes"""
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Dict, Any, List, Optional
 from models.schemas import (
@@ -30,7 +32,8 @@ async def get_all_users(
     try:
         return await UserService.get_all_users(limit=limit, offset=offset)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @router.put("/profile")
@@ -156,4 +159,5 @@ async def submit_personality_verification(
             data
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
