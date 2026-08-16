@@ -1698,7 +1698,7 @@ async def reset_database(confirm: str = "", token_data: dict = Depends(verify_to
         }
     except Exception as e:
         logger.error(f"Database reset error: {e}")
-        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 
@@ -3303,7 +3303,7 @@ async def _upload_post_impl(
                     logger.info("Uploaded video and thumbnail to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
-                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+                    raise HTTPException(status_code=500, detail="An internal server error occurred")
             else:
                 logger.warning("ffmpeg is not installed; uploading raw video without compression")
                 content_type = 'video/mp4'
@@ -3318,7 +3318,7 @@ async def _upload_post_impl(
                     logger.info("Uploaded raw video to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post raw video upload failed for user_id=%s', user_id)
-                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+                    raise HTTPException(status_code=500, detail="An internal server error occurred")
         else:
             file_bytes = await file.read()
             if not file_bytes:
@@ -3345,7 +3345,7 @@ async def _upload_post_impl(
         raise
     except Exception as e:
         logger.exception("Upload processing failed")
-        raise HTTPException(status_code=500, detail=f"Server error during processing: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
     finally:
         await file.close()
         if temp_input_path and os.path.exists(temp_input_path):
@@ -3362,7 +3362,7 @@ async def _upload_post_impl(
             logger.info("Uploaded image to Bunny.net successfully")
         except Exception as exc:
             logger.exception('Post media upload failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
     
     # Upload image thumbnail if generated
     image_thumbnail_url = None
@@ -3686,7 +3686,7 @@ async def _upload_post_from_storage_impl(
             logger.info("Uploaded processed video from storage to Bunny.net successfully")
         except Exception as exc:
             logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
         finally:
             if temp_thumb_file and os.path.exists(temp_thumb_file.name):
                 try:
@@ -12369,7 +12369,8 @@ async def extract_kyc_text_from_image(
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
                 err = vision_resp.get('error', {})
-                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             text_annotations = vision_resp.get('textAnnotations', [])
             raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
@@ -12400,7 +12401,8 @@ async def extract_kyc_text_from_image(
         except HTTPException:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
     # Fallback to service account library path
     try:
@@ -12409,7 +12411,8 @@ async def extract_kyc_text_from_image(
         response = client.text_detection(image=image)
 
         if response.error.message:
-            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
         annotations = []
         raw_texts = []
@@ -12441,7 +12444,8 @@ async def extract_kyc_text_from_image(
             "total_annotations": len(annotations),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/kyc/vision-extract")
@@ -12494,7 +12498,8 @@ async def extract_user_kyc_text_from_image(
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
                 err = vision_resp.get('error', {})
-                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             text_annotations = vision_resp.get('textAnnotations', [])
             raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
@@ -12525,7 +12530,8 @@ async def extract_user_kyc_text_from_image(
         except HTTPException:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
     # Fallback to service account library path
     try:
@@ -12534,7 +12540,8 @@ async def extract_user_kyc_text_from_image(
         response = client.text_detection(image=image)
 
         if response.error.message:
-            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
         annotations = []
         raw_texts = []
@@ -12566,7 +12573,8 @@ async def extract_user_kyc_text_from_image(
             "total_annotations": len(annotations),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 async def _get_sandbox_headers() -> dict:
@@ -12604,7 +12612,8 @@ async def _get_sandbox_headers() -> dict:
                 auth_resp = await asyncio.to_thread(_auth)
                 auth_data = auth_resp.json() if auth_resp.content else {}
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             if auth_resp.status_code >= 400:
                 raise HTTPException(status_code=502, detail={
