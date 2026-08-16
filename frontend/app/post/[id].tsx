@@ -643,6 +643,8 @@ const PostScreen = () => {
           ref={listRef}
           data={visibleFeedPosts}
           renderItem={renderItem}
+          // OPT: Bolt ⚡ - Add estimatedItemSize to prevent continuous measuring during initial render
+          estimatedItemSize={480}
           keyExtractor={keyExtractor}
           extraData={activePostKey}
           onViewableItemsChanged={onViewableItemsChanged}
