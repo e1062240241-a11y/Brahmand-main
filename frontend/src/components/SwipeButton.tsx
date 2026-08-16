@@ -22,7 +22,7 @@ interface SwipeButtonProps {
 
 const CHEVRONS = [0, 1, 2, 3, 4, 5];
 
-const ChevronItem = React.memo(({ index, waveProgress }: { index: number; waveProgress: SharedValue<number> }) => {
+const ChevronItem = React.memo(function ChevronItem({ index, waveProgress }: { index: number; waveProgress: SharedValue<number> }) {
   const animStyle = useAnimatedStyle(() => {
     'worklet';
     const phase = (waveProgress.value - index * 0.12 + 1) % 1;
@@ -228,7 +228,20 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
   }));
 
   return (
-    <View style={styles.container} onLayout={handleLayout}>
+    <View
+      style={styles.container}
+      onLayout={handleLayout}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint="Double tap to activate"
+      accessibilityActions={[{ name: 'activate', label: 'Activate' }]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'activate') {
+          triggerOnSwipeComplete();
+        }
+      }}
+    >
       {/* Orange track fill */}
       <Animated.View style={[styles.filledTrack, trackFillAnimatedStyle]} />
 
