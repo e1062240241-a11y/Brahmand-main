@@ -1,21 +1,19 @@
 import templeDataDump from '../../src/constants/templeDataDump.json';
 import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
 import { resolveTempleFestivals } from '../../src/data/templeFestivalResolver';
-import { DEFAULT_TEMPLE_LOCATIONS, SPECIAL_TEMPLE_DATA } from '../../src/data/templeStaticData';
+import { SPECIAL_TEMPLE_DATA } from '../../src/data/templeStaticData';
 import { FALLBACK_TEMPLE_BY_ID } from '../../src/data/templeFallbackData';
-import { getMapEmbedUrl, getMapSearchUrl, getMapHtml } from '../../src/utils/templeMapUtils';
-import { getYoutubeVideoId, getYoutubeAppUrl, getYoutubeEmbedUrl, getYoutubeMobileUrl, getYoutubeHtml } from '../../src/utils/youtubeUtils';
-import { CATEGORY_BADGE_MAP, AMENITY_MAP, GUIDELINE_ICONS } from '../../src/data/templeDisplayMaps';
+import { getYoutubeVideoId, getYoutubeAppUrl, getYoutubeEmbedUrl } from '../../src/utils/youtubeUtils';
+import { AMENITY_MAP, GUIDELINE_ICONS } from '../../src/data/templeDisplayMaps';
 import {
   getCategoryBadge,
   getSpecialTempleKey,
   formatTempleLocation,
-  getTempleAartiSessions,
-  checkIsAartiLive,
+
 } from '../../src/data/templeHelpers';
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Linking, Platform, Modal, Animated, Dimensions, Share } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +24,7 @@ import { getTemple, getTempleFromBackend } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { getTempleImageById, getTempleImageByName, resolveTempleImage, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+import { resolveTempleImage } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 import { CustomLoader } from '../../src/components/CustomLoader';
 import { PilgrimageTravelSection } from '../../src/components/PilgrimageTravelSection';
@@ -96,7 +94,6 @@ export default function TempleDetailScreen() {
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
-  const galleryScrollRef = useRef<FlatList>(null);
 
   const templeKey = useMemo(() => getSpecialTempleKey(temple?.name || resolvedTempleId || ''), [temple?.name, resolvedTempleId]);
   const locationStr = useMemo(() => formatTempleLocation(temple), [temple]);
@@ -104,17 +101,6 @@ export default function TempleDetailScreen() {
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
-
-  const quickFacts = useMemo(() => {
-    const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
-    const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
-    const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
-    const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
-      ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry') : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
-      : (specialTemple?.entryFee || (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry'));
-    const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || (t('language') === 'hi' ? 'अक्टूबर से मार्च' : 'October to March');
-    return { estYear, entryFee, bestTime };
-  }, [temple, templeKey, t]);
 
   useEffect(() => {
     if (autoplayAarti === 'true' && resolvedYoutubeUrl) {
@@ -372,7 +358,6 @@ export default function TempleDetailScreen() {
 
   const displayName = templeKey || temple?.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
-  const aartiSessions = getTempleAartiSessions(temple?.aarti_timings || {}, temple?.name);
   const templeImageSource = useMemo(() => resolveTempleImage({
     ...temple,
     temple_id: temple?.temple_id || temple?.templeId || resolvedTempleId,
@@ -384,7 +369,6 @@ export default function TempleDetailScreen() {
     : (typeof (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo) === 'string' && (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo).startsWith('http'))
       ? [temple.image_url || temple.imageUrl || temple.image || temple.photo]
       : [templeImageSource];
-  const darshanTimings = temple?.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
   const templeContact = temple?.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
   // Helper to resolve official website with strict domain verification
@@ -867,29 +851,6 @@ export default function TempleDetailScreen() {
 
 
   // Helper to map raw facility names/keys into clean, user-friendly labels with emojis
-  const formatAmenityLabel = (amenity: string): string => {
-    const lower = amenity.toLowerCase();
-    if (lower.includes('parking')) return '🅿 Parking';
-    if (lower.includes('locker') || lower.includes('cloakroom') || lower.includes('bag')) return '🔒 Lockers';
-    if (lower.includes('prasad') || lower.includes('laddu') || lower.includes('mahaprasad') || lower.includes('modak')) return '🍛 Prasad Counter';
-    if (lower.includes('restroom') || lower.includes('washroom') || lower.includes('toilet')) return '🚻 Restrooms';
-    if (lower.includes('water') || lower.includes('drinking')) return '🚰 Drinking Water';
-    if (lower.includes('shoe') || lower.includes('paduka')) return '👞 Shoe Stand';
-    if (lower.includes('wheelchair') || lower.includes('ramp') || lower.includes('senior') || lower.includes('golf cart') || lower.includes('battery car')) return '♿ Wheelchair Access';
-    if (lower.includes('dharamshala') || lower.includes('ashram') || lower.includes('accommodation') || lower.includes('guest house') || lower.includes('gmvn')) return '🏨 Dharamshala';
-    if (lower.includes('bhojanalaya') || lower.includes('annadanam') || lower.includes('langar') || lower.includes('restaurant') || lower.includes('anna prasadam') || lower.includes('annakshetra')) return '🍽 Bhojanalaya';
-    if (lower.includes('pooja') || lower.includes('puja') || lower.includes('bhasma') || lower.includes('seva') || lower.includes('booking')) return '📿 Puja Booking';
-    if (lower.includes('medical') || lower.includes('first aid') || lower.includes('health')) return '🚑 Medical Aid';
-    if (lower.includes('mobile') || lower.includes('camera') || lower.includes('deposit')) return '📱 Mobile Deposit';
-    if (lower.includes('vip') || lower.includes('priority') || lower.includes('sugam') || lower.includes('queue')) return '⚡ VIP Queue Access';
-    if (lower.includes('souvenir') || lower.includes('gift') || lower.includes('book')) return '🛍️ Souvenir Shops';
-    if (lower.includes('ropeway') || lower.includes('pony') || lower.includes('helicopter')) return '🚁 Transport Assistance';
-    if (lower.includes('kund') || lower.includes('spring') || lower.includes('sarovar')) return '🌊 Holy Kund / Sarovar';
-    if (lower.includes('tonsuring') || lower.includes('kalyanakatta')) return '💈 Hair Tonsuring';
-    if (lower.includes('atm')) return '🏪 ATM Counter';
-    return `✨ ${amenity}`;
-  };
-
   // Helper to resolve accurate, temple-specific authentic facilities
   const getAuthenticTempleFacilities = (): string[] => {
     if (temple?.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0) {
