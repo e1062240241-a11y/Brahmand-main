@@ -11148,7 +11148,7 @@ async def get_panchang(
         return response_data
     except Exception as exc:
         logger.error("Panchang fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Panchang provider error: {exc}")
+        raise HTTPException(status_code=502, detail="Panchang provider error")
 
 
 @api_router.get("/astrology/nakshatra")
@@ -11195,7 +11195,7 @@ async def get_nakshatra_report(
         return data
     except Exception as exc:
         logger.error("AstrologyAPI Kundli fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"AstrologyAPI provider error: {exc}")
+        raise HTTPException(status_code=502, detail="AstrologyAPI provider error")
 
 
 @api_router.get("/astrology/city-search")
@@ -11212,7 +11212,7 @@ async def search_birth_city(
         return data
     except Exception as exc:
         logger.error("AstrologyAPI city search failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"AstrologyAPI geo-search error: {exc}")
+        raise HTTPException(status_code=502, detail="AstrologyAPI geo-search error")
 
 
 @api_router.get("/astrology/ask")
@@ -11254,7 +11254,7 @@ async def ask_astrology_question(
         }
     except Exception as exc:
         logger.error("Groq astrology ask failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Astrology AI error: {exc}")
+        raise HTTPException(status_code=502, detail="Astrology AI error")
 
 
 # =================== BLOOD REQUEST OTP ===================
@@ -15015,7 +15015,7 @@ async def get_daily_horoscope_api(
         return payload
     except Exception as exc:
         logger.error("Horoscope fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Horoscope provider error: {exc}")
+        raise HTTPException(status_code=502, detail="Horoscope provider error")
 
 
 @api_router.get("/spiritual/horoscope/{rashi}")
