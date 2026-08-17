@@ -1180,14 +1180,16 @@ const UserProfileScreen = () => {
               <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
             </View>
           ) : (() => {
+            // OPT: Bolt ⚡ - Convert blockedUserIds to Set for O(1) lookup to prevent O(N*M) CPU bottleneck
+            const blockedSet = new Set(blockedUserIds);
             const parentComments = postComments.filter(c => {
               const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-              const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+              const isBlockedUser = uid && blockedSet.has(String(uid));
               return !c.parent_id && !isBlockedUser;
             });
             const repliesMap = postComments.reduce((acc, c) => {
               const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-              const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+              const isBlockedUser = uid && blockedSet.has(String(uid));
               if (c.parent_id && !isBlockedUser) {
                 if (!acc[c.parent_id]) acc[c.parent_id] = [];
                 acc[c.parent_id].push(c);
