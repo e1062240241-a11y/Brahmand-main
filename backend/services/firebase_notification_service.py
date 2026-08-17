@@ -120,6 +120,20 @@ class FirebaseNotificationService:
         # Without the extension iOS silently falls back to the default system sound.
         ios_sound = 'soundreality_mayday_166011_ios.caf' if is_sos else 'bell_ios.caf'
 
+        # Derive a stable grouping key from the data payload.
+        # iOS uses `thread-id` to collapse notifications into a single stack per thread.
+        # Android uses `channelId` + the system groups all notifications from the same app
+        # by default; a separate `tag` in FCM collapses per-tag (handled in native path).
+        # WhatsApp-style rule: same chat_id → same stack; different chats → separate stacks.
+        group_key = None
+        if data:
+            if data.get('chat_id'):
+                group_key = f"chat_{data['chat_id']}"
+            elif data.get('post_id') and notification_type in ('post_like', 'post_comment', 'post_comment_reply', 'mention'):
+                group_key = f"post_{data['post_id']}"
+            elif notification_type:
+                group_key = notification_type  # e.g. "follow", "sos_alert"
+
         payloads = []
         for token in tokens:
             payload = {
@@ -133,6 +147,10 @@ class FirebaseNotificationService:
                 "categoryIdentifier": "SOS_ALERT" if is_sos else None,
                 "data": data or {}
             }
+            # iOS thread-id: groups notifications into a collapsible thread in Notification Center.
+            # Android subtitle: used as the notification group key for Android 7+ summary grouping.
+            if group_key:
+                payload["threadId"] = group_key  # Expo Push API field → maps to APNs thread-id
             payloads.append(payload)
             
         chunk_size = 100
@@ -217,9 +235,17 @@ class FirebaseNotificationService:
             logger.info(f"No tokens for user {user_id}")
             return {"message": "No tokens registered", "sent": 0}
             
-        # Separate FCM and Expo tokens
+        # Separate FCM and Expo tokens.
+        # IMPORTANT: Send via only ONE channel to prevent duplicate notifications.
+        # If any Expo token is present, prefer Expo and skip FCM native entirely.
+        # This is the root cause of "notification received twice" — both channels
+        # firing when a user has tokens of both types (e.g. switched from Expo Go to prod build).
         expo_tokens = [t for t in fcm_tokens if t.startswith('ExponentPushToken') or t.startswith('ExpoPushToken')]
-        fcm_native_tokens = [t for t in fcm_tokens if not (t.startswith('ExponentPushToken') or t.startswith('ExpoPushToken'))]
+        if expo_tokens:
+            # Expo takes priority — skip FCM native for this user
+            fcm_native_tokens = []
+        else:
+            fcm_native_tokens = [t for t in fcm_tokens if not (t.startswith('ExponentPushToken') or t.startswith('ExpoPushToken'))]
         
         success_count = 0
         
@@ -259,6 +285,16 @@ class FirebaseNotificationService:
                     is_msg = bool(notification_type and notification_type in ('message', 'dm'))
                     is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
                     
+                    # Derive grouping key (same logic as Expo path above)
+                    group_key = None
+                    if data:
+                        if data.get('chat_id'):
+                            group_key = f"chat_{data['chat_id']}"
+                        elif data.get('post_id') and notification_type in ('post_like', 'post_comment', 'post_comment_reply', 'mention'):
+                            group_key = f"post_{data['post_id']}"
+                        elif notification_type:
+                            group_key = notification_type
+
                     if is_sos:
                         android_config = fcm.AndroidConfig(
                             priority='high',
@@ -266,11 +302,11 @@ class FirebaseNotificationService:
                                 channel_id='sos_alerts_v3',
                                 sound='soundreality_mayday_166011',
                                 priority='max',
-                                vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
+                                vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000],
+                                tag=group_key
                             )
                         )
                         apns_config = fcm.APNSConfig(
-                            # apns-push-type required by Apple on iOS 13+ for display
                             headers={'apns-priority': '10', 'apns-push-type': 'alert'},
                             payload=fcm.APNSPayload(
                                 aps=fcm.Aps(
@@ -278,7 +314,8 @@ class FirebaseNotificationService:
                                     badge=1,
                                     content_available=True,
                                     mutable_content=True,
-                                    category='SOS_ALERT'
+                                    category='SOS_ALERT',
+                                    thread_id=group_key
                                 )
                             )
                         )
@@ -288,7 +325,8 @@ class FirebaseNotificationService:
                             notification=fcm.AndroidNotification(
                                 channel_id='community_v1',
                                 sound='bell',
-                                priority='high'
+                                priority='high',
+                                tag=group_key
                             )
                         )
                         apns_config = fcm.APNSConfig(
@@ -297,7 +335,8 @@ class FirebaseNotificationService:
                                 aps=fcm.Aps(
                                     sound='bell_ios.caf',
                                     content_available=True,
-                                    mutable_content=True
+                                    mutable_content=True,
+                                    thread_id=group_key
                                 )
                             )
                         )
@@ -308,7 +347,8 @@ class FirebaseNotificationService:
                             notification=fcm.AndroidNotification(
                                 channel_id=channel_id,
                                 sound='bell',
-                                priority='high'
+                                priority='high',
+                                tag=group_key
                             )
                         )
                         apns_config = fcm.APNSConfig(
@@ -317,7 +357,8 @@ class FirebaseNotificationService:
                                 aps=fcm.Aps(
                                     sound='bell_ios.caf',
                                     content_available=True,
-                                    mutable_content=True
+                                    mutable_content=True,
+                                    thread_id=group_key
                                 )
                             )
                         )

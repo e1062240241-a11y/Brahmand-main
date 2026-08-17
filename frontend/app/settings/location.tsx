@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -12,7 +13,8 @@ import {View,
   KeyboardAvoidingView,
   Keyboard,
   Animated,
-  Dimensions} from "react-native";
+  Dimensions
+} from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -318,7 +320,7 @@ export default function ChangeLocationScreen() {
           initialLat = pos.coords.latitude;
           initialLng = pos.coords.longitude;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const newRegion = {
@@ -342,23 +344,35 @@ export default function ChangeLocationScreen() {
     }, 500);
   };
 
-  const handleSearchLocation = async (text: string) => {
+  const searchTimeoutRef = React.useRef<any>(null);
+
+  const handleSearchLocation = (text: string) => {
     setSearchQuery(text);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (text.trim().length < 3) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
+
     setSearching(true);
-    try {
-      const response = await forwardGeocode(text);
-      if (response && response.data) {
-        setSearchResults(response.data);
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await forwardGeocode(text);
+        if (response && response.data) {
+          setSearchResults(response.data);
+        }
+      } catch (e) {
+        console.error("Forward geocoding error:", e);
+      } finally {
+        setSearching(false);
       }
-    } catch (e) {
-      console.error("Forward geocoding error:", e);
-    } finally {
-      setSearching(false);
-    }
+    }, 400);
   };
 
   const handleSelectSearchResult = (item: any) => {
@@ -453,9 +467,9 @@ export default function ChangeLocationScreen() {
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
-          (t("language") === "hi"
-            ? "स्थान अपडेट करने में विफल। कृपया पुन: प्रयास करें।"
-            : "Failed to update locations. Please try again."),
+        (t("language") === "hi"
+          ? "स्थान अपडेट करने में विफल। कृपया पुन: प्रयास करें।"
+          : "Failed to update locations. Please try again."),
       );
     } finally {
       setLoading(false);
@@ -587,7 +601,7 @@ export default function ChangeLocationScreen() {
         <View style={styles.header}>
           {hasValidLocation ? (
             <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+              <Ionicons name="chevron-back" size={28} color="#000000" />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 40 }} />
@@ -603,249 +617,249 @@ export default function ChangeLocationScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color={COLORS.info} />
-            <Text style={styles.infoText}>
-              {t("language") === "hi"
-                ? "अपना स्थान बदलने से आपकी समुदाय सदस्यताएँ स्वचालित रूप से अपडेट हो जाएँगी। आप पुराने स्थान के समुदायों को छोड़ देंगे और नए समुदायों में शामिल हो जाएँगे।"
-                : "Changing your location will automatically update your community memberships. You will leave old location communities and join new ones."}
-            </Text>
-          </View>
-
-          {/* Home Location */}
-          {renderLocationCard(
-            "Home Location",
-            homeLocation,
-            detectingHome,
-            () => detectCurrentLocation("home"),
-            () => openMapPicker("home"),
-            "home",
-            COLORS.success,
-          )}
-
-          {/* Office Location */}
-          <View style={styles.divider} />
-          {renderLocationCard(
-            "Office Location",
-            officeLocation,
-            detectingOffice,
-            () => detectCurrentLocation("office"),
-            () => openMapPicker("office"),
-            "business",
-            COLORS.info,
-          )}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Community Preview */}
-          {homeLocation && (
-            <View style={styles.previewBox}>
-              <Text style={styles.previewTitle}>
+            {/* Info Box */}
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle" size={20} color={COLORS.info} />
+              <Text style={styles.infoText}>
                 {t("language") === "hi"
-                  ? "अपडेट के बाद आपके समुदाय:"
-                  : "Your Communities After Update:"}
+                  ? "अपना स्थान बदलने से आपकी समुदाय सदस्यताएँ स्वचालित रूप से अपडेट हो जाएँगी। आप पुराने स्थान के समुदायों को छोड़ देंगे और नए समुदायों में शामिल हो जाएँगे।"
+                  : "Changing your location will automatically update your community memberships. You will leave old location communities and join new ones."}
               </Text>
-              <View style={styles.previewItem}>
-                <Ionicons name="location" size={16} color="#9B59B6" />
-                <Text style={styles.previewText}>
-                  {homeLocation.city}{" "}
-                  {t("language") === "hi" ? "समुदाय" : "Community"}
-                </Text>
-              </View>
-              <View style={styles.previewItem}>
-                <Ionicons name="map" size={16} color={COLORS.warning} />
-                <Text style={styles.previewText}>
-                  {homeLocation.state}{" "}
-                  {t("language") === "hi" ? "समुदाय" : "Community"}
-                </Text>
-              </View>
-              <View style={styles.previewItem}>
-                <Ionicons name="flag" size={16} color={COLORS.primary} />
-                <Text style={styles.previewText}>
-                  {t("language") === "hi" ? "भारत समुदाय" : "Bharat Community"}
-                </Text>
-              </View>
             </View>
-          )}
 
-          {/* Update Button */}
-          {homeLocation && hasChanges && (
-            <Button
-              title={
-                t("language") === "hi"
-                  ? "स्थान और समुदाय अपडेट करें"
-                  : "Update Location & Communities"
-              }
-              onPress={handleUpdateLocations}
-              loading={loading}
-              style={styles.button}
-            />
-          )}
-        </View>
-      </KeyboardAwareScrollView>
+            {/* Home Location */}
+            {renderLocationCard(
+              "Home Location",
+              homeLocation,
+              detectingHome,
+              () => detectCurrentLocation("home"),
+              () => openMapPicker("home"),
+              "home",
+              COLORS.success,
+            )}
 
-      {/* Map Picker & Search Modal */}
-      <Modal
-        visible={mapPickerVisible}
-        animationType="slide"
-        onRequestClose={() => setMapPickerVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setMapPickerVisible(false)}>
-              <Ionicons name="close" size={26} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {mapTarget === "home"
-                ? t("language") === "hi"
-                  ? "घर का स्थान चुनें"
-                  : "Choose Home Location"
-                : t("language") === "hi"
-                  ? "कार्यालय का स्थान चुनें"
-                  : "Choose Office Location"}
-            </Text>
-            <View style={{ width: 26 }} />
-          </View>
+            {/* Office Location */}
+            <View style={styles.divider} />
+            {renderLocationCard(
+              "Office Location",
+              officeLocation,
+              detectingOffice,
+              () => detectCurrentLocation("office"),
+              () => openMapPicker("office"),
+              "business",
+              COLORS.info,
+            )}
 
-          {/* Search Section */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Ionicons
-                name="search"
-                size={20}
-                color={COLORS.textSecondary}
-                style={{ marginRight: SPACING.sm }}
-              />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            {/* Community Preview */}
+            {homeLocation && (
+              <View style={styles.previewBox}>
+                <Text style={styles.previewTitle}>
+                  {t("language") === "hi"
+                    ? "अपडेट के बाद आपके समुदाय:"
+                    : "Your Communities After Update:"}
+                </Text>
+                <View style={styles.previewItem}>
+                  <Ionicons name="location" size={16} color="#9B59B6" />
+                  <Text style={styles.previewText}>
+                    {homeLocation.city}{" "}
+                    {t("language") === "hi" ? "समुदाय" : "Community"}
+                  </Text>
+                </View>
+                <View style={styles.previewItem}>
+                  <Ionicons name="map" size={16} color={COLORS.warning} />
+                  <Text style={styles.previewText}>
+                    {homeLocation.state}{" "}
+                    {t("language") === "hi" ? "समुदाय" : "Community"}
+                  </Text>
+                </View>
+                <View style={styles.previewItem}>
+                  <Ionicons name="flag" size={16} color={COLORS.primary} />
+                  <Text style={styles.previewText}>
+                    {t("language") === "hi" ? "भारत समुदाय" : "Bharat Community"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Update Button */}
+            {homeLocation && hasChanges && (
+              <Button
+                title={
                   t("language") === "hi"
-                    ? "स्थान खोजें..."
-                    : "Search location..."
+                    ? "स्थान और समुदाय अपडेट करें"
+                    : "Update Location & Communities"
                 }
-                placeholderTextColor={COLORS.textLight}
-                value={searchQuery}
-                onChangeText={handleSearchLocation}
+                onPress={handleUpdateLocations}
+                loading={loading}
+                style={styles.button}
               />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => handleSearchLocation("")}>
-                  <Ionicons
-                    name="close-circle"
-                    size={18}
-                    color={COLORS.textSecondary}
-                  />
-                </TouchableOpacity>
+            )}
+          </View>
+        </KeyboardAwareScrollView>
+
+        {/* Map Picker & Search Modal */}
+        <Modal
+          visible={mapPickerVisible}
+          animationType="slide"
+          onRequestClose={() => setMapPickerVisible(false)}
+        >
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setMapPickerVisible(false)}>
+                <Ionicons name="close" size={26} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>
+                {mapTarget === "home"
+                  ? t("language") === "hi"
+                    ? "घर का स्थान चुनें"
+                    : "Choose Home Location"
+                  : t("language") === "hi"
+                    ? "कार्यालय का स्थान चुनें"
+                    : "Choose Office Location"}
+              </Text>
+              <View style={{ width: 26 }} />
+            </View>
+
+            {/* Search Section */}
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                <Ionicons
+                  name="search"
+                  size={20}
+                  color={COLORS.textSecondary}
+                  style={{ marginRight: SPACING.sm }}
+                />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={
+                    t("language") === "hi"
+                      ? "स्थान खोजें..."
+                      : "Search location..."
+                  }
+                  placeholderTextColor={COLORS.textLight}
+                  value={searchQuery}
+                  onChangeText={handleSearchLocation}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => handleSearchLocation("")}>
+                    <Ionicons
+                      name="close-circle"
+                      size={18}
+                      color={COLORS.textSecondary}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {searching && (
+                <ActivityIndicator
+                  size="small"
+                  color={COLORS.primary}
+                  style={{ marginVertical: SPACING.xs }}
+                />
+              )}
+
+              {/* Search Suggestions */}
+              {searchResults.length > 0 && (
+                <KeyboardAwareScrollView
+                  style={styles.suggestionsList}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {searchResults.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.suggestionItem}
+                      onPress={() => handleSelectSearchResult(item)}
+                    >
+                      <Ionicons
+                        name="location-outline"
+                        size={18}
+                        color={COLORS.primary}
+                        style={{ marginRight: SPACING.sm }}
+                      />
+                      <Text style={styles.suggestionText} numberOfLines={2}>
+                        {item.display_name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </KeyboardAwareScrollView>
               )}
             </View>
 
-            {searching && (
-              <ActivityIndicator
-                size="small"
-                color={COLORS.primary}
-                style={{ marginVertical: SPACING.xs }}
-              />
-            )}
-
-            {/* Search Suggestions */}
-            {searchResults.length > 0 && (
-              <KeyboardAwareScrollView
-                style={styles.suggestionsList}
-                keyboardShouldPersistTaps="handled"
-              >
-                {searchResults.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSelectSearchResult(item)}
-                  >
-                    <Ionicons
-                      name="location-outline"
-                      size={18}
-                      color={COLORS.primary}
-                      style={{ marginRight: SPACING.sm }}
-                    />
-                    <Text style={styles.suggestionText} numberOfLines={2}>
-                      {item.display_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </KeyboardAwareScrollView>
-            )}
-          </View>
-
-          {/* Map Section */}
-          <View style={styles.mapWrapper}>
-            {Platform.OS === "web" ? (
-              <View style={styles.webMapFallback}>
-                <Ionicons
-                  name="map-outline"
-                  size={64}
-                  color={COLORS.textSecondary}
-                />
-                <Text style={styles.webMapFallbackText}>
-                  {t("language") === "hi"
-                    ? "मानचित्र दृश्य केवल मोबाइल ऐप पर उपलब्ध है।"
-                    : "Map view is only available on mobile app."}
-                </Text>
-                {mapRegion && (
-                  <View style={styles.coordsBox}>
-                    <Text style={styles.coordsText}>
-                      Latitude: {mapRegion.latitude.toFixed(6)}
-                    </Text>
-                    <Text style={styles.coordsText}>
-                      Longitude: {mapRegion.longitude.toFixed(6)}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : MapView && mapRegion ? (
-              <>
-                <MapView
-                  ref={mapRef}
-                  provider={PROVIDER_GOOGLE}
-                  style={styles.map}
-                  initialRegion={mapRegion}
-                  onRegionChangeComplete={(region: any) => setMapRegion(region)}
-                  showsUserLocation
-                  showsMyLocationButton={true}
-                />
-                <View style={styles.mapPinContainer} pointerEvents="none">
-                  <Ionicons name="location" size={40} color={COLORS.primary} />
+            {/* Map Section */}
+            <View style={styles.mapWrapper}>
+              {Platform.OS === "web" ? (
+                <View style={styles.webMapFallback}>
+                  <Ionicons
+                    name="map-outline"
+                    size={64}
+                    color={COLORS.textSecondary}
+                  />
+                  <Text style={styles.webMapFallbackText}>
+                    {t("language") === "hi"
+                      ? "मानचित्र दृश्य केवल मोबाइल ऐप पर उपलब्ध है।"
+                      : "Map view is only available on mobile app."}
+                  </Text>
+                  {mapRegion && (
+                    <View style={styles.coordsBox}>
+                      <Text style={styles.coordsText}>
+                        Latitude: {mapRegion.latitude.toFixed(6)}
+                      </Text>
+                      <Text style={styles.coordsText}>
+                        Longitude: {mapRegion.longitude.toFixed(6)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </>
-            ) : (
-              <View style={styles.webMapFallback}>
-                <Ionicons
-                  name="warning-outline"
-                  size={48}
-                  color={COLORS.error}
-                />
-                <Text style={styles.webMapFallbackText}>
-                  {t("language") === "hi"
-                    ? "मानचित्र लोड करने में असमर्थ"
-                    : "Unable to load map"}
-                </Text>
-              </View>
-            )}
-          </View>
+              ) : MapView && mapRegion ? (
+                <>
+                  <MapView
+                    ref={mapRef}
+                    provider={PROVIDER_GOOGLE}
+                    style={styles.map}
+                    initialRegion={mapRegion}
+                    onRegionChangeComplete={(region: any) => setMapRegion(region)}
+                    showsUserLocation
+                    showsMyLocationButton={true}
+                  />
+                  <View style={styles.mapPinContainer} pointerEvents="none">
+                    <Ionicons name="location" size={40} color={COLORS.primary} />
+                  </View>
+                </>
+              ) : (
+                <View style={styles.webMapFallback}>
+                  <Ionicons
+                    name="warning-outline"
+                    size={48}
+                    color={COLORS.error}
+                  />
+                  <Text style={styles.webMapFallbackText}>
+                    {t("language") === "hi"
+                      ? "मानचित्र लोड करने में असमर्थ"
+                      : "Unable to load map"}
+                  </Text>
+                </View>
+              )}
+            </View>
 
-          {/* Bottom Confirmation Bar */}
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.confirmButton}
-              onPress={handleConfirmLocation}
-            >
-              <Text style={styles.confirmButtonText}>
-                {t("language") === "hi"
-                  ? "इस स्थान की पुष्टि करें"
-                  : "Confirm This Location"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+            {/* Bottom Confirmation Bar */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleConfirmLocation}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {t("language") === "hi"
+                    ? "इस स्थान की पुष्टि करें"
+                    : "Confirm This Location"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -869,7 +883,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#000000",
   },
   scrollView: {
     flex: 1,

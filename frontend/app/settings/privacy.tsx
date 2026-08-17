@@ -100,10 +100,10 @@ export default function PrivacySettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={28} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Privacy Settings</Text>
-          {saving && <ActivityIndicator size="small" color="#FFFFFF" />}
+          {saving && <ActivityIndicator size="small" color="#000000" />}
         </View>
 
         {/* Content */}
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   content: {
     paddingHorizontal: SPACING.md,
