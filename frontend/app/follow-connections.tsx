@@ -131,8 +131,8 @@ export default function FollowConnectionsScreen() {
 
       try {
         const [profileResponse, viewerResponse, usersResponse] = await Promise.all([
-          getUserProfile(targetUserId),
-          getUserProfile(),
+          getUserProfile(targetUserId, true),
+          getUserProfile(undefined, true),
           getAllUsers('', 20),
         ]);
 

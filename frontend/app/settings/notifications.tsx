@@ -22,7 +22,6 @@ function NotificationsSettingsScreen() {
   }, [router]);
 
   const [receivePush, setReceivePush] = useState(false);
-  const [receiveEmail, setReceiveEmail] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushStatus, setPushStatus] = useState(fcmToken ? 'Enabled' : 'Disabled');
 
@@ -154,15 +153,15 @@ function NotificationsSettingsScreen() {
                   </Text>
                   <Text style={styles.settingSubLabel}>
                     {t('language') === 'hi'
-                      ? 'महत्वपूर्ण अपडेट, समाचार और सारांश ईमेल द्वारा प्राप्त करें'
-                      : 'Receive important updates, newsletters, and digests via email.'}
+                      ? 'महत्वपूर्ण अपडेट, समाचार और सारांश ईमेल द्वारा प्राप्त करें (जल्द आ रहा है)'
+                      : 'Receive important updates, newsletters, and digests via email. (Coming soon)'}
                   </Text>
                 </View>
                 <Switch
-                  value={receiveEmail}
-                  onValueChange={(val) => setReceiveEmail(val)}
+                  value={false}
+                  disabled
                   trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#0284C7' }}
-                  thumbColor={receiveEmail ? '#FFFFFF' : '#F1F5F9'}
+                  thumbColor="#F1F5F9"
                 />
               </View>
             </View>

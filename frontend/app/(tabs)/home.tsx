@@ -78,20 +78,6 @@ export default function HomeScreen() {
   }, [router]);
 
   const [, setIsHomeInitialized] = useState(false);
-  const [kathaStatus, setKathaStatus] = useState<any>(null);
-
-  useEffect(() => {
-    if (!isFocused) return;
-    let isMounted = true;
-    const fetchKathaStatus = async () => {
-      try {
-        const res = await api.get('/katha/status');
-        if (res.data && isMounted) setKathaStatus(res.data);
-      } catch (_e) {}
-    };
-    fetchKathaStatus();
-    return () => { isMounted = false; };
-  }, [isFocused]);
 
 
 
@@ -144,8 +130,11 @@ export default function HomeScreen() {
   const [postComments, setPostComments] = useState<any[]>([]);
   const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsLoadingMore, setCommentsLoadingMore] = useState(false);
+  const [commentsHasMore, setCommentsHasMore] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const COMMENTS_PAGE_SIZE = 20;
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [, setActiveCommentMenuId] = useState<string | null>(null);
@@ -413,37 +402,7 @@ export default function HomeScreen() {
       fetchLocalCommunities();
       const res = await getHomeInit();
 
-      if (Platform.OS === 'android') {
-        if (res && res.data) {
-          if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
-          if (res.data.next_festival) setNextFestival(res.data.next_festival);
-
-          if (res.data.community_requests) {
-            const reqs = res.data.community_requests;
-            setCommunityRequests(reqs);
-            AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
-          }
-          if (res.data.communities) {
-            const comms = res.data.communities;
-            setCommunities(comms);
-            AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
-          }
-
-          if (res.data.feed?.items && res.data.feed.items.length > 0) {
-            const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
-
-            if (isRefreshing) {
-              setTabFeed(tabToLoad, {
-                posts: res.data.feed.items,
-                offset: res.data.feed.items.length,
-                hasMore: res.data.feed.has_more,
-                lastFetched: Date.now(),
-              });
-            }
-          }
-        }
-      } else {
-        // Original iOS logic untouched
+      if (res && res.data) {
         if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
         if (res.data.next_festival) setNextFestival(res.data.next_festival);
 
@@ -529,32 +488,20 @@ export default function HomeScreen() {
 
     const fetchUnreadCount = async () => {
       if (AppState.currentState !== 'active') return;
-      if (Platform.OS === 'android') {
-        if (!token || !isAuthenticated) {
-          return;
+      if (!token || !isAuthenticated) return;
+      try {
+        const res = await getUnreadNotificationCount();
+        if (res && res.data && isMounted) {
+          setUnreadCount(res.data.unread_count || 0);
         }
-        try {
-          const res = await getUnreadNotificationCount();
-          if (res && res.data && isMounted) {
-            setUnreadCount(res.data.unread_count || 0);
-          }
-        } catch (err) {
-          console.log('Failed to fetch unread count on Android:', err);
-        }
-      } else {
-        try {
-          const res = await getUnreadNotificationCount();
-          if (isMounted) setUnreadCount(res.data.unread_count || 0);
-        } catch (err) {
-          console.log('Failed to fetch unread count:', err);
-        }
+      } catch (err) {
+        console.log('Failed to fetch unread count:', err);
       }
     };
 
-    const interval = setInterval(fetchUnreadCount, 120000); // Check every 2m
+    fetchUnreadCount();
     return () => {
       isMounted = false;
-      clearInterval(interval);
     };
   }, [isFocused, token, isAuthenticated]);
 
@@ -1092,13 +1039,17 @@ export default function HomeScreen() {
     setCommentText('');
     setCommentModalVisible(true);
     setCommentsLoading(true);
+    setCommentsHasMore(true);
 
     try {
-      const response = await getPostComments(postId, 50);
-      setPostComments(Array.isArray(response.data) ? response.data : []);
+      const response = await getPostComments(postId, COMMENTS_PAGE_SIZE, 0);
+      const batch = Array.isArray(response.data) ? response.data : [];
+      setPostComments(batch);
+      setCommentsHasMore(batch.length === COMMENTS_PAGE_SIZE);
     } catch (error) {
       console.warn('Failed to load comments:', error);
       setPostComments([]);
+      setCommentsHasMore(false);
     } finally {
       setCommentsLoading(false);
     }
@@ -1111,14 +1062,16 @@ export default function HomeScreen() {
     const interval = setInterval(async () => {
       if (AppState.currentState !== 'active') return;
       try {
-        const response = await getPostComments(selectedCommentPostId, 50);
+        const response = await getPostComments(selectedCommentPostId, COMMENTS_PAGE_SIZE, 0);
         if (Array.isArray(response.data)) {
           setPostComments(prev => {
             const serverComments = response.data;
             const optimistic = prev.filter(c => c.is_optimistic);
             const serverIds = new Set(serverComments.map((c: any) => c.id));
             const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
-            return [...filteredOptimistic, ...serverComments];
+            // Keep already-loaded older comments (beyond first page) that aren't in the refreshed top page
+            const keptOlder = prev.filter(c => !c.is_optimistic && !serverIds.has(c.id));
+            return [...filteredOptimistic, ...serverComments, ...keptOlder];
           });
         }
       } catch (error) {
@@ -1188,11 +1141,17 @@ export default function HomeScreen() {
         );
       }
 
-      // Background refresh to ensure persistence on next modal open
+      // Background refresh to ensure persistence on next modal open (top page only)
       try {
-        const freshResponse = await getPostComments(selectedCommentPostId, 50);
+        const freshResponse = await getPostComments(selectedCommentPostId, COMMENTS_PAGE_SIZE, 0);
         if (Array.isArray(freshResponse.data)) {
-          setPostComments(freshResponse.data);
+          setPostComments(prev => {
+            const fresh = freshResponse.data;
+            const freshIds = new Set(fresh.map((c: any) => c.id));
+            const optimistic = prev.filter(c => c.is_optimistic && !freshIds.has(c.id));
+            const keptOlder = prev.filter(c => !c.is_optimistic && !freshIds.has(c.id));
+            return [...optimistic, ...fresh, ...keptOlder];
+          });
         }
       } catch {
         // keep current state if refresh fails
@@ -1206,6 +1165,28 @@ export default function HomeScreen() {
       setCommentSubmitting(false);
     }
   };
+
+  const handleLoadMoreComments = useCallback(async () => {
+    if (commentsLoadingMore || !commentsHasMore || !selectedCommentPostId) return;
+    setCommentsLoadingMore(true);
+    try {
+      const offset = postComments.filter(c => !c.is_optimistic).length;
+      const response = await getPostComments(selectedCommentPostId, COMMENTS_PAGE_SIZE, offset);
+      const batch = Array.isArray(response.data) ? response.data : [];
+      if (batch.length === 0) {
+        setCommentsHasMore(false);
+      } else {
+        const existingIds = new Set(postComments.map((c: any) => c.id));
+        const newOnes = batch.filter((c: any) => !existingIds.has(c.id));
+        setPostComments(prev => [...prev, ...newOnes]);
+        setCommentsHasMore(batch.length === COMMENTS_PAGE_SIZE);
+      }
+    } catch (error) {
+      console.warn('Failed to load more comments:', error);
+    } finally {
+      setCommentsLoadingMore(false);
+    }
+  }, [commentsLoadingMore, commentsHasMore, selectedCommentPostId, postComments]);
 
   const handleShareExternal = async (post: any) => {
     const appLink = post?.id ? `https://brahmand.app/post/${post.id}` : 'https://brahmand.app/';
@@ -1698,7 +1679,6 @@ export default function HomeScreen() {
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
       isFocused={isFocused}
-      kathaStatus={kathaStatus}
     />
   ), [
     isFocused,
@@ -1730,7 +1710,6 @@ export default function HomeScreen() {
     handleSetReminder,
     handleLiveJaapNavigation,
     safeCommunityRequests,
-    kathaStatus,
     resolveHomeCommunityItem,
     findCityCommunity,
     findLocalCommunity
@@ -2129,6 +2108,15 @@ export default function HomeScreen() {
                         }}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 20 }}
+                        onEndReached={handleLoadMoreComments}
+                        onEndReachedThreshold={0.3}
+                        ListFooterComponent={
+                          commentsLoadingMore ? (
+                            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                              <ActivityIndicator size="small" color="#FF6B00" />
+                            </View>
+                          ) : null
+                        }
                       />
                     );
                   })() : (

@@ -652,23 +652,23 @@ const UserProfileScreen = () => {
     loadPosts(true);
   }, [loadProfile, loadPosts]);
 
-  const isFollowing = Boolean(profile?.followers?.includes(currentUserId));
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Derive isFollowing from the server-computed boolean (profile no longer
+  // ships the full followers array). Keep a local state for optimistic updates.
+  useEffect(() => {
+    setIsFollowing(Boolean(profile?.is_following));
+  }, [profile?.id, profile?.is_following]);
 
   const toggleFollow = async () => {
     if (!profile?.id || !currentUserId) return;
 
-    // Optimistic Update
-    const currentFollowers = Array.isArray(profile.followers) ? profile.followers : [];
+    // Optimistic Update — flip the boolean + adjust count (no array mutation needed)
     const isNowFollowing = !isFollowing;
-
-    const nextFollowers = isNowFollowing
-      ? [...currentFollowers, currentUserId]
-      : currentFollowers.filter((id: string) => id !== currentUserId);
-
+    setIsFollowing(isNowFollowing);
     setProfile((prev: any) => ({
       ...prev,
-      followers: nextFollowers,
-      followers_count: (prev?.followers_count || 0) + (isNowFollowing ? 1 : -1)
+      followers_count: Math.max(0, (prev?.followers_count || 0) + (isNowFollowing ? 1 : -1))
     }));
 
     try {

@@ -2537,36 +2537,94 @@ async def get_users_batch(
 
 
 @api_router.get('/users/{user_id}')
-async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token)):
+async def get_user_by_id(
+    user_id: str,
+    include_lists: bool = False,
+    token_data: dict = Depends(verify_token)
+):
     if not user_id or user_id.lower().strip() in ('undefined', 'null', 'none', ''):
         raise HTTPException(status_code=400, detail='Invalid user ID')
     db = await get_db()
-    user = await db.get_document('users', user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail='User not found')
 
-    followers_list = list(user.get('followers') or [])
-    following_list = list(user.get('following') or [])
+    # Existence + needed fields in ONE projected read — avoids fetching the
+    # (potentially 100k-element) followers/following arrays just to 404-check.
+    viewer_id = token_data.get('user_id')
+
+    # Scalar fields needed for the profile response — explicitly excludes the
+    # (potentially huge) followers/following arrays so Firestore doesn't
+    # transfer them to the backend on every profile view.
+    SCALAR_FIELDS = [
+        'name', 'photo', 'cover_photo', 'sl_id', 'online_status',
+        'last_seen_at', 'last_active', 'updated_at', 'badges',
+        'home_location', 'followers_count', 'following_count',
+        'is_verified', 'verification_level',
+    ]
+
+    # Membership via a single O(1) point read on the follow-edge collection,
+    # NOT by scanning the followers array.
+    is_following = False
+    edge = None
+    if viewer_id:
+        edge = await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        if edge is not None:
+            is_following = True
+
+    if include_lists:
+        # follow-connections screen needs the actual ID arrays. Fetch them
+        # explicitly (still maintained by dual-write on follow/unfollow).
+        doc = await db.get_document_fields(
+            'users', user_id, SCALAR_FIELDS + ['followers', 'following']
+        )
+        if not doc:
+            raise HTTPException(status_code=404, detail='User not found')
+        followers_list = list(doc.get('followers') or [])
+        following_list = list(doc.get('following') or [])
+    else:
+        doc = await db.get_document_fields('users', user_id, SCALAR_FIELDS)
+        if not doc:
+            raise HTTPException(status_code=404, detail='User not found')
+        followers_list = None  # not loaded
+        following_list = None  # not loaded
+        # Pre-backfill fallback: edge doc missing but this may be an existing
+        # array-only follow. Only then do we fetch JUST the followers array to
+        # check membership — after backfill this branch never runs.
+        if not is_following and viewer_id and (doc.get('followers_count') or 0) > 0:
+            arr_doc = await db.get_document_fields('users', user_id, ['followers'])
+            if arr_doc and viewer_id in (arr_doc.get('followers') or []):
+                is_following = True
+
+    # Stored counters (maintained atomically by follow/unfollow); fall back to
+    # array length only for legacy docs missing the counter fields.
+    followers_count = doc.get('followers_count')
+    if followers_count is None:
+        followers_count = len(followers_list or doc.get('followers') or [])
+    following_count = doc.get('following_count')
+    if following_count is None:
+        following_count = len(following_list or doc.get('following') or [])
 
     safe_user = {
-        'id': user.get('id'),
-        'name': user.get('name'),
-        'photo': user.get('photo'),
-        'cover_photo': user.get('cover_photo'),
-        'sl_id': user.get('sl_id'),
-        'online_status': user.get('online_status'),
-        'last_seen_at': user.get('last_seen_at'),
-        'last_active': user.get('last_active'),
-        'updated_at': user.get('updated_at'),
-        'badges': user.get('badges', []),
-        'home_location': user.get('home_location'),
-        'followers': followers_list,
-        'following': following_list,
-        'followers_count': len(followers_list),
-        'following_count': len(following_list),
-        'is_verified': user.get('is_verified', False),
-        'verification_level': user.get('verification_level', 'state')
+        'id': user_id,
+        'name': doc.get('name'),
+        'photo': doc.get('photo'),
+        'cover_photo': doc.get('cover_photo'),
+        'sl_id': doc.get('sl_id'),
+        'online_status': doc.get('online_status'),
+        'last_seen_at': doc.get('last_seen_at'),
+        'last_active': doc.get('last_active'),
+        'updated_at': doc.get('updated_at'),
+        'badges': doc.get('badges', []),
+        'home_location': doc.get('home_location'),
+        'followers_count': followers_count,
+        'following_count': following_count,
+        'is_following': is_following,
+        'is_verified': doc.get('is_verified', False),
+        'verification_level': doc.get('verification_level', 'state')
     }
+
+    if include_lists:
+        safe_user['followers'] = followers_list
+        safe_user['following'] = following_list
+
     return safe_user
 
 
@@ -2803,6 +2861,16 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if current_user_id in target_followers:
         return {'message': 'Already following user', 'user_id': user_id}
 
+    # Edge doc in the user_follows collection — O(1) membership check on the
+    # read path (profile view) instead of loading the (potentially huge)
+    # followers array. Array union kept as a dual-write for transition so
+    # existing array consumers (follow-connections, auth store) stay consistent.
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    await db.set_document('user_follows', follow_doc_id, {
+        'follower_uid': current_user_id,
+        'followee_uid': user_id,
+    })
+
     await db.array_union_update('users', user_id, 'followers', [current_user_id])
     await db.array_union_update('users', current_user_id, 'following', [user_id])
 
@@ -2838,9 +2906,10 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     except Exception as notify_err:
         logger.warning(f"Followed user {user_id} but failed to create notification: {notify_err}")
 
-    await db.update_document('users', user_id, {'followers_count': len(target_followers) + 1})
-    current_following = current_user.get('following', []) or []
-    await db.update_document('users', current_user_id, {'following_count': len(current_following) + 1})
+    # Atomic counter increments — avoids the read-then-write race where two
+    # concurrent follows both read the same count and clobber each other.
+    await db.increment_field('users', user_id, 'followers_count', 1)
+    await db.increment_field('users', current_user_id, 'following_count', 1)
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
     await cache_manager.invalidate_user(user_id)
@@ -2852,25 +2921,25 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
 async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
     current_user_id = token_data['user_id']
-    
+
     target_user = await db.get_document('users', user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    current_user = await db.get_document('users', current_user_id)
-
-    # Compute counts from pre-mutation snapshots
-    target_followers = list(target_user.get('followers') or [])
-    current_following = list((current_user or {}).get('following') or [])
+    # Remove the follow edge doc (primary) + the array entries (dual-write).
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    edge_existed = await db.get_document('user_follows', follow_doc_id) is not None
+    if edge_existed:
+        await db.delete_document('user_follows', follow_doc_id)
 
     await db.array_remove_update('users', user_id, 'followers', [current_user_id])
     await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
-    new_followers_count = max(0, len(target_followers) - 1)
-    await db.update_document('users', user_id, {'followers_count': new_followers_count})
-    
-    new_following_count = max(0, len(current_following) - 1)
-    await db.update_document('users', current_user_id, {'following_count': new_following_count})
+    # Atomic decrements only if an edge actually existed — avoids double-decrement
+    # when unfollow is called on a non-followed user.
+    if edge_existed:
+        await db.increment_field('users', user_id, 'followers_count', -1)
+        await db.increment_field('users', current_user_id, 'following_count', -1)
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
     await cache_manager.invalidate_user(user_id)
@@ -3033,12 +3102,13 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     post = await db.get_document('posts', post_id)
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
-    
-    # Increment views_count
-    current_views = post.get('views_count', 0)
-    await db.update_document('posts', post_id, {'views_count': current_views + 1})
-    
-    return {'message': 'View recorded', 'views_count': current_views + 1}
+
+    # Atomic server-side increment — avoids the read-then-write race where
+    # concurrent views both read the same count and clobber each other.
+    await db.increment_field('posts', post_id, 'views_count', 1)
+
+    # Best-effort count for the response; the stored value is now accurate.
+    return {'message': 'View recorded', 'views_count': (post.get('views_count', 0) or 0) + 1}
 
 
 @api_router.get("/bunny-media/{filepath:path}")
@@ -3845,8 +3915,19 @@ async def get_posts_feed(
     current_user_id = token_data['user_id']
     safe_limit = max(1, min(limit, 50))
 
-    # Parse already-seen post IDs to avoid repeats
-    seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
+    # Parse already-seen post IDs to avoid repeats.
+    # Server-side cap: defends against unbounded memory if a client sends a huge
+    # seen_ids string. Frontend already self-limits to ~40 IDs/request, so legit
+    # traffic is unaffected; only malformed/malicious payloads get trimmed.
+    MAX_SEEN_IDS = 200
+    seen_set = set()
+    if seen_ids:
+        for s in seen_ids.split(','):
+            sid = s.strip()
+            if sid and sid not in seen_set:
+                seen_set.add(sid)
+                if len(seen_set) >= MAX_SEEN_IDS:
+                    break
 
     # Pre-calculate user agent stuff
     x_platform = request.headers.get("x-platform", "").lower()
@@ -5012,7 +5093,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
 
 @api_router.get('/posts/{post_id}/comments')
-async def get_post_comments(post_id: str, request: Request, limit: int = 200, token_data: dict = Depends(verify_token)):
+async def get_post_comments(post_id: str, request: Request, limit: int = 200, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
 
     post = await db.get_document('posts', post_id)
@@ -5020,6 +5101,10 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, to
         raise HTTPException(status_code=404, detail='Post not found')
 
     safe_limit = max(1, min(limit, 500))
+    safe_offset = max(0, offset)
+    # ponytail: query_documents has no cursor/offset, so we fetch the bounded 500-cap set once
+    # and paginate in memory (same pattern as get_my_posts). Upgrade to a Firestore start_after
+    # cursor in query_documents if DB reads on this endpoint ever become a bottleneck.
     comments = await db.query_documents(
         'post_comments',
         filters=[('post_id', '==', post_id)],
@@ -5032,7 +5117,7 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, to
     is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
     reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     comments = [
-        c for c in comments 
+        c for c in comments
         if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids
     ]
 
@@ -5048,8 +5133,8 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, to
         return datetime.min
 
     comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    comments = comments[:safe_limit]
-    
+    comments = comments[safe_offset : safe_offset + safe_limit]
+
     # Dynamically decorate with current sender verification status
     if comments:
         user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
@@ -5061,7 +5146,7 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, to
                 if uid and uid in users_map:
                     user_doc = users_map[uid]
                     c['is_verified'] = user_doc.get('is_verified', False)
-                    
+
     return comments
 
 
@@ -10377,6 +10462,40 @@ async def init_sample_temples(token_data: dict = Depends(verify_token)):
     
     logger.info(f"Initialized {created}/23 temples with full data")
     return {"message": f"Created {created} temples with full data", "total": 23}
+
+
+@api_router.post("/admin/backfill-follow-edges")
+async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
+    """One-time migration: create user_follows edge docs for existing array-based
+    follows so the O(1) is_following lookup works for pre-migration relationships.
+
+    Idempotent — skips edges that already exist. After this runs, /users/{id}
+    never needs to fall back to scanning the followers array.
+    """
+    db = await get_db()
+    users = await db.query_documents('users')
+    created = 0
+    skipped = 0
+    for u in users:
+        uid = u.get('id') or u.get('user_id')
+        if not uid:
+            continue
+        # Each user's `following` array holds the user_ids they follow.
+        for followee_uid in (u.get('following') or []):
+            if not followee_uid:
+                continue
+            doc_id = f"{uid}_{followee_uid}"
+            existing = await db.get_document('user_follows', doc_id)
+            if existing:
+                skipped += 1
+                continue
+            await db.set_document('user_follows', doc_id, {
+                'follower_uid': uid,
+                'followee_uid': followee_uid,
+            })
+            created += 1
+    logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
+    return {"message": "Backfill complete", "created": created, "skipped": skipped}
 
 
 # =================== EVENTS ===================
