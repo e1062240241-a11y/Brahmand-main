@@ -101,6 +101,7 @@ export default function HomeScreen() {
 
   // Global block store — shared across all screens
   const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
   const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
@@ -2009,7 +2010,7 @@ export default function HomeScreen() {
                   ) : postComments.length > 0 ? (() => {
                     const filteredComments = postComments.filter((c: any) => {
                       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                      return !uid || !blockedUserIds.includes(String(uid));
+                      return !uid || !blockedSet.has(String(uid));
                     });
                     const parentComments = filteredComments.filter(c => !c.parent_id);
                     const repliesMap = filteredComments.reduce((acc, c) => {

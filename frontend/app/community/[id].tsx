@@ -1483,10 +1483,12 @@ export default function CommunityDetailScreen() {
     return null;
   };
 
+  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
+
   const combinedData = useMemo(() => {
     const isUserBlocked = (item: any) => {
       const uid = item?.user_id || item?.creator_id || item?.creator?.id || item?.sender_id || item?.user?.id;
-      return uid && blockedUserIds.includes(String(uid));
+      return uid && blockedSet.has(String(uid));
     };
 
     const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
@@ -5296,15 +5298,14 @@ export default function CommunityDetailScreen() {
             </View>
 
             <KeyboardAwareScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {activeComments.filter(comment => {
-                const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
-                return !uid || !blockedUserIds.includes(String(uid));
-              }).length > 0 ? (
-                activeComments
-                  .filter(comment => {
-                    const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
-                    return !uid || !blockedUserIds.includes(String(uid));
-                  })
+              {(() => {
+                const filteredComments = activeComments.filter(comment => {
+                  const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
+                  return !uid || !blockedSet.has(String(uid));
+                });
+
+                return filteredComments.length > 0 ? (
+                  filteredComments
                   .map((comment, index, filteredArray) => (
                     <View key={comment.id} style={{ flexDirection: 'row', marginBottom: 20, position: 'relative' }}>
                       {/* Thread connector line for replies */}
@@ -5349,7 +5350,8 @@ export default function CommunityDetailScreen() {
                       : 'No comments yet. Be the first to comment!'}
                   </Text>
                 </View>
-              )}
+              );
+              })()}
             </KeyboardAwareScrollView>
 
             <View style={styles.commentInputRow}>

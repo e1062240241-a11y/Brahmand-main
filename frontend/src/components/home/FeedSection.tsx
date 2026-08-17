@@ -96,6 +96,8 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       let videos: any[] = [];
       let images: any[] = [];
 
+      const blockedSet = new Set([...blockedUserIds, ...blockedByMeUserIds]);
+
       // Single pass for filtering and splitting (O(N))
       for (let i = 0; i < rawFeedPosts.length; i++) {
         const post = rawFeedPosts[i];
@@ -103,7 +105,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 
         if (uid) {
           const uidStr = String(uid);
-          if (blockedUserIds.includes(uidStr) || blockedByMeUserIds.includes(uidStr)) {
+          if (blockedSet.has(uidStr)) {
             continue;
           }
         }
