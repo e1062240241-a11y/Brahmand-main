@@ -16,6 +16,7 @@ import {View,
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { Button } from "../../src/components/Button";
 import {
@@ -576,27 +577,32 @@ export default function ChangeLocationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        {hasValidLocation ? (
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-        ) : (
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView edges={['top']} style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          {hasValidLocation ? (
+            <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
+          <Text style={styles.headerTitle}>
+            {t("language") === "hi" ? "स्थान बदलें" : "Change Location"}
+          </Text>
           <View style={{ width: 40 }} />
-        )}
-        <Text style={styles.headerTitle}>
-          {t("language") === "hi" ? "स्थान बदलें" : "Change Location"}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+        </View>
 
-      <KeyboardAwareScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.content}>
+        <KeyboardAwareScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
           {/* Info Box */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color={COLORS.info} />
@@ -840,54 +846,61 @@ export default function ChangeLocationScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "transparent",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: SPACING.lg,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: "transparent",
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
   },
   content: {
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
   infoBox: {
     flexDirection: "row",
-    backgroundColor: `${COLORS.info}15`,
-    borderRadius: 100,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    borderRadius: 16,
     padding: SPACING.lg,
     marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   infoText: {
     flex: 1,
     marginLeft: SPACING.sm,
     fontSize: 13,
-    color: COLORS.info,
+    color: "#475569",
     lineHeight: 18,
+    fontWeight: "500",
   },
   locationCard: {
-    backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     overflow: "hidden",
@@ -913,7 +926,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   locationDetails: {
-    paddingLeft: 52,
+    paddingLeft: 0,
+    marginTop: 4,
   },
   locationRow: {
     flexDirection: "row",
@@ -942,16 +956,18 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: `${COLORS.primary}10`,
-    paddingVertical: SPACING.xs + 2,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: "#FFF5F0",
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD9C6",
   },
   actionButtonText: {
     fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: "500",
-    marginLeft: SPACING.xs,
+    color: "#FF6F00",
+    fontWeight: "700",
+    marginLeft: 6,
   },
   detectButtonsContainer: {
     marginTop: SPACING.xs,
@@ -960,22 +976,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: `${COLORS.primary}10`,
+    backgroundColor: "#FFF5F0",
     paddingVertical: SPACING.md,
-    borderRadius: 100,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderStyle: "dashed",
+    borderColor: "#FFD9C6",
   },
   detectText: {
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: "500",
+    fontSize: 14,
+    color: "#FF6F00",
+    fontWeight: "700",
     marginLeft: SPACING.sm,
   },
   detectingText: {
     fontSize: 14,
-    color: COLORS.primary,
+    color: "#FF6F00",
+    fontWeight: "600",
     marginLeft: SPACING.sm,
   },
   divider: {

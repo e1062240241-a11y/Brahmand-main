@@ -27,6 +27,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
+import { FlashList } from '@shopify/flash-list';
+const SafeFlashList = FlashList as any;
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
@@ -1430,138 +1432,99 @@ export default function ProfileScreen() {
 
         {/* Settings Menu Modal */}
         <Modal visible={showSettingsModal} animationType="slide" transparent>
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
+          <View style={styles.settingsModalContainer}>
+            <Pressable
+              style={styles.settingsBackdrop}
               onPress={() => setShowSettingsModal(false)}
             />
-            <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.settingsSheet}>
               <View style={styles.settingsHeader}>
-                <View style={styles.settingsHeaderBar} />
                 <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
-                <TouchableOpacity
-                  style={styles.settingsClose}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.settingsClose,
+                    pressed && { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                  ]}
+                  android_ripple={{
+                    color: 'rgba(0, 0, 0, 0.12)',
+                    borderless: false,
+                    radius: 18,
+                  }}
+                  hitSlop={{ top: 24, bottom: 24, left: 24, right: 24 }}
                   onPress={() => setShowSettingsModal(false)}
-                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                 >
                   <Ionicons name="close" size={24} color="#000000" />
-                </TouchableOpacity>
+                </Pressable>
               </View>
-              {Platform.OS === 'android' ? (
-                <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
-                    <View key={section.id} style={styles.settingsSection}>
-                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
-                      {section.items.map((item: SettingItem, index: number) => {
-                        const iconColor = item.disabled ? '#A0A0A0' : '#000000';
-                        const textColor = item.disabled ? '#A0A0A0' : '#000000';
-                        const showChevron = item.id !== 'language';
-                        const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
+              <SafeFlashList
+                data={SETTINGS_SECTIONS}
+                estimatedItemSize={220}
+                showsVerticalScrollIndicator={false}
+                keyExtractor={(section: any) => section.id}
+                renderItem={({ item: section }: { item: any }) => (
+                  <View style={styles.settingsSection}>
+                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                    {section.items.map((item: SettingItem, index: number) => {
+                      const iconColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
+                      const textColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
+                      const showChevron = item.id !== 'language' && !item.disabled;
+                      const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
 
-                        return (
-                          <View key={item.id}>
-                            <Pressable
-                              style={({ pressed }) => [
-                                styles.settingsRow,
-                                { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Instant background highlight on press for Android too
-                                pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                              ]}
-                              android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
-                              onPress={() => handleMenuPress(item)}
-                              disabled={item.disabled && item.id !== 'location'}
-                            >
+                      return (
+                        <View key={item.id}>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.settingsRow,
+                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' },
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 },
+                              item.disabled && item.id !== 'location' && styles.settingsRowDisabled,
+                            ]}
+                            android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
+                            onPress={() => handleMenuPress(item)}
+                            disabled={item.disabled && item.id !== 'location'}
+                          >
+                            <View style={[
+                              styles.settingsIconCircle,
+                              { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
+                            ]}>
                               <Ionicons
                                 name={item.icon as any}
-                                size={20}
+                                size={18}
                                 color={iconColor}
-                                style={{ marginRight: 16 }}
                               />
-                              <View style={styles.settingsLabelWrap}>
-                                <Text style={[styles.settingsLabel, { color: textColor }]}>
-                                  {item.label}
-                                </Text>
-                              </View>
-                              <View style={styles.settingsRowRight}>
-                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                                {showChevron && (
-                                  <Ionicons
-                                    name="chevron-forward"
-                                    size={18}
-                                    color={chevronColor}
-                                  />
-                                )}
-                              </View>
-                            </Pressable>
-                            {index < section.items.length - 1 && (
-                              <View
-                                style={[
-                                  styles.settingsSeparator,
-                                  { marginLeft: 56, backgroundColor: '#EAEAEA' }
-                                ]}
-                              />
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ))}
-                  <View style={styles.bottomSpacer} />
-                </KeyboardAwareScrollView>
-              ) : (
-                <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
-                    <View key={section.id} style={styles.settingsSection}>
-                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
-                      {section.items.map((item: SettingItem, index: number) => {
-                        const textColor = item.action === 'logout' ? COLORS.error : '#000000';
-                        const showChevron = !item.disabled;
-
-                        return (
-                          <View key={item.id}>
-                            <Pressable
-                              style={({ pressed }) => [
-                                styles.settingsRow,
-                                { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Highlight background on tap on iOS
-                                item.disabled && styles.settingsRowDisabled,
+                            </View>
+                            <View style={styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                {item.label}
+                              </Text>
+                              {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                            </View>
+                            <View style={styles.settingsRowRight}>
+                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                              {showChevron && (
+                                <Ionicons
+                                  name="chevron-forward"
+                                  size={18}
+                                  color={chevronColor}
+                                />
+                              )}
+                            </View>
+                          </Pressable>
+                          {index < section.items.length - 1 && (
+                            <View
+                              style={[
+                                styles.settingsSeparator,
+                                { marginLeft: 56, backgroundColor: '#EAEAEA' }
                               ]}
-                              onPress={() => handleMenuPress(item)}
-                              disabled={item.disabled}
-                            >
-                              <Ionicons
-                                name={item.icon as any}
-                                size={20}
-                                color="#000"
-                                style={{ marginRight: 16 }}
-                              />
-                              <View style={styles.settingsLabelWrap}>
-                                <Text style={[styles.settingsLabel, { color: textColor }]}>
-                                  {item.label}
-                                </Text>
-                                {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
-                              </View>
-                              <View style={styles.settingsRowRight}>
-                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                                {showChevron && (
-                                  <Ionicons
-                                    name="chevron-forward"
-                                    size={18}
-                                    color="#000"
-                                  />
-                                )}
-                              </View>
-                            </Pressable>
-                            {index < section.items.length - 1 && (
-                              <View style={styles.settingsSeparator} />
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ))}
-                  <View style={styles.bottomSpacer} />
-                </KeyboardAwareScrollView>
-              )}
+                            />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
+              />
             </View>
           </View>
         </Modal>
@@ -1569,17 +1532,28 @@ export default function ProfileScreen() {
         <View
           style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
         >
-          <TouchableOpacity style={styles.navLeftGroup} onPress={() => router.back()}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.navLeftGroup,
+              pressed && { backgroundColor: 'rgba(255, 255, 255, 0.18)' }
+            ]}
+            android_ripple={{
+              color: 'rgba(255, 255, 255, 0.25)',
+              borderless: false,
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => router.back()}
+          >
             <Ionicons name="chevron-back" size={24} color="#FFF" />
             <Text style={styles.navUsername}>
               {(profile?.sl_id || user?.sl_id || profile?.name || user?.phone || 'yatri').toLowerCase()}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
           <View style={styles.navRightGroup}>
             <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 24 }}
-              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-              style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
               onPress={() => showImageSourcePicker('cover_photo')}
             >
               <Svg width={18} height={18} viewBox="0 0 16 17" fill="none">
@@ -1587,14 +1561,16 @@ export default function ProfileScreen() {
               </Svg>
             </Pressable>
             <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 24 }}
-              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-              style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Svg width={20} height={20} viewBox="24 0 16 17" fill="none">
-                <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF" />
-              </Svg>
+              <View style={{ width: 22, height: 18, justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
+                <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
+                <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
+              </View>
             </Pressable>
           </View>
         </View>
@@ -1614,15 +1590,10 @@ export default function ProfileScreen() {
             return `post-${item.id}`;
           }}
           numColumns={3}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            {
-              useNativeDriver: true,
-              listener: (event: any) => {
-                onProfileScrollTabBar(event);
-              },
-            }
-          )}
+          onScroll={(event: any) => {
+            scrollY.setValue(event.nativeEvent.contentOffset.y);
+            onProfileScrollTabBar(event);
+          }}
           scrollEventThrottle={16}
           ListFooterComponent={
             postsLoading ? (
@@ -2249,6 +2220,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   navUsername: {
     fontSize: 18,
@@ -2263,11 +2238,12 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   navRightBtn: {
-    padding: 8,
-    minWidth: 44,
-    minHeight: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   headerContent: {
     overflow: 'hidden',
@@ -2568,6 +2544,15 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
   },
+  settingsModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  settingsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2575,11 +2560,11 @@ const styles = StyleSheet.create({
   },
   settingsSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     height: Platform.OS === 'android' ? undefined : '65%',
     maxHeight: Platform.OS === 'android' ? '85%' : undefined,
-    paddingTop: 12,
+    paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },
     shadowOpacity: 0.25,
@@ -2588,41 +2573,40 @@ const styles = StyleSheet.create({
   },
   settingsHeader: {
     alignItems: 'center',
-    paddingBottom: 16,
-    paddingTop: 4,
-  },
-  settingsHeaderBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#E4E4E4',
-    borderRadius: 10,
-    marginBottom: 16,
+    paddingBottom: 8,
+    paddingTop: 12,
   },
   settingsTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#000000',
   },
   settingsClose: {
     position: 'absolute',
-    right: 20,
-    top: 24,
+    right: 16,
+    top: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingsSection: {
-    paddingTop: 20,
+    paddingTop: 10,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000000',
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#555555',
     paddingHorizontal: 20,
     marginBottom: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 56,
+    minHeight: 60,
     paddingHorizontal: 20,
   },
   settingsRowDisabled: {
@@ -2641,20 +2625,21 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   settingsIconCircle: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   settingsLabelWrap: {
     flex: 1,
   },
   settingsLabel: {
-    fontSize: 16,
-    color: '#000000',
+    fontSize: 15,
+    color: '#2C2C2E',
     fontWeight: '500',
+    letterSpacing: -0.1,
   },
   settingsSubLabel: {
     fontSize: 12,
