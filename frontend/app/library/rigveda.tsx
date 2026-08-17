@@ -64,7 +64,6 @@ export default function RigvedaPage() {
       const scrollViewRef = useRef<ScrollView>(null);
   const pendingProgressRef = useRef<any>(null);
   const lastDbWriteRef = useRef(0);
-  const pendingProgressRef = useRef<any>(null);
   
   const { updateProgress, getBookProgress, setLastRead, toggleBookmark } = useLibraryStore();
   
@@ -132,25 +131,8 @@ export default function RigvedaPage() {
     pendingProgressRef.current = null;
   };
 
-    pendingProgressRef.current = progressData;
-
-    const now = Date.now();
-    if (now - lastDbWriteRef.current > 1000) {
-      lastDbWriteRef.current = now;
-      updateProgress(progressData);
-    }
-
-    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
-      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
-    }
-  };
-
   const handleChapterChange = (chNum: number) => {
     commitProgress();
-    if (pendingProgressRef.current) {
-      updateProgress(pendingProgressRef.current);
-      pendingProgressRef.current = null;
-    }
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);

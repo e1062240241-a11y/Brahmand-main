@@ -274,8 +274,13 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   // Somnath
   somnath: 'somnath',
   'jyotirling-somnath-temple-gujarat': 'somnath',
+  'shiva-somnath-patan-gujarat': 'somnath',
   'somnath-temple-gujarat': 'somnath',
   'somnath temple': 'somnath',
+  'sacred-somnath-mahadham-gujarat': 'somnath',
+  'sacred-somnath-jyotirling-gujarat-core': 'somnath',
+  'sacred-somnath-gujarat-coastal': 'somnath',
+  'sacred-somnath-temple-prabhas-patan': 'somnath',
 
   // Dwarkadhish
   dwarka: 'dwarkadhish',
@@ -433,65 +438,84 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
 /**
  * Deterministic Normalization Function
  * Resolves any incoming raw temple ID or temple name string into a canonical key.
+ * Supports passing both rawInput (e.g. ID) and an optional nameInput (e.g. Name)
+ * to resolve canonical keys even when IDs are arbitrary database strings.
  */
-export function normalizeTempleKey(rawInput: string): string {
-  if (!rawInput) return '';
-  const lower = String(rawInput).toLowerCase().trim();
+export function normalizeTempleKey(rawInput: string, nameInput?: string): string {
+  const tryResolve = (input?: string): string | null => {
+    if (!input) return null;
+    const lower = String(input).toLowerCase().trim();
+    if (!lower) return null;
 
-  // 1. Direct match in dictionary
-  if (TEMPLE_KEY_ALIASES[lower]) {
-    return TEMPLE_KEY_ALIASES[lower];
-  }
-
-  const cleanedInput = lower.replace(/[^a-z0-9]/g, '');
-
-  // 2. Exact match after stripping non-alphanumeric
-  for (const [alias, canonical] of Object.entries(TEMPLE_KEY_ALIASES)) {
-    const cleanedAlias = alias.replace(/[^a-z0-9]/g, '');
-    if (cleanedInput === cleanedAlias) {
-      return canonical;
+    // 1. Direct match in dictionary
+    if (TEMPLE_KEY_ALIASES[lower]) {
+      return TEMPLE_KEY_ALIASES[lower];
     }
-  }
 
-  // 3. Robust Keyword Matching for all Major Pilgrimage Hubs
-  const coreKeywords: { kw: string; canonical: string }[] = [
-    { kw: 'kedarnath', canonical: 'kedarnath' },
-    { kw: 'badrinath', canonical: 'badrinath' },
-    { kw: 'somnath', canonical: 'somnath' },
-    { kw: 'dwarkadhish', canonical: 'dwarkadhish' },
-    { kw: 'dwarka', canonical: 'dwarkadhish' },
-    { kw: 'puri', canonical: 'jagannath-puri' },
-    { kw: 'jagannath', canonical: 'jagannath-puri' },
-    { kw: 'mahakal', canonical: 'mahakaleshwar' },
-    { kw: 'mahakaleshwar', canonical: 'mahakaleshwar' },
-    { kw: 'kashi', canonical: 'kashi-vishwanath' },
-    { kw: 'vishwanath', canonical: 'kashi-vishwanath' },
-    { kw: 'baidyanath', canonical: 'baidyanath' },
-    { kw: 'deoghar', canonical: 'baidyanath' },
-    { kw: 'grishneshwar', canonical: 'grishneshwar' },
-    { kw: 'ellora', canonical: 'grishneshwar' },
-    { kw: 'omkareshwar', canonical: 'omkareshwar' },
-    { kw: 'bhimashankar', canonical: 'bhimashankar' },
-    { kw: 'trimbakeshwar', canonical: 'trimbakeshwar' },
-    { kw: 'nageshwar', canonical: 'nageshwar' },
-    { kw: 'ramanathaswamy', canonical: 'ramanathaswamy' },
-    { kw: 'rameswaram', canonical: 'ramanathaswamy' },
-    { kw: 'srisailam', canonical: 'srisailam' },
-    { kw: 'mallikarjuna', canonical: 'srisailam' },
-    { kw: 'tanot', canonical: 'tanot-mata' },
-    { kw: 'belur math', canonical: 'belur-math' },
-    { kw: 'belurmath', canonical: 'belur-math' },
-    { kw: 'morgaon', canonical: 'mayureshwar-morgaon' },
-    { kw: 'mayureshwar', canonical: 'mayureshwar-morgaon' },
-  ];
+    const cleanedInput = lower.replace(/[^a-z0-9]/g, '');
 
-  for (const item of coreKeywords) {
-    if (cleanedInput.includes(item.kw)) {
-      return item.canonical;
+    // 2. Exact match after stripping non-alphanumeric
+    for (const [alias, canonical] of Object.entries(TEMPLE_KEY_ALIASES)) {
+      const cleanedAlias = alias.replace(/[^a-z0-9]/g, '');
+      if (cleanedInput === cleanedAlias) {
+        return canonical;
+      }
     }
+
+    // 3. Robust Keyword Matching for all Major Pilgrimage Hubs
+    const coreKeywords: { kw: string; canonical: string }[] = [
+      { kw: 'kedarnath', canonical: 'kedarnath' },
+      { kw: 'badrinath', canonical: 'badrinath' },
+      { kw: 'somnath', canonical: 'somnath' },
+      { kw: 'dwarkadhish', canonical: 'dwarkadhish' },
+      { kw: 'dwarka', canonical: 'dwarkadhish' },
+      { kw: 'puri', canonical: 'jagannath-puri' },
+      { kw: 'jagannath', canonical: 'jagannath-puri' },
+      { kw: 'mahakal', canonical: 'mahakaleshwar' },
+      { kw: 'mahakaleshwar', canonical: 'mahakaleshwar' },
+      { kw: 'kashi', canonical: 'kashi-vishwanath' },
+      { kw: 'vishwanath', canonical: 'kashi-vishwanath' },
+      { kw: 'baidyanath', canonical: 'baidyanath' },
+      { kw: 'deoghar', canonical: 'baidyanath' },
+      { kw: 'grishneshwar', canonical: 'grishneshwar' },
+      { kw: 'ellora', canonical: 'grishneshwar' },
+      { kw: 'omkareshwar', canonical: 'omkareshwar' },
+      { kw: 'bhimashankar', canonical: 'bhimashankar' },
+      { kw: 'trimbakeshwar', canonical: 'trimbakeshwar' },
+      { kw: 'nageshwar', canonical: 'nageshwar' },
+      { kw: 'ramanathaswamy', canonical: 'ramanathaswamy' },
+      { kw: 'rameswaram', canonical: 'ramanathaswamy' },
+      { kw: 'srisailam', canonical: 'srisailam' },
+      { kw: 'mallikarjuna', canonical: 'srisailam' },
+      { kw: 'tanot', canonical: 'tanot-mata' },
+      { kw: 'belur math', canonical: 'belur-math' },
+      { kw: 'belurmath', canonical: 'belur-math' },
+      { kw: 'morgaon', canonical: 'mayureshwar-morgaon' },
+      { kw: 'mayureshwar', canonical: 'mayureshwar-morgaon' },
+    ];
+
+    for (const item of coreKeywords) {
+      if (cleanedInput.includes(item.kw)) {
+        return item.canonical;
+      }
+    }
+
+    return null;
+  };
+
+  const keyFromRaw = tryResolve(rawInput);
+  if (keyFromRaw) return keyFromRaw;
+
+  if (nameInput) {
+    const keyFromName = tryResolve(nameInput);
+    if (keyFromName) return keyFromName;
   }
 
-  return lower;
+  return rawInput
+    ? String(rawInput).toLowerCase().trim()
+    : nameInput
+    ? String(nameInput).toLowerCase().trim()
+    : '';
 }
 
 export const EXPLORE_NEARBY_DATA: Record<
@@ -1435,30 +1459,134 @@ export const EXPLORE_NEARBY_DATA: Record<
   },
 };
 
-export function isCharDham(templeId: string, templeName: string = '', category: string = ''): boolean {
-  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase();
-  return (
-    checkStr.includes('char dham') ||
-    checkStr.includes('chardham') ||
-    checkStr.includes('badrinath') ||
-    checkStr.includes('kedarnath') ||
-    checkStr.includes('jagannath') ||
-    checkStr.includes('dwarkadhish') ||
-    checkStr.includes('gangotri') ||
-    checkStr.includes('yamunotri')
-  );
+export const BADA_CHAR_DHAM_IDS = [
+  'chardham-badrinath-temple-uttarakhand',
+  'chardham-dwarkadhish-temple-dwarka',
+  'chardham-jagannath-temple-puri',
+  'jyotirling-ramanathaswamy-temple-rameswaram',
+];
+
+export const CHOTA_CHAR_DHAM_IDS = [
+  'chardham-badrinath-temple-uttarakhand',
+  'jyotirling-kedarnath-temple-uttarakhand',
+  'chardham-gangotri-temple-uttarakhand',
+  'chardham-yamunotri-temple-uttarakhand',
+];
+
+export const HEALING_TEMPLE_IDS = [
+  'healing-ramanasramam-tiruvannamalai',
+  'healing-dhyanalinga-isha-coimbatore',
+  'jyotirling-mahakaleshwar-temple-ujjain',
+  'healing-virupaksha-temple-hampi',
+  'healing-anandamayi-ma-ashram-haridwar',
+  'sacred-golden-temple-amritsar',
+  'hanuman-mehendipur-balaji-temple-dausa',
+  'shaktipeeth-kamakhya-temple-guwahati',
+  'healing-parmarth-niketan-rishikesh',
+  'healing-sri-aurobindo-ashram-puducherry',
+  'sacred-belur-math-ramakrishna-mission',
+  'healing-sarnath-buddhist-monastery',
+  'sacred-mahabodhi-temple-bodh-gaya',
+  'devi-kollur-mookambika-temple',
+  'devi-chottanikara-temple-kochi',
+  'sacred-vaitheeswaran-koil-mayiladuthurai',
+  'jyotirling-baidyanath-temple-deoghar',
+  'healing-parli-vaijnath-temple',
+  'healing-dhanvantari-temple-kerala',
+  'sacred-suchindram-thanumalayan-temple',
+  'healing-ghati-subramanya-temple',
+  'panchbhoota-srikalahasteeswara-temple-srikalahasti',
+  'sacred-kukke-subramanya-temple',
+  'jyotirling-trimbakeshwar-temple-nashik',
+  'jyotirling-omkareshwar-temple-madhya-pradesh',
+  'jyotirling-ramanathaswamy-temple-rameswaram',
+  'jyotirling-kashi-vishwanath-temple-varanasi',
+  'jyotirling-somnath-temple-gujarat',
+  'jyotirling-nageshwar-temple-dwarka',
+  'jyotirling-grishneshwar-temple-ellora',
+  'jyotirling-mallikarjuna-temple-srisailam',
+  'jyotirling-kedarnath-temple-uttarakhand',
+  'jyotirling-bhimashankar-temple-maharashtra',
+  'healing-mangaladevi-temple-mangalore',
+];
+
+export const getTempleId = (t: any): string => {
+  if (!t) return '';
+  if (typeof t === 'string') return t.toLowerCase().trim();
+  return String(t.templeId || t.temple_id || t._raw?.temple_id || t.id || '').toLowerCase().trim();
+};
+
+export function deduplicateTemples<T = any>(temples: T[]): T[] {
+  if (!Array.isArray(temples)) return [];
+  const dedupedMap = new Map<string, T>();
+
+  for (const rec of temples) {
+    if (!rec) continue;
+    const rawId = getTempleId(rec);
+    const name = String((rec as any).name || (rec as any)._raw?.name || '').trim();
+    const cKey = normalizeTempleKey(rawId, name);
+    const fallbackKey = (rawId || name).toLowerCase().trim();
+    const keyToUse = cKey || fallbackKey;
+
+    if (keyToUse) {
+      if (!dedupedMap.has(keyToUse)) {
+        dedupedMap.set(keyToUse, rec);
+      } else {
+        const existing = dedupedMap.get(keyToUse) as any;
+        const exId = getTempleId(existing);
+        if (!exId.startsWith('jyotirling-') && rawId.startsWith('jyotirling-')) {
+          dedupedMap.set(keyToUse, rec);
+        }
+      }
+    }
+  }
+
+  return Array.from(dedupedMap.values());
 }
 
-export function isHealingTemple(templeId: string, templeName: string = '', category: string = ''): boolean {
-  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase();
-  return (
-    checkStr.includes('healing') ||
-    checkStr.includes('miracle') ||
-    checkStr.includes('sai baba') ||
-    checkStr.includes('shirdi') ||
-    checkStr.includes('balaji') ||
-    checkStr.includes('tirupati')
-  );
+function unpackTempleInput(
+  input: any,
+  nameInput?: string,
+  categoryInput?: string
+): { tid: string; tName: string; category: string; categoryIds: string[]; tags: string[] } {
+  if (input && typeof input === 'object') {
+    const tid = getTempleId(input);
+    const tName = String(input.name || input._raw?.name || nameInput || '').toLowerCase();
+    const category = String(input.category || input.type || categoryInput || '').toLowerCase();
+    const categoryIds = Array.isArray(input.category_ids)
+      ? input.category_ids.map((c: any) => String(c).toLowerCase())
+      : [];
+    const tags = Array.isArray(input.tags)
+      ? input.tags.map((tg: any) => String(tg).toLowerCase())
+      : [];
+    return { tid, tName, category, categoryIds, tags };
+  } else {
+    const tid = String(input || '').toLowerCase();
+    const tName = String(nameInput || '').toLowerCase();
+    const category = String(categoryInput || '').toLowerCase();
+    return { tid, tName, category, categoryIds: [], tags: [] };
+  }
+}
+
+export const JYOTIRLINGA_CANONICAL_KEYS = new Set([
+  'somnath',
+  'srisailam',
+  'mahakaleshwar',
+  'omkareshwar',
+  'kedarnath',
+  'bhimashankar',
+  'kashi-vishwanath',
+  'trimbakeshwar',
+  'baidyanath',
+  'nageshwar',
+  'ramanathaswamy',
+  'grishneshwar',
+]);
+
+export function isJyotirlinga(input: any, templeName: string = '', category: string = ''): boolean {
+  const { tid, tName } = unpackTempleInput(input, templeName, category);
+  const canonicalKey = normalizeTempleKey(tid, tName);
+  return Boolean(canonicalKey && JYOTIRLINGA_CANONICAL_KEYS.has(canonicalKey));
 }
 
 const SHAKTI_PEETHA_KEYS = new Set([
@@ -1501,13 +1629,24 @@ const SHAKTI_PEETHA_KEYS = new Set([
   'chottanikara',
 ]);
 
-export function isShaktiPeetha(templeId: string, templeName: string = '', category: string = ''): boolean {
-  const cKey = normalizeTempleKey(templeId) || normalizeTempleKey(templeName);
+export function isShaktiPeetha(input: any, templeName: string = '', categoryInput: string = ''): boolean {
+  const { tid, tName, category, categoryIds, tags } = unpackTempleInput(input, templeName, categoryInput);
+
+  if (
+    category.includes('shakti') ||
+    category.includes('peetha') ||
+    categoryIds.some((c) => c.includes('shakti')) ||
+    tags.some((tg) => tg.includes('shakti'))
+  ) {
+    return true;
+  }
+
+  const cKey = normalizeTempleKey(tid, tName);
   if (cKey && SHAKTI_PEETHA_KEYS.has(cKey)) {
     return true;
   }
 
-  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase().trim();
+  const checkStr = `${tid} ${tName} ${category}`.toLowerCase().trim();
 
   const shaktiPeethaKeywords = [
     'kamakhya',
@@ -1539,21 +1678,69 @@ export function isShaktiPeetha(templeId: string, templeName: string = '', catego
   return shaktiPeethaKeywords.some((keyword) => checkStr.includes(keyword));
 }
 
-export function isJyotirlinga(templeId: string, templeName: string = '', category: string = ''): boolean {
-  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase();
+export function isBadaCharDham(input: any, templeName: string = '', categoryInput: string = ''): boolean {
+  const { tid, tName, category, categoryIds, tags } = unpackTempleInput(input, templeName, categoryInput);
+
+  if (
+    category.includes('bada char dham') ||
+    category.includes('bada_char_dham') ||
+    categoryIds.some((c) => c.includes('bada_char_dham')) ||
+    tags.some((tg) => tg.includes('bada_char_dham'))
+  ) {
+    return true;
+  }
+
+  const cKey = normalizeTempleKey(tid, tName);
+  const BADA_KEYS = new Set(['badrinath', 'dwarkadhish', 'jagannath-puri', 'ramanathaswamy']);
+  if (cKey && BADA_KEYS.has(cKey)) return true;
+
+  return BADA_CHAR_DHAM_IDS.includes(tid);
+}
+
+export function isChotaCharDham(input: any, templeName: string = '', categoryInput: string = ''): boolean {
+  const { tid, tName, category, categoryIds, tags } = unpackTempleInput(input, templeName, categoryInput);
+
+  if (
+    category.includes('chota char dham') ||
+    category.includes('chota_char_dham') ||
+    categoryIds.some((c) => c.includes('chota_char_dham')) ||
+    tags.some((tg) => tg.includes('chota_char_dham'))
+  ) {
+    return true;
+  }
+
+  const cKey = normalizeTempleKey(tid, tName);
+  const CHOTA_KEYS = new Set(['badrinath', 'kedarnath', 'gangotri', 'yamunotri']);
+  if (cKey && CHOTA_KEYS.has(cKey)) return true;
+
+  return CHOTA_CHAR_DHAM_IDS.includes(tid);
+}
+
+export function isCharDham(input: any, templeName: string = '', category: string = ''): boolean {
+  return isBadaCharDham(input, templeName, category) || isChotaCharDham(input, templeName, category);
+}
+
+export function isHealingTemple(input: any, templeName: string = '', categoryInput: string = ''): boolean {
+  const { tid, tName, category, categoryIds, tags } = unpackTempleInput(input, templeName, categoryInput);
+
+  if (
+    category.includes('healing') ||
+    categoryIds.some((c) => c.includes('healing')) ||
+    tags.some((tg) => tg.includes('healing'))
+  ) {
+    return true;
+  }
+
+  if (HEALING_TEMPLE_IDS.includes(tid)) return true;
+
+  const checkStr = `${tid} ${tName} ${category}`.toLowerCase();
   return (
-    checkStr.includes('jyotirling') ||
-    checkStr.includes('somnath') ||
-    checkStr.includes('mahakal') ||
-    checkStr.includes('omkareshwar') ||
-    checkStr.includes('bhimashankar') ||
-    checkStr.includes('kashi') ||
-    checkStr.includes('trimbak') ||
-    checkStr.includes('baidyanath') ||
-    checkStr.includes('nageshwar') ||
-    checkStr.includes('srisailam') ||
-    checkStr.includes('rameswaram') ||
-    checkStr.includes('grishneshwar')
+    checkStr.includes('healing') ||
+    checkStr.includes('miracle') ||
+    checkStr.includes('sai baba') ||
+    checkStr.includes('shirdi') ||
+    checkStr.includes('balaji') ||
+    checkStr.includes('tirupati')
   );
 }
 
@@ -1648,7 +1835,7 @@ export function getExploreNearbyData(
   }
 
   // Determine canonical temple key
-  const currentTempleKey = normalizeTempleKey(templeId) || normalizeTempleKey(templeName);
+  const currentTempleKey = normalizeTempleKey(templeId, templeName);
 
   // Retrieve curated entry
   const curatedData = EXPLORE_NEARBY_DATA[currentTempleKey];
@@ -1687,7 +1874,7 @@ export function getExploreNearbyData(
 
       if ((!currentLat || !currentLon) && Array.isArray(TEMPLE_DUMP_DATA)) {
         const dumpMatch = (TEMPLE_DUMP_DATA as any[]).find((t) => {
-          const dumpKey = normalizeTempleKey(t.id || t.temple_id) || normalizeTempleKey(t.name);
+          const dumpKey = normalizeTempleKey(t.id || t.temple_id, t.name);
           return dumpKey === currentTempleKey || t.id === templeId || t.temple_id === templeId;
         });
         if (dumpMatch?.coords?.latitude && dumpMatch?.coords?.longitude) {
@@ -1700,7 +1887,7 @@ export function getExploreNearbyData(
         const candidates: { templeId: string; name: string; image: any; distanceKm: number; distance: string }[] = [];
 
         for (const candidate of TEMPLE_DUMP_DATA as any[]) {
-          const candKey = normalizeTempleKey(candidate.id || candidate.temple_id) || normalizeTempleKey(candidate.name);
+          const candKey = normalizeTempleKey(candidate.id || candidate.temple_id, candidate.name);
           const candidateId = candidate.temple_id || candidate.id;
 
           // Exclude current temple early from coordinate distance calculation (exact ID or exact name match)

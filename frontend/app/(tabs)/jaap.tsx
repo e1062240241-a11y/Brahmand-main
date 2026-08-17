@@ -27,7 +27,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
-import { isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
+import {
+  isJyotirlinga,
+  isShaktiPeetha,
+  isBadaCharDham,
+  isChotaCharDham,
+  isCharDham,
+  isHealingTemple,
+  deduplicateTemples,
+} from '../../src/data/jyotirlingaTravelData';
 import { socketService } from '../../src/services/socket';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
@@ -555,8 +563,9 @@ export default function JaapLandingScreen() {
       setLoadingTemples(true);
       const response = await getTemples();
       if (response.data) {
-        setTemples(response.data);
-        console.log('[TEMPLE SOURCE]', response.data.length, 'localDbCount: N/A', response.data.length);
+        const deduplicated = deduplicateTemples(response.data);
+        setTemples(deduplicated);
+        console.log('[TEMPLE SOURCE]', deduplicated.length, 'localDbCount: N/A', deduplicated.length);
       }
     } catch (error) {
       console.error('Error fetching temples in Jaap:', error);
@@ -654,113 +663,6 @@ export default function JaapLandingScreen() {
   const [charDhamSubFilter, setCharDhamSubFilter] = useState<'bada' | 'chota' | 'all'>('bada');
   const [showCharDhamDropdown, setShowCharDhamDropdown] = useState(false);
 
-  // Case-insensitive category helpers
-  const BADA_CHAR_DHAM_IDS = [
-    'chardham-badrinath-temple-uttarakhand',
-    'chardham-dwarkadhish-temple-dwarka',
-    'chardham-jagannath-temple-puri',
-    'jyotirling-ramanathaswamy-temple-rameswaram',
-  ];
-
-  const CHOTA_CHAR_DHAM_IDS = [
-    'chardham-badrinath-temple-uttarakhand',
-    'jyotirling-kedarnath-temple-uttarakhand',
-    'chardham-gangotri-temple-uttarakhand',
-    'chardham-yamunotri-temple-uttarakhand',
-  ];
-
-  const isJyotirlinga = (t: any) => {
-    const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-    const category = (t.category || t.type || '').trim().toLowerCase();
-    const categoryIds = Array.isArray(t.category_ids)
-      ? t.category_ids.map((c: string) => String(c).toLowerCase())
-      : [];
-    const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-    if (
-      category.includes('jyotirling') ||
-      categoryIds.some((c: string) => c.includes('jyotirling')) ||
-      tags.some((tg: string) => tg.includes('jyotirling')) ||
-      tid.includes('jyotirling')
-    ) {
-      return true;
-    }
-    return false;
-  };
-
-  const isShaktiPeetha = (t: any) => {
-    const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-    const tName = (t.name || '').toLowerCase();
-    const category = (t.category || '').trim().toLowerCase();
-    const categoryIds = Array.isArray(t.category_ids)
-      ? t.category_ids.map((c: string) => String(c).toLowerCase())
-      : [];
-
-    if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
-      return true;
-    }
-
-    return isShaktiPeethaGlobal(tid, tName, category);
-  };
-
-  const isBadaCharDham = (t: any) => {
-    const tid = (t.temple_id || t.id || '').toLowerCase();
-    return BADA_CHAR_DHAM_IDS.includes(tid);
-  };
-
-  const isChotaCharDham = (t: any) => {
-    const tid = (t.temple_id || t.id || '').toLowerCase();
-    return CHOTA_CHAR_DHAM_IDS.includes(tid);
-  };
-
-  const isCharDham = (t: any) => {
-    return isBadaCharDham(t) || isChotaCharDham(t);
-  };
-
-  const HEALING_TEMPLE_IDS = [
-    // 1-15: Mental & Emotional Wellbeing Shrines
-    'healing-ramanasramam-tiruvannamalai',
-    'healing-dhyanalinga-isha-coimbatore',
-    'jyotirling-mahakaleshwar-temple-ujjain',
-    'healing-virupaksha-temple-hampi',
-    'healing-anandamayi-ma-ashram-haridwar',
-    'sacred-golden-temple-amritsar',
-    'hanuman-mehendipur-balaji-temple-dausa',
-    'shaktipeeth-kamakhya-temple-guwahati',
-    'healing-parmarth-niketan-rishikesh',
-    'healing-sri-aurobindo-ashram-puducherry',
-    'sacred-belur-math-ramakrishna-mission',
-    'healing-sarnath-buddhist-monastery',
-    'sacred-mahabodhi-temple-bodh-gaya',
-    'devi-kollur-mookambika-temple',
-    'devi-chottanikara-temple-kochi',
-
-    // 16-34: Physical Health & Recovery Shrines
-    'sacred-vaitheeswaran-koil-mayiladuthurai',
-    'jyotirling-baidyanath-temple-deoghar',
-    'healing-parli-vaijnath-temple',
-    'healing-dhanvantari-temple-kerala',
-    'sacred-suchindram-thanumalayan-temple',
-    'healing-ghati-subramanya-temple',
-    'panchbhoota-srikalahasteeswara-temple-srikalahasti',
-    'sacred-kukke-subramanya-temple',
-    'jyotirling-trimbakeshwar-temple-nashik',
-    'jyotirling-omkareshwar-temple-madhya-pradesh',
-    'jyotirling-ramanathaswamy-temple-rameswaram',
-    'jyotirling-kashi-vishwanath-temple-varanasi',
-    'jyotirling-somnath-temple-gujarat',
-    'jyotirling-nageshwar-temple-dwarka',
-    'jyotirling-grishneshwar-temple-ellora',
-    'jyotirling-mallikarjuna-temple-srisailam',
-    'jyotirling-kedarnath-temple-uttarakhand',
-    'jyotirling-bhimashankar-temple-maharashtra',
-    'healing-mangaladevi-temple-mangalore'
-  ];
-
-  const isHealingTemple = (t: any) => {
-    const tid = (t.temple_id || t.id || '').toLowerCase();
-    return HEALING_TEMPLE_IDS.includes(tid);
-  };
-
   const filteredTemples = (temples || []).filter(t => {
     const q = templeSearch.trim().toLowerCase();
 
@@ -791,7 +693,7 @@ export default function JaapLandingScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const jyotirlingaTemples = (temples || []).filter(isJyotirlinga);
+  const jyotirlingaTemples = (temples || []).filter((t: any) => isJyotirlinga(t));
 
   const switchSection = useCallback((section: 'jaap' | 'temple') => {
     if (section === activeSection) return;
@@ -1146,9 +1048,28 @@ export default function JaapLandingScreen() {
             </ScrollView>
 
             {/* Katha Section */}
-            <View style={styles.sectionHeaderParity}>
-              <Text style={styles.sectionTitleText}>
-                {t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'}
+            <View style={styles.kathaSectionHeader}>
+              <View style={styles.kathaTitleRow}>
+                <LinearGradient
+                  colors={['transparent', '#c99a3d']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.kathaTitleLine}
+                />
+                <Text style={styles.kathaTitleText}>
+                  {t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'}
+                </Text>
+                <LinearGradient
+                  colors={['#c99a3d', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.kathaTitleLine}
+                />
+              </View>
+              <Text style={styles.kathaSubtitleText}>
+                {t('language') === 'hi'
+                  ? 'पवित्र कथा व सत्संग का आनंद लें'
+                  : 'Listen to Sacred Katha & Satsang'}
               </Text>
             </View>
 
@@ -2104,6 +2025,31 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  kathaSectionHeader: {
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 18,
+  },
+  kathaTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  kathaTitleLine: {
+    width: 32,
+    height: 1,
+  },
+  kathaTitleText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#5a3218',
+  },
+  kathaSubtitleText: {
+    marginTop: 5,
+    fontSize: 13,
+    color: '#8a735c',
+    textAlign: 'center',
   },
   bookCardKatha: {
     width: 192,

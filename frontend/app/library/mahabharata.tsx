@@ -140,20 +140,6 @@ export default function MahabharataPage() {
     pendingProgressRef.current = null;
   };
 
-    pendingProgressRef.current = progressData;
-
-    const now = Date.now();
-    if (now - lastDbWriteRef.current > 1000) {
-      lastDbWriteRef.current = now;
-      updateProgress(progressData);
-    }
-
-    // Lazy-load more verses when scrolling near the bottom
-    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
-      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
-    }
-  };
-
   const handleChapterChange = (chNum: number) => {
     commitProgress();
     setCurrentChapter(chNum);

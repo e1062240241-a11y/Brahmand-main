@@ -79,7 +79,6 @@ async function migrateLegacyProgress() {
             lastOpenedTime: Date.now() - 10000,
             lastReadScrollY: bookData.lastReadScrollY || 0,
             bookmarks: bookData.bookmarks || [],
-            title: bookData.title || ''
           };
           migrated = true;
         } else {

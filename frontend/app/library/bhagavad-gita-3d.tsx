@@ -116,7 +116,7 @@ export default function BhagavadGita3DPage() {
   
   const progressGeeta = getBookProgress('bhagvad-geeta');
   const progressGita = getBookProgress('gita');
-  const progress = (progressGeeta.lastReadChapter > 1 || progressGeeta.progressPercent > 0 || progressGeeta.bookmarks.length > 0) ? progressGeeta : progressGita;
+  const progress = (progressGeeta.chapterNum > 1 || progressGeeta.progressPercent > 0 || (progressGeeta.bookmarks?.length || 0) > 0) ? progressGeeta : progressGita;
   const { chapterNum: lastReadChapter, lastReadScrollY = 0, bookmarks = [], progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
@@ -181,19 +181,6 @@ export default function BhagavadGita3DPage() {
       lastOpenedTime: Date.now(),
     });
     pendingProgressRef.current = null;
-  };
-
-    pendingProgressRef.current = progressData;
-
-    const now = Date.now();
-    if (now - lastDbWriteRef.current > 1000) {
-      lastDbWriteRef.current = now;
-      updateProgress(progressData);
-    }
-
-    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
-      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
-    }
   };
 
   const handleChapterChange = (chNum: number) => {

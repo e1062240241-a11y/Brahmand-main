@@ -142,19 +142,6 @@ export default function UpanishadsPage() {
     pendingProgressRef.current = null;
   };
 
-    pendingProgressRef.current = progressData;
-
-    const now = Date.now();
-    if (now - lastDbWriteRef.current > 1000) {
-      lastDbWriteRef.current = now;
-      updateProgress(progressData);
-    }
-
-    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
-      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
-    }
-  };
-
   const handleChapterChange = (chNum: number) => {
     commitProgress();
     setCurrentChapter(chNum);
@@ -203,7 +190,6 @@ export default function UpanishadsPage() {
 
   // Animation values
 
-  // Flush pending DB writes on unmount
   // Flush pending DB writes on unmount
   useEffect(() => {
     return () => {

@@ -24,7 +24,19 @@ import { database } from '../../src/database';
 import { FONTS } from '../../src/constants/theme';
 import { DEFAULT_TEMPLE_IMAGE, resolveTempleImage } from '../../src/constants/templeImages';
 import { useTranslation, translations } from '../../src/utils/i18n';
-import { normalizeTempleKey, isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
+import { 
+  normalizeTempleKey, 
+  isShaktiPeetha as isShaktiPeethaGlobal, 
+  isJyotirlinga, 
+  isBadaCharDham, 
+  isChotaCharDham, 
+  isCharDham, 
+  isHealingTemple, 
+  deduplicateTemples,
+  BADA_CHAR_DHAM_IDS,
+  CHOTA_CHAR_DHAM_IDS,
+  HEALING_TEMPLE_IDS
+} from '../../src/data/jyotirlingaTravelData';
 const SafeFlashList = FlashList as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -32,65 +44,17 @@ const FLASH_LIST_CONTENT_STYLE = { paddingBottom: 40 } as const;
 
 const JYOTIRLING_TEMPLES = [
   { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Temple', location: 'Gujarat', deity: 'Lord Shiva' },
-  { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Temple', location: 'Uttarakhand', deity: 'Lord Shiva' },
+  { id: 'jyotirling-mallikarjuna-temple-srisailam', name: 'Mallikarjuna Temple', location: 'Srisailam, Andhra Pradesh', deity: 'Lord Shiva' },
   { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakaleshwar Temple', location: 'Ujjain, Madhya Pradesh', deity: 'Lord Shiva' },
-  { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Temple', location: 'Varanasi, Uttar Pradesh', deity: 'Lord Shiva' },
+  { id: 'jyotirling-omkareshwar-temple-madhya-pradesh', name: 'Omkareshwar Temple', location: 'Khandwa, Madhya Pradesh', deity: 'Lord Shiva' },
+  { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Temple', location: 'Uttarakhand', deity: 'Lord Shiva' },
   { id: 'jyotirling-bhimashankar-temple-maharashtra', name: 'Bhimashankar Temple', location: 'Pune, Maharashtra', deity: 'Lord Shiva' },
-  { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple', location: 'Tamil Nadu', deity: 'Lord Shiva' },
-];
-
-const BADA_CHAR_DHAM_IDS = [
-  'chardham-badrinath-temple-uttarakhand',
-  'chardham-dwarkadhish-temple-dwarka',
-  'chardham-jagannath-temple-puri',
-  'jyotirling-ramanathaswamy-temple-rameswaram',
-];
-
-const CHOTA_CHAR_DHAM_IDS = [
-  'chardham-badrinath-temple-uttarakhand',
-  'jyotirling-kedarnath-temple-uttarakhand',
-  'chardham-gangotri-temple-uttarakhand',
-  'chardham-yamunotri-temple-uttarakhand',
-];
-
-const HEALING_TEMPLE_IDS = [
-  // 1-15: Mental & Emotional Wellbeing Shrines
-  'healing-ramanasramam-tiruvannamalai',
-  'healing-dhyanalinga-isha-coimbatore',
-  'jyotirling-mahakaleshwar-temple-ujjain',
-  'healing-virupaksha-temple-hampi',
-  'healing-anandamayi-ma-ashram-haridwar',
-  'sacred-golden-temple-amritsar',
-  'hanuman-mehendipur-balaji-temple-dausa',
-  'shaktipeeth-kamakhya-temple-guwahati',
-  'healing-parmarth-niketan-rishikesh',
-  'healing-sri-aurobindo-ashram-puducherry',
-  'sacred-belur-math-ramakrishna-mission',
-  'healing-sarnath-buddhist-monastery',
-  'sacred-mahabodhi-temple-bodh-gaya',
-  'devi-kollur-mookambika-temple',
-  'devi-chottanikara-temple-kochi',
-
-  // 16-34: Physical Health & Recovery Shrines
-  'sacred-vaitheeswaran-koil-mayiladuthurai',
-  'jyotirling-baidyanath-temple-deoghar',
-  'healing-parli-vaijnath-temple',
-  'healing-dhanvantari-temple-kerala',
-  'sacred-suchindram-thanumalayan-temple',
-  'healing-ghati-subramanya-temple',
-  'panchbhoota-srikalahasteeswara-temple-srikalahasti',
-  'sacred-kukke-subramanya-temple',
-  'jyotirling-trimbakeshwar-temple-nashik',
-  'jyotirling-omkareshwar-temple-madhya-pradesh',
-  'jyotirling-ramanathaswamy-temple-rameswaram',
-  'jyotirling-kashi-vishwanath-temple-varanasi',
-  'jyotirling-somnath-temple-gujarat',
-  'jyotirling-nageshwar-temple-dwarka',
-  'jyotirling-grishneshwar-temple-ellora',
-  'jyotirling-mallikarjuna-temple-srisailam',
-  'jyotirling-kedarnath-temple-uttarakhand',
-  'jyotirling-bhimashankar-temple-maharashtra',
-  'healing-mangaladevi-temple-mangalore'
+  { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Temple', location: 'Varanasi, Uttar Pradesh', deity: 'Lord Shiva' },
+  { id: 'jyotirling-trimbakeshwar-temple-nashik', name: 'Trimbakeshwar Temple', location: 'Nashik, Maharashtra', deity: 'Lord Shiva' },
+  { id: 'jyotirling-baidyanath-temple-deoghar', name: 'Baidyanath Temple', location: 'Deoghar, Jharkhand', deity: 'Lord Shiva' },
+  { id: 'jyotirling-nageshwar-temple-dwarka', name: 'Nageshwar Temple', location: 'Dwarka, Gujarat', deity: 'Lord Shiva' },
+  { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple', location: 'Rameswaram, Tamil Nadu', deity: 'Lord Shiva' },
+  { id: 'jyotirling-grishneshwar-temple-ellora', name: 'Grishneshwar Temple', location: 'Ellora, Maharashtra', deity: 'Lord Shiva' },
 ];
 
 const renderSafeText = (val: any): string => {
@@ -302,7 +266,7 @@ export default function TempleScreen() {
   const loadMoreTemples = useCallback(async (pageNum: number, isReset: boolean = false) => {
     try {
       setLoading(true);
-      // Use cached temples on pagination; refresh from DB only on a reset (page 1).
+      
       let allLocalTemples: any[];
       if (isReset || allLocalTemplesRef.current === null) {
         allLocalTemples = await database.get('temples').query().fetch();
@@ -310,23 +274,42 @@ export default function TempleScreen() {
       } else {
         allLocalTemples = allLocalTemplesRef.current as any[];
       }
-      
+
+      const JYOTIRLINGA_CANONICAL_KEYS = new Set([
+        'somnath', 'srisailam', 'mahakaleshwar', 'omkareshwar', 'kedarnath',
+        'bhimashankar', 'kashi-vishwanath', 'trimbakeshwar', 'baidyanath',
+        'nageshwar', 'ramanathaswamy', 'grishneshwar',
+      ]);
+
+      // STEP 1: Deduplicate ALL temples by canonical key FIRST
+      const dedupedTemplesMap = new Map();
+      for (const rec of allLocalTemples) {
+        const rawId = rec.templeId || rec.temple_id || rec.id || '';
+        const name = rec.name || rec._raw?.name || '';
+        const cKey = normalizeTempleKey(rawId, name);
+        const fallbackKey = (rawId || name).toLowerCase().trim();
+        const keyToUse = cKey || fallbackKey;
+        
+        if (keyToUse) {
+          if (!dedupedTemplesMap.has(keyToUse)) {
+            dedupedTemplesMap.set(keyToUse, rec);
+          } else {
+            const existing = dedupedTemplesMap.get(keyToUse);
+            const exId = existing.templeId || existing.temple_id || existing.id || '';
+            if (!exId.startsWith('jyotirling-') && rawId.startsWith('jyotirling-')) {
+              dedupedTemplesMap.set(keyToUse, rec);
+            }
+          }
+        }
+      }
+      const dedupedTemples = Array.from(dedupedTemplesMap.values());
+
+      // STEP 2: Define category filters
       const isJyotirlinga = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        const category = (t.category || t.type || '').trim().toLowerCase();
-        const categoryIds = Array.isArray(t.category_ids)
-          ? t.category_ids.map((c: string) => String(c).toLowerCase())
-          : [];
-        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
-        if (
-          category.includes('jyotirling') ||
-          categoryIds.some((c: string) => c.includes('jyotirling')) ||
-          tags.some((tg: string) => tg.includes('jyotirling')) ||
-          tid.includes('jyotirling')
-        ) {
-          return true;
-        }
-        return JYOTIRLING_TEMPLES.some((j: any) => j.id === tid);
+        const tName = (t.name || t._raw?.name || '').toLowerCase();
+        const cKey = normalizeTempleKey(tid, tName);
+        return Boolean(cKey && JYOTIRLINGA_CANONICAL_KEYS.has(cKey));
       };
 
       const isShaktiPeetha = (t: any) => {
@@ -387,9 +370,7 @@ export default function TempleScreen() {
         return CHOTA_CHAR_DHAM_IDS.includes(tid);
       };
 
-      const isCharDham = (t: any) => {
-        return isBadaCharDham(t) || isChotaCharDham(t);
-      };
+      const isCharDham = (t: any) => isBadaCharDham(t) || isChotaCharDham(t);
 
       const isHealingTemple = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
@@ -410,14 +391,13 @@ export default function TempleScreen() {
         return HEALING_TEMPLE_IDS.includes(tid);
       };
 
-      const jyotisByJs = allLocalTemples.filter(isJyotirlinga);
-
-      let filteredRecords = allLocalTemples;
+      // STEP 3: Apply category filter on deduplicated list
+      let filteredRecords = dedupedTemples;
+      
       if (selectedCategory === 'Jyotirlinga') {
-        filteredRecords = jyotisByJs;
+        filteredRecords = dedupedTemples.filter(isJyotirlinga);
       } else if (selectedCategory === 'Shakti Peetha') {
-        const rawShaktiList = allLocalTemples.filter(isShaktiPeetha);
-        // Sort: Temples with verified website or helpline come first
+        const rawShaktiList = dedupedTemples.filter(isShaktiPeetha);
         filteredRecords = rawShaktiList.sort((a: any, b: any) => {
           const aId = (a.templeId || a.temple_id || a.id || '').toLowerCase();
           const aName = (a.name || '').toLowerCase();
@@ -447,18 +427,19 @@ export default function TempleScreen() {
         });
       } else if (selectedCategory === 'Char Dham') {
         if (charDhamSubFilter === 'bada') {
-          filteredRecords = allLocalTemples.filter(isBadaCharDham);
+          filteredRecords = dedupedTemples.filter(isBadaCharDham);
         } else if (charDhamSubFilter === 'chota') {
-          filteredRecords = allLocalTemples.filter(isChotaCharDham);
+          filteredRecords = dedupedTemples.filter(isChotaCharDham);
         } else {
-          filteredRecords = allLocalTemples.filter(isCharDham);
+          filteredRecords = dedupedTemples.filter(isCharDham);
         }
       } else if (selectedCategory === 'Healing Temples') {
-        filteredRecords = allLocalTemples.filter(isHealingTemple);
+        filteredRecords = dedupedTemples.filter(isHealingTemple);
       } else if (selectedCategory === 'Sacred') {
-        filteredRecords = allLocalTemples.filter((t: any) => !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t));
+        filteredRecords = dedupedTemples.filter((t: any) => !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t));
       }
 
+      // STEP 4: Apply search and location filters
       if (searchQuery.trim().length > 0) {
         const q = searchQuery.trim().toLowerCase();
         filteredRecords = filteredRecords.filter((t: any) => 
@@ -472,19 +453,7 @@ export default function TempleScreen() {
         );
       }
 
-      // Canonical physical entity deduplication
-      const uniqueRecordsMap = new Map();
-      for (const rec of filteredRecords) {
-        const rawId = rec.templeId || rec.temple_id || rec.id || rec.name;
-        const cKey = normalizeTempleKey(rawId);
-        if (cKey && !uniqueRecordsMap.has(cKey)) {
-          uniqueRecordsMap.set(cKey, rec);
-        } else if (!cKey && !uniqueRecordsMap.has(rawId)) {
-          uniqueRecordsMap.set(rawId, rec);
-        }
-      }
-      filteredRecords = Array.from(uniqueRecordsMap.values());
-
+      // STEP 5: Paginate
       const skipCount = (pageNum - 1) * PAGE_SIZE;
       const paginatedSlice = filteredRecords.slice(skipCount, skipCount + PAGE_SIZE);
 
@@ -500,7 +469,7 @@ export default function TempleScreen() {
         is_verified: t.isVerified ?? t._raw?.is_verified ?? true,
       }));
 
-      // Fallback if local DB returned 0 records total
+      // STEP 6: Fallback to baseline if no results for Jyotirlinga
       if (formatted.length === 0 && selectedCategory === 'Jyotirlinga') {
         formatted = JYOTIRLING_TEMPLES.map(j => ({
           id: j.id,
@@ -515,6 +484,7 @@ export default function TempleScreen() {
         }));
       }
 
+      // STEP 7: Update display state
       if (isReset) {
         setDisplayTemples(formatted);
       } else {
@@ -563,7 +533,9 @@ export default function TempleScreen() {
       }
       
       // Always merge baseline static JYOTIRLING_TEMPLES so category filter never shows empty list
-      const existingIds = new Set(formattedTemples.map(t => t.id));
+      const existingNormalizedKeys = new Set(
+        formattedTemples.map(t => normalizeTempleKey(t.id || t.templeId, t.name) || (t.id || '').toLowerCase().trim())
+      );
       const baselineTemples = JYOTIRLING_TEMPLES.map(j => ({
         id: j.id,
         name: j.name,
@@ -575,8 +547,10 @@ export default function TempleScreen() {
       }));
       
       for (const bt of baselineTemples) {
-        if (!existingIds.has(bt.id)) {
+        const btKey = normalizeTempleKey(bt.id, bt.name) || bt.id.toLowerCase().trim();
+        if (!existingNormalizedKeys.has(btKey)) {
           formattedTemples.push(bt);
+          existingNormalizedKeys.add(btKey);
         }
       }
       

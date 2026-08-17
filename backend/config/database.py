@@ -101,6 +101,9 @@ async def get_database():
         await db_manager.initialize()
     return db_manager.db
 
+# Alias for backwards compatibility
+get_db = get_database
+
 async def get_redis():
     """Get Redis/cache instance"""
     if not db_manager._initialized:

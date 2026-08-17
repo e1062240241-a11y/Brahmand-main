@@ -625,77 +625,92 @@ export default function KathaPage() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {/* Main Player & Hotstar Custom Minimalist Controls (Rendered when LIVE or when user selects an episode) */}
-        {(status.is_live || isUserSelectedOldEpisode) && (
-          <>
-            <Animated.View style={[
-              styles.playerContainer,
+        {/* Main Player & Hotstar Custom Minimalist Controls */}
+        <Animated.View style={[
+          styles.playerContainer,
+          {
+            transform: [
               {
-                transform: [
-                  {
-                    scale: scrollY.interpolate({
-                      inputRange: [0, 180],
-                      outputRange: [1, 0.93],
-                      extrapolate: 'clamp',
-                    }),
-                  },
-                  {
-                    translateY: scrollY.interpolate({
-                      inputRange: [0, 200],
-                      outputRange: [0, 15],
-                      extrapolate: 'clamp',
-                    }),
-                  },
-                ],
-              }
-            ]}>
-              <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
-                {renderPlayerContent(false)}
-                {/* Scroll-driven Black Overlay Mask */}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    StyleSheet.absoluteFillObject,
-                    {
-                      backgroundColor: '#000000',
-                      opacity: scrollY.interpolate({
-                        inputRange: [0, 150, 400],
-                        outputRange: [0, 0.15, 0.35],
-                        extrapolate: 'clamp',
-                      }),
-                    },
-                  ]}
-                />
-              </View>
-            </Animated.View>
+                scale: scrollY.interpolate({
+                  inputRange: [0, 180],
+                  outputRange: [1, 0.93],
+                  extrapolate: 'clamp',
+                }),
+              },
+              {
+                translateY: scrollY.interpolate({
+                  inputRange: [0, 200],
+                  outputRange: [0, 15],
+                  extrapolate: 'clamp',
+                }),
+              },
+            ],
+          }
+        ]}>
+          <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+            {renderPlayerContent(false)}
+            {/* Scroll-driven Black Overlay Mask */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: '#000000',
+                  opacity: scrollY.interpolate({
+                    inputRange: [0, 150, 400],
+                    outputRange: [0, 0.15, 0.35],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ]}
+            />
+          </View>
+        </Animated.View>
 
-            {/* Active Episode Details */}
-            <View style={styles.activeDetails}>
-              <Text style={styles.activeTitle}>
-                {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
-              </Text>
-              <Text style={styles.guruSubtitle}>
-                {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
-              </Text>
-              <Text style={styles.scheduleText}>
-                {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
-              </Text>
+        {/* Active Details / Banner Info */}
+        <View style={styles.activeDetails}>
+          {status.is_live && isUserSelectedOldEpisode && (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FF0000',
+                alignSelf: 'flex-start',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 20,
+                marginBottom: 10,
+                gap: 6,
+              }}
+              onPress={() => setUserSelectedEpisode(null)}
+            >
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
+              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Watch Live Stream Now</Text>
+            </TouchableOpacity>
+          )}
 
-              {/* Description Text */}
-              {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
-                <View style={styles.descriptionBox}>
-                  <Text style={styles.descriptionText}>
-                    {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
-                  </Text>
-                </View>
-              ) : null}
+          <Text style={styles.activeTitle}>
+            {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
+          </Text>
+          <Text style={styles.guruSubtitle}>
+            {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
+          </Text>
+          <Text style={styles.scheduleText}>
+            {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
+          </Text>
+
+          {/* Description Text */}
+          {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
+            <View style={styles.descriptionBox}>
+              <Text style={styles.descriptionText}>
+                {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
+              </Text>
             </View>
-          </>
-        )}
+          ) : null}
+        </View>
 
-        {/* Episode Library Section (Only shown when Off-Air) */}
-        {!status.is_live && (
-          <View style={styles.librarySection}>
+        {/* Episode Library Section (Always available) */}
+        <View style={styles.librarySection}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
             <Text style={styles.sectionTitle}>श्रावण कथा अध्याय</Text>
@@ -704,11 +719,7 @@ export default function KathaPage() {
           {loading ? (
             <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
           ) : episodes.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalGridContainer}
-            >
+            <View style={styles.verticalGridContainer}>
               {episodes.map((ep) => {
                 const isSelected = activeEpisode?.id === ep.id;
                 return (
@@ -754,14 +765,13 @@ export default function KathaPage() {
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
             </View>
           )}
-          </View>
-        )}
+        </View>
       </Animated.ScrollView>
     </View>
   );
@@ -1094,12 +1104,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: DARK,
   },
-  horizontalGridContainer: {
-    paddingRight: 16,
+  verticalGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
   episodeBoxCard: {
-    width: 190,
+    width: '48%',
     backgroundColor: '#FFFFF0', // Light Yellow tint
     borderRadius: 16,
     padding: 9,
