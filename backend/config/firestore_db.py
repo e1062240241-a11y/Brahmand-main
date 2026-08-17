@@ -1047,15 +1047,20 @@ class FirestoreDB:
                     fresh_docs.append(fast_copy(coll[uid]))
         else:
             # 2. Fetch missing from Firestore in batch
+            # ⚡ Bolt Optimization: Chunk missing_ids inside a single thread to avoid exceeding threadpool
+            # limits while respecting Firestore batch limits.
             def _get():
-                refs = [self.client.collection(collection).document(uid) for uid in missing_ids]
-                docs = self.client.get_all(refs)
                 batch_result = []
-                for doc in docs:
-                    if doc and doc.exists:
-                        data = doc.to_dict()
-                        data['id'] = doc.id
-                        batch_result.append(data)
+                chunk_size = 100
+                for i in range(0, len(missing_ids), chunk_size):
+                    chunk = missing_ids[i:i + chunk_size]
+                    refs = [self.client.collection(collection).document(uid) for uid in chunk]
+                    docs = self.client.get_all(refs)
+                    for doc in docs:
+                        if doc and doc.exists:
+                            data = doc.to_dict()
+                            data['id'] = doc.id
+                            batch_result.append(data)
                 return batch_result
             
             fresh_docs = await self._run_sync(_get)
