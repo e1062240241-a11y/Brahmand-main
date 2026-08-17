@@ -77,6 +77,9 @@ export const HelpVerificationButton: React.FC<HelpVerificationButtonProps> = ({
           ]}
           onPress={handleVerify}
           disabled={hasVerified}
+          accessibilityRole="button"
+          accessibilityLabel={hasVerified ? "Already verified request" : "Verify request"}
+          accessibilityState={{ disabled: hasVerified }}
         >
           <Ionicons name="shield-checkmark" size={16} color={hasVerified ? COLORS.textLight : COLORS.primary} />
           <Text style={[styles.verifyButtonText, hasVerified && styles.verifyButtonTextDisabled]}>
