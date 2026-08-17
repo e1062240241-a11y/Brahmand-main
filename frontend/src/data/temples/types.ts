@@ -15,6 +15,7 @@ export interface AuthenticDarshanDetails {
   closing: string;
   generalDarshan?: string;
   vipDarshan?: string;
+  aartis?: Record<string, string>;
 }
 
 export interface VisitorGuideline {

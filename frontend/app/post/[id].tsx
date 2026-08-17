@@ -104,10 +104,11 @@ const PostScreen = () => {
   const visibleFeedPosts = useMemo(() => {
     const blocked = blockedUidsRef.current;
     if (blocked.length === 0) return feedPosts;
+    const blockedSet = new Set(blocked);
     return feedPosts.filter((post: any) => {
       const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
       if (!uid) return true;
-      return !blocked.includes(String(uid));
+      return !blockedSet.has(String(uid));
     });
   }, [feedPosts, blockedUserIds, blockedByMeUserIds]);
 
@@ -643,6 +644,8 @@ const PostScreen = () => {
           ref={listRef}
           data={visibleFeedPosts}
           renderItem={renderItem}
+          // OPT: Bolt ⚡ - Add estimatedItemSize to prevent continuous measuring during initial render
+          estimatedItemSize={480}
           keyExtractor={keyExtractor}
           extraData={activePostKey}
           onViewableItemsChanged={onViewableItemsChanged}
@@ -708,14 +711,15 @@ const PostScreen = () => {
               ) : postComments.length === 0 ? (
                 <Text style={styles.commentEmptyText}>{t('noCommentsYet2')}</Text>
               ) : (() => {
+                const blockedSet = new Set(blockedUserIds);
                 const parentComments = postComments.filter(c => {
                   const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                  const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                  const isBlockedUser = uid && blockedSet.has(String(uid));
                   return !c.parent_id && !isBlockedUser;
                 });
                 const repliesMap = postComments.reduce((acc, c) => {
                   const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                  const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                  const isBlockedUser = uid && blockedSet.has(String(uid));
                   if (c.parent_id && !isBlockedUser) {
                     if (!acc[c.parent_id]) acc[c.parent_id] = [];
                     acc[c.parent_id].push(c);

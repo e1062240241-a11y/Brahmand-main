@@ -147,8 +147,6 @@ _sandbox_auth_cache = {
     "expires_at": None,
 }
 
-_panchang_prefetch_task: Optional[asyncio.Task] = None
-
 HOSPITAL_SEARCH_FALLBACK = [
     "AIIMS Delhi",
     "Apollo Hospitals, Chennai",
@@ -173,28 +171,11 @@ HOSPITAL_SEARCH_FALLBACK = [
 ]
 
 
-def _seconds_until_next_midnight(tz_name: str) -> int:
-    now = datetime.now(ZoneInfo(tz_name))
-    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    return max(30, int((next_midnight - now).total_seconds()))
-
-
-async def _run_panchang_prefetch_once():
-    db = await get_db()
-    result = await astrology_api_service.get_full_panchang(19.2056, 25.2056)  # Default coordinates for prefetch
-    logger.info("Panchang prefetch complete: %s", result)
-
-
-async def _panchang_midnight_prefetch_loop():
-    tz_name = "Asia/Kolkata"
-    while True:
-        wait_seconds = _seconds_until_next_midnight(tz_name)
-        logger.info("Panchang prefetch scheduler sleeping for %s seconds", wait_seconds)
-        await asyncio.sleep(wait_seconds)
-        try:
-            await _run_panchang_prefetch_once()
-        except Exception as exc:
-            logger.warning("Scheduled Panchang prefetch failed: %s", exc)
+# Panchang midnight prefetch has been removed: the 24h TTL cache already keeps
+# each date+coords warm for the whole day, so a scheduled prefetch for a single
+# hard-coded coordinate (previously Atlantic Ocean coords) added no value and
+# only burned an API call. If per-city prefetch is needed later, re-introduce a
+# top-cities loop here instead of a single default coordinate.
 
 
 # Lifespan
@@ -249,8 +230,8 @@ async def lifespan(app: FastAPI):
     except Exception as _rag_diag_err:
         logger.error("[RAG-Startup] Diagnostics failed to run: %s", _rag_diag_err)
 
-    _panchang_prefetch_task = None
-    logger.info("Panchang prefetch loop disabled")
+    # Panchang midnight prefetch intentionally not started (see comment above).
+    logger.info("Panchang prefetch loop disabled (relies on 24h TTL cache)")
     
     # Ensure Shri Dwarkadhish Temple and ISKCON exist/update in backend DB
     async def seed_missing_temples():
@@ -284,12 +265,6 @@ async def lifespan(app: FastAPI):
     global _shared_client_session
     if _shared_client_session and not _shared_client_session.closed:
         await _shared_client_session.close()
-    if _panchang_prefetch_task:
-        _panchang_prefetch_task.cancel()
-        try:
-            await _panchang_prefetch_task
-        except asyncio.CancelledError:
-            pass
     await task_queue.stop()
     if hasattr(firebase_manager, 'close'):
         await getattr(firebase_manager, 'close')()
@@ -1723,7 +1698,7 @@ async def reset_database(confirm: str = "", token_data: dict = Depends(verify_to
         }
     except Exception as e:
         logger.error(f"Database reset error: {e}")
-        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 
@@ -3328,7 +3303,7 @@ async def _upload_post_impl(
                     logger.info("Uploaded video and thumbnail to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
-                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+                    raise HTTPException(status_code=500, detail="An internal server error occurred")
             else:
                 logger.warning("ffmpeg is not installed; uploading raw video without compression")
                 content_type = 'video/mp4'
@@ -3343,7 +3318,7 @@ async def _upload_post_impl(
                     logger.info("Uploaded raw video to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post raw video upload failed for user_id=%s', user_id)
-                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+                    raise HTTPException(status_code=500, detail="An internal server error occurred")
         else:
             file_bytes = await file.read()
             if not file_bytes:
@@ -3370,7 +3345,7 @@ async def _upload_post_impl(
         raise
     except Exception as e:
         logger.exception("Upload processing failed")
-        raise HTTPException(status_code=500, detail=f"Server error during processing: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
     finally:
         await file.close()
         if temp_input_path and os.path.exists(temp_input_path):
@@ -3387,7 +3362,7 @@ async def _upload_post_impl(
             logger.info("Uploaded image to Bunny.net successfully")
         except Exception as exc:
             logger.exception('Post media upload failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
     
     # Upload image thumbnail if generated
     image_thumbnail_url = None
@@ -3711,7 +3686,7 @@ async def _upload_post_from_storage_impl(
             logger.info("Uploaded processed video from storage to Bunny.net successfully")
         except Exception as exc:
             logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
         finally:
             if temp_thumb_file and os.path.exists(temp_thumb_file.name):
                 try:
@@ -11001,7 +10976,8 @@ def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] 
         resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
 
     if resolved_lat is None or resolved_lng is None:
-        resolved_lat, resolved_lng = 19.2056, 25.2056
+        # Fallback to Delhi (India center) — NOT the Atlantic Ocean.
+        resolved_lat, resolved_lng = 28.6139, 77.2090
 
     return float(resolved_lat), float(resolved_lng)
 
@@ -11023,15 +10999,17 @@ async def get_panchang(
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         
-        # Use provided coords or fallback to default
-        resolved_lat = lat if lat is not None else 19.2056
-        resolved_lng = lng if lng is not None else 25.2056
+        # Use provided coords or fallback to Delhi (India center)
+        resolved_lat = lat if lat is not None else 28.6139
+        resolved_lng = lng if lng is not None else 77.2090
         
-        # Fetch using the AstrologyAPI service (Primary provider now)
+        # Fetch using the AstrologyAPI service (Primary provider now).
+        # Pass force_refresh through so pull-to-refresh bypasses the backend cache.
         payload = await astrology_api_service.get_full_panchang(
             lat=resolved_lat,
             lon=resolved_lng,
-            date_obj=date_obj
+            date_obj=date_obj,
+            force_refresh=force_refresh,
         )
         
         # Format the payload for the frontend
@@ -12391,7 +12369,8 @@ async def extract_kyc_text_from_image(
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
                 err = vision_resp.get('error', {})
-                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             text_annotations = vision_resp.get('textAnnotations', [])
             raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
@@ -12422,7 +12401,8 @@ async def extract_kyc_text_from_image(
         except HTTPException:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
     # Fallback to service account library path
     try:
@@ -12431,7 +12411,8 @@ async def extract_kyc_text_from_image(
         response = client.text_detection(image=image)
 
         if response.error.message:
-            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
         annotations = []
         raw_texts = []
@@ -12463,7 +12444,8 @@ async def extract_kyc_text_from_image(
             "total_annotations": len(annotations),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/kyc/vision-extract")
@@ -12516,7 +12498,8 @@ async def extract_user_kyc_text_from_image(
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
                 err = vision_resp.get('error', {})
-                raise HTTPException(status_code=500, detail=f"Cloud Vision error: {err.get('message')}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             text_annotations = vision_resp.get('textAnnotations', [])
             raw_texts = [a.get('description', '') for a in text_annotations if a.get('description')]
@@ -12547,7 +12530,8 @@ async def extract_user_kyc_text_from_image(
         except HTTPException:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Vision extraction failed (API key path): {str(exc)}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
     # Fallback to service account library path
     try:
@@ -12556,7 +12540,8 @@ async def extract_user_kyc_text_from_image(
         response = client.text_detection(image=image)
 
         if response.error.message:
-            raise HTTPException(status_code=500, detail=f"Vision API error: {response.error.message}")
+            logger.exception("An internal server error occurred")
+            raise HTTPException(status_code=500, detail="An internal server error occurred")
 
         annotations = []
         raw_texts = []
@@ -12588,7 +12573,8 @@ async def extract_user_kyc_text_from_image(
             "total_annotations": len(annotations),
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
+        logger.exception("An internal server error occurred")
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 async def _get_sandbox_headers() -> dict:
@@ -12626,7 +12612,8 @@ async def _get_sandbox_headers() -> dict:
                 auth_resp = await asyncio.to_thread(_auth)
                 auth_data = auth_resp.json() if auth_resp.content else {}
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
+                logger.exception("An internal server error occurred")
+                raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             if auth_resp.status_code >= 400:
                 raise HTTPException(status_code=502, detail={
@@ -16307,7 +16294,12 @@ async def _jaap_reminder_worker():
 
                     # 3. Execute fallback queries concurrently
                     if fallback_tasks:
-                        results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+                        results = []
+                        # ⚡ Bolt Optimization: Chunk concurrent fallback_tasks to prevent overwhelming the event loop/DB connections
+                        chunk_size = 50
+                        for i in range(0, len(fallback_tasks), chunk_size):
+                            chunk_results = await asyncio.gather(*fallback_tasks[i:i + chunk_size], return_exceptions=True)
+                            results.extend(chunk_results)
 
                         for r, result in zip(fallback_reminders, results):
                             uid = r['uid']

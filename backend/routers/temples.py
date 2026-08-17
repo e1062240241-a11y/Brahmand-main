@@ -34,19 +34,20 @@ def list_temples(db: Session = Depends(get_sql_db)):
 @router.get("/search", response_model=List[TempleListItemResponse])
 def search_temples(q: str = Query(..., min_length=1), db: Session = Depends(get_sql_db)):
     """Search active temples by query term against name, deity, location, or summary"""
-    pattern = f"%{q}%"
+    escaped_q = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    pattern = f"%{escaped_q}%"
     # FIXED: alias -> alias_text
     sql = text("""
         SELECT DISTINCT t.* FROM temples t
         LEFT JOIN temple_aliases a ON t.id = a.temple_id
         WHERE t.is_active = 1 AND (
-            t.name LIKE :q OR
-            t.deity LIKE :q OR
-            t.location_area LIKE :q OR
-            t.location_city LIKE :q OR
-            t.location_state LIKE :q OR
-            t.short_summary LIKE :q OR
-            a.alias_text LIKE :q
+            t.name LIKE :q ESCAPE '\\' OR
+            t.deity LIKE :q ESCAPE '\\' OR
+            t.location_area LIKE :q ESCAPE '\\' OR
+            t.location_city LIKE :q ESCAPE '\\' OR
+            t.location_state LIKE :q ESCAPE '\\' OR
+            t.short_summary LIKE :q ESCAPE '\\' OR
+            a.alias_text LIKE :q ESCAPE '\\'
         )
     """)
     rows = db.execute(sql, {"q": pattern}).mappings().all()
@@ -90,8 +91,9 @@ def get_temple_by_slug_or_id(slug_or_id: str, db: Session = Depends(get_sql_db))
 
     # Fallback 3: Substring match on slug or id
     if not temple_row:
-        sql_like = text("SELECT * FROM temples WHERE (slug LIKE :pattern OR id LIKE :pattern) AND is_active = 1")
-        temple_row = db.execute(sql_like, {"pattern": f"%{slug_or_id}%"}).mappings().first()
+        escaped_slug = slug_or_id.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        sql_like = text("SELECT * FROM temples WHERE (slug LIKE :pattern ESCAPE '\\' OR id LIKE :pattern ESCAPE '\\') AND is_active = 1")
+        temple_row = db.execute(sql_like, {"pattern": f"%{escaped_slug}%"}).mappings().first()
 
     if not temple_row:
         raise HTTPException(status_code=404, detail=f"Temple '{slug_or_id}' not found")

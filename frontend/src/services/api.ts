@@ -1796,7 +1796,7 @@ const getWithCache = async (
       const { data, timestamp } = JSON.parse(cached);
       const ageHours = (Date.now() - timestamp) / (1000 * 60 * 60);
       if (ageHours < expiryHours) {
-        console.log(`[Cache] Hit for ${cacheKey}`);
+        if (__DEV__) console.log(`[Cache] Hit for ${cacheKey}`);
         return { data };
       }
     }
@@ -1805,6 +1805,20 @@ const getWithCache = async (
       cacheKey,
       JSON.stringify({ data: response.data, timestamp: Date.now() }),
     );
+
+    // Evict old panchang cache entries (keep max 7) so browsing many dates
+    // doesn't bloat AsyncStorage indefinitely.
+    if (cacheKey.startsWith('panchang_')) {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const panchangKeys = allKeys
+        .filter((k) => k.startsWith('panchang_'))
+        .sort();
+      if (panchangKeys.length > 7) {
+        const toRemove = panchangKeys.slice(0, panchangKeys.length - 7);
+        await AsyncStorage.multiRemove(toRemove);
+      }
+    }
+
     return response;
   } catch (err) {
     console.error(`[Cache] Error for ${cacheKey}:`, err);
@@ -1819,7 +1833,9 @@ export const getPanchang = (params?: {
   force_refresh?: boolean;
 }) => {
   const date = params?.date_str || new Date().toISOString().split("T")[0];
-  const cacheKey = `panchang_${date}_${params?.lat?.toFixed(2)}_${params?.lng?.toFixed(2)}`;
+  // ~10km precision: panchang data is identical within ~10km, so rounding to
+  // 1 decimal maximizes cache hits across nearby users.
+  const cacheKey = `panchang_${date}_${params?.lat?.toFixed(1)}_${params?.lng?.toFixed(1)}`;
   if (params?.force_refresh) return api.get("/panchang/today", { params });
   return getWithCache(cacheKey, () => api.get("/panchang/today", { params }));
 };

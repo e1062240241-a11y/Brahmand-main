@@ -165,6 +165,8 @@ export default function AtharvavedPage() {
     }
   }, [loading, verses, initialScrollRestored]);
 
+  // Animation values
+
   // Flush pending DB writes on unmount
   useEffect(() => {
     return () => {

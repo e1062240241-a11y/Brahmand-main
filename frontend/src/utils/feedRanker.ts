@@ -57,22 +57,6 @@ export function recordView(history: ViewHistory, postId: string): ViewHistory {
   return history;
 }
 
-// ─── RULE 2: Freshness Scoring ────────────────────────────────────────────────
-
-function freshnessScore(viewCount: number, createdAt: string | null): number {
-  if (viewCount >= 5) return 0; // HIDE
-
-  const ageMs = Date.now() - (createdAt ? new Date(createdAt).getTime() : Date.now());
-  const ageHours = ageMs / 3_600_000;
-
-  if (viewCount === 0) return 100;                       // Never seen
-  if (viewCount === 1 && ageHours < 24) return 80;      // Seen once, last 24h
-  if (viewCount === 1 && ageHours < 168) return 60;     // Seen once, last 7d
-  if (viewCount === 2) return 40;
-  if (viewCount === 3 || viewCount === 4) return 20;
-  return 0;
-}
-
 // ─── RULE 7: Engagement Boost ─────────────────────────────────────────────────
 
 function engagementBoost(post: any): number {
@@ -185,35 +169,6 @@ export async function getLastTopPostId(userId: string): Promise<string | null> {
 
 export async function saveLastTopPostId(userId: string, postId: string): Promise<void> {
   try { await AsyncStorage.setItem(LAST_TOP_KEY(userId), postId); } catch {}
-}
-
-// ─── RULE 8: Fallback blending ────────────────────────────────────────────────
-
-function blendFallback(scored: { post: any; score: number; vc: number }[]): { post: any; score: number; vc: number }[] {
-  const unseen = scored.filter(s => s.vc === 0);
-  if (unseen.length >= 10) return scored; // Enough fresh content
-
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const oldSeen = scored.filter(s => {
-    if (s.vc === 0) return false;
-    const ts = s.post.created_at ? new Date(s.post.created_at).getTime() : 0;
-    return ts < sevenDaysAgo;
-  });
-  const popular = [...scored]
-    .sort((a, b) => engagementBoost(b.post) - engagementBoost(a.post))
-    .slice(0, Math.max(1, Math.floor(scored.length * 0.1)));
-
-  const total = scored.length;
-  const take = (arr: typeof scored, pct: number) =>
-    arr.sort((a, b) => b.score - a.score).slice(0, Math.round(total * pct));
-
-  const blended = [
-    ...take(unseen,  0.6),
-    ...take(oldSeen, 0.3),
-    ...take(popular, 0.1),
-  ];
-
-  return blended.length > 0 ? blended : scored;
 }
 
 // ─── MAIN RANK FUNCTION ───────────────────────────────────────────────────────

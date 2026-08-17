@@ -2102,26 +2102,27 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   // OPT-5: memoize comment tree — only recomputes when localComments changes,
   // not on every parent render triggered by swipe/mute/etc.
   // Filters out comments from blocked users.
-  const parentComments = React.useMemo(
-    () => localComments.filter((c: any) => {
+  const parentComments = React.useMemo(() => {
+    const blockedSet = new Set(blockedUserIds);
+    return localComments.filter((c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedUserIds.includes(String(uid));
+      const isBlocked = uid && blockedSet.has(String(uid));
       return !c.parent_id && !isBlocked;
-    }),
-    [localComments, blockedUserIds]
-  );
-  const repliesMap = React.useMemo(
-    () => localComments.reduce((acc: Record<string, any[]>, c: any) => {
+    });
+  }, [localComments, blockedUserIds]);
+
+  const repliesMap = React.useMemo(() => {
+    const blockedSet = new Set(blockedUserIds);
+    return localComments.reduce((acc: Record<string, any[]>, c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedUserIds.includes(String(uid));
+      const isBlocked = uid && blockedSet.has(String(uid));
       if (c.parent_id && !isBlocked) {
         if (!acc[c.parent_id]) acc[c.parent_id] = [];
         acc[c.parent_id].push(c);
       }
       return acc;
-    }, {} as Record<string, any[]>),
-    [localComments, blockedUserIds]
-  );
+    }, {} as Record<string, any[]>);
+  }, [localComments, blockedUserIds]);
 
   const handleReply = useCallback((item: any, replyUsername?: string) => {
     setReplyingToComment(item);

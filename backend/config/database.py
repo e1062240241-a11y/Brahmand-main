@@ -113,3 +113,4 @@ async def get_redis():
 def get_db_manager():
     """Get database manager instance"""
     return db_manager
+

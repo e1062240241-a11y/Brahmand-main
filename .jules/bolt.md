@@ -1,3 +1,3 @@
-## 2026-08-15 - [Backend Performance: Avoid Sync Firestore methods in async routes]
-**Learning:** Using synchronous Firestore operations like `ref.get()`, `ref.set()`, or `query.stream()` inside `async def` API routes will block the Python `asyncio` event loop. This creates severe performance bottlenecks by blocking other concurrent requests until the synchronous DB call completes.
-**Action:** Always use the custom asynchronous wrapper methods provided by `FirestoreDB` (e.g. `await db.get_document()`, `await db.create_document()`, `await db.query_documents()`) instead of raw, synchronous `google.cloud.firestore` client methods in the backend routes.
+## 2024-05-18 - [Frontend Performance: O(1) Blocked User Filtering]
+**Learning:** Using `Array.includes()` for checking `blockedUserIds` inside `.filter()` operations over large lists (like feed posts or comments) causes an O(N*M) CPU bottleneck that blocks the JS thread and causes scroll jitter.
+**Action:** Always convert constraint arrays (like blocked users) into a `Set` and use `blockedSet.has(uid)` for O(1) lookups during array transformations.

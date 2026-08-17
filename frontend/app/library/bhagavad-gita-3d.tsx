@@ -116,7 +116,8 @@ export default function BhagavadGita3DPage() {
   
   const progressGeeta = getBookProgress('bhagvad-geeta');
   const progressGita = getBookProgress('gita');
-  const progress = (progressGeeta.chapterNum > 1 || progressGeeta.progressPercent > 0 || (progressGeeta.bookmarks?.length || 0) > 0) ? progressGeeta : progressGita;
+  const progress = ((progressGeeta.chapterNum ?? 0) > 1 || (progressGeeta.progressPercent ?? 0) > 0 || (progressGeeta.bookmarks?.length ?? 0) > 0) ? progressGeeta : progressGita;
+
   const { chapterNum: lastReadChapter, lastReadScrollY = 0, bookmarks = [], progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
@@ -237,7 +238,6 @@ export default function BhagavadGita3DPage() {
 
   // Animation values
 
-  // Flush pending DB writes on unmount
   // Flush pending DB writes on unmount
   useEffect(() => {
     return () => {

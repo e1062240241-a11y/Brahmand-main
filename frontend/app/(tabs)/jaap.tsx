@@ -11,7 +11,6 @@ import {
   Dimensions,
   Platform,
   TextInput,
-  ActivityIndicator,
   Modal,
   ImageBackground,
   Alert,
@@ -25,7 +24,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+import { resolveTempleImage } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import {
   isJyotirlinga,
@@ -41,7 +40,7 @@ import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurre
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { Svg, Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
+import { Svg, Path } from 'react-native-svg';
 import { CustomLoader } from '../../src/components/CustomLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -209,13 +208,6 @@ const LIVE_JAAPS = [
   },
 ];
 
-const UPCOMING_SESSIONS = [
-  { id: '1', category: 'YOGA CLASS', title: 'Morning Yoga Flow', desc: 'Start your day with energy and positivity.', date: 'Tomorrow', time: '6:00 AM', going: '2.4K going', image: require('../../assets/images/yoga_session_img.webp') },
-  { id: '2', category: 'GEETA PATH', title: 'Bhagavad Gita Chapter 2', desc: 'Dive deep into wisdom.', date: 'Tomorrow', time: '7:30 PM', going: '3.2K going', image: require('../../assets/images/geeta_session_v3.webp') },
-  { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/sanskrit_session_v2_exact.webp') },
-  { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.webp') },
-];
-
 const UPCOMING_JAAPS = [
   {
     id: 'uj1',
@@ -279,34 +271,6 @@ const getMantraRoomName = (id: string) => {
   return 'jaap_gayatri';
 };
 
-const getDayName = (day: number, lang: string) => {
-  const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const daysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
-  return lang === 'hi' ? daysHi[day] : daysEn[day];
-};
-
-const getDayNameShort = (day: number, lang: string) => {
-  const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const daysHi = ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'];
-  return lang === 'hi' ? daysHi[day] : daysEn[day];
-};
-
-const BellIconSvg = ({ active, size = 13 }: { active: boolean; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-    <G clipPath="url(#bellClip)">
-      <Path
-        d="M14.7199 4.48486C14.6031 4.54595 14.4732 4.57778 14.3413 4.57762C14.0331 4.57814 13.7503 4.40665 13.6082 4.13307C13.107 3.13993 12.3475 2.30018 11.4095 1.70213C10.8632 1.37905 10.8715 0.585705 11.4244 0.274111C11.6959 0.121148 12.0303 0.134267 12.289 0.308017C13.473 1.0647 14.4344 2.12285 15.0745 3.37383C15.2834 3.77853 15.1247 4.27602 14.7199 4.48486ZM2.39069 4.13307C2.89187 3.13993 3.65139 2.30018 4.5894 1.70213C5.1417 1.38936 5.14831 0.596005 4.60129 0.27408C4.32368 0.110698 3.97634 0.123955 3.71198 0.308017C2.52791 1.0647 1.56653 2.12285 0.9265 3.37383C0.717213 3.77799 0.874982 4.27527 1.27898 4.48486C1.39581 4.54595 1.52573 4.57778 1.65757 4.57762C1.96583 4.57814 2.24864 4.40665 2.39069 4.13307ZM14.3125 10.8906C14.9535 11.7321 14.4433 12.952 13.394 13.0864C13.3367 13.0938 13.2791 13.0975 13.2214 13.0976H11.0096C10.7936 15.4148 8.15007 16.6292 6.25132 15.2835C5.53205 14.7737 5.07113 13.9754 4.98929 13.0976H2.77753C1.71968 13.0976 1.05848 11.9525 1.58737 11.0364C1.61657 10.9858 1.64897 10.9371 1.68436 10.8906C2.17701 10.2496 2.76516 9.0616 2.77547 7.04704C2.77706 3.02641 7.1305 0.515236 10.6117 2.52692C12.2273 3.46055 13.2221 5.18518 13.2214 7.05116C13.2317 9.0616 13.8198 10.2496 14.3125 10.8906ZM9.34615 13.0976H6.65274C6.86325 14.1343 8.11707 14.5543 8.90963 13.8537C9.13345 13.6558 9.2867 13.3904 9.34615 13.0976ZM12.6951 11.4486C12.1344 10.5553 11.5826 9.14199 11.5723 7.05528C11.5739 4.30487 8.59751 2.58414 6.21479 3.95797C5.10896 4.59557 4.42729 5.77469 4.42656 7.05116C4.41625 9.1413 3.86451 10.5553 3.30384 11.4486H12.6951Z"
-        fill={active ? "#FFF" : "#FF7B00"}
-      />
-    </G>
-    <Defs>
-      <ClipPath id="bellClip">
-        <Rect width={16} height={16} fill="white" />
-      </ClipPath>
-    </Defs>
-  </Svg>
-);
-
 export default function JaapLandingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -316,11 +280,8 @@ export default function JaapLandingScreen() {
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
   const sectionAnim = useRef(new Animated.Value(0)).current;
-  const [heroBannerIndex, setHeroBannerIndex] = useState(0);
+  const heroBannerIndex = 0;
   const hanumanStatus = getCurrentHanumanStatus(now);
-  const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
-  const [reminders, setReminders] = useState<Record<string, boolean>>({});
-  const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
   const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
@@ -378,123 +339,6 @@ export default function JaapLandingScreen() {
     };
   }, [isFocused, activeSection]);
 
-  const sendJaapInviteFromCard = async (jaapId: string, mantraType: string, title: string) => {
-    try {
-      await api.post('/jaap/invite', {
-        mantra_type: mantraType,
-        mantra_title: title,
-      });
-      setInvitedJaapId(jaapId);
-      const alertTitle = t('language') === 'hi' ? '🙏 निमंत्रण भेजा गया!' : '🙏 Invite Sent!';
-      const alertMsg = t('language') === 'hi' ? `सभी भक्तों को ${title} में शामिल होने की सूचना दे दी गई है!` : `All devotees have been notified to join ${title}!`;
-      Alert.alert(alertTitle, alertMsg);
-      setTimeout(() => setInvitedJaapId(null), 10000);
-    } catch (err: any) {
-      const msg = err?.response?.data?.detail || (t('language') === 'hi' ? 'निमंत्रण नहीं भेजा जा सका। कृपया पुनः प्रयास करें।' : 'Could not send invite. Please try again.');
-      Alert.alert(t('language') === 'hi' ? 'निमंत्रण विफल' : 'Invite failed', msg);
-    }
-  };
-
-  const fetchReminders = async () => {
-    try {
-      const response = await api.get('/jaap/reminders');
-      if (response.data && response.data.reminders) {
-        const loadedReminders: Record<string, boolean> = {};
-        response.data.reminders.forEach((r: any) => {
-          if (r.mantra_type === 'hanuman') {
-            loadedReminders['1'] = true;
-          } else if (r.mantra_type === 'krishna') {
-            loadedReminders['2'] = true;
-          } else if (r.mantra_type === 'shiva') {
-            loadedReminders['3'] = true;
-            loadedReminders['uj3'] = true;
-          } else if (r.mantra_type === 'gayatri') {
-            loadedReminders['4'] = true;
-          } else if (r.mantra_type === 'radha_rani') {
-            loadedReminders['uj5'] = true;
-          } else if (r.mantra_type === 'ganesh') {
-            loadedReminders['5'] = true;
-          } else if (r.mantra_type === 'laxmi') {
-            loadedReminders['6'] = true;
-          } else if (r.mantra_type === 'ganesh_aarti') {
-            loadedReminders['uj1'] = true;
-          } else if (r.mantra_type === 'shani_chalisa') {
-            loadedReminders['uj2'] = true;
-          } else if (r.mantra_type === 'ganga') {
-            loadedReminders['uj4'] = true;
-          } else if (r.mantra_type === 'durga') {
-            loadedReminders['uj6'] = true;
-          }
-        });
-        setReminders(loadedReminders);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch reminders:', err);
-    }
-  };
-
-  const handleSetReminder = async (jaapId: string, mantraType: string, sessionName: string) => {
-    try {
-      const response = await api.post('/jaap/reminder', {
-        mantra_type: mantraType,
-        session_name: sessionName,
-      });
-      const active = response.data.active;
-
-      setReminders(prev => {
-        const updated = { ...prev, [jaapId]: active };
-        if (jaapId === '3' || jaapId === 'uj3') {
-          updated['3'] = active;
-          updated['uj3'] = active;
-        }
-        return updated;
-      });
-
-      let readableMantra = '';
-      if (t('language') === 'hi') {
-        if (mantraType === 'shiva') readableMantra = 'ॐ नमः शिवाय';
-        else if (mantraType === 'hanuman') readableMantra = 'हनुमान चालीसा';
-        else if (mantraType === 'krishna') readableMantra = 'कृष्णा जाप';
-        else if (mantraType === 'gayatri') readableMantra = 'गायत्री मंत्र';
-        else if (mantraType === 'ganesh') readableMantra = 'गणेश मंत्र';
-        else if (mantraType === 'laxmi') readableMantra = 'लक्ष्मी मंत्र';
-        else if (mantraType === 'ganesh_aarti') readableMantra = 'गणेश जाप';
-        else if (mantraType === 'shani_chalisa') readableMantra = 'शनि चालीसा';
-        else if (mantraType === 'ganga') readableMantra = 'गंगा मंत्र';
-        else if (mantraType === 'durga') readableMantra = 'दुर्गा सप्तशती';
-        else if (mantraType === 'radha_rani') readableMantra = 'राधा रानी जाप';
-        else readableMantra = `${mantraType} जाप`;
-      } else {
-        if (mantraType === 'ganesh_aarti') readableMantra = 'Ganesh Jaap';
-        else if (mantraType === 'shani_chalisa') readableMantra = 'Shani Chalisa';
-        else if (mantraType === 'ganga') readableMantra = 'Ganga Mantra';
-        else if (mantraType === 'durga') readableMantra = 'Durga Saptashati';
-        else if (mantraType === 'radha_rani') readableMantra = 'Radha Rani Jaap';
-        else readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Chanting`;
-      }
-
-      if (active) {
-        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सक्रिय' : '🔔 Reminder Set!';
-        const msgText = t('language') === 'hi'
-          ? `${readableMantra} के लिए आपका रिमाइंडर सफलतापूर्वक सक्रिय हो गया है।`
-          : `Your reminder for ${readableMantra} has been successfully scheduled.`;
-        Alert.alert(titleText, msgText);
-      } else {
-        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminders Removed';
-        const msgText = t('language') === 'hi'
-          ? `आपने ${readableMantra} की सूचनाओं को बंद कर दिया है।`
-          : `You have unsubscribed from notifications for ${readableMantra}.`;
-        Alert.alert(titleText, msgText);
-      }
-    } catch (err: any) {
-      console.error('Failed to toggle reminder:', err);
-      Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error',
-        t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
-      );
-    }
-  };
-
   const handleUpcomingCardPress = (jaap: any) => {
     const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
     Alert.alert(
@@ -522,12 +366,6 @@ export default function JaapLandingScreen() {
     if (!isFocused) return;
     const timer = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(timer);
-  }, [isFocused]);
-
-  useEffect(() => {
-    if (isFocused) {
-      fetchReminders();
-    }
   }, [isFocused]);
 
   // Auto-scroll effect for More Live Jaaps (Only active when focused and app in foreground)
@@ -1133,7 +971,6 @@ export default function JaapLandingScreen() {
 
             <View style={[styles.upcomingGridContainer, { paddingHorizontal: UPCOMING_GRID_PADDING }]}>
               {UPCOMING_JAAPS.map((jaap) => {
-                const isReminderActive = !!reminders[jaap.id];
                 const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
                 return (
                   <Pressable
