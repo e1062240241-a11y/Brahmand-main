@@ -1261,6 +1261,9 @@ export const UploadPostModal = ({
                         selectedFilter === filter && styles.filterChipActive,
                       ]}
                       onPress={() => setSelectedFilter(filter)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selectedFilter === filter }}
+                      accessibilityLabel={`Filter: ${filter}`}
                     >
                       <Text
                         style={[
