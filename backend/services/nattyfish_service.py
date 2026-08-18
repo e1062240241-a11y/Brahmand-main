@@ -164,5 +164,5 @@ class NattyFishService:
             logger.exception(f"[NattyFish] Unexpected error while sending SMS: {exc}")
             raise HTTPException(
                 status_code=500,
-                detail=f"SMS delivery failed: {exc}"
+                detail="SMS delivery failed due to an internal error"
             )
