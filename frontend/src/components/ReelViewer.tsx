@@ -1834,9 +1834,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       });
 
       // Add any new posts to the global session pool
+      // OPT: Use a Set for O(1) lookup to prevent O(N*M) CPU bottleneck
+      const allSessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
       for (const p of newPosts) {
-        if (p?.id && !allSessionPostsRef.current.find((x: any) => x.id === p.id)) {
+        if (p?.id && !allSessionIds.has(p.id)) {
           allSessionPostsRef.current.push(p);
+          allSessionIds.add(p.id);
         }
       }
 
@@ -2009,7 +2012,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       // Track in session seen set for smarter backend querying
       seenIdsRef.current.add(activePost.id);
       // Add to global session pool if not already there
-      if (!allSessionPostsRef.current.find((p: any) => p.id === activePost.id)) {
+      // OPT: Use a Set for O(1) lookup
+      const sessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
+      if (!sessionIds.has(activePost.id)) {
         allSessionPostsRef.current.push(activePost);
       }
     }
