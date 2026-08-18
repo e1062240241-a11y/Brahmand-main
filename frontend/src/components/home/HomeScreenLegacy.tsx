@@ -438,9 +438,12 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                             ) : loadingUsers ? (
                                 <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                             ) : searchResults.length > 0 ? (
-                                searchResults.map((item) => {
-                                    const isFollowing = followingIds.includes(item.id);
-                                    return (
+                                (() => {
+                                    // OPT: Use Set for O(1) following lookups
+                                    const followingSet = new Set(followingIds);
+                                    return searchResults.map((item) => {
+                                        const isFollowing = followingSet.has(item.id);
+                                        return (
                                         <View key={item.id} style={styles.userResultItem}>
                                             <TouchableOpacity
                                                 style={styles.userResultContent}
@@ -469,7 +472,8 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                             </TouchableOpacity>
                                         </View>
                                     );
-                                })
+                                    });
+                                })()
                             ) : (
                                 <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                             )}
