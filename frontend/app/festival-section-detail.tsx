@@ -1,6 +1,6 @@
 // accessibility: placeholder
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,37 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
+import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { CustomLoader } from '../src/components/CustomLoader';
+
+const safeCaptureRef = async (ref: any, options: any): Promise<string | null> => {
+  try {
+    const ViewShot = require('react-native-view-shot');
+    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
+    if (typeof capture === 'function') {
+      return await capture(ref, options);
+    }
+  } catch (e) {
+    console.log('[FestivalSectionDetail] Native ViewShot not available in current build:', e);
+  }
+  return null;
+};
+
+const safeShareFile = async (uri: string, options: any): Promise<boolean> => {
+  try {
+    const Sharing = require('expo-sharing');
+    if (Sharing && typeof Sharing.isAvailableAsync === 'function') {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, options);
+        return true;
+      }
+    }
+  } catch (e) {
+    console.log('[FestivalSectionDetail] expo-sharing not available:', e);
+  }
+  return false;
+};
 
 const FestivalSectionDetailPage = () => {
   const params = useLocalSearchParams();
@@ -18,6 +48,8 @@ const FestivalSectionDetailPage = () => {
   const [festival, setFestival] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const catalogRef = useRef<View>(null);
 
   useEffect(() => {
     const loadFestival = async () => {
@@ -47,6 +79,42 @@ const FestivalSectionDetailPage = () => {
     loadFestival();
   }, [festivalIndex]);
 
+  const handleShare = async () => {
+    if (!festival || isSharing) return;
+
+    try {
+      setIsSharing(true);
+      const festivalName = festival.festival_name || festival.name || festival.title || 'Festival';
+
+      if (catalogRef.current) {
+        const uri = await safeCaptureRef(catalogRef, {
+          format: 'png',
+          quality: 1.0,
+          result: 'tmpfile',
+        });
+
+        if (uri) {
+          const shared = await safeShareFile(uri, {
+            mimeType: 'image/png',
+            dialogTitle: `Share ${festivalName} - ${decodeURIComponent(section)}`,
+            UTI: 'public.png',
+          });
+          if (shared) return;
+        }
+      }
+
+      // Fallback
+      await Share.share({
+        message: `🪔 *${festivalName}* - ${decodeURIComponent(section)} 🪔\n\nShared via Brahmand App 🕉️`,
+        title: festivalName,
+      });
+    } catch (err) {
+      console.warn('Failed to share festival section', err);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -70,6 +138,21 @@ const FestivalSectionDetailPage = () => {
       style={{ flex: 1 }}
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Hidden Full Festival Catalog for HD Poster Capture */}
+        <View
+          style={{
+            position: 'absolute',
+            top: -99999,
+            left: -99999,
+            opacity: 0,
+          }}
+          pointerEvents="none"
+        >
+          <View ref={catalogRef} collapsable={false}>
+            <FestivalMasterCatalogCard festival={festival} />
+          </View>
+        </View>
+
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton} 
@@ -84,9 +167,24 @@ const FestivalSectionDetailPage = () => {
           >
             <Ionicons name="chevron-back" size={28} color="#000000" />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>{decodeURIComponent(section)}</Text>
-          <View style={styles.headerPlaceholder} />
+
+          <TouchableOpacity 
+            style={styles.shareButton} 
+            onPress={handleShare}
+            activeOpacity={0.7}
+            disabled={isSharing}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Ionicons name="share-social-outline" size={22} color="#000000" />
+            )}
+          </TouchableOpacity>
         </View>
+
         <ScrollView contentContainerStyle={styles.container}>
           <FestivalSectionDetailCard
             festival={festival}
@@ -135,10 +233,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
+    flex: 1,
   },
-  headerPlaceholder: {
+  shareButton: {
     width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
 });
 
 export default FestivalSectionDetailPage;
+

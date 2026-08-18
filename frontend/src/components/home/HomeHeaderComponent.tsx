@@ -800,7 +800,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                             {/* Right Speaker Portrait Cutout */}
                                             <Image
-                                                source={require('../../../assets/images/shamik_cutout.png')}
+                                                source={require('../../../assets/images/shamik_cutout.webp')}
                                                 style={{
                                                     position: 'absolute',
                                                     right: -24,

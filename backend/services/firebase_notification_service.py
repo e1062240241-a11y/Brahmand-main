@@ -85,13 +85,13 @@ class FirebaseNotificationService:
         inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id, overwrite=overwrite)
         notification_data['id'] = inserted_id
         
-        logger.info(f"Notification created for user {user_id}")
+        logger.debug(f"Notification created for user {user_id}")
         
         # Emit Socket.IO event to user's private room
         try:
             from main import sio
             await sio.emit('new_notification', notification_data, room=f"user_{user_id}")
-            logger.info(f"Emitted real-time notification to user_{user_id} via socket from FirebaseNotificationService")
+            logger.debug(f"Emitted real-time notification to user_{user_id} via socket from FirebaseNotificationService")
         except Exception as e:
             logger.warning(f"Failed to emit socket notification for user {user_id} in create_notification: {e}")
 
@@ -205,7 +205,8 @@ class FirebaseNotificationService:
         user = await db.get_document('users', user_id)
         
         if not user:
-            raise ValueError("User not found")
+            logger.debug(f"User {user_id} not found for push notification")
+            return {"sent": 0, "message": "User not found"}
 
         # Check block status
         try:

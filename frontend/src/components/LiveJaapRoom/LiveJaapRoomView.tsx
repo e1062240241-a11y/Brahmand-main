@@ -226,14 +226,13 @@ const HANUMAN_CHALISA_SEGMENTS = [
   { type: 'music', startTime: 911.5, endTime: 961.39, items: ['🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵', '🎶', '✨', '🎵', '🎵'] }
 ];
 
+const CDN_AUDIO_BASE = 'https://brahmandfeed23.b-cdn.net/audio';
+
 const MANTRA_AUDIO: Record<string, any> = {
-  hanuman: require('../../../assets/audio/audio_ekant/hanuman_chalisa.mp3'),
-  gayatri: require('../../../assets/audio/audio_ekant/gayatri_mantra.wav'),
-  krishna: require('../../../assets/audio/audio_ekant/krishna_jaap.mp4'),
-  shiva: require('../../../assets/audio/audio_ekant/final_om_namah_shivaay.mp4'),
-  mrityunjaya: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
-  ganesh: require('../../../assets/audio/audio_ekant/leberch-yoga-509070.mp3'),
-  laxmi: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
+  hanuman: `${CDN_AUDIO_BASE}/hanuman_chalisa.m4a`,
+  gayatri: `${CDN_AUDIO_BASE}/gayatri_mantra.m4a`,
+  krishna: `${CDN_AUDIO_BASE}/krishna_jaap.mp4`,
+  shiva: `${CDN_AUDIO_BASE}/final_om_namah_shivaay.mp4`,
 };
 
 const MANTRA_BG_AUDIO_URLS: Record<string, string> = {
@@ -1120,7 +1119,7 @@ export default function LiveJaapRoomView() {
 
                 <TouchableOpacity 
                   style={styles.ekantRedirectBtn}
-                  onPress={() => router.replace('/ekant-jaap')}
+                  onPress={() => router.replace('/all-live-jaaps')}
                 >
                   <LinearGradient
                     colors={['#FF6B00', '#FF8A00']}
@@ -1128,8 +1127,8 @@ export default function LiveJaapRoomView() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Ionicons name="person" size={18} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.ekantRedirectBtnText}>{t('chantInEkantMode')}</Text>
+                    <Ionicons name="flame" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.ekantRedirectBtnText}>{t('language') === 'hi' ? 'अन्य लाइव जाप देखें' : 'Explore All Live Jaaps'}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>

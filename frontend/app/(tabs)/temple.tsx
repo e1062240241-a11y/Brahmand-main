@@ -735,7 +735,7 @@ const renderItem = useCallback(({ item }: { item: any }) => {
 
         <View style={styles.heroRightImageContainer}>
           <Image 
-            source={require('../../assets/images/imagetemple/SomnathTemple.webp')} 
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/temples/SomnathTemple.webp' }} 
             style={styles.heroSideImage} 
             resizeMode="cover"
           />
