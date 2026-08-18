@@ -3,8 +3,6 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import api from './api';
 
-const isExpoGo = Constants.appOwnership === 'expo' || Constants.appOwnership === 'guest';
-
 async function getNotificationsModule() {
   try {
     const Notifications = await import('expo-notifications');
