@@ -1,7 +1,6 @@
 """Firebase Authentication Service"""
 import os
 import re
-import time
 import logging
 import random
 import asyncio
@@ -10,7 +9,7 @@ from typing import Optional, Dict, Any
 
 
 
-from config.firebase_config import get_firestore, get_firebase_auth, firebase_manager
+from config.firebase_config import get_firestore, get_firebase_auth
 from config.firestore_db import FirestoreDB
 from middleware.security import create_jwt_token
 from utils.helpers import generate_sl_id, SUPPORTED_LANGUAGES
