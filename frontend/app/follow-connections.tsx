@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -202,16 +202,22 @@ export default function FollowConnectionsScreen() {
     };
   }, [targetUserId, currentUserId]);
 
-  const followers = followerIds
+  const followers = useMemo(() => followerIds
     .map((id) => usersById[id])
-    .filter((item): item is ConnectionUser => Boolean(item?.id));
-  const following = profileFollowingIds
+    .filter((item): item is ConnectionUser => Boolean(item?.id)), [followerIds, usersById]);
+  const following = useMemo(() => profileFollowingIds
     .map((id) => usersById[id])
-    .filter((item): item is ConnectionUser => Boolean(item?.id));
-  const mutualIdsSet = new Set(profileFollowingIds.filter((id) => followerIds.includes(id)));
+    .filter((item): item is ConnectionUser => Boolean(item?.id)), [profileFollowingIds, usersById]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const mutualIdsSet = useMemo(() => {
+    // OPT: Bolt ⚡ - Convert followerIds to Set for O(1) lookup to prevent O(N*M) CPU bottleneck
+    const followerSet = new Set(followerIds);
+    return new Set(profileFollowingIds.filter((id) => followerSet.has(id)));
+  }, [profileFollowingIds, followerIds]);
   const activeSearch = activeTab === 'followers' ? followersSearch : followingSearch;
   const activeUsers = activeTab === 'followers' ? followers : following;
-  const filteredUsers = activeUsers.filter((item) => {
+  const filteredUsers = activeUsers.filter((item: ConnectionUser) => {
     const query = activeSearch.trim().toLowerCase();
     if (!query) {
       return true;
@@ -315,6 +321,7 @@ export default function FollowConnectionsScreen() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const totalConnections = new Set([...followerIds, ...profileFollowingIds]).size;
 
   const renderUserCard = (item: ConnectionUser, isLast: boolean) => (
@@ -429,7 +436,7 @@ export default function FollowConnectionsScreen() {
               showsVerticalScrollIndicator={false}
             >
               {filteredUsers.length ? (
-                filteredUsers.map((item, index) => renderUserCard(item, index === filteredUsers.length - 1))
+                filteredUsers.map((item: ConnectionUser, index: number) => renderUserCard(item, index === filteredUsers.length - 1))
               ) : (
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconWrap}>
