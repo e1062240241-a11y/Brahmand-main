@@ -599,10 +599,30 @@ async def _delete_post_media_from_storage(object_path: str) -> bool:
         return False
 
 
+async def _trim_inbox_if_needed(follower_uid: str):
+    """Non-blocking background helper to trim a follower's inbox to 300 posts max."""
+    try:
+        db = await get_db()
+        inbox_items = await db.query_documents(
+            'following_inboxes',
+            filters=[('user_id', '==', follower_uid)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=350
+        )
+        if len(inbox_items) > 300:
+            excess_items = inbox_items[300:]
+            excess_ids = [item['id'] for item in excess_items if item.get('id')]
+            if excess_ids:
+                await db.batch_delete_documents('following_inboxes', excess_ids)
+    except Exception as cap_err:
+        logger.warning(f"Failed to trim inbox for user {follower_uid}: {cap_err}")
+
+
 async def _fanout_post_to_followers(author_id: str, post_id: str, created_at_iso: str):
     """
     Background worker: Fans out a newly uploaded post to all followers' following_inboxes.
-    Enforces the 300-post inbox cap per follower.
+    Enforces the 300-post inbox cap per follower asynchronously.
     """
     try:
         db = await get_db()
@@ -640,7 +660,7 @@ async def _fanout_post_to_followers(author_id: str, post_id: str, created_at_iso
         except Exception:
             created_at_dt = datetime.now(timezone.utc)
 
-        # 2. Insert into following_inboxes for each follower & enforce 300-post cap
+        # 2. Insert into following_inboxes for each follower
         async def _insert_inbox(follower_uid):
             doc_id = f"{follower_uid}_{post_id}"
             inbox_doc = {
@@ -651,28 +671,15 @@ async def _fanout_post_to_followers(author_id: str, post_id: str, created_at_iso
             }
             await db.set_document('following_inboxes', doc_id, inbox_doc)
 
-            # Enforce 300-post inbox cap
-            try:
-                inbox_items = await db.query_documents(
-                    'following_inboxes',
-                    filters=[('user_id', '==', follower_uid)],
-                    order_by='created_at',
-                    order_direction='DESCENDING',
-                    limit=350
-                )
-                if len(inbox_items) > 300:
-                    excess_items = inbox_items[300:]
-                    excess_ids = [item['id'] for item in excess_items if item.get('id')]
-                    if excess_ids:
-                        await db.batch_delete_documents('following_inboxes', excess_ids)
-            except Exception as cap_err:
-                logger.warning(f"Failed to trim inbox for user {follower_uid}: {cap_err}")
-
         follower_list = list(followers_set)
         chunk_size = 50
         for i in range(0, len(follower_list), chunk_size):
             chunk = follower_list[i:i + chunk_size]
             await asyncio.gather(*[_insert_inbox(f_uid) for f_uid in chunk], return_exceptions=True)
+
+        # Non-blocking async trimming for followers
+        for f_uid in follower_list:
+            asyncio.create_task(_trim_inbox_if_needed(f_uid))
 
         logger.info(f"Successfully fanned out post {post_id} of author {author_id} to {len(follower_list)} followers' inboxes")
 
@@ -682,7 +689,7 @@ async def _fanout_post_to_followers(author_id: str, post_id: str, created_at_iso
 
 async def _backfill_following_inbox(follower_id: str, creator_id: str, count: int = 10):
     """
-    Backfill latest 'count' posts from creator_id into follower_id's following_inbox upon follow.
+    Backfill latest 'count' posts from creator_id into follower_id's following_inbox upon follow concurrently.
     """
     try:
         db = await get_db()
@@ -696,10 +703,10 @@ async def _backfill_following_inbox(follower_id: str, creator_id: str, count: in
         if not creator_posts:
             return
 
-        for post in creator_posts:
+        async def _insert_backfill(post):
             post_id = post.get('id')
             if not post_id:
-                continue
+                return
             doc_id = f"{follower_id}_{post_id}"
             created_at = post.get('created_at') or datetime.now(timezone.utc)
             inbox_doc = {
@@ -710,6 +717,7 @@ async def _backfill_following_inbox(follower_id: str, creator_id: str, count: in
             }
             await db.set_document('following_inboxes', doc_id, inbox_doc)
 
+        await asyncio.gather(*[_insert_backfill(p) for p in creator_posts], return_exceptions=True)
         logger.info(f"Backfilled {len(creator_posts)} posts from creator {creator_id} to follower {follower_id} inbox")
     except Exception as e:
         logger.error(f"Error backfilling following_inbox for follower {follower_id} from creator {creator_id}: {e}")
