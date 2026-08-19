@@ -442,9 +442,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     ) : loadingUsers ? (
                                         <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                                     ) : searchResults.length > 0 ? (
-                                        searchResults.map((item) => {
-                                            const isFollowing = followingIds.includes(item.id);
-                                            return (
+                                        (() => {
+                                            // OPT: Use Set for O(1) following lookups
+                                            const followingSet = new Set(followingIds);
+                                            return searchResults.map((item) => {
+                                                const isFollowing = followingSet.has(item.id);
+                                                return (
                                                 <View key={item.id} style={styles.userResultItem}>
                                                     <TouchableOpacity
                                                         style={styles.userResultContent}
@@ -474,7 +477,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     </TouchableOpacity>
                                                 </View>
                                             );
-                                        })
+                                            });
+                                        })()
                                     ) : (
                                         <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                                     )}
@@ -796,7 +800,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                             {/* Right Speaker Portrait Cutout */}
                                             <Image
-                                                source={require('../../../assets/images/shamik_cutout.png')}
+                                                source={require('../../../assets/images/shamik_cutout.webp')}
                                                 style={{
                                                     position: 'absolute',
                                                     right: -24,

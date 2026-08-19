@@ -395,7 +395,7 @@ class FirestoreDB:
         if cached_doc:
             logger.debug(f"Cache HIT for {cache_key}")
             return fast_copy(cached_doc)
-            
+
         if self.use_mock:
             doc_data = self._mock_collections.setdefault(collection, {}).get(doc_id)
             if doc_data:
@@ -420,11 +420,53 @@ class FirestoreDB:
                         return None
                     time.sleep(0.5)
             return None
-        
+
         doc_data = await self._run_sync(_get)
         if doc_data:
             await self._cache.set(cache_key, fast_copy(doc_data))
         return doc_data
+
+    async def get_document_fields(
+        self, collection: str, doc_id: str, field_paths: list
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch only a subset of a document's fields via Firestore field masking.
+
+        Avoids transferring large array fields (e.g. a popular user's 100k
+        followers array) from Firestore to the backend when only scalar fields
+        are needed. Not cached — these are targeted O(1) reads, and caching
+        partial docs would conflict with the full-doc cache.
+        """
+        if not field_paths:
+            return None
+
+        if self.use_mock:
+            doc = self._mock_collections.setdefault(collection, {}).get(doc_id)
+            if doc is None:
+                return None
+            return {k: doc.get(k) for k in field_paths if k in doc} or None
+
+        def _get():
+            attempts = 2
+            for attempt in range(attempts):
+                try:
+                    doc = self.client.collection(collection).document(doc_id).get(
+                        field_paths=field_paths
+                    )
+                    if doc.exists:
+                        return dict(doc.to_dict() or {})
+                    return None
+                except Exception as exc:
+                    logger.warning(
+                        f"Firestore get_document_fields error for {collection}/{doc_id}, "
+                        f"attempt {attempt + 1}/{attempts}: {exc}"
+                    )
+                    if attempt + 1 == attempts:
+                        return None
+                    time.sleep(0.5)
+            return None
+
+        return await self._run_sync(_get)
+
     
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
         """Update a document and invalidate cache"""
@@ -449,6 +491,30 @@ class FirestoreDB:
         if result:
             await self._cache.delete(f"{collection}:{doc_id}")
         return result
+
+    async def increment_field(self, collection: str, doc_id: str, field: str, amount: int = 1) -> None:
+        """Atomically increment a numeric counter field (race-free).
+
+        Uses Firestore's server-side Increment transform so concurrent writers
+        never lose updates (unlike get-then-set). Mock path is single-process
+        so a read+add is safe there. Skips the updated_at bump that
+        update_document would impose on every increment.
+        """
+        if self.use_mock:
+            coll = self._mock_collections.setdefault(collection, {})
+            if doc_id in coll:
+                cur = coll[doc_id].get(field, 0) or 0
+                coll[doc_id][field] = cur + amount
+                await self._cache.delete(f"{collection}:{doc_id}")
+            return
+
+        from google.cloud import firestore
+        def _increment():
+            self.client.collection(collection).document(doc_id).update(
+                {field: firestore.Increment(amount)}
+            )
+        await self._run_sync(_increment)
+        await self._cache.delete(f"{collection}:{doc_id}")
 
     async def batch_update_documents(self, collection: str, updates: List[tuple]) -> None:
         """Update multiple documents in a collection using a batch. updates is a list of (doc_id, data_dict) tuples"""

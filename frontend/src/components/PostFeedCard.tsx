@@ -572,14 +572,26 @@ const PostFeedCardComponent = ({
 
           {onPostMenuPress && postMenuType && (
             <View style={styles.menuWrap}>
-              <TouchableOpacity
-                style={styles.menuBtn}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuBtn,
+                  pressed && { backgroundColor: (theme === 'light' || isFirstReel) ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }
+                ]}
+                android_ripple={{
+                  color: (theme === 'light' || isFirstReel) ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.2)',
+                  borderless: false,
+                  radius: 20,
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setMenuVisible(!menuVisible)}
                 accessibilityRole="button"
                 accessibilityLabel={t('openMenu')}
               >
-                <Ionicons name="ellipsis-horizontal" size={18} color={(theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF'} />
-              </TouchableOpacity>
+                <View style={{ justifyContent: 'center', alignItems: 'flex-end', width: 24, height: 18 }}>
+                  <View style={{ width: 22, height: 3, backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF', borderRadius: 1.5, marginBottom: 4 }} />
+                  <View style={{ width: 14, height: 3, backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF', borderRadius: 1.5 }} />
+                </View>
+              </Pressable>
               {menuVisible && (
                 <View style={styles.dropdownMenu}>
                   {postMenuType === 'delete' && onEdit && (
@@ -1015,7 +1027,7 @@ const styles = StyleSheet.create({
   usernameLight: { color: '#000' },
   timeText: { color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, marginTop: 2, fontWeight: '800' },
   timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '700' },
-  menuBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  menuBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
   dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
   dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },

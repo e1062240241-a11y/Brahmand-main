@@ -272,6 +272,8 @@ function isValidAppPath(path: string): boolean {
     '/horoscope',
     '/panchang',
     '/festivals',
+    '/festival-detail',
+    '/festival-section-detail',
     '/all-live-jaaps',
     '/my-krishna',
     '/library',
@@ -280,7 +282,6 @@ function isValidAppPath(path: string): boolean {
     '/verification',
     '/privacy-policy',
     '/badges',
-    '/ekant-jaap',
     '/live-mantra',
     '/community-request',
     '/follow-connections'
@@ -1435,6 +1436,27 @@ export default function RootLayout() {
               name="library/index"
               options={{
                 animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              key="festivals"
+              name="festivals"
+              options={{
+                animation: 'ios_from_right',
+              }}
+            />
+            <Stack.Screen
+              key="festival-detail"
+              name="festival-detail"
+              options={{
+                animation: 'ios_from_right',
+              }}
+            />
+            <Stack.Screen
+              key="festival-section-detail"
+              name="festival-section-detail"
+              options={{
+                animation: 'ios_from_right',
               }}
             />
             {/* Other standard stack navigations will inherit default ios sliding */}

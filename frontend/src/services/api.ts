@@ -962,9 +962,10 @@ export const logoutUser = (fcmToken?: string | null) =>
 // User APIs
 export const getProfile = () => api.get("/user/profile");
 
-export const getUserProfile = (userId?: string) => {
+export const getUserProfile = (userId?: string, includeLists: boolean = false) => {
   const validId = userId && userId !== 'undefined' && userId.trim().length > 0 ? userId : undefined;
-  return api.get(validId ? `/users/${validId}` : "/user/profile");
+  const params = includeLists ? { include_lists: 'true' } : undefined;
+  return api.get(validId ? `/users/${validId}` : "/user/profile", { params });
 };
 
 export const getUserPosts = (
@@ -1465,8 +1466,8 @@ export const addPostComment = (
   return api.post(`/posts/${postId}/comments`, { text, parent_id: parentId });
 };
 
-export const getPostComments = (postId: string, limit: number = 200) =>
-  api.get(`/posts/${postId}/comments`, { params: { limit } });
+export const getPostComments = (postId: string, limit: number = 200, offset: number = 0) =>
+  api.get(`/posts/${postId}/comments`, { params: { limit, offset } });
 
 export const repostPost = (postId: string) =>
   api.post(`/posts/${postId}/repost`);

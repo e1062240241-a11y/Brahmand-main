@@ -6,30 +6,6 @@ import { Platform } from 'react-native';
 // Firebase configuration for Sanatan Lok - loaded from environment variables
 // For web/local development, ensure .env file is present and variables are loaded
 
-// Helper to get env var with fallback - try multiple sources for web compatibility
-const getEnvVar = (key: string, fallback: string = ''): string => {
-  // Try process.env first (works with Expo built-in)
-  // eslint-disable-next-line expo/no-dynamic-env-var
-  let value = process.env[key];
-  
-  // For web, also check window.__ENV__ (set by Expo webpack)
-  if (!value && typeof window !== 'undefined' && (window as any).__ENV__) {
-    value = (window as any).__ENV__[key];
-  }
-  
-  // Fallback to the key without EXPO_PUBLIC prefix if not found
-  if (!value) {
-    const altKey = key.replace('EXPO_PUBLIC_', '');
-    value = process.env[altKey];
-  }
-  
-  if (!value && !fallback) {
-    console.warn(`[Firebase Config] Missing env var: ${key}`);
-  }
-  
-  return value || fallback;
-};
-
 const anonymousPhoneList = process.env.EXPO_PUBLIC_ANONYMOUS_PREDEFINED_NUMBERS || '';
 
 export const firebaseConfig = {

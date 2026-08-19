@@ -63,20 +63,6 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, 
         </Text>
       </Pressable>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Create new post"
-        style={({ pressed }) => [
-          styles.newPostButton,
-          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-        ]}
-        android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
-        onPress={onCreatePost}
-      >
-        <View style={styles.plusIconBg}>
-          <Ionicons name="add" size={20} color="#FF6B00" />
-        </View>
-      </Pressable>
     </View>
   );
 });
