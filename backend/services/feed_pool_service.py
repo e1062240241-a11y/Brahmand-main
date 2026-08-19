@@ -2,11 +2,14 @@
 Feed Candidate Pool Service - In-Memory Candidate Sourcing Pipeline
 Pre-fetches, caches, and periodically updates candidate post pools in server memory.
 Provides zero-DB-query candidate sourcing for the "For You" discovery feed.
+Includes a 5-minute TTL cache for user-level filter contexts (blocklists, interests)
+to eliminate repetitive DB reads during rapid consecutive scrolls.
 """
 
 import asyncio
 import logging
 import random
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from config.firestore_db import FirestoreDB
@@ -25,8 +28,54 @@ class FeedPoolService:
         self._refresh_lock = asyncio.Lock()
         self._bg_task: Optional[asyncio.Task] = None
 
+        # In-memory TTL cache for user filter context
+        # user_id -> { "data": Tuple[user_doc, blocked_ids, reported_ids, prefs_doc], "ts": float }
+        self._user_context_cache: Dict[str, Dict[str, Any]] = {}
+
     def is_initialized(self) -> bool:
         return self._is_initialized
+
+    async def get_user_filter_context(
+        self,
+        db: FirestoreDB,
+        user_id: str,
+        is_android: bool,
+        fetch_blocked_fn,
+        fetch_reported_fn,
+        ttl_seconds: int = 300
+    ) -> Tuple[Optional[Dict[str, Any]], set, set, Optional[Dict[str, Any]]]:
+        """
+        Retrieves user-level filter context (user profile, blocked user IDs, reported post IDs, feed preferences)
+        from in-memory TTL cache (5 minutes) or fetches them concurrently if missed/expired.
+        """
+        now = time.time()
+        cached = self._user_context_cache.get(user_id)
+        if cached and (now - cached.get("ts", 0) < ttl_seconds):
+            return cached["data"]
+
+        tasks = [
+            db.get_document('users', user_id),
+            fetch_blocked_fn(db, user_id),
+            fetch_reported_fn(db, user_id, 'post', is_android=is_android),
+            db.get_document('feed_preferences', user_id)
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        user_doc = results[0] if not isinstance(results[0], Exception) else None
+        blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
+        reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
+        prefs_doc = results[3] if not isinstance(results[3], Exception) else None
+
+        data = (user_doc, blocked_user_ids, reported_post_ids, prefs_doc)
+        self._user_context_cache[user_id] = {
+            "data": data,
+            "ts": now
+        }
+        return data
+
+    def invalidate_user_cache(self, user_id: str) -> None:
+        """Invalidates user context cache if user updates blocklist or interests."""
+        self._user_context_cache.pop(user_id, None)
 
     async def refresh_pools(self, db: FirestoreDB) -> None:
         """

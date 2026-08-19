@@ -3974,19 +3974,15 @@ async def get_posts_feed(
         # 4-STAGE ARCHITECTURE PIPELINE ("CHAR CHALNIYAN") FOR "FOR YOU" FEED
         # ─────────────────────────────────────────────────────────────
 
-        # Concurrent user context & preferences fetch
-        tasks = [
-            db.get_document('users', current_user_id),
-            _get_blocked_user_ids(db, current_user_id),
-            _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
-            db.get_document('feed_preferences', current_user_id)
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        current_user = results[0] if not isinstance(results[0], Exception) else None
-        blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
-        reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
-        prefs_doc = results[3] if not isinstance(results[3], Exception) else None
+        # Concurrent user context & preferences fetch via 5-minute TTL cache
+        current_user, blocked_user_ids, reported_post_ids, prefs_doc = await feed_pool_service.get_user_filter_context(
+            db=db,
+            user_id=current_user_id,
+            is_android=is_android,
+            fetch_blocked_fn=_get_blocked_user_ids,
+            fetch_reported_fn=_get_reported_content_ids,
+            ttl_seconds=300
+        )
 
         user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
         u_city = str(user_loc.get('city') or '').strip().lower()
