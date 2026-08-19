@@ -40,7 +40,7 @@ import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurre
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { Svg, Path } from 'react-native-svg';
+import { Svg, Path, Circle, G, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { CustomLoader } from '../../src/components/CustomLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -79,6 +79,116 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
       >
         {children}
       </Pressable>
+    </Animated.View>
+  );
+};
+
+/* Devotional Banner Title Stack:
+ * #1 Animated Gold-Gradient Text + #4 Layered Text-Shadow Glow + #10 Subtle Breathing Animation + #8 Clamp Sizing
+ */
+const AnimatedGoldKathaTitle = ({ title }: { title: string }) => {
+  const breatheAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breatheAnim, {
+          toValue: 0,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [breatheAnim]);
+
+  const scale = breatheAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.035],
+  });
+
+  const glowOpacity = breatheAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.65, 1],
+  });
+
+  // Clamp() Sizing (#8): responsive font size bounded between 22px and 28px
+  const fontSize = Math.min(Math.max(SCREEN_WIDTH * 0.062, 22), 28);
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale }],
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* Layered Text-Shadow Glow Background (#4) */}
+      <Animated.Text
+        style={{
+          fontSize,
+          fontWeight: '800',
+          color: '#8B4513',
+          textShadowColor: 'rgba(255, 215, 0, 0.85)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 10,
+          opacity: glowOpacity,
+          textAlign: 'center',
+          letterSpacing: 0.6,
+        }}
+      >
+        {title}
+      </Animated.Text>
+    </Animated.View>
+  );
+};
+
+/* Animated Shravan Katha Card Component (Page-load Entrance Fade & Scale) */
+const AnimatedKathaCard = ({ children, style }: { children: React.ReactNode; style?: any }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  const scaleAnim = useRef(new Animated.Value(0.94)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 750,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 750,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 750,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim, scaleAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: fadeAnim,
+          transform: [
+            { translateY: slideAnim },
+            { scale: scaleAnim },
+          ],
+        },
+      ]}
+    >
+      {children}
     </Animated.View>
   );
 };
@@ -885,33 +995,79 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
-            {/* Katha Section */}
-            <View style={styles.kathaSectionHeader}>
-              <View style={styles.kathaTitleRow}>
-                <LinearGradient
-                  colors={['transparent', '#c99a3d']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.kathaTitleLine}
-                />
-                <Text style={styles.kathaTitleText}>
-                  {t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'}
-                </Text>
-                <LinearGradient
-                  colors={['#c99a3d', 'transparent']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.kathaTitleLine}
-                />
+            {/* Animated Gold Devotional Title Component */}
+            {/* Stack: #1 Animated Gold Gradient + #4 Layered Text-Shadow Glow + #10 Breathing Animation + #8 Clamp Sizing */}
+
+            {/* Authentic Sacred Shravan Katha Section Header */}
+            <View style={styles.authenticKathaHeaderContainer}>
+              {/* Main Title Row with Authentic Brass/Gold Ornaments */}
+              <View style={styles.authenticTitleRow}>
+                {/* Left Brass Ornament Divider */}
+                <View style={styles.brassOrnamentSide}>
+                  <LinearGradient
+                    colors={['transparent', 'rgba(212, 175, 55, 0.3)', '#C5A059']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.brassOrnamentLine}
+                  />
+                  <Text style={styles.brassOrnamentSymbol}>❖</Text>
+                </View>
+
+                {/* Devotional Banner Title Stack: Gold Gradient + Glow + Breathing + Clamp Sizing */}
+                <AnimatedGoldKathaTitle title={t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'} />
+
+                {/* Right Brass Ornament Divider */}
+                <View style={styles.brassOrnamentSide}>
+                  <Text style={styles.brassOrnamentSymbol}>❖</Text>
+                  <LinearGradient
+                    colors={['#C5A059', 'rgba(212, 175, 55, 0.3)', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.brassOrnamentLine}
+                  />
+                </View>
               </View>
-              <Text style={styles.kathaSubtitleText}>
-                {t('language') === 'hi'
-                  ? 'पवित्र कथा व सत्संग का आनंद लें'
-                  : 'Listen to Sacred Katha & Satsang'}
-              </Text>
+
+              {/* Subdued Authentic Status Bar (Live & 30 Days Info) */}
+              <View style={styles.authenticMetaNavRow}>
+                {/* Live Indicator Badge */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.authenticLiveBadge,
+                    pressed && Platform.OS === 'ios' && { opacity: 0.85 }
+                  ]}
+                  onPress={async () => {
+                    try {
+                      const res = await api.get('/katha/status');
+                      if (res.data && res.data.is_live) {
+                        router.push('/library/katha' as any);
+                        return;
+                      }
+                    } catch (_e) {}
+                    Alert.alert(
+                      '🔴 LIVE Katha Broadcast',
+                      'Shravan Live Katha starts daily at 8:00 AM IST & 8:00 PM IST.',
+                      [{ text: 'OK', style: 'default' }]
+                    );
+                  }}
+                >
+                  <View style={styles.authenticRedDot} />
+                  <Text style={styles.authenticLiveText}>LIVE</Text>
+                </Pressable>
+
+                <View style={styles.authenticMetaDivider} />
+
+                {/* 30 Days Info Badge (Navigation removed) */}
+                <View style={styles.authentic30DaysBtn}>
+                  <Ionicons name="calendar-outline" size={13} color="#8A5A2B" style={{ marginRight: 4 }} />
+                  <Text style={styles.authentic30DaysText}>
+                    {t('language') === 'hi' ? '30 दिवस कथा' : '30 Days Katha'}
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <AnimatedKathaCard style={{ paddingHorizontal: 16, marginBottom: 16 }}>
               <Pressable
                 style={({ pressed }) => [
                   styles.bookCardKatha,
@@ -945,11 +1101,11 @@ export default function JaapLandingScreen() {
                 </View>
 
                 <View style={styles.bookMetaKatha}>
-                  <Text style={styles.bookNameKatha} numberOfLines={1}>Shamik Pathak ji</Text>
-                  <Text style={styles.bookSubKatha} numberOfLines={1}>Spiritual Guru • Astrologer • Panditji</Text>
+                  <Text style={styles.bookNameKatha}>Shamik Pathak ji</Text>
+                  <Text style={styles.bookSubKatha}>Spiritual Guru • Astrologer • Panditji</Text>
                 </View>
               </Pressable>
-            </View>
+            </AnimatedKathaCard>
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
@@ -1868,6 +2024,100 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 18,
   },
+  authenticKathaHeaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+    paddingTop: 8,
+    paddingBottom: 4,
+    paddingHorizontal: 16,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  authenticMandalaWrapper: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: -30,
+    zIndex: 0,
+  },
+  authenticTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    zIndex: 1,
+  },
+  brassOrnamentSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  brassOrnamentLine: {
+    width: 32,
+    height: 1.5,
+  },
+  brassOrnamentSymbol: {
+    color: '#C5A059',
+    fontSize: 10,
+  },
+  authenticKathaTitleText: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#4A2511',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+  },
+  authenticKathaSubtitleText: {
+    marginTop: 4,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#8A5A2B',
+    textAlign: 'center',
+    letterSpacing: 0.4,
+    zIndex: 1,
+  },
+  authenticMetaNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    gap: 12,
+    zIndex: 1,
+  },
+  authenticLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  authenticRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EB5757',
+  },
+  authenticLiveText: {
+    color: '#EB5757',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  authenticMetaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(197, 160, 89, 0.4)',
+  },
+  authentic30DaysBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  authentic30DaysText: {
+    color: '#8A5A2B',
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   kathaTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1924,22 +2174,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingTop: 10,
     paddingBottom: 10,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   bookNameKatha: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1B1C1C',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    marginBottom: 2,
-    lineHeight: 20,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   bookSubKatha: {
     fontSize: 12,
     color: '#5A4136',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     letterSpacing: 0.2,
-    lineHeight: 16,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
 
   // Premium Char Dham Pill & Modal Styles

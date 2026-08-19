@@ -22,6 +22,7 @@ export interface VisitorGuideline {
   icon: string;
   title: string;
   points: string[];
+  prohibitedItems?: string[];
 }
 
 export interface TempleMatchContext {
