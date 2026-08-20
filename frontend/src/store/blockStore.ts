@@ -12,6 +12,8 @@ import { getBlockedUsersApi } from '../services/api';
 interface BlockState {
   blockedUserIds: string[];
   blockedByMeUserIds: string[];
+  blockedUserSet: Set<string>;
+  blockedByMeUserSet: Set<string>;
   isLoading: boolean;
   /** Load all blocked UIDs (both directions) for the given user */
   loadBlocked: (currentUserId: string) => Promise<void>;
@@ -30,6 +32,8 @@ interface BlockState {
 export const useBlockStore = create<BlockState>((set, get) => ({
   blockedUserIds: [],
   blockedByMeUserIds: [],
+  blockedUserSet: new Set(),
+  blockedByMeUserSet: new Set(),
   isLoading: false,
 
   loadBlocked: async (currentUserId: string) => {
@@ -63,7 +67,9 @@ export const useBlockStore = create<BlockState>((set, get) => ({
       const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
       set({ 
         blockedUserIds: combined, 
-        blockedByMeUserIds: blockedByMe 
+        blockedByMeUserIds: blockedByMe,
+        blockedUserSet: new Set(combined),
+        blockedByMeUserSet: new Set(blockedByMe)
       });
     } catch (e) {
       console.warn('[blockStore] Failed to load blocked users:', e);
@@ -77,6 +83,8 @@ export const useBlockStore = create<BlockState>((set, get) => ({
     set((state) => ({
       blockedUserIds: Array.from(new Set([...state.blockedUserIds, uidStr])),
       blockedByMeUserIds: Array.from(new Set([...state.blockedByMeUserIds, uidStr])),
+      blockedUserSet: new Set([...state.blockedUserIds, uidStr]),
+      blockedByMeUserSet: new Set([...state.blockedByMeUserIds, uidStr]),
     }));
   },
 
@@ -85,18 +93,20 @@ export const useBlockStore = create<BlockState>((set, get) => ({
     set((state) => ({
       blockedUserIds: state.blockedUserIds.filter((id) => id !== uidStr),
       blockedByMeUserIds: state.blockedByMeUserIds.filter((id) => id !== uidStr),
+      blockedUserSet: new Set(state.blockedUserIds.filter((id) => id !== uidStr)),
+      blockedByMeUserSet: new Set(state.blockedByMeUserIds.filter((id) => id !== uidStr)),
     }));
   },
 
   isBlocked: (uid: string) => {
-    return get().blockedUserIds.includes(String(uid));
+    return get().blockedUserSet.has(String(uid));
   },
 
   isBlockedByMe: (uid: string) => {
-    return get().blockedByMeUserIds.includes(String(uid));
+    return get().blockedByMeUserSet.has(String(uid));
   },
 
   reset: () => {
-    set({ blockedUserIds: [], blockedByMeUserIds: [], isLoading: false });
+    set({ blockedUserIds: [], blockedByMeUserIds: [], blockedUserSet: new Set(), blockedByMeUserSet: new Set(), isLoading: false });
   },
 }));
