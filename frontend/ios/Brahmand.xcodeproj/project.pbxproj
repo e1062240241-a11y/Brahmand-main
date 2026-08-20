@@ -15,6 +15,8 @@
 		BD5FC9B8256444969CD2B776 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6F9BC57C77CE4960B0288DB7 /* GoogleService-Info.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F4C2359DF37989D8D9D3139E /* Pods_Brahmand.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FE9F25D3B32F2DB9B2E5D99 /* Pods_Brahmand.framework */; };
+		B7F47BCB0AAE4286A1EA2530 /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D7F400415F3049CD8D17E38B /* bell.mp3 */; };
+		5CD306C8FEA94975A02DE579 /* soundreality_mayday_166011.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 0CE3E593DD7847799CEA86CD /* soundreality_mayday_166011.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,8 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Brahmand/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Brahmand-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Brahmand-Bridging-Header.h"; path = "Brahmand/Brahmand-Bridging-Header.h"; sourceTree = "<group>"; };
+		D7F400415F3049CD8D17E38B /* bell.mp3 */ = {isa = PBXFileReference; name = "bell.mp3"; path = "Brahmand/bell.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		0CE3E593DD7847799CEA86CD /* soundreality_mayday_166011.mp3 */ = {isa = PBXFileReference; name = "soundreality_mayday_166011.mp3"; path = "Brahmand/soundreality_mayday_166011.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +69,8 @@
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				6F9BC57C77CE4960B0288DB7 /* GoogleService-Info.plist */,
 				9A0284BCCF52C20FB2B8381F /* PrivacyInfo.xcprivacy */,
+				D7F400415F3049CD8D17E38B /* bell.mp3 */,
+				0CE3E593DD7847799CEA86CD /* soundreality_mayday_166011.mp3 */,
 			);
 			name = Brahmand;
 			sourceTree = "<group>";
@@ -205,6 +211,8 @@
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				BD5FC9B8256444969CD2B776 /* GoogleService-Info.plist in Resources */,
 				7CB7585765E8554E2AB496B2 /* PrivacyInfo.xcprivacy in Resources */,
+				B7F47BCB0AAE4286A1EA2530 /* bell.mp3 in Resources */,
+				5CD306C8FEA94975A02DE579 /* soundreality_mayday_166011.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -487,7 +495,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.brahmand.app;
-				PRODUCT_NAME = Brahmand;
+				PRODUCT_NAME = "Brahmand";
 				SWIFT_OBJC_BRIDGING_HEADER = "Brahmand/Brahmand-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -521,7 +529,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.brahmand.app;
-				PRODUCT_NAME = Brahmand;
+				PRODUCT_NAME = "Brahmand";
 				SWIFT_OBJC_BRIDGING_HEADER = "Brahmand/Brahmand-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
