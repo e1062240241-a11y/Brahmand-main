@@ -3,10 +3,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
-from config.database import get_database, get_redis
+from config.database import get_database
 from middleware.security import create_jwt_token
 from utils.helpers import generate_sl_id, SUPPORTED_LANGUAGES
-from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 

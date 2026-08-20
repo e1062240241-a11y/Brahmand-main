@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any, List
 from bson.objectid import ObjectId
 from config.database import get_database
 from utils.helpers import serialize_doc, moderate_content
-from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 

@@ -313,6 +313,269 @@ export const VISITOR_GUIDELINES_RULES: VisitorGuidelinesRule[] = [
       { icon: '👟', title: 'Shoe Stand & Hill Facilities', points: ['Footwear deposit counters at entrance near bus stand / parking area', 'KSRTC bus service & foot steps (1,000 steps) available to reach hill top'] },
     ],
   },
+  {
+    id: 'harsiddhi',
+    condition: {
+      any: ['harsiddhi'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Lighting', points: ['Free entry for all devotees', 'Grand evening lamp lighting at 7:30 PM: Two towering Deepstambhs with hundreds of lamps lit', 'Navratri (9-day festival) features special rituals; heavy crowd on Ashtami & Navami'] },
+      { icon: '👔', title: 'Dress Code & Etiquette', points: ['Carry a chunari / stole to cover head as a mark of respect', 'Modest, traditional attire recommended for all devotees'] },
+      { icon: '📵', title: 'Photography Rules', points: ['Photography restricted inside inner sanctum (permitted in outer courtyard premises)', 'Footwear must be removed before entering mandir'] },
+    ],
+  },
+  {
+    id: 'tripura_sundari',
+    condition: {
+      any: ['tripura sundari', 'tripurasundari', 'matabari'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Temple Layout', points: ['Two sacred idols: 5 ft Tripura Sundari and 2 ft Chhoto-Ma (Goddess Chandi)', 'Kalyan Sagar Lake located within complex holding sacred fish & tortoises', 'VIP Pass available from ₹100 to ₹500 depending on festival season'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended: Dhotis / trousers for men, Sarees / salwar kameez for women', 'Avoid shorts and sleeveless tops; cover shoulders and knees'] },
+      { icon: '📵', title: 'Prohibited Items & Lake Advisory', points: ['Photography strictly prohibited inside sanctum sanctorum', 'Mobile phone usage restricted near inner altar', 'DO NOT feed packaged food or bread to tortoises & fish in Kalyan Sagar Lake'], prohibitedItems: ['Sanctum Photography', 'Mobiles near Altar', 'Packaged Food for Turtles/Fish', 'Leather Items', 'Shorts & Sleeveless Tops'] },
+      { icon: '👟', title: 'Locker & Storage', points: ['Lockers available near entrance for storing electronics and leather items'] },
+    ],
+  },
+  {
+    id: 'jwalaji',
+    condition: {
+      any: ['jwala', 'jwalaji'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Eternal Flames & Temple Legend', points: ['Nine eternal flames emanate from natural rock fissures — no traditional idol', 'Historical site visited by Emperor Akbar who offered a golden umbrella', 'Grand 2-hour Aarti suspension during morning & evening Aarti times'] },
+      { icon: '👔', title: 'Strict Dress Code Rules', points: ['Men: Shirt & trouser, dhoti or pyjamas with upper cloth', 'Women: Saree, half-saree, or chudidar with pyjama & upper cloth', 'STRICTLY PROHIBITED: Shorts, mini-skirts, middies, sleeveless tops, low-waist jeans, short t-shirts', 'Entry denied if dress code is not followed (applies to foreign visitors as well)'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography & videography strictly forbidden inside temple premises', 'Smoking & alcohol consumption strictly prohibited', 'Chewing betel leaves, tobacco, gutka & spitting strictly prohibited', 'Leather belts, wallets, and bags banned inside sanctum'], prohibitedItems: ['Photography & Videography', 'Smoking & Alcohol', 'Tobacco, Gutka & Spitting', 'Leather Items', 'Non-Traditional Attire / Shorts'] },
+    ],
+  },
+  {
+    id: 'brajeshwari',
+    condition: {
+      any: ['brajeshwari', 'vajreshwari'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Langar & Pooja Booking', points: ['Free Langar served daily 12:30 PM – 2:30 PM and 7:30 PM – 9:00 PM (Continuous during Navratri)', 'Grand Yagya Shala available for Havan Yagya', 'Darshan Parchi slip booking available online'] },
+      { icon: '👔', title: 'Dress Code Etiquette', points: ['Traditional and formal modest clothing expected for all pilgrims'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography not allowed inside temple premises', 'Leather items (belts, wallets) banned inside inner shrine', 'Smoking and alcohol strictly prohibited'], prohibitedItems: ['Inside Photography', 'Leather Items', 'Smoking & Alcohol'] },
+    ],
+  },
+  {
+    id: 'chintpurni',
+    condition: {
+      any: ['chintpurni', 'chhinnamastika'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Darshan Parchi & Facilities', points: ['Mandatory Darshan Parchi (slip) required from security guard before entering queue', 'Online Aarti streaming available on official trust site', 'Havan and head-shaving (Mundan) facilities available on site'] },
+      { icon: '👔', title: 'Dress Code & Footwear', points: ['Modest traditional attire expected', 'Remove footwear at designated footwear counters before entering premises'] },
+      { icon: '⚠️', title: 'Strict Rules & Regulations', points: ['Do not accept plastic polythene bags; Chintpurni is plastic-free zone', 'Do not feed monkeys or throw prasad on the floor', 'Do not bribe any vendor/person for back-door darshan entry', 'Do not touch abandoned objects in queue area'], prohibitedItems: ['Plastic Polythene Bags', 'Littering & Throwing Prasad', 'Back-door Darshan Bribes', 'Smoking & Alcohol'] },
+    ],
+  },
+  {
+    id: 'naina_devi',
+    condition: {
+      any: ['naina devi', 'nainadevi'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Darshan & Transport', points: ['Extended Navratri timings: Open 2:00 AM to 12:00 Midnight', 'Ropeway / Cable car service available to reach hilltop temple', 'Live YouTube Darshan feed provided by temple trust'] },
+      { icon: '👔', title: 'Dress Code & Hygiene', points: ['No official dress code enforced, but short or revealing clothes should be avoided out of respect', 'Footwear, leather items, and photography inside sanctum are prohibited'] },
+    ],
+  },
+  {
+    id: 'chamunda_devi_kangra',
+    condition: {
+      any: ['chamunda', 'chamundeshwar dham', 'nandikeshwar'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Daily Services', points: ['Free entry for all devotees; no ticket needed for general darshan', 'Free Langar served daily 12:00 PM – 2:00 PM and 7:00 PM – 9:00 PM (Continuous during Navratri)', 'Evening Aarti broadcast daily live on MH1 Prime channel', 'Online Darshan Parchi slip booking available'] },
+      { icon: '👔', title: 'Dress Code & Hygiene', points: ['No rigidly enforced dress code, but modest traditional clothing expected', 'Leave footwear at designated shoe stands outside main entrance'] },
+      { icon: '📵', title: 'Photography Rules', points: ['Photography strictly prohibited inside inner sanctum'] },
+    ],
+  },
+  {
+    id: 'mansa_devi',
+    condition: {
+      any: ['mansa devi', 'mansadevi'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Darshan Tokens & Accessibility', points: ['Sugam Darshan token: ₹100 for fast-track queue', 'Mandap Darshan token: ₹500', 'Lift & wheelchair facilities available at VIP gate for senior citizens, pregnant ladies, and divyang devotees', 'Ropeway / Cable Car (Udan Khatola) available for hill climb'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Avoid shorts, sleeveless, and revealing clothing out of sanctity'] },
+      { icon: '🚫', title: 'Strictly Prohibited Items', points: ['Smoking, alcohol, meat, and non-veg food strictly prohibited across shrine zone', 'Leather belts, wallets, and accessories prohibited inside inner altar'], prohibitedItems: ['Smoking & Alcohol', 'Non-Veg Food', 'Leather Accessories', 'Shorts & Revealing Outfits'] },
+    ],
+  },
+  {
+    id: 'chandi_devi_haridwar',
+    condition: {
+      any: ['chandi devi', 'chandidevi', 'neel parvat'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Trek & Cable Car Access', points: ['3 km uphill trek from Chandighat (~45–60 min climb)', 'Ropeway (Udan Khatola) available and recommended for elderly devotees', 'Special darshan lane provided for Seva ticket holders & senior citizens (65+)'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional attire recommended: Dhotis / trousers & shirts for men, Sarees / salwar kameez for women', 'Avoid shorts and sleeveless tops'] },
+      { icon: '📵', title: 'Prohibited Items & Lockers', points: ['Photography strictly prohibited inside inner sanctum', 'Leather accessories, non-veg food, alcohol strictly prohibited', 'Mobile lockers available at ropeway station & trekking start point'], prohibitedItems: ['Sanctum Photography', 'Leather Accessories', 'Non-Veg Food & Alcohol', 'Shorts & Sleeveless Tops'] },
+    ],
+  },
+  {
+    id: 'alopi_devi_prayagraj',
+    condition: {
+      any: ['alopi', 'alopidevi', 'alopi mata'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Sacred Offerings & Unique Shrine', points: ['No idol present — devotees worship an ornate silver swing (Jhoola)', 'Offerings include coconut, sindoor, red chunari, bangles, and sweets', 'Heavy rush during Kumbh Mela, Magh Mela, and Navratri (24x7 open)'] },
+      { icon: '👔', title: 'Dress Code & Hygiene', points: ['Modest and respectful traditional attire required', 'Remove footwear before entering temple premises'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography restricted inside inner sanctum', 'Leather items strictly prohibited', 'Mobile phone usage inside sanctum discouraged'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Mobile Usage inside Sanctum'] },
+    ],
+  },
+  {
+    id: 'vindhyavasini',
+    condition: {
+      any: ['vindhyavasini', 'vindhyachal'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Holy Dip & Trikon Parikrama', points: ['Traditional holy dip in River Ganga before visiting shrine', 'Complete Trikon Parikrama circuit: Vindhyavasini → Ashtabhuja (hilltop) → Kali Khoh', 'Vehicles restricted near temple complex during Navratri'] },
+      { icon: '👔', title: 'Dress Code & Etiquette', points: ['Modest traditional attire required (especially during Navratri)', 'Remove footwear before entering', 'Maintain silence and queue discipline inside Garbhagriha'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones, cameras & recording devices restricted in main sanctum', 'Tobacco, alcohol & intoxicants strictly banned', 'Leather items forbidden inside sanctum'], prohibitedItems: ['Cameras & Recording Devices', 'Mobiles in Sanctum', 'Tobacco & Alcohol', 'Leather Items'] },
+    ],
+  },
+  {
+    id: 'devipatan',
+    condition: {
+      any: ['devipatan', 'tulsipur'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Head Shaving & Navratri', points: ['Head-shaving ceremony (Mundan) of children is a sacred traditional practice here', 'Heavy crowds during Navratri festivals; plan queue times accordingly'] },
+      { icon: '👔', title: 'Strict Dress Code Rules', points: ['Men: Shirt & trouser, dhoti or pyjamas with upper cloth', 'Women: Saree, half-saree, or chudidar with pyjama & upper cloth', 'STRICTLY PROHIBITED: Shorts, mini-skirts, sleeveless tops, low-waist jeans, short t-shirts'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited', 'Leather items (belts, wallets) banned inside shrine'], prohibitedItems: ['Photography', 'Leather Items', 'Shorts / Non-Traditional Attire'] },
+    ],
+  },
+  {
+    id: 'sharada_peeth',
+    condition: {
+      any: ['sharada peeth', 'sharda peeth', 'neelum valley'],
+    },
+    guidelines: [
+      { icon: '⚠️', title: 'Border Access & Permit Guidelines', points: ['Located in Neelum Valley (Pakistan-administered Kashmir)', 'Access strictly subject to official government permits and border security conditions', 'Site is an ancient archaeological ruin; no regular daily temple services'] },
+      { icon: '👔', title: 'Dress Code & Security Rules', points: ['Modest and respectful traditional clothing required during visits', 'Follow all security instructions and photography restrictions enforced by local border authorities'] },
+    ],
+  },
+  {
+    id: 'fullara_attahas',
+    condition: {
+      any: ['fullara', 'attahas', 'labhpur'],
+    },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected out of sanctity'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items (belts, wallets) banned inside sanctum', 'Remove footwear outside temple premises'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'bakreshwar',
+    condition: {
+      any: ['bakreshwar', 'bakreswar', 'suri'],
+    },
+    guidelines: [
+      { icon: '♨️', title: 'Hot Springs & Temple Visit', points: ['Natural thermal hot springs (Kunds) nearby known for medicinal properties', 'Bakreshwar Shiva temple located within the same sacred complex'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside shrine', 'Remove footwear before entering temple area'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'nalateswari',
+    condition: {
+      any: ['nalateswari', 'nalateswari temple', 'nalhati'],
+    },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear before entering sanctum'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'jogadya',
+    condition: {
+      any: ['jogadya', 'khirgram', 'burdwan'],
+    },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear outside shrine'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'kankalitala',
+    condition: { any: ['kankalitala', 'kankali', 'bolpur'] },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear before entry'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'bahula',
+    condition: { any: ['bahula', 'ketugram'] },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear before entering'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'ujaani_mangal_chandi',
+    condition: { any: ['ujaani', 'mangal chandi', 'mangalkote'] },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear before entry'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'kiriteswari',
+    condition: { any: ['kiriteswari', 'kiriteswari temple', 'kiritchona', 'murshidabad'] },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Modest clothing expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum', 'Leather items banned inside sanctum', 'Remove footwear before entering'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'maihar_sharda_devi',
+    condition: { any: ['maihar', 'sharda devi maihar', 'maihar mata'] },
+    guidelines: [
+      { icon: '🚡', title: 'Hill Access & Ropeway Rules', points: ['1,063 steps to hilltop temple; Ropeway timing 7:00 AM – 7:00 PM (₹150 adults, ₹100 kids 3-10 yrs)', 'Extremely crowded during Chaitra & Sharad Navratri; best visit 5:00-7:00 AM or post 8:00 PM'] },
+      { icon: '👔', title: 'Strict Dress Code Rules', points: ['Men: Shirt & trouser, dhoti or pyjamas with upper cloth', 'Women: Saree, half-saree, or chudidar with pyjama & upper cloth', 'PROHIBITED: Shorts, mini-skirts, sleeveless tops, low-waist jeans, short t-shirts'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner sanctum sanctorum', 'Smoking, alcohol, gutka, betel leaves, spitting strictly prohibited', 'Leather items (belts, wallets) banned'], prohibitedItems: ['Sanctum Photography', 'Smoking & Alcohol', 'Tobacco/Gutka/Betel', 'Leather Items', 'Shorts / Non-Traditional Attire'] },
+    ],
+  },
+  {
+    id: 'danteshwari_dantewada',
+    condition: { any: ['danteshwari', 'dantewada'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Temple & Festival Guidelines', points: ['Prasad distribution 11:00 AM – 5:00 PM', 'Massive crowds during Fagun Mela (March–April) and Navratri'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional and formal clothing required', 'Modest attire expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography not allowed', 'Leather items banned inside temple premises', 'Remove footwear outside'], prohibitedItems: ['Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'hinglaj_mata',
+    condition: { any: ['hinglaj', 'hinglaj mata', 'hingol', 'nani mandir'] },
+    guidelines: [
+      { icon: '🌐', title: 'Pilgrimage & Permit Guidelines', points: ['Located in Hingol National Park, Balochistan, Pakistan; Indian pilgrims require valid visa & official permits', 'Four-day annual Hinglaj Yatra (April–May); best weather October–March'] },
+      { icon: '👔', title: 'Dress Code & Sanctity', points: ['Women must cover head and shoulders', 'Respectful traditional clothing expected; strict holy site decorum'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Non-veg meat and fish strictly prohibited', 'Photography not allowed inside temple cave', 'No picnic activities, littering, or nuisance allowed'], prohibitedItems: ['Meat & Fish', 'Temple Photography', 'Footwear', 'Picnicking / Littering'] },
+    ],
+  },
+  {
+    id: 'biraja_jajpur',
+    condition: { any: ['biraja', 'biraja temple', 'jajpur'] },
+    guidelines: [
+      { icon: '🕉️', title: 'Durga Puja & Chariot Festival', points: ['16-day Sharadiya Durga Puja (Shodasha Dinatmika Puja)', 'Unique Simhadhwaja Ratha chariot festival celebrated'] },
+      { icon: '👔', title: 'Strict Dress Code Rules', points: ['Men: Shirt & trouser, dhoti or pyjamas with upper cloth', 'Women: Saree, half-saree, or chudidar with pyjama & upper cloth', 'PROHIBITED: Shorts, mini-skirts, sleeveless tops, low-waist jeans, short t-shirts'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Smoking, drinking, betel leaves, gutka, spitting strictly prohibited', 'Leather items banned', 'Photography restricted inside'], prohibitedItems: ['Smoking & Alcohol', 'Tobacco/Gutka', 'Leather Items', 'Sanctum Photography', 'Shorts / Non-Traditional Attire'] },
+    ],
+  },
+  {
+    id: 'taratarini_ganjam',
+    condition: { any: ['taratarini', 'tara tarini', 'puruna risi', 'ganjam'] },
+    guidelines: [
+      { icon: '🚡', title: 'Access & Facilities', points: ['999 steps or ropeway access to hilltop Purnagiri shrine', 'Free cloth wraps available at entrance if outfit does not meet guidelines', 'Hair offering (Mundan) rituals popular on Tuesdays'] },
+      { icon: '👔', title: 'Dress Code Rules', points: ['Men: Dhoti/Kurta or shirt with full-length pants', 'Women: Saree or salwar kameez', 'PROHIBITED: Shorts, mini-skirts, revealing clothing'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner Garbhagriha (twin deities)', 'Leather items (belts, bags) banned', 'No plastic allowed inside'], prohibitedItems: ['Garbhagriha Photography', 'Leather Items', 'Plastic Bags', 'Shorts / Revealing Attire'] },
+    ],
+  },
 ];
+
+
+
 
 

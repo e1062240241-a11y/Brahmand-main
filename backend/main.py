@@ -78,6 +78,7 @@ from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
 from services.upload_lock_service import get_user_upload_lock, get_global_upload_semaphore
 from services import following_feed_service
+from services.feed_pool_service import feed_pool_service
 
 try:
     from google.cloud import vision
@@ -233,6 +234,17 @@ async def lifespan(app: FastAPI):
 
     # Panchang midnight prefetch intentionally not started (see comment above).
     logger.info("Panchang prefetch loop disabled (relies on 24h TTL cache)")
+
+    # Start Feed Candidate Pool Service for high-speed discovery feed
+    async def _init_feed_pool_service():
+        try:
+            db_inst = await get_db()
+            await feed_pool_service.start_periodic_refresh(db_inst, interval_seconds=300)
+        except Exception as pool_err:
+            logger.error(f"[FeedPoolService] Failed background loop startup: {pool_err}")
+
+    asyncio.create_task(_init_feed_pool_service())
+    logger.info("Feed Candidate Pool Service initialized and background loop scheduled")
     
     # Ensure Shri Dwarkadhish Temple and ISKCON exist/update in backend DB
     async def seed_missing_temples():
@@ -3957,331 +3969,327 @@ async def get_posts_feed(
     is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
     rand_start = _random.random()
 
-    # Define tasks to run concurrently
-    tasks = [
-        db.get_document('users', current_user_id),
-        _get_blocked_user_ids(db, current_user_id),
-        _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
-        db.query_documents(
-            'posts',
-            filters=[('random_score', '>=', rand_start)],
-            limit=40,
-            order_by='random_score',
-            order_direction='ASCENDING'
-        ),
-        db.query_documents(
-            'posts',
-            filters=[('random_score', '<', rand_start)],
-            limit=40,
-            order_by='random_score',
-            order_direction='DESCENDING'
-        ),
-        db.query_documents(
-            'posts',
-            limit=50,
-            order_by='created_at',
-            order_direction='DESCENDING'
-        )
-    ]
-    
     if tab == 'for_you':
-        tasks.append(db.get_document('feed_preferences', current_user_id))
-    else:
-        async def _dummy_task(): return None
-        tasks.append(_dummy_task())
+        # ─────────────────────────────────────────────────────────────
+        # 4-STAGE ARCHITECTURE PIPELINE ("CHAR CHALNIYAN") FOR "FOR YOU" FEED
+        # ─────────────────────────────────────────────────────────────
 
-    # Gather everything in parallel
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Parse results
-    current_user = results[0] if not isinstance(results[0], Exception) else None
-    blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
-    reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
-    pool1 = results[3] if not isinstance(results[3], Exception) else []
-    pool2 = results[4] if not isinstance(results[4], Exception) else []
-    latest_pool = results[5] if not isinstance(results[5], Exception) else []
-    prefs_doc = results[6] if not isinstance(results[6], Exception) else None
-
-    # Populate location data
-    user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
-
-    # Pre-fetch following IDs if tab is following
-    following_ids = set()
-    if current_user:
-        following_ids = set(current_user.get('following', []) or [])
-
-    # If following tab, fetch posts using following_inboxes (Personal Mailbox Model)
-    if tab == 'following':
-        posts = await following_feed_service.get_following_feed_posts(
+        # Concurrent user context & preferences fetch via 5-minute TTL cache
+        current_user, blocked_user_ids, reported_post_ids, prefs_doc = await feed_pool_service.get_user_filter_context(
             db=db,
-            current_user_id=current_user_id,
-            following_ids=following_ids,
-            safe_limit=safe_limit,
-            after=after
+            user_id=current_user_id,
+            is_android=is_android,
+            fetch_blocked_fn=_get_blocked_user_ids,
+            fetch_reported_fn=_get_reported_content_ids,
+            ttl_seconds=300
         )
-    else:
-        # Assemble the general posts pool
-        posts_dict = {}
-        for p in pool1:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in pool2:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in latest_pool:
-            if p.get('id'):
-                posts_dict[p['id']] = p
 
-        # Fallback if empty
-        if not posts_dict:
-            try:
-                fallback = await db.query_documents('posts', limit=100)
-                for p in fallback:
-                    if p.get('id'):
-                        posts_dict[p['id']] = p
-            except Exception as e:
-                logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+        user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
+        u_city = str(user_loc.get('city') or '').strip().lower()
+        u_state = str(user_loc.get('state') or '').strip().lower()
+        u_country = str(user_loc.get('country') or '').strip().lower()
 
-        posts = list(posts_dict.values())
+        # Stage 1: Candidate Sourcing (In-Memory Pools - 0 DB queries for candidate posts)
+        if not feed_pool_service.is_initialized():
+            await feed_pool_service.refresh_pools(db)
 
-    # Filter out blocked, reported, and non-public posts
-    public_posts = []
-    
-    # Pre-calculate user location for performance
-    u_city = str(user_loc.get('city') or '').strip().lower()
-    u_state = str(user_loc.get('state') or '').strip().lower()
-    u_country = str(user_loc.get('country') or '').strip().lower()
+        high_eng_pool, fresh_pool, disc_pool, interest_pool, all_cand_dict = feed_pool_service.get_candidate_pools()
 
-    for p in posts:
-        if p.get('user_id') in blocked_user_ids:
-            continue
-        if p.get('id') in reported_post_ids:
-            continue
-        if p.get('visibility', 'public') != 'public':
-            continue
-        if tab == 'reels' and p.get('category') != 'reels':
-            continue
-            
-        # Scope filtering (bypass for following tab so posts from followed users are always shown)
-        if tab != 'following':
-            lvl = p.get('community_level', 'country') # Default to country/public
+        # Stage 2: Heavy Filtering (Seen Filter, Blocked, Reported, Locality)
+        def _is_eligible(post: dict, ignore_seen: bool = False) -> bool:
+            pid = post.get('id')
+            if not pid:
+                return False
+            if not ignore_seen and pid in seen_set:
+                return False
+            if post.get('user_id') in blocked_user_ids:
+                return False
+            if pid in reported_post_ids:
+                return False
+            if post.get('visibility', 'public') != 'public':
+                return False
+
+            lvl = post.get('community_level', 'country')
             if lvl == 'city':
-                p_city = str(p.get('city') or '').strip().lower()
-                if p_city and u_city and p_city != u_city: continue
+                p_city = str(post.get('city') or '').strip().lower()
+                if p_city and u_city and p_city != u_city:
+                    return False
             elif lvl == 'state':
-                p_state = str(p.get('state') or '').strip().lower()
-                if p_state and u_state and p_state != u_state: continue
+                p_state = str(post.get('state') or '').strip().lower()
+                if p_state and u_state and p_state != u_state:
+                    return False
             elif lvl == 'country':
-                p_country = str(p.get('country') or '').strip().lower()
-                if p_country and u_country and p_country != u_country: continue
-            
-        public_posts.append(p)
+                p_country = str(post.get('country') or '').strip().lower()
+                if p_country and u_country and p_country != u_country:
+                    return False
+            return True
 
-    # Fetch user interest preferences
-    user_interests: dict = {}
-    if tab == 'for_you' and prefs_doc:
-        user_interests = prefs_doc.get('category_scores', {})
+        eligible_eng = [p for p in high_eng_pool if _is_eligible(p)]
+        eligible_fresh = [p for p in fresh_pool if _is_eligible(p)]
+        eligible_disc = [p for p in disc_pool if _is_eligible(p)]
 
-    now = datetime.utcnow()
-    now_ts = now.timestamp()
+        user_interests = prefs_doc.get('category_scores', {}) if prefs_doc else {}
+        eligible_interest = []
+        if user_interests:
+            top_cats = sorted(user_interests.keys(), key=lambda c: user_interests[c], reverse=True)
+            for cat in top_cats:
+                cat_posts = interest_pool.get(str(cat).lower().strip(), [])
+                for p in cat_posts:
+                    if _is_eligible(p) and p not in eligible_interest:
+                        eligible_interest.append(p)
 
-    def _get_ts(p):
-        c_at = p.get('created_at')
-        if hasattr(c_at, 'timestamp'): return c_at.timestamp()
-        if isinstance(c_at, str):
-            try: return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
-            except: return 0
-        return 0
+        # Stage 3: Blending & Anti-Dominance Mixer
+        # Quotas: 40% Discovery / 30% Engagement / 20% Interest / 10% Fresh
+        n_disc = max(1, int(safe_limit * 0.4))
+        n_eng = max(1, int(safe_limit * 0.3))
+        n_int = max(1, int(safe_limit * 0.2))
+        n_fresh = max(1, safe_limit - n_disc - n_eng - n_int)
 
-    def _get_locality_priority(post: dict) -> int:
-        """
-        Ranking: 0=Highest, 2=Lowest
-        """
-        lvl = post.get('community_level', 'city')
-        
-        p_date = post.get('created_at')
-        if isinstance(p_date, str):
-            try: p_date = datetime.fromisoformat(p_date.replace('Z', '+00:00'))
-            except: p_date = now - timedelta(days=365)
-        elif not isinstance(p_date, datetime):
-            p_date = now - timedelta(days=365)
-        
-        is_recent = (now_ts - p_date.timestamp()) < 86400 if hasattr(p_date, 'timestamp') else False
+        _random.shuffle(eligible_disc)
 
-        # Priority 0: Broad posts (State/Country) under 24h matching user location
-        u_country = user_loc.get('country')
-        if lvl == 'country' and u_country and post.get('country') == u_country and is_recent:
-            return 0
-        
-        u_state = user_loc.get('state')
-        if lvl == 'state' and u_state and post.get('state') == u_state and is_recent:
-            return 0
-        
-        # Priority 1: Local city posts
-        u_city = user_loc.get('city')
-        if u_city and post.get('city') == u_city:
-            return 1
-        
-        # Priority 2: Everything else (Older or non-matching)
-        return 2
+        selected_candidates = []
+        seen_cand_ids = set()
 
-    def _recency_score(post: dict) -> float:
-        """Exponential decay: score 1.0 if just posted, decays over 30 days."""
-        val = post.get('created_at')
-        try:
-            if isinstance(val, datetime):
-                ts = val.timestamp()
-            elif isinstance(val, str):
-                ts = datetime.fromisoformat(val.replace('Z', '+00:00')).timestamp()
-            else:
-                return 0.0
-            age_days = max(0, (now_ts - ts) / 86400)
-            return math.exp(-age_days / 30)
-        except Exception:
-            return 0.0
-
-    def _engagement(post: dict) -> float:
-        score = post.get('engagement_score', 0) or 0
-        if score > 0:
-            return float(score)
-        # Fallback: compute from raw fields (watch_time weighted highest)
-        wt = float(post.get('watch_time', 0) or 0)
-        likes = float(post.get('likes_count', 0) or 0)
-        views = float(post.get('views_count', 0) or 0)
-        cr = float(post.get('completion_rate', 0) or 0)
-        return (wt * 0.4) + (likes * 0.3) + (cr * 100 * 0.2) + (views * 0.1)
-
-    def _interest_score(post: dict) -> float:
-        cat = post.get('category', '')
-        return float(user_interests.get(cat, 0))
-
-    def _rank_and_filter(candidate_pool: list, target_limit: int) -> list:
-        if not candidate_pool or target_limit <= 0:
-            return []
-
-        local_pool = list(candidate_pool)
-
-        if tab == 'festivals':
-            local_pool = [p for p in local_pool if p.get('category') == 'festivals']
-            local_pool.sort(key=_get_ts, reverse=True)
-            return local_pool[:target_limit]
-
-        elif tab == 'following':
-            local_pool = [p for p in local_pool if p.get('user_id') in following_ids]
-            local_pool.sort(key=_get_ts, reverse=True)
-            return local_pool[:target_limit]
-
-        elif tab == 'trending':
-            local_pool.sort(key=lambda p: (p.get('engagement_score', 0) or 0) + (p.get('views_count', 0) or 0), reverse=True)
-            return local_pool[:target_limit]
-
-        else:
-            # ── Weighted Smart Random Feed (for_you) ──────────────────────
-            for p in local_pool:
-                p['_random_val'] = _random.random()
-                p['_engagement_val'] = _engagement(p)
-                p['_interest_val'] = _interest_score(p)
-                p['_recency_val'] = _recency_score(p)
-                p['_priority'] = _get_locality_priority(p)
-
-            # Sort each bucket
-            random_pool = sorted(local_pool, key=lambda p: p['_random_val'])
-            engagement_pool = sorted(local_pool, key=lambda p: p['_engagement_val'], reverse=True)
-            interest_pool = sorted(local_pool, key=lambda p: p['_interest_val'], reverse=True)
-            latest_pool = sorted(local_pool, key=lambda p: p['_recency_val'], reverse=True)
-
-            # Bucket sizes: 40% / 30% / 20% / 10%
-            n_random = max(1, int(target_limit * 0.4))
-            n_engage = max(1, int(target_limit * 0.3))
-            n_interest = max(1, int(target_limit * 0.2))
-            n_latest = target_limit - n_random - n_engage - n_interest
-
-            def _take(src, n):
-                return src[:n]
-
-            # Priority 0 posts (Recent State/Country) should ALWAYS be considered
-            priority_0_posts = [p for p in local_pool if p['_priority'] == 0]
-
-            candidates = (
-                priority_0_posts
-                + _take(random_pool, n_random)
-                + _take(engagement_pool, n_engage)
-                + _take(interest_pool, n_interest)
-                + _take(latest_pool, n_latest)
-            )
-
-            # Deduplicate across buckets (preserve order)
-            seen_cand: set = set()
-            unique_candidates = []
-            for p in candidates:
+        def _add_candidates(src_list, count):
+            added = 0
+            for p in src_list:
                 pid = p.get('id')
-                if pid and pid not in seen_cand:
-                    seen_cand.add(pid)
-                    unique_candidates.append(p)
+                if pid and pid not in seen_cand_ids:
+                    seen_cand_ids.add(pid)
+                    selected_candidates.append(p)
+                    added += 1
+                    if added >= count:
+                        break
 
-            # Sort primarily by priority (0 first, then 1, then 2)
-            unique_candidates.sort(key=lambda p: p['_priority'])
+        _add_candidates(eligible_disc, n_disc)
+        _add_candidates(eligible_eng, n_eng)
+        _add_candidates(eligible_interest, n_int)
+        _add_candidates(eligible_fresh, n_fresh)
 
-            # ── Anti-repetition pass ─────────────────────────────────────
-            recent_creators: list = []  # last 5
-            cat_streak: dict = {}       # category -> consecutive count
-            last_cat = None
-            filtered: list = []
-            remainder: list = []
+        # If quota wasn't filled, backfill with remaining eligible candidates
+        if len(selected_candidates) < safe_limit:
+            all_eligible_combined = eligible_fresh + eligible_eng + eligible_disc + eligible_interest
+            _add_candidates(all_eligible_combined, safe_limit - len(selected_candidates))
 
-            for p in unique_candidates:
-                creator = p.get('user_id', '')
-                cat = p.get('category', 'spirituality')
-                creator_ok = creator not in recent_creators
-                cat_count = cat_streak.get(cat, 0)
-                cat_ok = True if tab == 'reels' else (cat_count < 2)
+        # Fallback if candidates exhausted due to seen_set: allow seen items so feed is never empty
+        if len(selected_candidates) < safe_limit and seen_set:
+            seen_fallback = [p for p in all_cand_dict.values() if _is_eligible(p, ignore_seen=True)]
+            _random.shuffle(seen_fallback)
+            _add_candidates(seen_fallback, safe_limit - len(selected_candidates))
 
-                if creator_ok and cat_ok:
-                    filtered.append(p)
-                    recent_creators = (recent_creators + [creator])[-5:]
-                    if cat == last_cat:
-                        cat_streak[cat] = cat_streak.get(cat, 0) + 1
-                    else:
-                        cat_streak = {cat: 1}
-                    last_cat = cat
-                else:
-                    remainder.append(p)
+        # Author Cap Rule: Max 2 posts per author per 15-item batch
+        author_counts: dict = {}
+        author_capped_batch = []
+        overflow_batch = []
 
-            if len(filtered) < target_limit:
-                filtered += remainder[:target_limit - len(filtered)]
+        for p in selected_candidates:
+            author_id = p.get('user_id', '')
+            cnt = author_counts.get(author_id, 0)
+            if cnt < 2:
+                author_counts[author_id] = cnt + 1
+                author_capped_batch.append(p)
+            else:
+                overflow_batch.append(p)
 
-            return filtered[:target_limit]
+        # Graceful backfill if capped batch has fewer than target safe_limit
+        if len(author_capped_batch) < safe_limit and overflow_batch:
+            needed = safe_limit - len(author_capped_batch)
+            author_capped_batch.extend(overflow_batch[:needed])
 
-    # Deduplicate public_posts to avoid duplicate uploads in reads
-    public_posts = _deduplicate_posts(public_posts)
+        # Strict Anti-Consecutive Author Rule: No two adjacent posts from the same author
+        final_ordered_posts = []
+        remaining_pool = list(author_capped_batch)
 
-    # Split public posts into unseen and seen
-    unseen_pool = [p for p in public_posts if p.get('id') not in seen_set]
-    seen_pool = [p for p in public_posts if p.get('id') in seen_set]
+        while remaining_pool:
+            last_author = final_ordered_posts[-1].get('user_id') if final_ordered_posts else None
 
-    # 1. First, fetch as many unseen posts as possible
-    paged_posts = _rank_and_filter(unseen_pool, safe_limit)
+            next_idx = None
+            for idx, cand in enumerate(remaining_pool):
+                if cand.get('user_id') != last_author:
+                    next_idx = idx
+                    break
 
-    # 2. If we ran out of unseen posts, fill the remaining spots with seen posts
-    if len(paged_posts) < safe_limit and seen_pool:
-        needed = safe_limit - len(paged_posts)
-        _random.shuffle(seen_pool)
-        extra_posts = _rank_and_filter(seen_pool, needed)
-        paged_posts += extra_posts
+            if next_idx is not None:
+                final_ordered_posts.append(remaining_pool.pop(next_idx))
+            else:
+                final_ordered_posts.append(remaining_pool.pop(0))
 
-    # ── Sort: Unseen first, and within unseen, the latest (last 48 hours) at the absolute top ──
-    unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
-    seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
+        paged_posts = final_ordered_posts[:safe_limit]
+        unseen_pool = [p for p in paged_posts if p.get('id') not in seen_set]
+    else:
+        # Define tasks to run concurrently for non-for_you tabs
+        tasks = [
+            db.get_document('users', current_user_id),
+            _get_blocked_user_ids(db, current_user_id),
+            _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
+            db.query_documents(
+                'posts',
+                filters=[('random_score', '>=', rand_start)],
+                limit=40,
+                order_by='random_score',
+                order_direction='ASCENDING'
+            ),
+            db.query_documents(
+                'posts',
+                filters=[('random_score', '<', rand_start)],
+                limit=40,
+                order_by='random_score',
+                order_direction='DESCENDING'
+            ),
+            db.query_documents(
+                'posts',
+                limit=50,
+                order_by='created_at',
+                order_direction='DESCENDING'
+            )
+        ]
 
-    cutoff_ts = now_ts - 172800  # 48 hours
-    recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
-    older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
+        # Gather everything in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Sort recent_unseen by created_at descending (newest first)
-    recent_unseen.sort(key=_get_ts, reverse=True)
+        # Parse results
+        current_user = results[0] if not isinstance(results[0], Exception) else None
+        blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
+        reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
+        pool1 = results[3] if not isinstance(results[3], Exception) else []
+        pool2 = results[4] if not isinstance(results[4], Exception) else []
+        latest_pool = results[5] if not isinstance(results[5], Exception) else []
 
-    # Reassemble: recent unseen first, then older unseen, then seen posts
-    paged_posts = recent_unseen + older_unseen + seen_returned
+        # Populate location data
+        user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
+
+        # Pre-fetch following IDs if tab is following
+        following_ids = set()
+        if current_user:
+            following_ids = set(current_user.get('following', []) or [])
+
+        # If following tab, fetch posts using following_inboxes (Personal Mailbox Model)
+        if tab == 'following':
+            posts = await following_feed_service.get_following_feed_posts(
+                db=db,
+                current_user_id=current_user_id,
+                following_ids=following_ids,
+                safe_limit=safe_limit,
+                after=after
+            )
+        else:
+            # Assemble the general posts pool
+            posts_dict = {}
+            for p in pool1:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+            for p in pool2:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+            for p in latest_pool:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+
+            # Fallback if empty
+            if not posts_dict:
+                try:
+                    fallback = await db.query_documents('posts', limit=100)
+                    for p in fallback:
+                        if p.get('id'):
+                            posts_dict[p['id']] = p
+                except Exception as e:
+                    logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+
+            posts = list(posts_dict.values())
+
+        # Filter out blocked, reported, and non-public posts
+        public_posts = []
+
+        # Pre-calculate user location for performance
+        u_city = str(user_loc.get('city') or '').strip().lower()
+        u_state = str(user_loc.get('state') or '').strip().lower()
+        u_country = str(user_loc.get('country') or '').strip().lower()
+
+        for p in posts:
+            if p.get('user_id') in blocked_user_ids:
+                continue
+            if p.get('id') in reported_post_ids:
+                continue
+            if p.get('visibility', 'public') != 'public':
+                continue
+            if tab == 'reels' and p.get('category') != 'reels':
+                continue
+
+            # Scope filtering (bypass for following tab so posts from followed users are always shown)
+            if tab != 'following':
+                lvl = p.get('community_level', 'country') # Default to country/public
+                if lvl == 'city':
+                    p_city = str(p.get('city') or '').strip().lower()
+                    if p_city and u_city and p_city != u_city: continue
+                elif lvl == 'state':
+                    p_state = str(p.get('state') or '').strip().lower()
+                    if p_state and u_state and p_state != u_state: continue
+                elif lvl == 'country':
+                    p_country = str(p.get('country') or '').strip().lower()
+                    if p_country and u_country and p_country != u_country: continue
+
+            public_posts.append(p)
+
+        now = datetime.utcnow()
+        now_ts = now.timestamp()
+
+        def _get_ts(p):
+            c_at = p.get('created_at')
+            if hasattr(c_at, 'timestamp'): return c_at.timestamp()
+            if isinstance(c_at, str):
+                try: return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                except: return 0
+            return 0
+
+        def _rank_and_filter(candidate_pool: list, target_limit: int) -> list:
+            if not candidate_pool or target_limit <= 0:
+                return []
+
+            local_pool = list(candidate_pool)
+
+            if tab == 'festivals':
+                local_pool = [p for p in local_pool if p.get('category') == 'festivals']
+                local_pool.sort(key=_get_ts, reverse=True)
+                return local_pool[:target_limit]
+
+            elif tab == 'following':
+                local_pool = [p for p in local_pool if p.get('user_id') in following_ids]
+                local_pool.sort(key=_get_ts, reverse=True)
+                return local_pool[:target_limit]
+
+            elif tab == 'trending':
+                local_pool.sort(key=lambda p: (p.get('engagement_score', 0) or 0) + (p.get('views_count', 0) or 0), reverse=True)
+                return local_pool[:target_limit]
+
+            return local_pool[:target_limit]
+
+        # Deduplicate public_posts to avoid duplicate uploads in reads
+        public_posts = _deduplicate_posts(public_posts)
+
+        # Split public posts into unseen and seen
+        unseen_pool = [p for p in public_posts if p.get('id') not in seen_set]
+        seen_pool = [p for p in public_posts if p.get('id') in seen_set]
+
+        # 1. First, fetch as many unseen posts as possible
+        paged_posts = _rank_and_filter(unseen_pool, safe_limit)
+
+        # 2. If we ran out of unseen posts, fill the remaining spots with seen posts
+        if len(paged_posts) < safe_limit and seen_pool:
+            needed = safe_limit - len(paged_posts)
+            _random.shuffle(seen_pool)
+            extra_posts = _rank_and_filter(seen_pool, needed)
+            paged_posts += extra_posts
+
+        # Sort: Unseen first
+        unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
+        seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
+
+        cutoff_ts = now_ts - 172800  # 48 hours
+        recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
+        older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
+
+        recent_unseen.sort(key=_get_ts, reverse=True)
+        paged_posts = recent_unseen + older_unseen + seen_returned
 
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})

@@ -6,7 +6,6 @@ Handles background post delivery, follow backfills, unfollow cleanups, inbox tri
 import logging
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
 from config.firestore_db import FirestoreDB
 
 logger = logging.getLogger(__name__)
