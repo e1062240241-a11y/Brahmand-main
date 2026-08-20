@@ -37,7 +37,6 @@
     "@types/crypto-js": "^4.2.2",
     "axios": "^1.13.6",
     "crypto-js": "^4.2.0",
-    "eas-cli": "^21.3.0",
     "expo": "~55.0.28",
     "expo-asset": "~55.0.17",
     "expo-audio": "~55.0.16",
