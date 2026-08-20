@@ -9,3 +9,4 @@
 ## 2024-05-22 - [Frontend Performance: O(1) Lookups in Store State]
 **Learning:** Even if store state arrays are converted to Sets in components during renders, calling `includes` inside global store methods (like `isBlocked`) can still be O(N) when iterating. Directly tracking `Set` objects in the Zustand store (`blockedUserSet`) prevents having to repeatedly `new Set()` inside components and ensures `store.isBlocked(uid)` operations are always O(1) and safe to use frequently.
 **Action:** Extend Zustand interfaces with `Set` types for any high-frequency lookup arrays and update these sets alongside their parent arrays.
+
