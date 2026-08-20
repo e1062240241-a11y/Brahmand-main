@@ -3,7 +3,7 @@ import asyncio
 import logging
 import requests
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from config.settings import settings
 from utils.cache import cache_manager
 

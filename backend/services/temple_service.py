@@ -1,6 +1,6 @@
 """Temple Service using Firestore"""
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
