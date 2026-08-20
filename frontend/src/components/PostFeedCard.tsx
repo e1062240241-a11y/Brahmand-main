@@ -545,11 +545,24 @@ const PostFeedCardComponent = ({
       {/* Header */}
       {isEditing ? (
         <View style={styles.editHeaderRow}>
-          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+          <TouchableOpacity
+            onPress={onCancelEdit}
+            style={styles.editHeaderBtn}
+            disabled={isSavingEdit}
+            accessibilityRole="button"
+            accessibilityLabel={t('cancel')}
+          >
             <Text style={styles.editHeaderCancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
           <Text style={styles.editHeaderTitle}>{t('language') === 'hi' ? 'जानकारी संपादित करें' : 'Edit Info'}</Text>
-          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+          <TouchableOpacity
+            onPress={onSaveEdit}
+            style={styles.editHeaderBtn}
+            disabled={isSavingEdit}
+            accessibilityRole="button"
+            accessibilityLabel={t('language') === 'hi' ? 'हो गया' : 'Done'}
+            accessibilityState={{ disabled: isSavingEdit, busy: isSavingEdit }}
+          >
             {isSavingEdit ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
@@ -559,7 +572,13 @@ const PostFeedCardComponent = ({
         </View>
       ) : (
         <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
-          <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.userPressWrap}
+            onPress={() => onUserPress?.(post)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`View profile of ${post?.username || 'User'}`}
+          >
             <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
             <View style={styles.userMeta}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
