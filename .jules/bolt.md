@@ -10,3 +10,7 @@
 **Learning:** Even if store state arrays are converted to Sets in components during renders, calling `includes` inside global store methods (like `isBlocked`) can still be O(N) when iterating. Directly tracking `Set` objects in the Zustand store (`blockedUserSet`) prevents having to repeatedly `new Set()` inside components and ensures `store.isBlocked(uid)` operations are always O(1) and safe to use frequently.
 **Action:** Extend Zustand interfaces with `Set` types for any high-frequency lookup arrays and update these sets alongside their parent arrays.
 
+
+## 2024-05-23 - [Frontend Performance: Optimize array filtering and object allocations inside .filter()]
+**Learning:** Performing array conversions (like `Array.from()`) or repetitive string operations (like `.toLowerCase()`) inside `.filter()` blocks against large arrays (like hundreds of temples or cities) creates a compounding O(N*M) CPU penalty that blocks the main thread.
+**Action:** Always lift array/Set conversions and static string manipulations outside of filtering loops. Convert arrays that are being checked for inclusion into `Set`s before starting the `.filter()` operation to drop from O(N*M) to O(N).

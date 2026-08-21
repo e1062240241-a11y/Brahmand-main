@@ -290,7 +290,9 @@ function PassportTimelineScreen({
                 
                 // Clear from Feed Zustand store
                 const currentTabFeed = useFeedStore.getState().tabFeeds['for_you'] || { posts: [] };
-                const filteredPosts = currentTabFeed.posts.filter((p: any) => !deletedFeedIds.includes(p.id));
+                // OPT: Convert deletedFeedIds to Set for O(1) lookup to avoid O(N*M) inclusion checks
+                const deletedFeedIdsSet = new Set(deletedFeedIds);
+                const filteredPosts = currentTabFeed.posts.filter((p: any) => !deletedFeedIdsSet.has(p.id));
                 useFeedStore.getState().setTabFeed('for_you', {
                   posts: filteredPosts,
                   offset: Math.max(0, filteredPosts.length)
