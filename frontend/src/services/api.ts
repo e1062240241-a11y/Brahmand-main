@@ -1062,7 +1062,8 @@ export const searchUserBySLId = (slId: string) =>
 export const getAllUsers = (search?: string, limit: number = 200) =>
   api.get("/users", { params: { search, limit } });
 
-export const getUserNotifications = () => api.get("/notifications");
+export const getUserNotifications = (limit: number = 30, cursor?: string) =>
+  api.get("/notifications", { params: { limit, cursor } });
 
 let _unreadCountCache: { data: any; lastFetched: number } | null = null;
 export const getUnreadNotificationCount = async () => {
