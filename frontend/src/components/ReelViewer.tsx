@@ -1338,7 +1338,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   // Apple Guideline 1.2 - report comment state & blocked users
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
   const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
@@ -2108,26 +2108,24 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   // not on every parent render triggered by swipe/mute/etc.
   // Filters out comments from blocked users.
   const parentComments = React.useMemo(() => {
-    const blockedSet = new Set(blockedUserIds);
     return localComments.filter((c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedSet.has(String(uid));
+      const isBlocked = uid && blockedUserSet.has(String(uid));
       return !c.parent_id && !isBlocked;
     });
-  }, [localComments, blockedUserIds]);
+  }, [localComments, blockedUserSet]);
 
   const repliesMap = React.useMemo(() => {
-    const blockedSet = new Set(blockedUserIds);
     return localComments.reduce((acc: Record<string, any[]>, c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedSet.has(String(uid));
+      const isBlocked = uid && blockedUserSet.has(String(uid));
       if (c.parent_id && !isBlocked) {
         if (!acc[c.parent_id]) acc[c.parent_id] = [];
         acc[c.parent_id].push(c);
       }
       return acc;
     }, {} as Record<string, any[]>);
-  }, [localComments, blockedUserIds]);
+  }, [localComments, blockedUserSet]);
 
   const handleReply = useCallback((item: any, replyUsername?: string) => {
     setReplyingToComment(item);

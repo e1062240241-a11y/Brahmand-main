@@ -1091,7 +1091,7 @@ export default function CommunityDetailScreen() {
   } | null>(null);
 
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
   const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
@@ -1202,7 +1202,7 @@ export default function CommunityDetailScreen() {
         { cancelable: true }
       );
     }
-  }, [blockedUserIds, handleToggleBlockUser, showCommentModal]);
+  }, [blockedUserSet, handleToggleBlockUser, showCommentModal]);
 
   const openEventDatePicker = useCallback(() => {
     if (Platform.OS === 'android') {
@@ -1496,12 +1496,10 @@ export default function CommunityDetailScreen() {
     return null;
   };
 
-  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
-
   const combinedData = useMemo(() => {
     const isUserBlocked = (item: any) => {
       const uid = item?.user_id || item?.creator_id || item?.creator?.id || item?.sender_id || item?.user?.id;
-      return uid && blockedSet.has(String(uid));
+      return uid && blockedUserSet.has(String(uid));
     };
 
     const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
@@ -1962,7 +1960,7 @@ export default function CommunityDetailScreen() {
     }
 
     return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserIds, festivalSort, selectedFestival, allFestivals]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserSet, festivalSort, selectedFestival, allFestivals]);
 
   // ⚡ Android: Build an O(1) index map so renderDiscussionItem does not need findIndex (O(n)) per render
   const combinedDataIndexMap = useMemo(() => {
