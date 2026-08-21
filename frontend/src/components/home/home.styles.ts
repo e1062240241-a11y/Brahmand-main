@@ -108,8 +108,10 @@ export const styles = StyleSheet.create({
     headerIconButton: {
         width: Platform.OS === 'android' ? 36 : 40,
         height: Platform.OS === 'android' ? 36 : 40,
+        borderRadius: Platform.OS === 'android' ? 18 : 20,
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
     },
     profileButton: {
         width: Platform.OS === 'android' ? 42 : 55,

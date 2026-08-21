@@ -1443,7 +1443,15 @@ export default function ProfileScreen() {
 
           <View style={styles.actionButtonsRow}>
             <Pressable
-              style={({ pressed }) => [styles.addPostButton, pressed && styles.actionPressed]}
+              style={({ pressed }) => [
+                styles.addPostButton,
+                Platform.OS === 'ios' && pressed && styles.actionPressed
+              ]}
+              android_ripple={{
+                color: 'rgba(255, 255, 255, 0.25)',
+                borderless: false,
+                foreground: true,
+              }}
               pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={() => setShowUploadModal(true)}
             >
@@ -1451,7 +1459,15 @@ export default function ProfileScreen() {
               <Text style={styles.addPostButtonText}>{t('addPost')}</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
+              style={({ pressed }) => [
+                styles.shareProfileButton,
+                Platform.OS === 'ios' && pressed && styles.actionPressed
+              ]}
+              android_ripple={{
+                color: 'rgba(255, 255, 255, 0.25)',
+                borderless: false,
+                foreground: true,
+              }}
               pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={handleShareProfile}
             >
@@ -1495,14 +1511,15 @@ export default function ProfileScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.settingsClose,
-                    pressed && { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                    Platform.OS === 'ios' && pressed && { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
                   ]}
                   android_ripple={{
-                    color: 'rgba(0, 0, 0, 0.12)',
-                    borderless: false,
-                    radius: 18,
+                    color: 'rgba(0, 0, 0, 0.15)',
+                    borderless: true,
+                    foreground: true,
+                    radius: 20,
                   }}
-                  hitSlop={{ top: 24, bottom: 24, left: 24, right: 24 }}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
                   onPress={() => closeSettingsModal()}
                 >
                   <Ionicons name="close" size={24} color="#000000" />
@@ -1528,31 +1545,37 @@ export default function ProfileScreen() {
                           <Pressable
                             style={({ pressed }) => [
                               styles.settingsRow,
-                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' },
-                              pressed && Platform.OS === 'ios' && { opacity: 0.7 },
+                              Platform.OS === 'ios' && pressed && { backgroundColor: item.action === 'logout' ? 'rgba(255, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
                               item.disabled && item.id !== 'location' && styles.settingsRowDisabled,
                             ]}
-                            android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
+                            android_ripple={{
+                              color: item.action === 'logout' ? 'rgba(255, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                              borderless: false,
+                              foreground: true,
+                            }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled && item.id !== 'location'}
                           >
-                            <View style={[
-                              styles.settingsIconCircle,
-                              { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
-                            ]}>
+                            <View
+                              pointerEvents="none"
+                              style={[
+                                styles.settingsIconCircle,
+                                { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
+                              ]}
+                            >
                               <Ionicons
                                 name={item.icon as any}
                                 size={18}
                                 color={iconColor}
                               />
                             </View>
-                            <View style={styles.settingsLabelWrap}>
+                            <View pointerEvents="none" style={styles.settingsLabelWrap}>
                               <Text style={[styles.settingsLabel, { color: textColor }]}>
                                 {item.label}
                               </Text>
                               {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
                             </View>
-                            <View style={styles.settingsRowRight}>
+                            <View pointerEvents="none" style={styles.settingsRowRight}>
                               {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
                               {showChevron && (
                                 <Ionicons
@@ -2449,6 +2472,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
   addPostButtonText: {
     color: '#FFFFFF',
@@ -2464,6 +2488,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
   actionPressed: {
     opacity: 0.82,
