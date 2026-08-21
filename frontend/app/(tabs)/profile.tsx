@@ -1464,6 +1464,7 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
               <ScrollView
+                style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
                 bounces={false}
                 contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 28) }}
@@ -2568,7 +2569,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    maxHeight: '85%',
+    height: '52%',
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },
