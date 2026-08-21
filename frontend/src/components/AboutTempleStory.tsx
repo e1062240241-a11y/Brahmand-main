@@ -1,13 +1,92 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  FadeInRight,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { COLORS } from '../constants/theme';
 import { getFestivalList } from '../services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+interface AnimatedFestivalCardProps {
+  fest: string;
+  idx: number;
+  onPress: () => void;
+}
+
+const AnimatedFestivalCard: React.FC<AnimatedFestivalCardProps> = ({ fest, idx, onPress }) => {
+  const theme = FEST_THEMES[idx % FEST_THEMES.length];
+  const scale = useSharedValue(1);
+  const iconScale = useSharedValue(1);
+
+  useEffect(() => {
+    // Subtle looping pulse animation on the icon badge
+    iconScale.value = withRepeat(
+      withSequence(
+        withTiming(1.12, { duration: 1200 }),
+        withTiming(1.0, { duration: 1200 })
+      ),
+      -1,
+      true
+    );
+  }, [iconScale]);
+
+  const cardAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const iconAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.94, { damping: 12, stiffness: 200 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1.0, { damping: 10, stiffness: 180 });
+  };
+
+  return (
+    <Animated.View
+      entering={FadeInRight.delay(80 * idx).duration(350)}
+      style={cardAnimStyle}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.uiverseCard,
+          {
+            backgroundColor: theme.bg,
+            borderColor: theme.border,
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Festival: ${fest}`}
+      >
+        <Animated.View style={[styles.uiverseIconBadge, { backgroundColor: theme.badgeBg }, iconAnimStyle]}>
+          <Ionicons name={theme.iconName} size={18} color={theme.iconColor} />
+        </Animated.View>
+        <Text style={[styles.uiverseCardText, { color: theme.textColor }]}>
+          {fest}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
 
 export interface StoryNode {
   id: string;
@@ -193,42 +272,25 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
         </View>
       )}
 
-      {/* 3. MAJOR FESTIVALS CELEBRATED (Uiverse Expanding Flex Cards) */}
+      {/* 3. MAJOR FESTIVALS CELEBRATED (Scrollable Horizontal Pill Cards with Reanimated) */}
       {safeFestivals.length > 0 && (
-        <View style={styles.festivalsBlock}>
+        <Animated.View style={styles.festivalsBlock} entering={FadeInDown.duration(400)}>
           <Text style={styles.subHeadingTitle}>Major festivals</Text>
-          <View style={styles.expandingCardsRow}>
-            {safeFestivals.map((fest, idx) => {
-              const theme = FEST_THEMES[idx % FEST_THEMES.length];
-              return (
-                <TouchableOpacity
-                  key={`fest-card-${idx}`}
-                  activeOpacity={0.85}
-                  onPress={() => handleFestPress(fest)}
-                  style={[
-                    styles.uiverseCard,
-                    {
-                      backgroundColor: theme.bg,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Festival: ${fest}`}
-                >
-                  <View style={[styles.uiverseIconBadge, { backgroundColor: theme.badgeBg }]}>
-                    <Ionicons name={theme.iconName} size={20} color={theme.iconColor} />
-                  </View>
-                  <Text
-                    style={[styles.uiverseCardText, { color: theme.textColor }]}
-                    numberOfLines={2}
-                  >
-                    {fest}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+          <Animated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollableCardsRow}
+          >
+            {safeFestivals.map((fest, idx) => (
+              <AnimatedFestivalCard
+                key={`fest-card-${idx}`}
+                fest={fest}
+                idx={idx}
+                onPress={() => handleFestPress(fest)}
+              />
+            ))}
+          </Animated.ScrollView>
+        </Animated.View>
       )}
 
       {/* 4. TRAVEL & HOW TO REACH (RESTORED CLASSIC CARDS) */}
@@ -382,21 +444,20 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 10,
   },
-  expandingCardsRow: {
+  scrollableCardsRow: {
     flexDirection: 'row',
-    alignItems: 'stretch',
+    alignItems: 'center',
     gap: 10,
+    paddingRight: 16,
   },
   uiverseCard: {
-    flex: 1,
-    minHeight: 84,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -404,17 +465,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   uiverseIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   uiverseCardText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 14,
+    textAlign: 'left',
   },
 
   /* 4. Restored Travel Section Cards */

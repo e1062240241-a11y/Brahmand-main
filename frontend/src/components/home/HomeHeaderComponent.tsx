@@ -998,21 +998,22 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'android' ? 4 : 6 }}>
                                                         {isLive ? (
                                                             <Pressable
-                                                                style={{
+                                                                style={({ pressed }) => ({
                                                                     backgroundColor: '#D32F2F',
                                                                     paddingHorizontal: 14,
-                                                                    paddingVertical: 7,
+                                                                    paddingVertical: Platform.OS === 'android' ? 6 : 7,
                                                                     borderRadius: 20,
                                                                     flexDirection: 'row',
                                                                     alignItems: 'center',
                                                                     borderWidth: 1,
-                                                                    borderColor: '#FF8A80',
-                                                                    shadowColor: '#D32F2F',
+                                                                    borderColor: 'rgba(255, 138, 128, 0.9)',
+                                                                    shadowColor: '#FF1744',
                                                                     shadowOffset: { width: 0, height: 2 },
-                                                                    shadowOpacity: 0.7,
-                                                                    shadowRadius: 5,
+                                                                    shadowOpacity: 0.6,
+                                                                    shadowRadius: 6,
                                                                     elevation: 5,
-                                                                }}
+                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                })}
                                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
                                                                 onPress={() => {
                                                                     try {
@@ -1021,40 +1022,64 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     router.push('/library/katha');
                                                                 }}
                                                             >
-                                                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', marginRight: 4 }}>▶</Text>
+                                                                <Ionicons name="play" size={11} color="#FFF" style={{ marginRight: 4 }} />
                                                                 <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>🔴 LIVE NOW</Text>
                                                             </Pressable>
                                                         ) : (eventStatus as any) === 'campaign_completed' ? (
                                                             <Pressable
-                                                                style={{
-                                                                    backgroundColor: 'rgba(50, 50, 50, 0.9)',
-                                                                    paddingHorizontal: 12,
-                                                                    paddingVertical: 6,
+                                                                style={({ pressed }) => ({
+                                                                    backgroundColor: 'rgba(28, 25, 23, 0.88)',
+                                                                    paddingHorizontal: 14,
+                                                                    paddingVertical: Platform.OS === 'android' ? 5 : 6,
                                                                     borderRadius: 20,
                                                                     flexDirection: 'row',
                                                                     alignItems: 'center',
                                                                     borderWidth: 1,
-                                                                    borderColor: '#FFD700',
+                                                                    borderColor: 'rgba(255, 215, 0, 0.7)',
+                                                                    shadowColor: '#FFD700',
+                                                                    shadowOffset: { width: 0, height: 2 },
+                                                                    shadowOpacity: 0.4,
+                                                                    shadowRadius: 6,
+                                                                    elevation: 4,
+                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                })}
+                                                                onPress={() => {
+                                                                    try {
+                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                                    } catch (_e) { }
+                                                                    router.push('/library/katha');
                                                                 }}
-                                                                onPress={() => router.push('/library/katha')}
                                                             >
-                                                                <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Full Series</Text>
+                                                                <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
+                                                                <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Full Series</Text>
                                                             </Pressable>
                                                         ) : ((eventStatus as any) === 'between_streams' || (eventStatus as any) === 'ended') ? (
                                                             <Pressable
-                                                                style={{
-                                                                    backgroundColor: 'rgba(50, 50, 50, 0.9)',
-                                                                    paddingHorizontal: 12,
-                                                                    paddingVertical: 6,
+                                                                style={({ pressed }) => ({
+                                                                    backgroundColor: 'rgba(25, 23, 20, 0.85)',
+                                                                    paddingHorizontal: 14,
+                                                                    paddingVertical: Platform.OS === 'android' ? 5 : 6,
                                                                     borderRadius: 20,
                                                                     flexDirection: 'row',
                                                                     alignItems: 'center',
                                                                     borderWidth: 1,
-                                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                                    borderColor: 'rgba(255, 215, 0, 0.6)',
+                                                                    shadowColor: '#FFD700',
+                                                                    shadowOffset: { width: 0, height: 2 },
+                                                                    shadowOpacity: 0.3,
+                                                                    shadowRadius: 5,
+                                                                    elevation: 4,
+                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                })}
+                                                                onPress={() => {
+                                                                    try {
+                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                                    } catch (_e) { }
+                                                                    router.push('/library/katha');
                                                                 }}
-                                                                onPress={() => router.push('/library/katha')}
                                                             >
-                                                                <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Replay</Text>
+                                                                <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
+                                                                <Text style={{ color: '#FFF8E7', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Replay</Text>
                                                             </Pressable>
                                                         ) : (
                                                             <UiverseNotifyButton
@@ -1177,7 +1202,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         {/* Bottom Button Row */}
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
                                             <Pressable
-                                                style={[
+                                                style={({ pressed }) => [
                                                     styles.joinJaapButton,
                                                     {
                                                         backgroundColor: '#FF5100',
@@ -1185,20 +1210,35 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         width: 138,
                                                         height: 36,
                                                         paddingHorizontal: 12,
-                                                        flexDirection: 'column',
+                                                        flexDirection: 'row',
                                                         justifyContent: 'center',
                                                         alignItems: 'center',
-                                                        gap: 10,
+                                                        gap: 6,
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                        shadowColor: '#FF5100',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.5,
+                                                        shadowRadius: 5,
+                                                        elevation: 4,
+                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
                                                     }
                                                 ]}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                    } catch (_e) { }
+                                                    handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
+                                                }}
                                             >
+                                                <Ionicons name="play" size={12} color="#FFF" />
                                                 <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                                             </Pressable>
 
-                                            <TouchableOpacity
-                                                style={{
+                                            <Pressable
+                                                style={({ pressed }) => ({
                                                     backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
                                                     width: 36,
                                                     height: 36,
@@ -1207,16 +1247,22 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     alignItems: 'center',
                                                     borderWidth: 1,
                                                     borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                                                })}
+                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    } catch (_e) { }
+                                                    handleSetReminder('hanuman', 'Hanuman Chalisa');
                                                 }}
-                                                activeOpacity={0.8}
-                                                onPress={() => handleSetReminder('hanuman', 'Hanuman Chalisa')}
                                             >
                                                 <Ionicons
                                                     name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
                                                     size={18}
                                                     color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
                                                 />
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         </View>
                                     </LinearGradient>
                                 </ImageBackground>
@@ -1305,7 +1351,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         {/* Bottom Button Row */}
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
                                             <Pressable
-                                                style={[
+                                                style={({ pressed }) => [
                                                     styles.joinJaapButton,
                                                     {
                                                         backgroundColor: '#FF5100',
@@ -1313,20 +1359,35 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         width: 138,
                                                         height: 36,
                                                         paddingHorizontal: 12,
-                                                        flexDirection: 'column',
+                                                        flexDirection: 'row',
                                                         justifyContent: 'center',
                                                         alignItems: 'center',
-                                                        gap: 10,
+                                                        gap: 6,
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                        shadowColor: '#FF5100',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.5,
+                                                        shadowRadius: 5,
+                                                        elevation: 4,
+                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
                                                     }
                                                 ]}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                                onPress={() => handleLiveJaapNavigation('shiva', 'Om Namah Shivay')}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                    } catch (_e) { }
+                                                    handleLiveJaapNavigation('shiva', 'Om Namah Shivay');
+                                                }}
                                             >
+                                                <Ionicons name="play" size={12} color="#FFF" />
                                                 <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                                             </Pressable>
 
-                                            <TouchableOpacity
-                                                style={{
+                                            <Pressable
+                                                style={({ pressed }) => ({
                                                     backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
                                                     width: 36,
                                                     height: 36,
@@ -1335,16 +1396,22 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     alignItems: 'center',
                                                     borderWidth: 1,
                                                     borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                                                })}
+                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    } catch (_e) { }
+                                                    handleSetReminder('shiva', 'Mahamrityunjaya Mantra');
                                                 }}
-                                                activeOpacity={0.8}
-                                                onPress={() => handleSetReminder('shiva', 'Mahamrityunjaya Mantra')}
                                             >
                                                 <Ionicons
                                                     name={reminders['shiva'] ? "notifications" : "notifications-outline"}
                                                     size={18}
                                                     color={reminders['shiva'] ? '#FF5100' : '#FFF'}
                                                 />
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         </View>
                                     </LinearGradient>
                                 </ImageBackground>

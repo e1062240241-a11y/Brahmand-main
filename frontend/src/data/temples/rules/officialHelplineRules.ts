@@ -209,4 +209,65 @@ export const OFFICIAL_HELPLINE_RULES: OfficialHelplineRule[] = [
     condition: { any: ['ram mandir', 'ayodhya'] },
     helpline: '1800 180 5533',
   },
+
+  {
+    id: 'amarnath',
+    condition: { any: ['amarnath', 'amarnath cave', 'amarnath yatra'] },
+    helpline: '1800-180-7198 / 0191-2478991',
+  },
+  {
+    id: 'lingaraj',
+    condition: { any: ['lingaraj', 'bhubaneswar lingaraj'] },
+    helpline: '0674-2430006',
+  },
+  {
+    id: 'brihadisvara',
+    condition: { any: ['brihadisvara', 'brihadeeswarar', 'thanjavur big temple', 'peruvudaiyar'] },
+    helpline: '04362-230131',
+  },
+  {
+    id: 'tungnath',
+    condition: { any: ['tungnath', 'chopta tungnath'] },
+    helpline: '01372-252187',
+  },
+  {
+    id: 'pashupatinath_mandsaur',
+    condition: { any: ['pashupatinath mandsaur', 'mandsaur pashupatinath', 'ashtamukhi pashupatinath'] },
+    helpline: '07422-242201',
+  },
+  {
+    id: 'bhojeshwar',
+    condition: { any: ['bhojeshwar', 'bhojpur shiva'] },
+    helpline: '0755-2661558',
+  },
+  {
+    id: 'murudeshwar',
+    condition: { any: ['murudeshwar', 'kanduka hill'] },
+    helpline: '08385-268572',
+  },
+  {
+    id: 'tarakeshwar',
+    condition: { any: ['tarakeshwar', 'taraknath'] },
+    helpline: '033-26382021',
+  },
+  {
+    id: 'kapaleeshwarar',
+    condition: { any: ['kapaleeshwarar', 'mylapore kapaleeshwarar', 'karpagambal'] },
+    helpline: '044-24641670',
+  },
+  {
+    id: 'vadakkunnathan',
+    condition: { any: ['vadakkunnathan', 'thrissur vadakkunnathan', 'vadakkumnathan'] },
+    helpline: '0487-2424108',
+  },
+  {
+    id: 'kotilingeshwara',
+    condition: { any: ['kotilingeshwara', 'kolar kotilingeshwara'] },
+    helpline: '08153-267555',
+  },
+  {
+    id: 'gopnath',
+    condition: { any: ['gopnath', 'gopnath mahadev'] },
+    helpline: '0278-2521000',
+  },
 ];

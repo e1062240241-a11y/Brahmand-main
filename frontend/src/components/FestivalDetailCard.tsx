@@ -102,6 +102,13 @@ const SECTION_CONFIG: Record<string, {
     emoji: '🕉',
     stripColor: '#7E22CE',
   },
+  'Fun Facts': {
+    icon: 'bulb',
+    accent: '#B45309',
+    bgGradient: ['#FFFBEB', '#FEF3C7'],
+    emoji: '💡',
+    stripColor: '#D97706',
+  },
 };
 
 // Date Formatter & Days Countdown Calculation
@@ -234,8 +241,8 @@ const GuideItem = ({
   onPress: () => void;
 }) => {
   const translateY = useRef(new Animated.Value(16)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const scale      = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -277,7 +284,7 @@ const GuideItem = ({
   };
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
     onPress();
   };
 
@@ -376,11 +383,20 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const rawPujaVidhi = festival.puja_vidhi || (festival.rituals ? (Array.isArray(festival.rituals) ? festival.rituals.join('. ') : festival.rituals) : null);
   const rawMantra = enrichment?.mantra || festival.mantra;
 
+  const funFacts: string[] = festival.funFacts ?? festival.fun_facts ?? [
+    'Hariyali Teej is celebrated on the third day of the bright fortnight of the monsoon month Shravan.',
+    'Green glass bangles and green sarees symbolize nature’s blooming beauty and marital bliss.',
+    'Intricate Henna / Mehndi patterns applied on hands are believed to bring divine blessings.',
+    'Lush tree swings (jhulas) are traditionally set up under banyan trees for women to sing Teej songs.'
+  ];
+
   const sections = [
-    { title: 'Story',       value: rawStory },
-    { title: 'About',       value: rawAbout },
-    { title: 'Importance',  value: rawImportance },
-    { title: 'Puja Vidhi',  value: rawPujaVidhi },
+    { title: 'Story', value: rawStory },
+    { title: 'About', value: rawAbout },
+    { title: 'Importance', value: rawImportance },
+    { title: 'Puja Vidhi', value: rawPujaVidhi },
+    { title: 'Mantra', value: rawMantra },
+    { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
   ].filter((s) => Boolean(s.value));
 
   // Load visited sections progress
@@ -402,17 +418,10 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     if (!visitedSections.includes(sectionTitle)) {
       const updated = [...visitedSections, sectionTitle];
       setVisitedSections(updated);
-      AsyncStorage.setItem(`@visited_${festivalId}`, JSON.stringify(updated)).catch(() => {});
+      AsyncStorage.setItem(`@visited_${festivalId}`, JSON.stringify(updated)).catch(() => { });
     }
     onGuidePress?.(sectionTitle);
   };
-
-  const funFacts: string[] = festival.funFacts ?? festival.fun_facts ?? [
-    'Hariyali Teej is celebrated on the third day of the bright fortnight of the monsoon month Shravan.',
-    'Green glass bangles and green sarees symbolize nature’s blooming beauty and marital bliss.',
-    'Intricate Henna / Mehndi patterns applied on hands are believed to bring divine blessings.',
-    'Lush tree swings (jhulas) are traditionally set up under banyan trees for women to sing Teej songs.'
-  ];
 
   const deity = festival.deity || festival.deity_name || (festivalName.toLowerCase().includes('shiva') || festivalName.toLowerCase().includes('teej') ? 'Goddess Parvati & Lord Shiva' : 'Vedic Deities');
   const daysRemaining = calculateDaysRemaining(festival.date || '2026-08-15');

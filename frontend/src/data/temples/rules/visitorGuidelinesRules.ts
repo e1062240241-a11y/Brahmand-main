@@ -573,7 +573,317 @@ export const VISITOR_GUIDELINES_RULES: VisitorGuidelinesRule[] = [
       { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly prohibited inside inner Garbhagriha (twin deities)', 'Leather items (belts, bags) banned', 'No plastic allowed inside'], prohibitedItems: ['Garbhagriha Photography', 'Leather Items', 'Plastic Bags', 'Shorts / Revealing Attire'] },
     ],
   },
+  {
+    id: 'badi_patan_devi',
+    condition: {
+      any: ['patan devi', 'badi patan devi', 'patneshwari', 'patna devi'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Pass & Timings', points: ['₹100 Special Entry pass available to bypass general queue during non-peak hours', 'Sanctum closed for mid-day cleaning break from 12:00 PM to 3:00 PM', 'Best time to visit: 6:00 AM – 8:00 AM on weekdays', 'Havan Kund in front of sanctum for continuous worship offerings'] },
+      { icon: '👔', title: 'Strict Traditional Dress Code Mandatory', points: ['Men: Dhoti/Kurta or shirts with trousers', 'Women: Sarees or salwar kameez', 'PROHIBITED: Western attire (shorts/jeans) strictly prohibited'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography strictly banned inside sanctum and inner courtyard', 'Mobile phones must be kept on silent mode', 'Free lockers available near entrance for electronic devices and leather items (belts/wallets)'], prohibitedItems: ['Sanctum Photography', 'Western Attire (Jeans/Shorts)', 'Leather Belts/Wallets inside Sanctum', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'chinnamasta_rajrappa',
+    condition: {
+      any: ['chinnamasta', 'chinnamastika', 'rajrappa'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Age Verification', points: ['Photo ID proof & address required for darshan; devotees must be above 18 years', 'Located ~72 km from Ranchi (Ramgarh Cantonment railhead ~27 km, Birsa Munda Airport ~70 km)', 'Best visit season: October to March (December ideal)', 'Temple closes briefly during morning (6:00 AM) and evening (8:00 PM) Aarti'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional and formal clothing required', 'Modest attire expected'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside sanctum prohibited', 'Footwear must be removed outside', 'Leather items banned'], prohibitedItems: ['Sanctum Photography', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'kamakshi_amman_kanchipuram',
+    condition: {
+      any: ['kamakshi', 'kamakshi amman', 'kanchipuram kamakshi'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Darshan & Poornima Rules', points: ['Nadai (Temple doors) closed during afternoon break: 12:30 PM – 3:45 PM', 'Devotees not allowed inside Gayathri Mandapam during Poornima night Nava Varna Pooja', 'Grand 9-day Sharada & Vasantha Navarathri with Yaga Sala Pooja & Chandi Homam; Annual Brahmotsavam (Feb–Mar)'] },
+      { icon: '👔', title: 'Dress Code Guidelines', points: ['Traditional Indian attire recommended', 'Men: Dhoti or formal trousers with shirt', 'Women: Saree or salwar kameez', 'PROHIBITED: Avoid shorts and sleeveless tops'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside inner sanctum restricted', 'Mobile phones must be on silent mode', 'Footwear must be removed before entering'], prohibitedItems: ['Sanctum Photography', 'Shorts & Sleeveless Tops', 'Footwear inside Temple'] },
+    ],
+  },
+  {
+    id: 'bhramaramba_srisailam',
+    condition: {
+      any: ['bhramaramba', 'bhramarambika', 'srisailam shakti peetha'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Queues & Prasadam Facilities', points: ['Separate queues for Shiva (Mallikarjuna) and Shakti (Bhramaramba) darshan', 'Sarva Darshan: Free | Seeghra: ₹150 | Bhramaramba Quick: ₹200 | VIP: ₹500/person', 'Free Annaprasada Vitharana meals at 11:30 AM daily at Annapurna Mandiram', 'Divya Parimala Vibhoothi sacred ash & Kesha Khandanam (tonsuring) facility at Kalyana Katta', 'Cloakroom available at queue-line complex'] },
+      { icon: '👔', title: 'Strict Traditional Dress Code Rules', points: ['Men: Dhoti/Pancha with Angavastram or Kurta-Pyjama', 'Women: Saree, half-saree, or Chudidar with Dupatta', 'PROHIBITED: Shorts, mini-skirts, middies, sleeveless tops, low-waist jeans, short t-shirts'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones, cameras, and all electronic gadgets strictly banned', 'Leather items prohibited', 'Smoking, drinking, betel leaves, gutka, tobacco, spitting banned'], prohibitedItems: ['Mobile Phones & Gadgets', 'Cameras', 'Leather Items', 'Smoking & Alcohol', 'Tobacco/Gutka/Betel', 'Shorts / Jeans / Sleeveless'] },
+    ],
+  },
+  {
+    id: 'kanaka_durga_vijayawada',
+    condition: {
+      any: ['kanaka durga', 'kanakadurgamma', 'indrakeeladri', 'vijayawada durga'],
+    },
+    guidelines: [
+      { icon: '🎟️', title: 'Darshan, Online Sevas & Prasadam', points: ['Dharma Darshanam: 4:00 AM – 5:45 PM & 6:15 PM – 10:00 PM', 'Anna Prasadam served daily from 10:00 AM to 4:00 PM', 'Online booking for Sevas/Darshanam at kanakadurgamma.org; Live YouTube stream on SriKanakaDurga Official; Paroksha Seva available', 'Grand celebrations during Dasara & Navratri'] },
+      { icon: '👔', title: 'Strict Traditional Dress Code Mandatory (Strictly Enforced)', points: ['Western attire strictly prohibited — devotees wearing jeans, shorts, skirts, or sleeveless tops will be restricted from entering', 'Men: Dhoti, panche, or traditional attire with upper cloth', 'Women: Saree, salwar kameez, or traditional Indian dress'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Western attire strictly prohibited (devotees restricted at entrance)', 'Mobile phones strictly prohibited in darshan queue lines', 'Leather items strictly banned (considered impure)', 'Photography restricted inside sanctum'], prohibitedItems: ['Western Attire (Jeans/Shorts/Skirts/Sleeveless)', 'Mobile Phones in Queue', 'Leather Items', 'Sanctum Photography'] },
+    ],
+  },
+
+  {
+    id: 'amarnath',
+    condition: { any: ['amarnath', 'amarnath cave', 'amarnath yatra'] },
+    guidelines: [
+      { icon: '🗓️', title: 'Mandatory Yatra Registration', points: ['Advance registration from April 15 at jksasb.nic.in', 'Mandatory RFID card required for movement along trek routes'] },
+      { icon: '🏥', title: 'Health & Fitness Requirements', points: ['Compulsory Medical Fitness Certificate from authorized doctors', 'Age restrictions: 13 to 70 years only; pregnant women >6 weeks not allowed'] },
+      { icon: '🛡️', title: 'Safety & Insurance Cover', points: ['₹5 lakh insurance coverage provided for all registered yatris', 'Follow designated trekking routes: Baltal (14 km) or Pahalgam/Chandanwari (32 km)'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Plastic bottles and polythene (strictly banned by law)', 'Smoking, alcohol, and narcotic substances', 'Flash cameras inside the holy cave', 'Incense sticks (agarbatties) or dhoop inside cave', 'Touching or tampering with the Holy Ice Lingam'], prohibitedItems: ['Plastic & Polythene', 'Smoking & Alcohol', 'Flash Cameras inside Cave', 'Incense / Dhoop inside Cave', 'Touching Ice Lingam'] },
+    ],
+  },
+  {
+    id: 'lingaraj',
+    condition: { any: ['lingaraj', 'bhubaneswar lingaraj'] },
+    guidelines: [
+      { icon: '🔑', title: 'Entry & Viewing Protocol', points: ['Only Hindus are permitted inside the main temple complex', 'Special raised viewing platform outside the boundary wall for non-Hindu visitors'] },
+      { icon: '💼', title: 'Belongings & Electronics', points: ['Leather items (belts, bags, wallets) strictly forbidden inside', 'Mobile phones, smartwatches, and cameras must be deposited at cloakrooms'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Non-Hindu entry inside main temple grounds', 'Leather items (belts, shoes, bags)', 'Cameras and mobile phone usage', 'Outside food or beverages'], prohibitedItems: ['Non-Hindu Entry', 'Leather Belts/Bags/Shoes', 'Cameras & Mobile Phones', 'Outside Food & Drinks'] },
+    ],
+  },
+  {
+    id: 'brihadisvara',
+    condition: { any: ['brihadisvara', 'brihadeeswarar', 'thanjavur big temple', 'peruvudaiyar'] },
+    guidelines: [
+      { icon: '👟', title: 'Footwear & Heritage Rules', points: ['Remove footwear at outer entrance shoe counter before entering courtyard', 'Respect ASI heritage norms; do not touch ancient Chola mural paintings'] },
+      { icon: '📷', title: 'Photography Restrictions', points: ['Photography allowed in outer lawns; strictly prohibited inside sanctum sanctorum', 'Drones and commercial videography require written ASI permission'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Footwear inside main granite courtyard and sanctum', 'Touching ancient stone carvings and fresco paintings', 'Drones without prior ASI written clearance', 'Commercial video recording without permit'], prohibitedItems: ['Footwear inside Courtyard', 'Touching Murals/Carvings', 'Drones without Permission', 'Commercial Video Recording'] },
+    ],
+  },
+  {
+    id: 'tungnath',
+    condition: { any: ['tungnath', 'chopta tungnath'] },
+    guidelines: [
+      { icon: '🏔️', title: 'Trek & Altitude Preparedness', points: ['Prepare for 3.5 km steep uphill trek from Chopta base', 'Carry adequate warm clothes, rain gear, and sturdy walking shoes'] },
+      { icon: '🍃', title: 'Eco-Sensitive Alpine Zone', points: ['Single-use plastic strictly banned in Chopta-Tungnath bugyal (meadows)', 'Do not trek beyond Chandrashila peak after sunset without local guides'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Littering plastic or garbage on trek trail', 'Alcohol or non-vegetarian food in Chopta/Tungnath area', 'Night trekking beyond Chandrashila without permission', 'Damaging alpine flora and fauna'], prohibitedItems: ['Plastic & Polythene Littering', 'Alcohol & Non-Veg Food', 'Night Trekking beyond Chandrashila', 'Damaging Alpine Plants'] },
+    ],
+  },
+  {
+    id: 'pashupatinath_mandsaur',
+    condition: { any: ['pashupatinath mandsaur', 'mandsaur pashupatinath', 'ashtamukhi pashupatinath'] },
+    guidelines: [
+      { icon: '📷', title: 'Sanctum Rules', points: ['Mobile photography strictly prohibited inside Ashtamukhi sanctum', 'Remove footwear at outer temple steps before stepping onto marble floor'] },
+      { icon: '🌊', title: 'Ghat Safety', points: ['Exercise caution near Shivna River ghats during monsoon season', 'Dispose of worship flowers in designated eco-bins'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside inner Ashtamukhi sanctum', 'Footwear in temple complex', 'Alcohol or non-vegetarian food near river ghats', 'Disturbing priests during Aarti'], prohibitedItems: ['Sanctum Photography', 'Footwear on Marble Floor', 'Alcohol & Non-Veg Food', 'Disturbing Priests during Aarti'] },
+    ],
+  },
+  {
+    id: 'bhojeshwar',
+    condition: { any: ['bhojeshwar', 'bhojpur shiva'] },
+    guidelines: [
+      { icon: '🏛️', title: 'ASI Protected Monument Rules', points: ['Do not climb on uncompleted historical stone walls or dome structures', 'Preserve floor rock engravings depicting ancient architectural blueprints'] },
+      { icon: '🦶', title: 'Sanctum Respect', points: ['Remove footwear at the main stone stairway leading up to the Shivlinga platform', 'Follow ASI visitor timings (6:00 AM to 7:00 PM)'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Climbing historical stone walls or uncompleted dome beams', 'Footwear on main Shivlinga platform', 'Defacing rock floor blueprints', 'Drones without ASI Bhopal circle permission'], prohibitedItems: ['Climbing Unfinished Stone Walls', 'Footwear on Shivlinga Platform', 'Defacing Floor Blueprints', 'Drones without Permission'] },
+    ],
+  },
+  {
+    id: 'murudeshwar',
+    condition: { any: ['murudeshwar', 'kanduka hill'] },
+    guidelines: [
+      { icon: '🛗', title: 'Raja Gopura Lift Access', points: ['Take the elevator to 18th floor of 249ft Gopura for panoramic 360-degree ocean views', 'Follow queue safety instructions near glass viewing windows'] },
+      { icon: '👕', title: 'Dress Code & Coastal Safety', points: ['Modest attire required inside main sanctum; short clothes not allowed', 'Avoid swimming in deep ocean areas near rocky cliff without lifeguard warning'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones and photography in inner sanctum', 'Footwear inside main temple complex and Gopura lift', 'Unsafe swimming in high tide ocean areas', 'Short or revealing clothing in sanctum queue'], prohibitedItems: ['Sanctum Photography', 'Footwear inside Gopura Lift', 'Unsafe Ocean Swimming', 'Short/Revealing Clothing'] },
+    ],
+  },
+  {
+    id: 'tarakeshwar',
+    condition: { any: ['tarakeshwar', 'taraknath'] },
+    guidelines: [
+      { icon: '💧', title: 'Holy Dip & Jal Dhal Protocol', points: ['Devotees take a sacred bath in Dudhpukur tank before offering water to Lord Taraknath', 'Use plastic or metal pots for pouring water; glass containers strictly forbidden'] },
+      { icon: '👥', title: 'Crowd Management', points: ['Expect massive pilgrim rush during Shravan Mondays and Chaitra Gajan', 'Keep personal belongings safe and use designated shoe counters'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside inner Taraknath sanctum', 'Leather items inside main courtyard', 'Using glass containers for holy water pouring', 'Unapproved pandas or touts in queue lines'], prohibitedItems: ['Sanctum Photography', 'Leather Belts & Bags', 'Glass Containers for Water', 'Unapproved Touts'] },
+    ],
+  },
+  {
+    id: 'kapaleeshwarar',
+    condition: { any: ['kapaleeshwarar', 'mylapore kapaleeshwarar', 'karpagambal'] },
+    guidelines: [
+      { icon: '👔', title: 'Traditional Dress Code', points: ['Dhotis/Kurta or Pants for men; Sarees, Dhavani, or Salwar Kameez for women', 'Shorts, Bermudas, sleeveless tops strictly prohibited inside precincts'] },
+      { icon: '🌸', title: 'Karpagambal Shrine Protocol', points: ['Maintain quiet queues near Goddess Karpagambal shrine', 'Deposit footwear at East or West Raja Gopuram shoe stalls'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Footwear anywhere inside outer or inner temple praharam', 'Photography inside Karpagambal and Kapaleeshwarar sanctums', 'Western shorts/sleeveless clothing', 'Mobile phone usage in inner queue lines'], prohibitedItems: ['Footwear inside Praharam', 'Sanctum Photography', 'Western Shorts & Sleeveless Tops', 'Mobile Usage in Queue'] },
+    ],
+  },
+  {
+    id: 'vadakkunnathan',
+    condition: { any: ['vadakkunnathan', 'thrissur vadakkunnathan', 'vadakkumnathan'] },
+    guidelines: [
+      { icon: '🔒', title: 'Strict Kerala Dress Code & Entry', points: ['Men must wear Mundu (Dhoti) and remove upper clothing (shirts/vests)', 'Women must wear Saree, Set-Mundu, or Salwar; Non-Hindus not allowed inside precincts'] },
+      { icon: '📱', title: 'No Electronics & Leather', points: ['Mobile phones, cameras, smartwatches strictly forbidden inside outer wall', 'Leather belts, wallets, purses must be deposited outside'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Men wearing shirts or trousers inside temple compound', 'Non-Hindu entry inside main temple compound', 'Electronic devices and photography', 'Leather belts, purses, or footwear within outer walls'], prohibitedItems: ['Shirts & Trousers for Men', 'Non-Hindu Entry inside Sanctum', 'Electronic Devices & Photography', 'Leather Belts/Purses/Shoes'] },
+    ],
+  },
+  {
+    id: 'kotilingeshwara',
+    condition: { any: ['kotilingeshwara', 'kolar kotilingeshwara'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry Ticket & Camera Rules', points: ['Nominal entry ticket fee of ₹20 per head required at entry gate', 'Camera usage requires prior ₹100 camera pass from ticket counter'] },
+      { icon: '🙏', title: 'Linga Installation Ceremony', points: ['Devotees can sponsor and install their own Shivlinga with custom engraved names', 'Maintain order while walking through the open-air Linga garden pathways'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Footwear in the main Shivlinga garden courtyard', 'Unpaid commercial photography', 'Littering plastic bags in Linga display gardens', 'Defacing or stepping on private installed Shivlingas'], prohibitedItems: ['Footwear in Linga Courtyard', 'Unpaid Photography', 'Plastic Littering', 'Defacing Installed Lingas'] },
+    ],
+  },
+  {
+    id: 'gopnath',
+    condition: { any: ['gopnath', 'gopnath mahadev'] },
+    guidelines: [
+      { icon: '🌊', title: 'Seashore Safety', points: ['Avoid swimming in deep or rocky coastal waters near Gopnath cliff', 'Enjoy the sea breeze and beach views from safe designated promenades'] },
+      { icon: '🏠', title: 'Sanctum Rules', points: ['Worship both the white and black Shivlingas housed in the unique dual sanctum', 'Remove footwear at temple entrance stairs before entering inner shrine'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Swimming in deep sea near rocky cliff without guards', 'Footwear inside main double-linga sanctum', 'Alcohol and non-vegetarian items in coastal zone', 'Littering packaging materials on sea beach'], prohibitedItems: ['Deep Sea Swimming without Guards', 'Footwear in Dual Sanctum', 'Alcohol & Non-Veg Items', 'Littering Sea Beach'] },
+    ],
+  },
+  {
+    id: 'mayureshwar_morgaon',
+    condition: { any: ['mayureshwar', 'moreshwar', 'morgaon', 'morgaon ganesha'] },
+    guidelines: [
+      { icon: '👔', title: 'Dress Code & Sanctity', points: ['Traditional Indian attire recommended (Dhoti/Kurta for men, Saree/Salwar for women)', 'Leather belts, wallets, and shoes must be removed before entering fortress sanctum'] },
+      { icon: '🙏', title: 'Sacred Circuit Order', points: ['As per Ashtavinayaka tradition, devotees must first pay respects to Nagna Bhairava shrine on left', 'Pray to Mayureshwar, then offer prayers at Sakshi Vinayaka before exit'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside Garbhagriha (inner sanctum)', 'Footwear inside temple fortress courtyard', 'Alcohol, non-veg, & tobacco products on temple hill'], prohibitedItems: ['Inner Sanctum Photography', 'Footwear inside Courtyard', 'Leather Belts/Wallets near Idol', 'Alcohol & Tobacco'] },
+    ],
+  },
+  {
+    id: 'siddhivinayak_siddhatek',
+    condition: { any: ['siddhivinayak siddhatek', 'siddhatek', 'siddhatek ganesha'] },
+    guidelines: [
+      { icon: '⛰️', title: 'Hill Pradakshina Guidelines', points: ['Pradakshina around Siddhatek hillock takes ~30 minutes (about 1 km walk)', 'Mind footing along stone hill path during monsoon season'] },
+      { icon: '👔', title: 'Dress Code Rules', points: ['Modest attire expected; avoid shorts or revealing clothes', 'Remove shoes at main gate before ascending temple steps'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside sanctum', 'Footwear inside temple premises', 'Plastic littering along hill Pradakshina route'], prohibitedItems: ['Sanctum Photography', 'Footwear inside Temple', 'Plastic Littering on Hill'] },
+    ],
+  },
+  {
+    id: 'ballaleshwar_pali',
+    condition: { any: ['ballaleshwar', 'pali ganesha', 'pali ballaleshwar'] },
+    guidelines: [
+      { icon: '🔔', title: 'Dhundi Vinayak & Bell Rules', points: ['Devotees must first offer prayers to Dhundi Vinayak shrine located behind the main temple', 'Listen to historic European bell rung during Aarti ceremonies'] },
+      { icon: '👔', title: 'Attire & Hygiene', points: ['Clean traditional dress expected', 'Footwear lockers available near entrance gate'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography in inner sanctum', 'Footwear in Sabhamandap', 'Leather articles inside core shrine'], prohibitedItems: ['Inner Sanctum Photography', 'Footwear in Sabhamandap', 'Leather Belts/Wallets'] },
+    ],
+  },
+  {
+    id: 'varadavinayak_mahad',
+    condition: { any: ['varadavinayak', 'mahad ganesha', 'mahad varadavinayak'] },
+    guidelines: [
+      { icon: '🛕', title: 'Sanctum & Lamp Sanctity', points: ['Respect the historic 130+ year old continuous burning oil lamp (Nanda Deep)', 'Devotees can perform direct Pooja during designated non-crowded morning hours'] },
+      { icon: '👔', title: 'Modest Dress Standard', points: ['Men: Dhoti or Kurta/Pants; Women: Saree or Salwar Suits', 'Shorts and sleeveless clothes strictly discouraged'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile photography inside sanctum', 'Leather belts and wallets near deity', 'Footwear inside temple courtyard'], prohibitedItems: ['Mobile Photography in Sanctum', 'Leather Items', 'Footwear'] },
+    ],
+  },
+  {
+    id: 'chintamani_theur',
+    condition: { any: ['chintamani', 'theur', 'theur chintamani'] },
+    guidelines: [
+      { icon: '🌊', title: 'River Confluence & Queue Management', points: ['Be cautious near Mula-Mutha river ghats during monsoon high water levels', 'Expect heavy queue during Angarki Sankashti Chaturthi (special queues available)'] },
+      { icon: '👔', title: 'Attire & Decorum', points: ['Traditional attire mandatory for Abhishek offering', 'Quiet decorum inside wooden Sabhamandap'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside inner deity room', 'Footwear inside wooden Sabhamandap', 'Littering along riverbank ghats'], prohibitedItems: ['Deity Photography', 'Footwear inside Sabhamandap', 'Littering River Ghats'] },
+    ],
+  },
+  {
+    id: 'girijatmaj_lenyadri',
+    condition: { any: ['girijatmaj', 'lenyadri', 'lenyadri ganesha'] },
+    guidelines: [
+      { icon: '🧗', title: 'Cave Mountain Climb Rules', points: ['Requires climbing 307 stone steps up Lenyadri mountain cave', 'Doli (palanquin) services available at base for elderly devotees', 'Monkey warning: Keep food items, prasad bags, and spectacles safely inside backpacks'] },
+      { icon: '👔', title: 'Cave Attire & ASI Protocol', points: ['Comfortable walking shoes recommended for mountain steps; remove shoes outside cave entrance', 'ASI rules apply; do not carve or deface cave walls'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Defacing or carving ancient cave walls', 'Flash photography inside Cave 7 sanctum', 'Carrying open food packets (attracts monkeys)', 'Plastic waste dumping on mountain stairs'], prohibitedItems: ['Defacing Cave Walls', 'Flash Photography', 'Open Food Packets (Monkeys)', 'Plastic Waste on Mountain'] },
+    ],
+  },
+  {
+    id: 'vighneshwar_ozar',
+    condition: { any: ['vighneshwar', 'ozar', 'ojhar', 'ozar ganesha'] },
+    guidelines: [
+      { icon: '🌊', title: 'Kukadi Riverfront & Deepamala', points: ['Safely enjoy Kukadi riverview promenade', 'Marvel at historic Deepamalas lit up during Kartik Purnima'] },
+      { icon: '👔', title: 'Attire Standards', points: ['Dhotis/Kurta or full pants for men; Sarees or Salwar for women', 'Deposit shoes at designated trust counter near main arch'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside main idol enclosure', 'Footwear within gold-plated dome courtyard', 'Leather goods inside inner shrine'], prohibitedItems: ['Sanctum Photography', 'Footwear in Gold Dome Courtyard', 'Leather Goods'] },
+    ],
+  },
+  {
+    id: 'mahaganapati_ranjangaon',
+    condition: { any: ['mahaganapati', 'ranjangaon', 'ranjangaon ganpati'] },
+    guidelines: [
+      { icon: '🚗', title: 'Highway Access & Trust Facilities', points: ['Located on Pune-Ahmednagar highway (~50 km from Pune); large parking area available', 'Trust operates Bhakta Niwas guest houses and free prasad distribution'] },
+      { icon: '👔', title: 'Sanctum Etiquette', points: ['Remove footwear at main entrance gate', 'Follow queue lines inside broad Sabhamandap'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Sanctum camera & video recording', 'Footwear inside Sabhamandap', 'Alcohol and non-veg items on trust premises'], prohibitedItems: ['Camera & Video Recording', 'Footwear inside Sabhamandap', 'Alcohol & Non-Veg Items'] },
+    ],
+  },
+  {
+    id: 'mahalakshmi_mumbai',
+    condition: { any: ['mahalakshmi mumbai', 'mahalakshmi temple mumbai', 'mahalaxmi mumbai'] },
+    guidelines: [
+      { icon: '🌺', title: 'Offerings & Flowers', points: ['Lotus flowers, coconuts, and silk sarees are favored offerings for Goddess Mahalakshmi', 'Flower vendors available along Bhulabhai Desai Road approach steps'] },
+      { icon: '👔', title: 'Dress Code & Customs', points: ['Modest attire required (Sarees, Salwar-Kameez, or Dhoti/Pants)', 'Remove footwear at designated shoe stands before entering main gate'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside inner sanctum', 'Footwear beyond shoe counters', 'Leather items (belts, wallets) inside Garbhagriha', 'Large bags & luggage (must be deposited in lockers)'], prohibitedItems: ['Sanctum Photography', 'Footwear in Sanctum', 'Leather Items inside Garbhagriha', 'Large Luggage Bags'] },
+    ],
+  },
+  {
+    id: 'mumbadevi_mumbai',
+    condition: { any: ['mumbadevi', 'mumba devi', 'mumbadevi temple mumbai'] },
+    guidelines: [
+      { icon: '🛍️', title: 'Market Crowds & Security', points: ['Located in narrow, bustling Zaveri Bazar lane; plan travel via public transport', 'Keep personal belongings, wallets, and mobiles safe in crowded queue lines'] },
+      { icon: '👔', title: 'Attire Standards', points: ['Traditional Hindu or modest clothing', 'Footwear must be removed at official trust counters outside temple alley'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside sanctum', 'Footwear', 'Leather goods inside inner hall', 'Electronic gadgets during peak festivals'], prohibitedItems: ['Sanctum Photography', 'Footwear', 'Leather Goods', 'Electronics during Peak Hours'] },
+    ],
+  },
+  {
+    id: 'naina_devi_nainital',
+    condition: { any: ['naina devi', 'nainadevi nainital', 'naina devi temple'] },
+    guidelines: [
+      { icon: '⛵', title: 'Lakefront Etiquette', points: ['Shrine located at northern end of Naini Lake (Mallital)', 'Combine visit with boat rides or lakeside promenade walk; maintain lake cleanliness'] },
+      { icon: '👔', title: 'Attire & Shoe Deposit', points: ['Modest clothing appropriate for hill climate', 'Footwear counters available at temple lake-gate entrance'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Sanctum photography', 'Throwing garbage or plastic into Naini Lake', 'Leather belts & items near deity', 'Smoking or tobacco on temple premises'], prohibitedItems: ['Sanctum Photography', 'Plastic/Littering in Lake', 'Leather Items', 'Smoking/Tobacco'] },
+    ],
+  },
+  {
+    id: 'dhari_devi_uttarakhand',
+    condition: { any: ['dhari devi', 'dharidevi', 'dhari devi temple'] },
+    guidelines: [
+      { icon: '🌊', title: 'River Platform Safety', points: ['Temple built on Alaknanda River platform; adhere to safety railings and walk carefully on wet steps', 'Do not attempt to dip into swift Alaknanda river currents outside designated ghats'] },
+      { icon: '👔', title: 'Attire & Customs', points: ['Traditional attire for offerings', 'Remove shoes before crossing the river platform gate'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography of main deity', 'Footwear on river platform', 'Plastic dumping in Alaknanda River', 'Alcohol or non-veg in surrounding village area'], prohibitedItems: ['Deity Photography', 'Footwear on Platform', 'Plastic in River', 'Alcohol & Non-Veg'] },
+    ],
+  },
+  {
+    id: 'kasar_devi_almora',
+    condition: { any: ['kasar devi', 'kasardevi', 'kasar devi temple'] },
+    guidelines: [
+      { icon: '🧘', title: 'Meditation & Geomagnetic Zone', points: ['Geomagnetic field creates high vibrational energy ideal for quiet meditation', 'Maintain strict silence in the temple garden and courtyard'] },
+      { icon: '👔', title: 'Attire & Hill Walk', points: ['Comfortable footwear for hill slope steps', 'Modest warm clothing for mountain winds'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Loud music or noise in meditation zones', 'Sanctum photography', 'Pluck mountain flora or pine branches', 'Smoking and alcohol'], prohibitedItems: ['Loud Noise / Speakers', 'Sanctum Photography', 'Plucking Flora', 'Smoking & Alcohol'] },
+    ],
+  },
+  {
+    id: 'purnagiri_champawat',
+    condition: { any: ['purnagiri', 'purnagiri temple', 'punyagiri champawat'] },
+    guidelines: [
+      { icon: '🏔️', title: 'Trek & Altitude Precautions', points: ['Requires a steep ~3 km uphill trek from Tunyas (palanquins/dolis available)', 'Hydrate well and wear sturdy walking shoes during the mountain climb'] },
+      { icon: '👔', title: 'Attire & Weather Gear', points: ['Layered clothing suited for mountain winds', 'Traditional attire preferred for darshan'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside hilltop sanctum', 'Polythene bags (strictly regulated on hill trek)', 'Alcohol, meat, or intoxication on pilgrimage path', 'Leaving litter along mountain track'], prohibitedItems: ['Sanctum Photography', 'Single-Use Plastics', 'Alcohol & Meat', 'Littering Mountain Track'] },
+    ],
+  },
+  {
+    id: 'hidimba_devi_manali',
+    condition: { any: ['hidimba devi', 'hadimba temple', 'hidimba manali'] },
+    guidelines: [
+      { icon: '🌲', title: 'Forest & Wildlife Respect', points: ['Temple nestled in Dhungri Van Vihar forest; respect wildlife and ancient cedar trees', 'Angora rabbits and Yaks available outside for photos (official photography vendors)'] },
+      { icon: '👔', title: 'Cave Sanctum Rules', points: ['Remove shoes outside temple wooden entrance', 'Mind your head at low wooden carved doorways'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside rock cave sanctum', 'Footwear inside wooden temple structure', 'Carving names on cedar trees or wooden pillars', 'Plastic dumping in forest grounds'], prohibitedItems: ['Cave Sanctum Photography', 'Footwear inside Wooden Structure', 'Defacing Cedar Trees', 'Plastic Waste in Forest'] },
+    ],
+  },
+  {
+    id: 'kalika_mata_pavagadh',
+    condition: { any: ['kalika mata pavagadh', 'pavagadh mahakali', 'kalika mata temple'] },
+    guidelines: [
+      { icon: '🚡', title: 'Ropeway & Hill Climb', points: ['Pavagadh Ropeway saves 2,000 steps climb; buy round-trip tickets early to avoid peak queues', 'Walk gently along final 250 steps leading from ropeway upper station to temple golden spire'] },
+      { icon: '👔', title: 'Attire & Sanctum Etiquette', points: ['Traditional Gujarati attire (Chaniya Choli / Kurta) or modest clothing', 'Remove shoes at shoe counters at the hill-top terrace'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography inside main Mahakali sanctum', 'Footwear on golden spire terrace', 'Alcohol & non-vegetarian food in entire Pavagadh hill area', 'Plastics on hill track'], prohibitedItems: ['Sanctum Photography', 'Footwear on Terrace', 'Alcohol & Non-Veg', 'Plastic Waste on Hill'] },
+    ],
+  },
 ];
+
 
 
 

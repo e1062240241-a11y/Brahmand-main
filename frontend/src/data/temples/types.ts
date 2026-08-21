@@ -5,9 +5,9 @@ export interface AuthenticTempleDetails {
   mythologicalSignificance?: string;
   history?: string;
   architecture?: string;
-  sacredRituals?: string;
+  sacredRituals?: string | string[];
   festivals?: string[];
-  pilgrimageCircuit?: string;
+  pilgrimageCircuit?: string | string[];
 }
 
 export interface AuthenticDarshanDetails {

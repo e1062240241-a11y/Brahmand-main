@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,67 +10,90 @@ import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { CustomLoader } from '../src/components/CustomLoader';
+import { shareFestivalCard } from '../src/utils/shareFestivalCard';
 
-const safeCaptureRef = async (ref: any, options: any): Promise<string | null> => {
+const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
+  console.log('[FestivalSectionDetail Debug] safeCaptureRef called');
   try {
-    const ViewShot = require('react-native-view-shot');
-    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
-    if (typeof capture === 'function') {
-      return await capture(ref, options);
+    let ViewShot;
+    try {
+      ViewShot = require('react-native-view-shot');
+    } catch (e: any) {
+      console.log('[FestivalSectionDetail Debug] Failed to require react-native-view-shot:', e);
+      return { uri: null, error: `require('react-native-view-shot') failed: ${e?.message || e}` };
     }
-  } catch (e) {
-    console.log('[FestivalSectionDetail] Native ViewShot not available in current build:', e);
+
+    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
+    console.log('[FestivalSectionDetail Debug] ViewShot capture function type:', typeof capture);
+
+    if (typeof capture === 'function') {
+      const uri = await capture(ref, options);
+      console.log('[FestivalSectionDetail Debug] captureRef returned URI:', uri);
+      return { uri };
+    } else {
+      return { uri: null, error: `captureRef is not a function (got ${typeof capture})` };
+    }
+  } catch (e: any) {
+    console.log('[FestivalSectionSectionDetail Debug] safeCaptureRef exception:', e);
+    return { uri: null, error: `captureRef exception: ${e?.message || e}` };
   }
-  return null;
 };
 
-const safeShareFile = async (uri: string, options: any): Promise<boolean> => {
+const safeShareFile = async (uri: string, options: any): Promise<{ shared: boolean; error?: string }> => {
+  console.log('[FestivalSectionDetail Debug] safeShareFile called with URI:', uri);
   try {
-    const Sharing = require('expo-sharing');
+    let Sharing;
+    try {
+      Sharing = require('expo-sharing');
+    } catch (e: any) {
+      console.log('[FestivalSectionDetail Debug] Failed to require expo-sharing:', e);
+      return { shared: false, error: `require('expo-sharing') failed: ${e?.message || e}` };
+    }
+
     if (Sharing && typeof Sharing.isAvailableAsync === 'function') {
       const isAvailable = await Sharing.isAvailableAsync();
+      console.log('[FestivalSectionDetail Debug] Sharing.isAvailableAsync():', isAvailable);
       if (isAvailable) {
         await Sharing.shareAsync(uri, options);
-        return true;
+        console.log('[FestivalSectionDetail Debug] Sharing.shareAsync completed successfully');
+        return { shared: true };
+      } else {
+        return { shared: false, error: 'Sharing.isAvailableAsync() returned false' };
       }
+    } else {
+      return { shared: false, error: 'expo-sharing isAvailableAsync is not a function' };
     }
-  } catch (e) {
-    console.log('[FestivalSectionDetail] expo-sharing not available:', e);
+  } catch (e: any) {
+    console.log('[FestivalSectionDetail Debug] safeShareFile exception:', e);
+    return { shared: false, error: `shareAsync exception: ${e?.message || e}` };
   }
-  return false;
 };
 
 const FestivalSectionDetailPage = () => {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const festivalIndex = Number(params?.index ?? params?.festivalIndex ?? -1);
-  const section = String(params?.section ?? 'About');
+
+  const section = (params.section as string) || 'Story';
+  const festivalIndex = parseInt((params.festivalIndex as string) || (params.index as string) || '0', 10);
+
   const [festival, setFestival] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSharing, setIsSharing] = useState(false);
-  const catalogRef = useRef<View>(null);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+
+  const catalogRef = useRef<any>(null);
 
   useEffect(() => {
     const loadFestival = async () => {
-      if (Number.isNaN(festivalIndex) || festivalIndex < 0) {
-        setError('Festival not found.');
-        setLoading(false);
-        return;
-      }
-
       try {
+        setLoading(true);
         const response = await getFestivalList();
         const items = response.data || [];
-        const selected = items[festivalIndex];
-        if (!selected) {
-          setError('Festival not found.');
-        } else {
-          setFestival(selected);
-        }
+        const selected = items[festivalIndex] || items[0];
+        setFestival(selected);
       } catch (err) {
-        console.warn('Failed to load festival section', err);
-        setError('Unable to load festival section.');
+        console.warn('Failed to load festival section detail', err);
+        setError('Unable to load festival details.');
       } finally {
         setLoading(false);
       }
@@ -84,30 +107,20 @@ const FestivalSectionDetailPage = () => {
 
     try {
       setIsSharing(true);
-      const festivalName = festival.festival_name || festival.name || festival.title || 'Festival';
+      const festivalName = (festival.festival_name || festival.name || festival.title || 'Sacred Festival').toUpperCase();
 
+      let imageUri: string | null = null;
       if (catalogRef.current) {
-        const uri = await safeCaptureRef(catalogRef, {
+        await new Promise((res) => setTimeout(res, 250));
+        const captureResult = await safeCaptureRef(catalogRef, {
           format: 'png',
-          quality: 1.0,
+          quality: 0.9,
           result: 'tmpfile',
         });
-
-        if (uri) {
-          const shared = await safeShareFile(uri, {
-            mimeType: 'image/png',
-            dialogTitle: `Share ${festivalName} - ${decodeURIComponent(section)}`,
-            UTI: 'public.png',
-          });
-          if (shared) return;
-        }
+        imageUri = captureResult.uri;
       }
 
-      // Fallback
-      await Share.share({
-        message: `🪔 *${festivalName}* - ${decodeURIComponent(section)} 🪔\n\nShared via Brahmand App 🕉️`,
-        title: festivalName,
-      });
+      await shareFestivalCard(imageUri, festivalName);
     } catch (err) {
       console.warn('Failed to share festival section', err);
     } finally {
@@ -137,14 +150,16 @@ const FestivalSectionDetailPage = () => {
       locations={[0, 0.1058, 0.2212]}
       style={{ flex: 1 }}
     >
+      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F0" />
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Hidden Full Festival Catalog for HD Poster Capture */}
+        {/* Offscreen Full Master Catalog Image Container */}
         <View
           style={{
             position: 'absolute',
-            top: -99999,
-            left: -99999,
-            opacity: 0,
+            left: -9999,
+            top: 0,
+            width: 480,
+            zIndex: -9999,
           }}
           pointerEvents="none"
         >

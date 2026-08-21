@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, Text, StyleSheet, Alert, TouchableOpacity, Share, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Text, StyleSheet, Alert, TouchableOpacity, Share, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,35 +11,64 @@ import FestivalDetailCard from '../src/components/FestivalDetailCard';
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
+import { shareFestivalCard } from '../src/utils/shareFestivalCard';
 
 // Safe dynamic helper so missing native binaries in older dev builds never break route registration or crash the app
-const safeCaptureRef = async (ref: any, options: any): Promise<string | null> => {
+const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
+  console.log('[FestivalDetail Debug] safeCaptureRef called');
   try {
-    const ViewShot = require('react-native-view-shot');
-    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
-    if (typeof capture === 'function') {
-      return await capture(ref, options);
+    let ViewShot;
+    try {
+      ViewShot = require('react-native-view-shot');
+    } catch (e: any) {
+      console.log('[FestivalDetail Debug] Failed to require react-native-view-shot:', e);
+      return { uri: null, error: `require('react-native-view-shot') failed: ${e?.message || e}` };
     }
-  } catch (e) {
-    console.log('[FestivalDetail] Native ViewShot not available in current build:', e);
+
+    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
+    console.log('[FestivalDetail Debug] ViewShot capture function type:', typeof capture);
+
+    if (typeof capture === 'function') {
+      const uri = await capture(ref, options);
+      console.log('[FestivalDetail Debug] captureRef returned URI:', uri);
+      return { uri };
+    } else {
+      return { uri: null, error: `captureRef is not a function (got ${typeof capture})` };
+    }
+  } catch (e: any) {
+    console.log('[FestivalDetail Debug] safeCaptureRef exception:', e);
+    return { uri: null, error: `captureRef exception: ${e?.message || e}` };
   }
-  return null;
 };
 
-const safeShareFile = async (uri: string, options: any): Promise<boolean> => {
+const safeShareFile = async (uri: string, options: any): Promise<{ shared: boolean; error?: string }> => {
+  console.log('[FestivalDetail Debug] safeShareFile called with URI:', uri);
   try {
-    const Sharing = require('expo-sharing');
+    let Sharing;
+    try {
+      Sharing = require('expo-sharing');
+    } catch (e: any) {
+      console.log('[FestivalDetail Debug] Failed to require expo-sharing:', e);
+      return { shared: false, error: `require('expo-sharing') failed: ${e?.message || e}` };
+    }
+
     if (Sharing && typeof Sharing.isAvailableAsync === 'function') {
       const isAvailable = await Sharing.isAvailableAsync();
+      console.log('[FestivalDetail Debug] Sharing.isAvailableAsync():', isAvailable);
       if (isAvailable) {
         await Sharing.shareAsync(uri, options);
-        return true;
+        console.log('[FestivalDetail Debug] Sharing.shareAsync completed successfully');
+        return { shared: true };
+      } else {
+        return { shared: false, error: 'Sharing.isAvailableAsync() returned false' };
       }
+    } else {
+      return { shared: false, error: 'expo-sharing isAvailableAsync is not a function' };
     }
-  } catch (e) {
-    console.log('[FestivalDetail] expo-sharing not available:', e);
+  } catch (e: any) {
+    console.log('[FestivalDetail Debug] safeShareFile exception:', e);
+    return { shared: false, error: `shareAsync exception: ${e?.message || e}` };
   }
-  return false;
 };
 
 const FestivalDetailPage = () => {
@@ -89,46 +118,22 @@ const FestivalDetailPage = () => {
 
     try {
       setIsSharing(true);
-      const festivalName = festival.festival_name || festival.name || festival.title || 'Festival';
+      const festivalName = (festival.festival_name || festival.name || festival.title || 'Festival').toUpperCase();
 
+      let imageUri: string | null = null;
       if (catalogRef.current) {
-        const uri = await safeCaptureRef(catalogRef, {
+        await new Promise((res) => setTimeout(res, 250));
+        const captureResult = await safeCaptureRef(catalogRef, {
           format: 'png',
-          quality: 1.0,
+          quality: 0.9,
           result: 'tmpfile',
         });
-
-        if (uri) {
-          const shared = await safeShareFile(uri, {
-            mimeType: 'image/png',
-            dialogTitle: `Share ${festivalName} Full Guide`,
-            UTI: 'public.png',
-          });
-          if (shared) return;
-        }
+        imageUri = captureResult.uri;
       }
 
-      // Built-in Native Text Share Fallback (works 100% on any build with zero modules)
-      const date = festival.date ? `📅 Date: ${festival.date}` : '';
-      const deity = festival.deity || festival.deity_name ? `🌸 Deity: ${festival.deity || festival.deity_name}` : '';
-      const summary = festival.summary || festival.story || festival.importance || '';
-      const shareContent = [
-        `🪔 *${festivalName}* 🪔`,
-        date,
-        deity,
-        summary ? `\n📖 *About Festival:*\n${summary}` : '',
-        '\n━━━━━━━━━━━━━━━━━━━━━',
-        '🕉️ *Shared via Brahmand App*',
-        '🌿 _Your Gateway to Sanatan Heritage & Festivals_',
-        '━━━━━━━━━━━━━━━━━━━━━',
-      ].filter(Boolean).join('\n');
-
-      await Share.share({
-        message: shareContent,
-        title: festivalName,
-      });
-    } catch (err) {
-      console.warn('Failed to share festival catalog image', err);
+      await shareFestivalCard(imageUri, festivalName);
+    } catch (err: any) {
+      console.warn('[FestivalDetail Debug] handleShare error', err);
     } finally {
       setIsSharing(false);
     }
@@ -180,9 +185,10 @@ const FestivalDetailPage = () => {
       <View
         style={{
           position: 'absolute',
-          top: -99999,
-          left: -99999,
-          opacity: 0,
+          left: -9999,
+          top: 0,
+          width: 480,
+          zIndex: -9999,
         }}
         pointerEvents="none"
       >
@@ -244,21 +250,28 @@ const FestivalDetailPage = () => {
         />
 
         {/* Brahmand App Watermark Branding Banner */}
-        <View style={styles.watermarkContainer}>
+        <TouchableOpacity
+          style={styles.watermarkContainer}
+          activeOpacity={0.8}
+          onPress={() => Linking.openURL('https://brahmand.app/download')}
+        >
           <View style={styles.watermarkLine} />
           <View style={styles.watermarkContent}>
             <View style={styles.watermarkLogoRow}>
               <View style={styles.watermarkIconBadge}>
                 <Text style={styles.watermarkOm}>🕉</Text>
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.watermarkTitle}>Brahmand App</Text>
                 <Text style={styles.watermarkSubtitle}>Your Gateway to Sanatan Heritage</Text>
               </View>
+              <View style={styles.watermarkDownloadButton}>
+                <Text style={styles.watermarkDownloadText}>Download ➔</Text>
+              </View>
             </View>
-            <Text style={styles.watermarkTagline}>ब्रह्माण्ड • Discover Divine Festivals</Text>
+            <Text style={styles.watermarkTagline}>ब्रह्माण्ड • Discover Divine Festivals • Tap to Download</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -371,6 +384,17 @@ const styles = StyleSheet.create({
     color: '#B45309',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  watermarkDownloadButton: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  watermarkDownloadText: {
+    color: '#78350F',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

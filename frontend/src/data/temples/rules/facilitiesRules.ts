@@ -111,3 +111,66 @@ export const DEFAULT_FACILITIES: string[] = [
   'restrooms',
   'shoe_stand',
 ];
+
+FACILITIES_RULES.push(
+  {
+    id: 'amarnath',
+    condition: { any: ['amarnath', 'amarnath cave', 'amarnath yatra'] },
+    facilities: ['medical_aid', 'food_stalls', 'rfid_counter', 'helicopter_booking', 'trek_support', 'restrooms'],
+  },
+  {
+    id: 'lingaraj',
+    condition: { any: ['lingaraj', 'bhubaneswar lingaraj'] },
+    facilities: ['viewing_platform', 'shoe_stand', 'prasad', 'cloak_room', 'security_screening', 'restrooms'],
+  },
+  {
+    id: 'brihadisvara',
+    condition: { any: ['brihadisvara', 'brihadeeswarar', 'thanjavur big temple', 'peruvudaiyar'] },
+    facilities: ['asi_info_center', 'shoe_stand', 'drinking_water', 'wheelchair', 'parking'],
+  },
+  {
+    id: 'tungnath',
+    condition: { any: ['tungnath', 'chopta tungnath'] },
+    facilities: ['trek_support', 'tea_stalls', 'pony_service', 'dharamshala', 'first_aid'],
+  },
+  {
+    id: 'pashupatinath_mandsaur',
+    condition: { any: ['pashupatinath mandsaur', 'mandsaur pashupatinath', 'ashtamukhi pashupatinath'] },
+    facilities: ['river_ghats', 'prasad', 'parking', 'rest_sheds', 'shoe_stand'],
+  },
+  {
+    id: 'bhojeshwar',
+    condition: { any: ['bhojeshwar', 'bhojpur shiva'] },
+    facilities: ['asi_heritage_park', 'info_signage', 'snack_stalls', 'parking', 'restrooms'],
+  },
+  {
+    id: 'murudeshwar',
+    condition: { any: ['murudeshwar', 'kanduka hill'] },
+    facilities: ['gopura_lift', 'panoramic_deck', 'beach_access', 'canteen', 'parking', 'dharamshala'],
+  },
+  {
+    id: 'tarakeshwar',
+    condition: { any: ['tarakeshwar', 'taraknath'] },
+    facilities: ['holy_tank', 'bhog_counter', 'dharamshala', 'shoe_stand', 'railway_proximity'],
+  },
+  {
+    id: 'kapaleeshwarar',
+    condition: { any: ['kapaleeshwarar', 'mylapore kapaleeshwarar', 'karpagambal'] },
+    facilities: ['temple_tank', 'shoe_stand', 'prasad', 'wheelchair', 'devotional_library'],
+  },
+  {
+    id: 'vadakkunnathan',
+    condition: { any: ['vadakkunnathan', 'thrissur vadakkunnathan', 'vadakkumnathan'] },
+    facilities: ['maithanam_greens', 'prasad', 'shoe_stand', 'cloak_room', 'security_screening'],
+  },
+  {
+    id: 'kotilingeshwara',
+    condition: { any: ['kotilingeshwara', 'kolar kotilingeshwara'] },
+    facilities: ['anna_dasoha', 'parking', 'linga_office', 'prasad', 'restrooms'],
+  },
+  {
+    id: 'gopnath',
+    condition: { any: ['gopnath', 'gopnath mahadev'] },
+    facilities: ['seashore_promenade', 'dharamshala', 'parking', 'prasad', 'sunset_point'],
+  }
+);

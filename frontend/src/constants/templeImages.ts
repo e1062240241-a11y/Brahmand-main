@@ -514,6 +514,16 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'sacred-somnath-jyotirling-gujarat-core': tImg('SomnathTemple.webp'),
   'sacred-golden-temple-amritsar': tImg('GoldenTemple.webp'),
   'sacred-vasukital': tImg('vasukital.webp'),
+
+  // Direct mappings & aliases for dataset completeness
+  'sree-vallabha-temple-thiruvalla': tImg('Sree_Vallaba.webp'),
+  'sree-vallabha-temple-–-thiruvalla': tImg('Sree_Vallaba.webp'),
+  'sree-vallabha-temple---thiruvalla': tImg('Sree_Vallaba.webp'),
+  'sree-vallabha-temple': tImg('Sree_Vallaba.webp'),
+  'bhavani-temple': tImg('tuljabhavani.webp'),
+  'bhavani-temple-tuljapur': tImg('tuljabhavani.webp'),
+  'bhramaramba-mallikarjuna-temple': tImg('Mallikarjuna.webp'),
+  'bhramaramba-mallikarjuna-temple-srisailam': tImg('Mallikarjuna.webp'),
 };
 
 const DEFAULT_TEMPLE_IMAGE: number = require('../../assets/images/temple-fallback-icon.png');

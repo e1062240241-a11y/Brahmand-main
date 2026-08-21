@@ -327,4 +327,65 @@ export const OFFICIAL_WEBSITE_RULES: OfficialWebsiteRule[] = [
     condition: { any: ['ram mandir', 'ayodhya', 'janmabhoomi'] },
     website: 'https://srjbtkshetra.org',
   },
+
+  {
+    id: 'amarnath',
+    condition: { any: ['amarnath', 'amarnath cave', 'amarnath yatra'] },
+    website: 'https://jksasb.nic.in',
+  },
+  {
+    id: 'lingaraj',
+    condition: { any: ['lingaraj', 'bhubaneswar lingaraj'] },
+    website: 'https://lingarajtemple.odisha.gov.in',
+  },
+  {
+    id: 'brihadisvara',
+    condition: { any: ['brihadisvara', 'brihadeeswarar', 'thanjavur big temple', 'peruvudaiyar'] },
+    website: 'https://thanjavur.nic.in',
+  },
+  {
+    id: 'tungnath',
+    condition: { any: ['tungnath', 'chopta tungnath'] },
+    website: 'https://badrinath-kedarnath.gov.in',
+  },
+  {
+    id: 'pashupatinath_mandsaur',
+    condition: { any: ['pashupatinath mandsaur', 'mandsaur pashupatinath', 'ashtamukhi pashupatinath'] },
+    website: 'https://mandsaur.nic.in',
+  },
+  {
+    id: 'bhojeshwar',
+    condition: { any: ['bhojeshwar', 'bhojpur shiva'] },
+    website: 'https://bhopal.nic.in',
+  },
+  {
+    id: 'murudeshwar',
+    condition: { any: ['murudeshwar', 'kanduka hill'] },
+    website: 'https://uttarakannada.nic.in',
+  },
+  {
+    id: 'tarakeshwar',
+    condition: { any: ['tarakeshwar', 'taraknath'] },
+    website: 'https://hooghly.nic.in',
+  },
+  {
+    id: 'kapaleeshwarar',
+    condition: { any: ['kapaleeshwarar', 'mylapore kapaleeshwarar', 'karpagambal'] },
+    website: 'https://kapaleeshwarartemple.hrce.tn.gov.in',
+  },
+  {
+    id: 'vadakkunnathan',
+    condition: { any: ['vadakkunnathan', 'thrissur vadakkunnathan', 'vadakkumnathan'] },
+    website: 'https://thrissur.nic.in',
+  },
+  {
+    id: 'kotilingeshwara',
+    condition: { any: ['kotilingeshwara', 'kolar kotilingeshwara'] },
+    website: 'https://kolar.nic.in',
+  },
+  {
+    id: 'gopnath',
+    condition: { any: ['gopnath', 'gopnath mahadev'] },
+    website: 'https://bhavnagar.nic.in',
+  },
 ];
