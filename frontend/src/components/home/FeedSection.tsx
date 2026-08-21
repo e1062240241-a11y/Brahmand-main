@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 const SafeFlashList = FlashList as any;
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { InstagramRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
-import { getPostsFeed } from '../../services/api';
+import { getHomeFeed, getPostsFeed } from '../../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FEED_PAGE_SIZE = 10;
@@ -96,12 +98,18 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 
       let videos: any[] = [];
       let images: any[] = [];
+      let commCards: any[] = [];
 
       const blockedSet = new Set([...blockedUserIds, ...blockedByMeUserIds]);
 
       // Single pass for filtering and splitting (O(N))
       for (let i = 0; i < rawFeedPosts.length; i++) {
         const post = rawFeedPosts[i];
+        if (post?.type === 'community_discover_card') {
+          commCards.push(post);
+          continue;
+        }
+
         const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
 
         if (uid) {
@@ -161,6 +169,16 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         }
       }
 
+      if (commCards.length > 0) {
+        commCards.forEach(card => {
+          if (arranged.length >= 4) {
+            arranged.splice(4, 0, card);
+          } else {
+            arranged.push(card);
+          }
+        });
+      }
+
       if (isActive) {
         setFeedPosts(arranged);
       }
@@ -191,8 +209,8 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     }
 
     try {
-      console.log(`[FeedSection] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
+      console.log(`[FeedSection] Fetching from API: /feed/home?tab=${tabToLoad}&offset=${offset}`);
+      const response = await getHomeFeed(FEED_PAGE_SIZE, offset ? String(offset) : '', tabToLoad);
       console.log(`[FeedSection] API response received for ${tabToLoad}`);
       const payload = response.data;
       let incomingItems = Array.isArray(payload)
@@ -204,7 +222,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       setTabFeed(tabToLoad, {
         posts: append ? [...(cached?.posts || []), ...incomingItems] : incomingItems,
         offset: offset + incomingItems.length,
-        hasMore: incomingItems.length === FEED_PAGE_SIZE,
+        hasMore: payload?.has_more ?? (incomingItems.length === FEED_PAGE_SIZE),
         lastFetched: Date.now(),
       });
     } catch (error) {
@@ -290,7 +308,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   }, [feedPosts, ensureQuality]);
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const distanceFromActive = Math.abs(index - activePostIndexRef.current);
     if (item.type === 'empty') {
       return (
         <View style={styles.emptyFeed}>
@@ -306,6 +323,12 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         </View>
       );
     }
+
+    if (item.type === 'community_discover_card') {
+      return <CommunityDiscoverCardItem cardData={item} />;
+    }
+
+    const distanceFromActive = Math.abs(index - activePostIndexRef.current);
     const isActive = String(item.id) === activePostId;
     const currentUserId = user?.id;
     return (
@@ -334,6 +357,10 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       layout.size = 200;
       return;
     }
+    if (item.type === 'community_discover_card') {
+      layout.size = 200;
+      return;
+    }
     const availableWidth = SCREEN_WIDTH - 32;
     if (item.media_width && item.media_height && item.media_width > 0) {
       const aspectRatio = item.media_height / item.media_width;
@@ -352,6 +379,11 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         ref={scrollRef}
         data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
         renderItem={renderFeedPost}
+        getItemType={(item: any) => {
+          if (item?.type === 'community_discover_card') return 'community_discover_card';
+          if (item?.type === 'empty') return 'empty';
+          return 'post';
+        }}
         // OPT: Adds estimatedItemSize to prevent continuous item measuring during initial render, improving load time and UI scroll performance (~50% less jitter).
         estimatedItemSize={480}
         keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
@@ -378,6 +410,92 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     </View>
   );
 };
+
+const CommunityDiscoverCardItem = React.memo(function CommunityDiscoverCardItem({ cardData }: { cardData: any }) {
+  const router = useRouter();
+  const communities = cardData?.communities || [];
+
+  if (!communities.length) return null;
+
+  return (
+    <View style={cardStyles.container}>
+      <Text style={cardStyles.headerTitle}>{cardData.title || "Suggested Communities"}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cardStyles.scrollContent}>
+        {communities.map((comm: any) => (
+          <TouchableOpacity
+            key={comm.id}
+            style={cardStyles.card}
+            activeOpacity={0.8}
+            onPress={() => router.push(`/community/${comm.id}` as any)}
+          >
+            <Ionicons name="people-circle-outline" size={38} color="#FF8D57" />
+            <Text style={cardStyles.commName} numberOfLines={1}>{comm.name}</Text>
+            <Text style={cardStyles.memberCount}>{comm.member_count || 0} members</Text>
+            <TouchableOpacity
+              style={cardStyles.joinBtn}
+              onPress={() => router.push(`/community/${comm.id}` as any)}
+            >
+              <Text style={cardStyles.joinBtnText}>Join</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+});
+
+const cardStyles = StyleSheet.create({
+  container: {
+    marginVertical: 12,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  scrollContent: {
+    paddingRight: 12,
+  },
+  card: {
+    width: 140,
+    backgroundColor: '#1E1E1E',
+    borderRadius: 10,
+    padding: 12,
+    marginRight: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  commName: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  memberCount: {
+    color: '#AAAAAA',
+    fontSize: 12,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  joinBtn: {
+    backgroundColor: '#FF8D57',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  joinBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});
 
 const styles = StyleSheet.create({
   emptyFeed: {

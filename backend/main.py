@@ -113,6 +113,7 @@ from routes.event_routes import router as event_router
 from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.search_routes import router as search_router
 from routes.katha_routes import router as katha_router
+from routes.home_routes import router as home_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1470,6 +1471,7 @@ api_router.include_router(event_router)
 api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
+api_router.include_router(home_router)
 
 
 

@@ -1421,6 +1421,25 @@ const _getSeenIdsParam = (limit = 40): string => {
   return arr.slice(-limit).join(",");
 };
 
+export const getHomeShell = async () => {
+  return api.get("/home/shell");
+};
+
+export const getHomeFeed = async (
+  limit: number = 15,
+  after: string = "",
+  tab: string = "for_you",
+  seen_ids?: string,
+) => {
+  const localSeenIds = _getSeenIdsParam(40);
+  const combinedSeen = Array.from(
+    new Set([seen_ids, localSeenIds].filter(Boolean).join(",").split(",").filter(Boolean))
+  ).slice(-40).join(",");
+  return api.get("/feed/home", {
+    params: { limit, after, tab, seen_ids: combinedSeen },
+  });
+};
+
 export const getHomeInit = async () => {
   // OPT-8: read seen IDs from memory, not disk (max 40)
   const localSeenIds = _getSeenIdsParam(40);
