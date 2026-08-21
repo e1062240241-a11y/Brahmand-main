@@ -17,8 +17,9 @@ import {
   Animated,
   Keyboard,
   Pressable,
-  StatusBar
-  , DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
+  StatusBar,
+  ScrollView,
+  DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
 } from 'react-native';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1431,7 +1432,13 @@ export default function ProfileScreen() {
 
 
         {/* Settings Menu Modal */}
-        <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <Modal
+          visible={showSettingsModal}
+          animationType="slide"
+          transparent
+          statusBarTranslucent={true}
+          onRequestClose={() => setShowSettingsModal(false)}
+        >
           <View style={styles.settingsModalContainer}>
             <Pressable
               style={styles.settingsBackdrop}
@@ -1456,13 +1463,13 @@ export default function ProfileScreen() {
                   <Ionicons name="close" size={24} color="#000000" />
                 </Pressable>
               </View>
-              <SafeFlashList
-                data={SETTINGS_SECTIONS}
-                estimatedItemSize={220}
+              <ScrollView
                 showsVerticalScrollIndicator={false}
-                keyExtractor={(section: any) => section.id}
-                renderItem={({ item: section }: { item: any }) => (
-                  <View style={styles.settingsSection}>
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 28) }}
+              >
+                {SETTINGS_SECTIONS.map((section: any) => (
+                  <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
                     {section.items.map((item: SettingItem, index: number) => {
                       const iconColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
@@ -1522,9 +1529,8 @@ export default function ProfileScreen() {
                       );
                     })}
                   </View>
-                )}
-                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
-              />
+                ))}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -1550,20 +1556,20 @@ export default function ProfileScreen() {
             </Text>
           </Pressable>
           <View style={styles.navRightGroup}>
-            <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+              style={styles.navRightBtn}
               onPress={() => showImageSourcePicker('cover_photo')}
             >
               <Svg width={18} height={18} viewBox="0 0 16 17" fill="none">
                 <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5" />
               </Svg>
-            </Pressable>
-            <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+              style={styles.navRightBtn}
               onPress={() => setShowSettingsModal(true)}
             >
               <View style={{ width: 22, height: 18, justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1571,7 +1577,7 @@ export default function ProfileScreen() {
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
               </View>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -2562,8 +2568,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    height: Platform.OS === 'android' ? undefined : '65%',
-    maxHeight: Platform.OS === 'android' ? '85%' : undefined,
+    maxHeight: '85%',
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },
