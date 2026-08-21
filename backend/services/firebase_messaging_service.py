@@ -11,6 +11,8 @@ from google.cloud import firestore
 logger = logging.getLogger(__name__)
 
 
+from collections import deque
+
 class FirebaseMessagingService:
     """
     Handles messaging with Firestore.
@@ -20,6 +22,10 @@ class FirebaseMessagingService:
     - Chat types: community, circle, dm (direct message)
     """
     
+    # In-memory circular buffer for community chats (Max 50 messages per chat_id)
+    # COMMUNITY_BUFFERS: Dict[str, deque]
+    COMMUNITY_BUFFERS: Dict[str, deque] = {}
+
     # Socket.IO reference for real-time
     sio = None
     
@@ -153,9 +159,9 @@ class FirebaseMessagingService:
         if not is_member:
             raise ValueError("Not a community member")
         
-        # Check verification (state and country groups require verification; city, interest, and user groups do not)
+        # Check verification (state and country groups / subgroups require verification)
         community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
-        is_restricted_group = (community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False
+        is_restricted_group = (subgroup_type in ['state', 'country', 'national']) or ((community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False)
         
         if is_restricted_group and not user.get('is_verified', False):
             raise ValueError("Only verified members can post in State & National community groups")
@@ -211,6 +217,11 @@ class FirebaseMessagingService:
         message_data['id'] = message_id
         message_data['chat_id'] = chat_id
         
+        # Push message into In-Memory Circular Buffer (Max 50)
+        if chat_id not in FirebaseMessagingService.COMMUNITY_BUFFERS:
+            FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id] = deque(maxlen=50)
+        FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id].append(message_data)
+
         # Update chat's last message
         await db._run_sync(
             chat_ref.update,
@@ -239,46 +250,71 @@ class FirebaseMessagingService:
         limit: int = 50,
         before_timestamp: Optional[str] = None,
         user_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Get messages from community chat"""
+    ) -> Any:
+        """Get messages from community chat with In-Memory Circular Buffer & Verification Guard Gate"""
         db = await FirebaseMessagingService.get_db()
         
-        # Resolve fallback community IDs if user_id is provided
-        if user_id and community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+        user = None
+        if user_id:
+            user = await db.get_document('users', user_id)
+
+        # Verification Guard Gate: State & National subgroups require Personality Verification
+        is_restricted_subgroup = subgroup_type in ['state', 'national', 'country']
+        if is_restricted_subgroup and user and not user.get('is_verified', False):
+            logger.info(f"Guard Gate: Unverified user {user_id} blocked from fetching {subgroup_type} community messages.")
+            return {
+                "locked": True,
+                "messages": [],
+                "reason": "Verification required to access State and National community discussions."
+            }
+
+        # Resolve fallback community IDs if user is provided
+        if user and community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
             target_type = 'city'
             if community_id == 'maharashtra-fallback':
                 target_type = 'state'
             elif community_id == 'bharat-fallback':
                 target_type = 'country'
                 
-            user = await db.get_document('users', user_id)
-            if user:
-                user_loc = user.get('location') or user.get('home_location')
-                if user_loc:
-                    from services.firebase_community_service import FirebaseCommunityService
-                    try:
-                        community_ids = await FirebaseCommunityService.join_location_communities(user_id, user_loc)
-                        # Sync back to user document if missing
-                        user_comms = set(user.get('communities', []))
-                        missing_ids = [cid for cid in community_ids if cid not in user_comms]
-                        if missing_ids:
-                            await db._run_sync(
-                                db.client.collection('users').document(user_id).update,
-                                {'communities': firestore.ArrayUnion(missing_ids)}
-                            )
-                        
-                        fetched = await db.get_documents_batch('communities', community_ids)
-                        for comm in fetched:
-                            if comm and comm.get('type') == target_type:
-                                community_id = comm.get('id')
-                                break
-                    except Exception as ex:
-                        logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in get: {ex}")
+            user_loc = user.get('location') or user.get('home_location')
+            if user_loc:
+                from services.firebase_community_service import FirebaseCommunityService
+                try:
+                    community_ids = await FirebaseCommunityService.join_location_communities(user_id, user_loc)
+                    # Sync back to user document if missing
+                    user_comms = set(user.get('communities', []))
+                    missing_ids = [cid for cid in community_ids if cid not in user_comms]
+                    if missing_ids:
+                        await db._run_sync(
+                            db.client.collection('users').document(user_id).update,
+                            {'communities': firestore.ArrayUnion(missing_ids)}
+                        )
+
+                    fetched = await db.get_documents_batch('communities', community_ids)
+                    for comm in fetched:
+                        if comm and comm.get('type') == target_type:
+                            community_id = comm.get('id')
+                            break
+                except Exception as ex:
+                    logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in get: {ex}")
 
         chat_id = FirebaseMessagingService._get_chat_id('community', community_id, subgroup_type)
         
-        parsed_timestamp = None
-        if before_timestamp:
+        # 1. Initial Open (before_timestamp is None) -> Serve from In-Memory Circular Buffer (0 DB Reads)
+        if not before_timestamp:
+            if chat_id in FirebaseMessagingService.COMMUNITY_BUFFERS and len(FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id]) > 0:
+                buffered = list(FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id])
+                messages = buffered[-limit:] if len(buffered) > limit else buffered
+                logger.debug(f"⚡ In-Memory Buffer HIT for {chat_id} ({len(messages)} msgs, 0 DB reads)")
+            else:
+                # Cold Start Warm-Up: Fetch last 50 messages from Firestore into memory
+                messages = await db.get_chat_messages(chat_id, 50)
+                FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id] = deque(messages, maxlen=50)
+                messages = messages[-limit:] if len(messages) > limit else messages
+                logger.info(f"❄️ Cold Start Warm-Up for {chat_id}: Populated buffer with {len(FirebaseMessagingService.COMMUNITY_BUFFERS[chat_id])} msgs")
+        else:
+            # 2. Historical Pagination (before_timestamp provided) -> Query Firestore
+            parsed_timestamp = None
             try:
                 ts_str = before_timestamp.replace('Z', '+00:00')
                 parsed_timestamp = datetime.fromisoformat(ts_str)
@@ -289,7 +325,7 @@ class FirebaseMessagingService:
                 except Exception as e:
                     logger.warning(f"Failed to parse before_timestamp: {before_timestamp}. Error: {e}")
                     
-        messages = await db.get_chat_messages(chat_id, limit, parsed_timestamp)
+            messages = await db.get_chat_messages(chat_id, limit, parsed_timestamp)
         
         # Dynamically decorate with current sender verification status
         if messages:

@@ -1,7 +1,6 @@
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from middleware.security import verify_token
 from config.database import get_db

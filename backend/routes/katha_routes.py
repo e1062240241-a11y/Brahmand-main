@@ -144,7 +144,7 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
                 if resp.status not in (200, 201):
                     resp_text = await resp.text()
                     logger.error(f"Bunny storage upload failed: status={resp.status}, path={object_path}, resp={resp_text}")
-                    raise HTTPException(status_code=500, detail=f"Bunny.net streaming upload failed: {resp.status}")
+                    raise HTTPException(status_code=500, detail="Bunny.net streaming upload failed")
 
     return f"{BUNNY_PULL_ZONE_URL}/{object_path}"
 

@@ -9288,7 +9288,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
                     logger.warning(f"Sandbox returned status {resp.status_code}, falling back to mock Aadhaar OTP generation")
                     use_mock = True
                 else:
-                    raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP generation failed")
+                    raise HTTPException(status_code=resp.status_code, detail="Sandbox OTP generation failed")
             else:
                 reference_id = (
                     resp_data.get("reference_id")
@@ -9370,7 +9370,7 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
                     logger.warning(f"Sandbox subscription status {resp.status_code}, falling back to mock verify")
                     use_mock = True
                 else:
-                    raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP verification failed")
+                    raise HTTPException(status_code=resp.status_code, detail="Sandbox OTP verification failed")
         except Exception as exc:
             exc_str = str(exc)
             if "expired" in exc_str.lower() or "401" in exc_str or "unauthorized" in exc_str.lower():
@@ -12495,7 +12495,7 @@ async def extract_kyc_text_from_image(
             import asyncio; resp = await asyncio.to_thread(requests.post, request_url, json=json_payload, timeout=30)
 
             if resp.status_code != 200:
-                raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
+                raise HTTPException(status_code=502, detail="Cloud Vision REST failed")
 
             data = resp.json()
             vision_resp = data.get('responses', [{}])[0]
@@ -12624,7 +12624,7 @@ async def extract_user_kyc_text_from_image(
             import asyncio; resp = await asyncio.to_thread(requests.post, request_url, json=json_payload, timeout=30)
 
             if resp.status_code != 200:
-                raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
+                raise HTTPException(status_code=502, detail="Cloud Vision REST failed")
 
             data = resp.json()
             vision_resp = data.get('responses', [{}])[0]
@@ -12748,18 +12748,11 @@ async def _get_sandbox_headers() -> dict:
                 raise HTTPException(status_code=500, detail="An internal server error occurred")
 
             if auth_resp.status_code >= 400:
-                raise HTTPException(status_code=502, detail={
-                    "message": "Sandbox authenticate returned error",
-                    "status_code": auth_resp.status_code,
-                    "response": auth_data,
-                })
+                raise HTTPException(status_code=502, detail="Sandbox authenticate returned error")
 
             access_token = (auth_data.get("data") or {}).get("access_token")
             if not access_token:
-                raise HTTPException(status_code=502, detail={
-                    "message": "Sandbox authenticate did not return access_token",
-                    "response": auth_data,
-                })
+                raise HTTPException(status_code=502, detail="Sandbox authenticate did not return access_token")
 
             auth_header = access_token
             _sandbox_auth_cache["token"] = access_token
@@ -12822,7 +12815,7 @@ async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), to
                     logger.warning("Sandbox subscription expired, falling back to mock vendor Aadhaar OTP generation")
                     use_mock = True
                 else:
-                    raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP generation failed")
+                    raise HTTPException(status_code=resp.status_code, detail="Sandbox OTP generation failed")
             else:
                 reference_id = (
                     resp_data.get("reference_id")
@@ -12894,7 +12887,7 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
                     logger.warning("Sandbox subscription expired, falling back to mock verify")
                     use_mock = True
                 else:
-                    raise HTTPException(status_code=resp.status_code, detail=resp_data or "Sandbox OTP verification failed")
+                    raise HTTPException(status_code=resp.status_code, detail="Sandbox OTP verification failed")
         except Exception as exc:
             exc_str = str(exc)
             if "expired" in exc_str.lower() or "401" in exc_str or "unauthorized" in exc_str.lower():
