@@ -10617,24 +10617,36 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 # =================== NOTIFICATIONS ===================
 
 @api_router.get("/notifications")
-async def get_notifications(token_data: dict = Depends(verify_token)):
+async def get_notifications(
+    limit: int = Query(30, ge=1, le=100),
+    cursor: Optional[str] = Query(None),
+    token_data: dict = Depends(verify_token)
+):
     user_id = token_data["user_id"]
     from services.firebase_notification_service import FirebaseNotificationService
     try:
-        notifications = await FirebaseNotificationService.get_user_notifications(user_id, limit=50)
+        res = await FirebaseNotificationService.get_user_notifications(user_id, limit=limit, cursor=cursor)
+        # Ensure strict user isolation on items
+        strict_items = [n for n in (res.get("items") or []) if str(n.get("user_id", "")) == str(user_id)]
+        res["items"] = strict_items
+        res["notifications"] = strict_items
+        return res
     except Exception as e:
-        logger.warning(f"Failed to query notifications via service: {e}. Falling back to unsorted local query.")
+        logger.warning(f"Failed to query hydrated notifications via service: {e}. Falling back to basic local query.")
         db = await get_db()
-        notifications = await db.query_documents(
+        raw_docs = await db.query_documents(
             'notifications', 
             filters=[('user_id', '==', user_id)], 
-            limit=50
+            limit=limit
         )
-        notifications.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-    
-    # Strictly guarantee that returned notifications belong ONLY to current authenticated user_id
-    strict_notifications = [n for n in (notifications or []) if str(n.get('user_id', '')) == str(user_id)]
-    return strict_notifications
+        strict_docs = [n for n in (raw_docs or []) if str(n.get('user_id', '')) == str(user_id)]
+        strict_docs.sort(key=lambda x: str(x.get('updated_at') or x.get('created_at') or ''), reverse=True)
+        return {
+            "items": strict_docs,
+            "notifications": strict_docs,
+            "unread_count": sum(1 for d in strict_docs if not d.get("is_read")),
+            "next_cursor": None
+        }
 
 
 @api_router.get("/notifications/unread-count")
