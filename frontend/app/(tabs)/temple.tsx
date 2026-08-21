@@ -448,9 +448,12 @@ export default function TempleScreen() {
       }
 
       if (selectedLocations.size > 0) {
-        filteredRecords = filteredRecords.filter((t: any) => 
-          Array.from(selectedLocations).some(loc => (t.location || '').toLowerCase().includes(loc.toLowerCase()))
-        );
+        // OPT: Lift Array conversion and .toLowerCase() outside the O(N) loop to prevent redundant allocations and CPU overhead
+        const lowerSelectedLocs = Array.from(selectedLocations).map(loc => loc.toLowerCase());
+        filteredRecords = filteredRecords.filter((t: any) => {
+          const tLocLower = (t.location || '').toLowerCase();
+          return lowerSelectedLocs.some(loc => tLocLower.includes(loc));
+        });
       }
 
       // STEP 5: Paginate

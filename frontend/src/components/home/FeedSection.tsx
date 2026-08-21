@@ -297,7 +297,11 @@ const FeedSection: React.FC<FeedSectionProps> = ({
           {loadingFeed ? (
             <ActivityIndicator size="large" color="#FF8D57" />
           ) : (
-            <Text style={styles.emptyFeedText}>No posts yet</Text>
+            <Text style={styles.emptyFeedText}>
+              {activeTab === 'following'
+                ? "You aren't following anyone yet"
+                : "No posts yet"}
+            </Text>
           )}
         </View>
       );

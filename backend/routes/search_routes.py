@@ -1,5 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, Query
 from middleware.security import verify_token
 from config.firestore_db import FirestoreDB
 from utils.search_algo import rank_search_results

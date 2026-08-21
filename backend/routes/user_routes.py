@@ -2,10 +2,10 @@
 import logging
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from models.schemas import (
     UserUpdate, ProfileUpdate, LocationSetup, 
-    DualLocationSetup, ReverseGeocodeRequest
+    DualLocationSetup
 )
 from services.firebase_user_service import FirebaseUserService as UserService
 from middleware.security import verify_token

@@ -367,19 +367,30 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [subCategoryInput, setSubCategoryInput] = useState('');
   const [showSubCategoryDropdown, setShowSubCategoryDropdown] = useState(false);
 
-  const filteredCategories = categoryInput.trim()
-    ? DEFAULT_CATEGORIES.filter(c => 
-        c.toLowerCase().includes(categoryInput.toLowerCase()) && 
-        !categories.includes(c)
-      )
-    : DEFAULT_CATEGORIES.filter(c => !categories.includes(c));
+  // OPT: Memoize and use Set for O(1) membership check instead of array .includes()
+  // This reduces complexity from O(N*M) to O(N) when filtering categories.
+  const filteredCategories = React.useMemo(() => {
+    const categorySet = new Set(categories);
+    const input = categoryInput.trim().toLowerCase();
+    if (input) {
+      return DEFAULT_CATEGORIES.filter(c =>
+        c.toLowerCase().includes(input) && !categorySet.has(c)
+      );
+    }
+    return DEFAULT_CATEGORIES.filter(c => !categorySet.has(c));
+  }, [categories, categoryInput]);
 
-  const filteredSubCategories = subCategoryInput.trim()
-    ? DEFAULT_SUBCATEGORIES.filter(c => 
-        c.toLowerCase().includes(subCategoryInput.toLowerCase()) && 
-        !subCategories.includes(c)
-      )
-    : DEFAULT_SUBCATEGORIES.filter(c => !subCategories.includes(c));
+  // OPT: Memoize and use Set for O(1) membership check for subcategories.
+  const filteredSubCategories = React.useMemo(() => {
+    const subCategorySet = new Set(subCategories);
+    const input = subCategoryInput.trim().toLowerCase();
+    if (input) {
+      return DEFAULT_SUBCATEGORIES.filter(c =>
+        c.toLowerCase().includes(input) && !subCategorySet.has(c)
+      );
+    }
+    return DEFAULT_SUBCATEGORIES.filter(c => !subCategorySet.has(c));
+  }, [subCategories, subCategoryInput]);
 
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [mapRegion, setMapRegion] = useState<any>(null);
@@ -1295,14 +1306,20 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Categories FlatList */}
             <FlatList
-              data={[
-                ...(customCategoryQuery.trim() && !ALL_FIGMA_CATEGORIES.some(c => c.toLowerCase() === customCategoryQuery.trim().toLowerCase())
-                  ? [`ADD_CUSTOM:${customCategoryQuery.trim()}`]
-                  : []),
-                ...(customCategoryQuery.trim()
-                  ? ALL_FIGMA_CATEGORIES.filter(c => c.toLowerCase().includes(customCategoryQuery.toLowerCase()))
-                  : ALL_FIGMA_CATEGORIES)
-              ]}
+              // OPT: Use useMemo for list data to preserve referential equality and prevent re-renders
+              data={React.useMemo(() => {
+                const input = customCategoryQuery.trim().toLowerCase();
+                const dataArr = [];
+                if (input && !ALL_FIGMA_CATEGORIES.some(c => c.toLowerCase() === input)) {
+                  dataArr.push(`ADD_CUSTOM:${customCategoryQuery.trim()}`);
+                }
+                if (input) {
+                  dataArr.push(...ALL_FIGMA_CATEGORIES.filter(c => c.toLowerCase().includes(input)));
+                } else {
+                  dataArr.push(...ALL_FIGMA_CATEGORIES);
+                }
+                return dataArr;
+              }, [customCategoryQuery])}
               keyExtractor={(item) => item}
               contentContainerStyle={styles.selectorListContent}
               renderItem={({ item }) => {

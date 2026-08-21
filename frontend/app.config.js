@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { withInfoPlist } = require('@expo/config-plugins');
+const { withInfoPlist } = require('expo/config-plugins');
 
 // Dynamically generate google-services.json and GoogleService-Info.plist at build time
 const firebaseApiKeyAndroid = process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || 'AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE';

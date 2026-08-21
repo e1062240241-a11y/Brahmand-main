@@ -157,7 +157,9 @@
           "android": {
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "ndkVersion": "28.0.12916984"
+            "ndkVersion": "28.0.12916984",
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],

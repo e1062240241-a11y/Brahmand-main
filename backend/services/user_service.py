@@ -1,10 +1,10 @@
 """User Service"""
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 import aiohttp
 
-from config.database import get_database, get_redis
+from config.database import get_database
 from utils.helpers import serialize_doc, SUPPORTED_LANGUAGES
 from utils.cache import cache_manager
 from services.firebase_community_service import FirebaseCommunityService as CommunityService

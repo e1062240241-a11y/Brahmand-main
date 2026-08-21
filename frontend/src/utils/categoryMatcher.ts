@@ -1,3 +1,43 @@
+// OPT: Extract keywords array outside function scope to prevent memory reallocation
+const CATEGORY_KEYWORDS = [
+  'gym', 'fitness', 'yoga', 'workout',
+  'bakery', 'cake', 'sweets', 'baker',
+  'pandit', 'panditji', 'pooja', 'purohit',
+  'electrician', 'electrical', 'electric',
+  'plumber', 'plumbing',
+  'doctor', 'clinic', 'hospital', 'medical', 'pharmacy',
+  'carpenter', 'carpentry', 'woodwork',
+  'salon', 'parlour', 'barber', 'beauty', 'haircut',
+  'grocery', 'kirana', 'general store', 'supermarket',
+  'dairy', 'milk',
+  'astrologer', 'astrology', 'vastu', 'jyotish',
+  'restaurant', 'catering', 'cafe', 'food',
+  'mechanic', 'garage', 'repair',
+  'tailor', 'boutique',
+  'painter', 'painting',
+  'cleaner', 'maid', 'cook'
+];
+
+// OPT: Extract static group dictionary outside function to prevent reallocation on every call
+// Synonym/Stem groups for flexible matching
+const CATEGORY_GROUPS: string[][] = [
+  ['pandit', 'panditji', 'pandits', 'pooja', 'pooja samagri', 'purohit', 'pandit services'],
+  ['astrologer', 'astrology', 'astrologers', 'vastu', 'jyotish'],
+  ['electrician', 'electrical', 'electronics', 'electricians', 'electric repair'],
+  ['carpenter', 'carpentry', 'woodwork', 'carpenters'],
+  ['plumber', 'plumbing', 'plumbers', 'pipe repair'],
+  ['general store', 'grocery', 'sweets', 'kirana', 'store', 'departmental store', 'supermarket'],
+  ['dairy', 'milk', 'dairy products'],
+  ['salon', 'parlour', 'barber', 'beauty', 'hair', 'haircut'],
+  ['gym', 'fitness', 'yoga', 'gym trainer', 'yoga trainer', 'workout', 'health club'],
+  ['restaurant', 'catering', 'food', 'bakery', 'cafe', 'baker', 'cake', 'pastry'],
+  ['doctor', 'clinic', 'hospital', 'medical', 'physician', 'pharmacy'],
+  ['mechanic', 'auto repair', 'garage', 'bike repair', 'car repair'],
+  ['painter', 'painting', 'wall painter'],
+  ['tailor', 'boutique', 'stitching'],
+  ['cleaner', 'housemaid', 'maid', 'cleaning', 'cook'],
+];
+
 export const isCategoryMatch = (vendorCat: string, targetCat: string): boolean => {
   if (!vendorCat || !targetCat) return false;
   const v = vendorCat.trim().toLowerCase();
@@ -7,26 +47,7 @@ export const isCategoryMatch = (vendorCat: string, targetCat: string): boolean =
   // Direct match or substring in either direction
   if (v === t || v.includes(t) || t.includes(v)) return true;
 
-  // Synonym/Stem groups for flexible matching
-  const groups: string[][] = [
-    ['pandit', 'panditji', 'pandits', 'pooja', 'pooja samagri', 'purohit', 'pandit services'],
-    ['astrologer', 'astrology', 'astrologers', 'vastu', 'jyotish'],
-    ['electrician', 'electrical', 'electronics', 'electricians', 'electric repair'],
-    ['carpenter', 'carpentry', 'woodwork', 'carpenters'],
-    ['plumber', 'plumbing', 'plumbers', 'pipe repair'],
-    ['general store', 'grocery', 'sweets', 'kirana', 'store', 'departmental store', 'supermarket'],
-    ['dairy', 'milk', 'dairy products'],
-    ['salon', 'parlour', 'barber', 'beauty', 'hair', 'haircut'],
-    ['gym', 'fitness', 'yoga', 'gym trainer', 'yoga trainer', 'workout', 'health club'],
-    ['restaurant', 'catering', 'food', 'bakery', 'cafe', 'baker', 'cake', 'pastry'],
-    ['doctor', 'clinic', 'hospital', 'medical', 'physician', 'pharmacy'],
-    ['mechanic', 'auto repair', 'garage', 'bike repair', 'car repair'],
-    ['painter', 'painting', 'wall painter'],
-    ['tailor', 'boutique', 'stitching'],
-    ['cleaner', 'housemaid', 'maid', 'cleaning', 'cook'],
-  ];
-
-  return groups.some((group) =>
+  return CATEGORY_GROUPS.some((group) =>
     group.some((item) => v.includes(item) || item.includes(v)) &&
     group.some((item) => t.includes(item) || item.includes(t))
   );
@@ -36,26 +57,7 @@ export const isCategoryQuery = (query: string, allCategories?: string[]): boolea
   if (!query || !query.trim()) return false;
   const q = query.trim().toLowerCase();
 
-  const categoryKeywords = [
-    'gym', 'fitness', 'yoga', 'workout',
-    'bakery', 'cake', 'sweets', 'baker',
-    'pandit', 'panditji', 'pooja', 'purohit',
-    'electrician', 'electrical', 'electric',
-    'plumber', 'plumbing',
-    'doctor', 'clinic', 'hospital', 'medical', 'pharmacy',
-    'carpenter', 'carpentry', 'woodwork',
-    'salon', 'parlour', 'barber', 'beauty', 'haircut',
-    'grocery', 'kirana', 'general store', 'supermarket',
-    'dairy', 'milk',
-    'astrologer', 'astrology', 'vastu', 'jyotish',
-    'restaurant', 'catering', 'cafe', 'food',
-    'mechanic', 'garage', 'repair',
-    'tailor', 'boutique',
-    'painter', 'painting',
-    'cleaner', 'maid', 'cook'
-  ];
-
-  if (categoryKeywords.some((k) => q === k || q.includes(k) || k.includes(q))) {
+  if (CATEGORY_KEYWORDS.some((k) => q === k || q.includes(k) || k.includes(q))) {
     return true;
   }
 

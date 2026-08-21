@@ -807,6 +807,8 @@ export default function CommunityDetailScreen() {
     return cachedData?.community || null;
   });
   const [activeTab, setActiveTab] = useState('Feed');
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockReason, setLockReason] = useState('');
 
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
@@ -980,16 +982,27 @@ export default function CommunityDetailScreen() {
 
   const ensureSocketRooms = useCallback((primarySubgroup?: string) => {
     if (Platform.OS === 'web') return;
-    const rooms: string[] = [];
-    if (primarySubgroup) rooms.push(`community_${id}_${primarySubgroup}`);
-    if (stateCommunityIdRef.current) rooms.push(`community_${stateCommunityIdRef.current}_state`);
-    if (countryCommunityIdRef.current) rooms.push(`community_${countryCommunityIdRef.current}_national`);
-    rooms.forEach((room) => {
-      if (!joinedSocketRoomsRef.current.has(room)) {
-        joinedSocketRoomsRef.current.add(room);
-        socketService.joinRoom(room).catch(() => {});
+    let targetCommId = id as string;
+    if (primarySubgroup === 'state' && stateCommunityIdRef.current) {
+      targetCommId = stateCommunityIdRef.current;
+    } else if ((primarySubgroup === 'national' || primarySubgroup === 'country') && countryCommunityIdRef.current) {
+      targetCommId = countryCommunityIdRef.current;
+    }
+
+    const activeSubgroupRoom = primarySubgroup ? `community_${targetCommId}_${primarySubgroup}` : `community_${targetCommId}_city`;
+
+    // Leave any socket rooms that are no longer the active room
+    joinedSocketRoomsRef.current.forEach((room) => {
+      if (room !== activeSubgroupRoom) {
+        socketService.leaveRoom(room);
+        joinedSocketRoomsRef.current.delete(room);
       }
     });
+
+    if (!joinedSocketRoomsRef.current.has(activeSubgroupRoom)) {
+      joinedSocketRoomsRef.current.add(activeSubgroupRoom);
+      socketService.joinRoom(activeSubgroupRoom).catch(() => {});
+    }
   }, [id]);
 
   useEffect(() => {
@@ -2094,12 +2107,19 @@ export default function CommunityDetailScreen() {
 
       ensureSocketRooms(currentSubgroup);
 
+      // Resolve proper target community ID for state/national subgroups
+      let targetFetchCommId = id as string;
+      if (currentSubgroup === 'state' && stateCommunityId) {
+        targetFetchCommId = stateCommunityId;
+      } else if ((currentSubgroup === 'national' || currentSubgroup === 'country') && countryCommunityId) {
+        targetFetchCommId = countryCommunityId;
+      }
+
+      // ⚡ 1. Lazy-Loading Active Tab Strategy: Fetch ONLY active subgroup messages instead of 3 parallel calls
       const promises: Promise<any>[] = [
-        getCommunityRequests({ community_id: id as string }).catch(() => ({ data: [] })),
+        getCommunityRequests({ community_id: targetFetchCommId }).catch(() => ({ data: [] })),
         getEvents().catch(() => ({ data: [] })),
-        getCommunityMessages(id as string, currentSubgroup, 15).catch(() => ({ data: [] })),
-        stateCommunityId ? getCommunityMessages(stateCommunityId, 'state', 15).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-        countryCommunityId ? getCommunityMessages(countryCommunityId, 'national', 15).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        getCommunityMessages(targetFetchCommId, currentSubgroup, 15).catch(() => ({ data: [] })),
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
@@ -2112,10 +2132,19 @@ export default function CommunityDetailScreen() {
       const reqResponse = results[0];
       const eventResponse = results[1];
       const msgResponse = results[2];
-      const stateMsgResponse = results[3];
-      const nationalMsgResponse = results[4];
-      const festResponse = results[5];
-      const globalReqResponse = isLocalCommunity ? results[6] : null;
+      const festResponse = results[3];
+      const globalReqResponse = isLocalCommunity ? results[4] : null;
+
+      // Handle Verification Guard Gate Locked Payload ({ locked: true })
+      if (msgResponse && msgResponse.data && msgResponse.data.locked) {
+        setIsLocked(true);
+        setLockReason(msgResponse.data.reason || 'Verification required to access discussions.');
+      } else {
+        setIsLocked(false);
+        setLockReason('');
+      }
+
+      const rawMsgData = msgResponse?.data?.messages || (Array.isArray(msgResponse?.data) ? msgResponse.data : []);
 
       console.log('[Community] Requests fetched:', reqResponse.data?.length);
       let nextRequests = reqResponse.data || [];
@@ -2139,7 +2168,7 @@ export default function CommunityDetailScreen() {
       }
 
       // Map API messages to Twitter format
-      const formattedMsgs = (msgResponse.data || []).map((msg: any) => ({
+      const formattedMsgs = rawMsgData.map((msg: any) => ({
         id: msg.id || Math.random().toString(),
         user: {
           name: msg.sender_name || 'Anonymous',
@@ -2162,66 +2191,6 @@ export default function CommunityDetailScreen() {
         isCommunityMsg: true,
         subgroupType: currentSubgroup,
         communityId: id as string,
-        contact: msg.contact,
-        sevaDetails: msg.seva_details,
-        location: msg.location,
-        start_time: msg.start_time,
-      }));
-
-      // Map State API messages
-      const formattedStateMsgs = (stateMsgResponse?.data || []).map((msg: any) => ({
-        id: msg.id || Math.random().toString(),
-        user: {
-          name: msg.sender_name || 'Anonymous',
-          photo: msg.sender_photo,
-          isVerified: msg.is_verified || false,
-          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-        },
-        content: msg.content,
-        image: msg.media_url || msg.mediaUrl || msg.image,
-        timestamp: msg.created_at || 'Just now',
-        likes: msg.likes_count || 0,
-        comments: msg.comments_count || 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: false,
-        liked: (msg.liked_by || []).includes(user?.id),
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
-        sender_id: msg.sender_id,
-        isStateAnnouncement: true,
-        isCommunityMsg: true,
-        subgroupType: 'state',
-        communityId: stateCommunityId,
-        contact: msg.contact,
-        sevaDetails: msg.seva_details,
-        location: msg.location,
-        start_time: msg.start_time,
-      }));
-
-      // Map National API messages
-      const formattedNationalMsgs = (nationalMsgResponse?.data || []).map((msg: any) => ({
-        id: msg.id || Math.random().toString(),
-        user: {
-          name: msg.sender_name || 'Anonymous',
-          photo: msg.sender_photo,
-          isVerified: msg.is_verified || false,
-          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-        },
-        content: msg.content,
-        image: msg.media_url || msg.mediaUrl || msg.image,
-        timestamp: msg.created_at || 'Just now',
-        likes: msg.likes_count || 0,
-        comments: msg.comments_count || 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: false,
-        liked: (msg.liked_by || []).includes(user?.id),
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
-        sender_id: msg.sender_id,
-        isNationalAnnouncement: true,
-        isCommunityMsg: true,
-        subgroupType: 'national',
-        communityId: countryCommunityId,
         contact: msg.contact,
         sevaDetails: msg.seva_details,
         location: msg.location,
@@ -4651,6 +4620,62 @@ export default function CommunityDetailScreen() {
           if (activeTab === 'Events') {
             return renderEventItem({ item });
           }
+
+          if (isLocked) {
+            return (
+              <View style={{
+                margin: 20,
+                padding: 24,
+                backgroundColor: '#FFF7ED',
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: '#FFEDD5',
+                alignItems: 'center',
+                shadowColor: '#EA580C',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.08,
+                shadowRadius: 10,
+                elevation: 3
+              }}>
+                <View style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: '#FFEDD5',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 12
+                }}>
+                  <Ionicons name="lock-closed" size={28} color="#EA580C" />
+                </View>
+                <Text style={{ fontSize: 17, fontWeight: '800', color: '#9A3412', textAlign: 'center', marginBottom: 6, fontFamily: FONTS.bold }}>
+                  Group Discussions Locked
+                </Text>
+                <Text style={{ fontSize: 13, color: '#C2410C', textAlign: 'center', lineHeight: 20, marginBottom: 16, fontFamily: FONTS.regular }}>
+                  {lockReason || 'Personality Verification required to access State and National community discussions.'}
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#EA580C',
+                    paddingHorizontal: 20,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                  onPress={() => router.push('/kyc')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="shield-checkmark" size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700', fontFamily: FONTS.bold }}>
+                    Verify Profile to Unlock
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }
+
           return renderDiscussionItem({ item });
         }}
         onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}

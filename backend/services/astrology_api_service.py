@@ -397,7 +397,6 @@ class AstrologyApiService:
         tz: float = 5.5
     ) -> Dict[str, Any]:
         """Fetch general nakshatra report, planetary positions, D1/D9 charts, doshas and remedies using AstrologyAPI.com."""
-        import zoneinfo
         import re
 
         cache_key = f"astrology_api:kundli:{dob_str}:{tob_str}:{round(lat, 3)}:{round(lon, 3)}:{tz}"
