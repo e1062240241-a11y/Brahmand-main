@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { FlashList } from '@shopify/flash-list';
@@ -188,6 +189,42 @@ export default function ProfileScreen() {
   const LIMIT = 15;
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const settingsSheetAnim = useRef(new Animated.Value(600)).current;
+
+  const openSettingsModal = useCallback(() => {
+    setShowSettingsModal(true);
+    settingsSheetAnim.setValue(600);
+    Animated.spring(settingsSheetAnim, {
+      toValue: 0,
+      damping: 24,
+      mass: 0.8,
+      stiffness: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [settingsSheetAnim]);
+
+  const closeSettingsModal = useCallback((onFinished?: () => void) => {
+    Animated.timing(settingsSheetAnim, {
+      toValue: 600,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowSettingsModal(false);
+      if (onFinished) onFinished();
+    });
+  }, [settingsSheetAnim]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (showSettingsModal) {
+        NavigationBar.setBackgroundColorAsync('#FFFFFF').catch(() => {});
+        NavigationBar.setButtonStyleAsync('dark').catch(() => {});
+      } else {
+        NavigationBar.setBackgroundColorAsync('#000000').catch(() => {});
+        NavigationBar.setButtonStyleAsync('light').catch(() => {});
+      }
+    }
+  }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
@@ -243,7 +280,7 @@ export default function ProfileScreen() {
         return true;
       }
       if (showSettingsModal) {
-        setShowSettingsModal(false);
+        closeSettingsModal();
         return true;
       }
       if (postModalVisible) {
@@ -792,49 +829,52 @@ export default function ProfileScreen() {
 
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
-      setShowSettingsModal(false);
-      setTimeout(() => {
-      }, Platform.OS === 'ios' ? 400 : 50);
+      closeSettingsModal();
       return;
     }
 
     if (item.id === 'language') {
-      setShowSettingsModal(false);
-      setTimeout(() => {
+      closeSettingsModal(() => {
         setShowLanguageModal(true);
-      }, Platform.OS === 'ios' ? 400 : 50);
+      });
       return;
     }
 
     if (item.action === 'logout') {
-      // Do not dismiss settings modal first, show the native confirmation prompt directly on top of it.
-      // This prevents the UIKit transition conflict that causes the sheet to auto-dismiss and freeze the app.
       handleLogout();
       return;
     }
 
-    setShowSettingsModal(false);
-    if (item.disabled) return;
-    if (item.id === 'personality_verification') {
-      setShowSettingsModal(false);
-      const status = user?.personality_verification_status;
-      if (status === 'pending' || status === 'approved') {
-        router.push('/profile/personality-verification-success');
-      } else {
-        router.push('/profile/personality-verification');
-      }
+    if (item.disabled) {
+      closeSettingsModal();
       return;
     }
+
+    if (item.id === 'personality_verification') {
+      closeSettingsModal(() => {
+        const status = user?.personality_verification_status;
+        if (status === 'pending' || status === 'approved') {
+          router.push('/profile/personality-verification-success');
+        } else {
+          router.push('/profile/personality-verification');
+        }
+      });
+      return;
+    }
+
     if (item.route) {
-      setShowSettingsModal(false);
-      router.push(item.route as any);
+      closeSettingsModal(() => {
+        router.push(item.route as any);
+      });
+    } else {
+      closeSettingsModal();
     }
   };
 
 
   const performLogout = async () => {
     // Dismiss the settings modal now that the user has confirmed logout
-    setShowSettingsModal(false);
+    closeSettingsModal();
     try {
       await logout();
       if (Platform.OS === 'web') {
@@ -859,7 +899,7 @@ export default function ProfileScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+          title: t('logoutConfirm'),
           message: t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
           options: [
             t('cancel'),
@@ -1434,17 +1474,22 @@ export default function ProfileScreen() {
         {/* Settings Menu Modal */}
         <Modal
           visible={showSettingsModal}
-          animationType="slide"
+          animationType="fade"
           transparent
           statusBarTranslucent={true}
-          onRequestClose={() => setShowSettingsModal(false)}
+          onRequestClose={() => closeSettingsModal()}
         >
           <View style={styles.settingsModalContainer}>
             <Pressable
               style={styles.settingsBackdrop}
-              onPress={() => setShowSettingsModal(false)}
+              onPress={() => closeSettingsModal()}
             />
-            <View style={styles.settingsSheet}>
+            <Animated.View
+              style={[
+                styles.settingsSheet,
+                { transform: [{ translateY: settingsSheetAnim }] }
+              ]}
+            >
               <View style={styles.settingsHeader}>
                 <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
                 <Pressable
@@ -1458,7 +1503,7 @@ export default function ProfileScreen() {
                     radius: 18,
                   }}
                   hitSlop={{ top: 24, bottom: 24, left: 24, right: 24 }}
-                  onPress={() => setShowSettingsModal(false)}
+                  onPress={() => closeSettingsModal()}
                 >
                   <Ionicons name="close" size={24} color="#000000" />
                 </Pressable>
@@ -1467,7 +1512,7 @@ export default function ProfileScreen() {
                 style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
                 bounces={false}
-                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 28) }}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 28) + 40 }}
               >
                 {SETTINGS_SECTIONS.map((section: any) => (
                   <View key={section.id} style={styles.settingsSection}>
@@ -1532,7 +1577,7 @@ export default function ProfileScreen() {
                   </View>
                 ))}
               </ScrollView>
-            </View>
+            </Animated.View>
           </View>
         </Modal>
 
@@ -1571,7 +1616,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
               hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
               style={styles.navRightBtn}
-              onPress={() => setShowSettingsModal(true)}
+              onPress={openSettingsModal}
             >
               <View style={{ width: 22, height: 18, justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
