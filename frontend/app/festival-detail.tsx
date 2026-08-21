@@ -248,30 +248,6 @@ const FestivalDetailPage = () => {
             )
           }
         />
-
-        {/* Brahmand App Watermark Branding Banner */}
-        <TouchableOpacity
-          style={styles.watermarkContainer}
-          activeOpacity={0.8}
-          onPress={() => Linking.openURL('https://brahmand.app/download')}
-        >
-          <View style={styles.watermarkLine} />
-          <View style={styles.watermarkContent}>
-            <View style={styles.watermarkLogoRow}>
-              <View style={styles.watermarkIconBadge}>
-                <Text style={styles.watermarkOm}>🕉</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.watermarkTitle}>Brahmand App</Text>
-                <Text style={styles.watermarkSubtitle}>Your Gateway to Sanatan Heritage</Text>
-              </View>
-              <View style={styles.watermarkDownloadButton}>
-                <Text style={styles.watermarkDownloadText}>Download ➔</Text>
-              </View>
-            </View>
-            <Text style={styles.watermarkTagline}>ब्रह्माण्ड • Discover Divine Festivals • Tap to Download</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -327,74 +303,6 @@ const styles = StyleSheet.create({
   },
   notificationButton: {
     padding: SPACING.xs,
-  },
-  watermarkContainer: {
-    marginHorizontal: SPACING.md,
-    marginTop: -8,
-    marginBottom: SPACING.md,
-    paddingTop: 8,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFDF9',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-  },
-  watermarkLine: {
-    height: 1,
-    backgroundColor: 'rgba(212, 175, 55, 0.25)',
-    marginBottom: 12,
-  },
-  watermarkContent: {
-    flexDirection: 'column',
-    gap: 6,
-  },
-  watermarkLogoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  watermarkIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#D4AF37',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  watermarkOm: {
-    fontSize: 18,
-    color: '#B45309',
-  },
-  watermarkTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#78350F',
-    letterSpacing: -0.3,
-  },
-  watermarkSubtitle: {
-    fontSize: 11,
-    color: '#92400E',
-    fontWeight: '500',
-  },
-  watermarkTagline: {
-    fontSize: 11,
-    color: '#B45309',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  watermarkDownloadButton: {
-    backgroundColor: '#D4AF37',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  watermarkDownloadText: {
-    color: '#78350F',
-    fontSize: 11,
-    fontWeight: '700',
   },
 });
 

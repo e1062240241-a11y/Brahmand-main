@@ -96,6 +96,97 @@ export const DARSHAN_DETAILS_RULES: DarshanDetailsRule[] = [
     },
   },
   {
+    id: 'kainchi_dham',
+    condition: { any: ['kainchi dham', 'neem karoli baba ashram', 'kainchi ashram', 'neem karoli baba'] },
+    darshan: {
+      opening: '6:00 AM',
+      closing: '8:00 PM',
+      generalDarshan: '6:00 AM – 8:00 PM (Summer: 6:00 AM – 8:00 PM, Winter: 7:00 AM – 7:00 PM)',
+      vipDarshan: 'General queue only; calm, disciplined entry for all devotees',
+      aartis: {
+        'Morning Kakad Aarti': '6:45 AM',
+        'Evening Aarti': '6:45 PM',
+      },
+    },
+  },
+  {
+    id: 'prasanthi_nilayam',
+    condition: { any: ['prasanthi nilayam', 'sathya sai baba ashram', 'puttaparthi ashram', 'puttaparthi sai baba'] },
+    darshan: {
+      opening: '4:45 AM',
+      closing: '8:00 PM',
+      generalDarshan: '8:00 AM – 11:30 AM, 4:30 PM – 7:00 PM (Sai Kulwant Hall)',
+      vipDarshan: 'Seating arranged systematically in Sai Kulwant Hall; open access',
+      aartis: {
+        'Omkaram & Suprabhatam': '5:15 AM',
+        'Morning Bhajans': '9:00 AM',
+        'Evening Bhajans & Mangala Harathi': '5:15 PM – 6:00 PM',
+      },
+    },
+  },
+  {
+    id: 'swaminarayan_akshardham_delhi',
+    condition: { any: ['swaminarayan akshardham', 'akshardham delhi', 'delhi akshardham'] },
+    darshan: {
+      opening: '10:00 AM',
+      closing: '8:00 PM',
+      generalDarshan: '10:00 AM – 6:30 PM (Mondays Closed)',
+      vipDarshan: 'Exhibition & Water Show ticket counters available on-site',
+      aartis: {
+        'Morning Mandir Aarti': '10:00 AM',
+        'Evening Sandhya Aarti': '6:00 PM',
+        'Sahaj Anand Water Show': '7:15 PM',
+      },
+    },
+  },
+  {
+    id: 'matrimandir_auroville',
+    condition: { any: ['matrimandir', 'auroville matrimandir', 'auroville ashram'] },
+    darshan: {
+      opening: '9:00 AM',
+      closing: '5:00 PM',
+      generalDarshan: 'Viewing Point: 9:00 AM – 4:00 PM; Inner Chamber Meditation: 9:00 AM – 12:00 PM (Prior pass required)',
+      vipDarshan: 'Book Inner Chamber meditation pass in advance at Visitors Centre',
+      aartis: {
+        'Morning Silence Meditation': '9:00 AM',
+        'Concentration Session': '11:00 AM',
+        'Sunset Amphitheatre Silence': '5:00 PM',
+      },
+    },
+  },
+  {
+    id: 'iskcon_vrindavan',
+    condition: { any: ['iskcon vrindavan', 'krishna balaram mandir', 'vrindavan iskcon'] },
+    darshan: {
+      opening: '4:30 AM',
+      closing: '8:45 PM',
+      generalDarshan: '4:30 AM – 12:45 PM, 4:30 PM – 8:45 PM',
+      vipDarshan: 'Open general darshan; special seva bookings available at ISKCON office',
+      aartis: {
+        'Mangala Aarti': '4:30 AM',
+        'Tulsi Aarti': '5:00 AM',
+        'Darshan Aarti & Guru Puja': '7:15 AM',
+        'Raj Bhog Aarti': '12:00 PM',
+        'Sandhya Aarti (Gaura Aarti)': '6:30 PM',
+      },
+    },
+  },
+  {
+    id: 'art_of_living_bengaluru',
+    condition: { any: ['art of living', 'art of living international center', 'sri sri gurukul', 'art of living bengaluru'] },
+    darshan: {
+      opening: '6:00 AM',
+      closing: '9:00 PM',
+      generalDarshan: '6:00 AM – 9:00 PM (Campus tours 9:00 AM – 5:00 PM)',
+      vipDarshan: 'Register at Reception Desk / Information Center at main entry gate',
+      aartis: {
+        'Morning Yoga & Meditation': '6:30 AM',
+        'Guru Puja / Abhishekam': '9:00 AM',
+        'Evening Satsang & Wisdom Session': '6:30 PM – 8:30 PM',
+      },
+    },
+  },
+  {
     id: 'kashi-vishwanath',
     condition: { any: ['kashi', 'vishwanath', 'varanasi'] },
     darshan: {

@@ -95,6 +95,8 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'healing-parmarth-niketan-rishikesh': tImg('ParmarthNiketan.webp'),
   'healing-sri-aurobindo-ashram-puducherry': tImg('SriAurobindo.webp'),
   'sacred-belur-math-ramakrishna-mission': tImg('BelurMath.webp'),
+  'belur-math': tImg('BelurMath.webp'),
+  'dtrmucbaxr9v5gjfo2kb': tImg('BelurMath.webp'),
   'healing-sarnath-buddhist-monastery': tImg('sarnathvaranasi.webp'),
   'healing-sarnath-dhamek-stupa-monastery': tImg('sarnathvaranasi.webp'),
   'healing-sarnath-dhamek-stupa': tImg('sarnathvaranasi.webp'),
@@ -516,6 +518,8 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'sacred-vasukital': tImg('vasukital.webp'),
 
   // Direct mappings & aliases for dataset completeness
+  'sacred-birla-mandir-jaipur': tImg('Birla-Temple.webp'),
+  'sacred-vishnupad-temple-gaya': tImg('Vishnupad.webp'),
   'sree-vallabha-temple-thiruvalla': tImg('Sree_Vallaba.webp'),
   'sree-vallabha-temple-–-thiruvalla': tImg('Sree_Vallaba.webp'),
   'sree-vallabha-temple---thiruvalla': tImg('Sree_Vallaba.webp'),

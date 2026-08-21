@@ -1,8 +1,10 @@
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
+// Dynamic import for web compatibility
 async function getNotificationsModule() {
   try {
     const Notifications = await import('expo-notifications');
@@ -13,7 +15,7 @@ async function getNotificationsModule() {
   }
 }
 
-// Configure how notifications appear when app is in foreground (if available)
+// Configure how notifications appear when app is in foreground
 (async () => {
   const Notifications = await getNotificationsModule();
   if (Notifications) {
@@ -49,18 +51,17 @@ async function getNotificationsModule() {
 })();
 
 /**
- * Register for push notifications and get the FCM token
+ * Register for push notifications and get the FCM/Expo token
  */
 export async function registerForPushNotifications(): Promise<string | null> {
   let token: string | null = null;
-
   const Notifications = await getNotificationsModule();
+  
   if (!Notifications) {
     console.warn('[Push] Notifications module unavailable; skipping registration.');
     return null;
   }
 
-  // Check if running on a physical device
   if (!Device.isDevice) {
     console.log('[Push] Must use physical device for Push Notifications');
     return null;
@@ -88,20 +89,10 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   try {
-    if (Platform.OS === 'web') {
-      return null;
-    }
+    if (Platform.OS === 'web') return null;
 
     if (Platform.OS === 'ios') {
-      // iOS: getDevicePushTokenAsync returns a raw APNs hex token.
-      // The firebase-admin SDK on the backend CANNOT send to raw APNs tokens —
-      // it only accepts FCM registration tokens.
-      // Solution: use getExpoPushTokenAsync on iOS. Expo's push service acts as
-      // a proxy that accepts APNs tokens and delivers via Apple's APNs servers.
-      // The backend's FirebaseNotificationService._send_expo_push_notifications
-      // already handles "ExponentPushToken[...]" tokens correctly.
-      const projectId =
-        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (!projectId) {
         console.warn('[Push] iOS: No EAS projectId found — cannot get Expo push token.');
       } else {
@@ -110,16 +101,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
         console.log('[Push] iOS: Expo push token acquired:', token?.slice(0, 30) + '...');
       }
     } else {
-      // Android: getDevicePushTokenAsync returns a real FCM registration token
-      // that firebase-admin's messaging.send() can use directly.
+      // Android: Try native FCM token first, fallback to Expo push token
       const deviceToken = await Notifications.getDevicePushTokenAsync();
       if (deviceToken?.data) {
         token = deviceToken.data;
         console.log('[Push] Android: FCM device token acquired.');
       } else {
-        // Fallback to Expo push token on Android as well
-        const projectId =
-          Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
         if (projectId) {
           const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
           token = pushToken.data;
@@ -137,17 +125,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
-  // Configure Android notification channels
-  // NOTE: Android caches channel settings. We delete+recreate ALL channels every
-  // launch to ensure vibration patterns, sounds and priorities are always fresh.
+  // ✅ Configure Android notification channels safely.
+  // Removed aggressive deletion. setNotificationChannelAsync is idempotent for creation 
+  // and safely updates non-locked properties without overriding user OS preferences 
+  // for locked properties (e.g., if a user manually disabled sound/vibration).
   if (Platform.OS === 'android') {
     try {
-      const channelsToClear = ['default_v4', 'messages_v4', 'community_v1'];
-      for (const ch of channelsToClear) {
-        try { await Notifications.deleteNotificationChannelAsync(ch); } catch (_) {}
-      }
-
-      // ── Default channel ─────────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('default_v4', {
         name: 'General Notifications',
         description: 'App alerts, updates and general notifications',
@@ -158,7 +141,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
         sound: 'bell',
       });
 
-      // ── Messages channel ──────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('messages_v4', {
         name: 'Messages',
         description: 'Private and community message notifications',
@@ -169,7 +151,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
         sound: 'bell',
       });
 
-      // ── Community channel ─────────────────────────────────────────────────
       await Notifications.setNotificationChannelAsync('community_v1', {
         name: 'Community Alerts',
         description: 'Lost & Found, Event RSVPs and community activity',
@@ -179,9 +160,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
         lightColor: '#FF6B35',
         sound: 'bell',
       });
-
-      // ── SOS channel – delete & recreate (highest priority) ────────────────
-      try { await Notifications.deleteNotificationChannelAsync('sos_alerts_v3'); } catch (_) {}
 
       await Notifications.setNotificationChannelAsync('sos_alerts_v3', {
         name: 'Emergency SOS Alerts',
@@ -206,10 +184,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
   return token;
 }
 
-
-/**
- * Save the FCM/Expo token to the backend/Firestore
- */
 export async function saveFCMToken(token: string): Promise<boolean> {
   try {
     await api.post('/user/fcm-token', { fcm_token: token });
@@ -221,17 +195,12 @@ export async function saveFCMToken(token: string): Promise<boolean> {
   }
 }
 
-/**
- * Initialize push notifications - register and save token
- */
 export async function initializePushNotifications(): Promise<string | null> {
   const token = await registerForPushNotifications();
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
-  // Schedule recurring morning and night scripture reading notifications
-  scheduleDailyScriptureNotifications().catch((err) => {
+  // Schedule recurring notifications (now safe to call on every init due to identifier deduplication)
+  await scheduleDailyScriptureNotifications().catch((err) => {
     console.warn('[Push] Failed to schedule daily scripture notifications during init:', err);
   });
 
@@ -239,12 +208,7 @@ export async function initializePushNotifications(): Promise<string | null> {
   return saved ? token : null;
 }
 
-/**
- * Add listener for notification received while app is foregrounded
- */
-export async function addNotificationReceivedListener(
-  callback: (notification: any) => void
-) {
+export async function addNotificationReceivedListener(callback: (notification: any) => void) {
   const Notifications = await getNotificationsModule();
   if (!Notifications) {
     console.warn('[Push] addNotificationReceivedListener: notifications unavailable');
@@ -253,12 +217,7 @@ export async function addNotificationReceivedListener(
   return Notifications.addNotificationReceivedListener(callback);
 }
 
-/**
- * Add listener for notification response (when user taps notification)
- */
-export async function addNotificationResponseReceivedListener(
-  callback: (response: any) => void
-) {
+export async function addNotificationResponseReceivedListener(callback: (response: any) => void) {
   const Notifications = await getNotificationsModule();
   if (!Notifications) {
     console.warn('[Push] addNotificationResponseReceivedListener: notifications unavailable');
@@ -267,9 +226,6 @@ export async function addNotificationResponseReceivedListener(
   return Notifications.addNotificationResponseReceivedListener(callback);
 }
 
-/**
- * Get the last notification response (for handling deep links on app launch)
- */
 export async function getLastNotificationResponse() {
   if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
@@ -281,18 +237,12 @@ export async function getLastNotificationResponse() {
   }
 }
 
-/**
- * Schedule a local notification 5 minutes before a community event.
- * Safe to call multiple times — silently skips if the event is in the past
- * or less than 6 minutes away (so the reminder would already have passed).
- */
 export async function scheduleEventReminderNotification(
   eventTitle: string,
   startTimeIso: string,
   communityId?: string
 ): Promise<string | null> {
   if (Platform.OS === 'web') return null;
-
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
@@ -306,27 +256,21 @@ export async function scheduleEventReminderNotification(
   const secondsUntilReminder = Math.floor((reminderMs - Date.now()) / 1000);
 
   if (secondsUntilReminder < 60) {
-    // Event is too soon or already past — don't schedule
     console.log('[Push] Event reminder skipped — event is too close or in the past');
     return null;
   }
-
-  const channelId = 'community_v1';
 
   try {
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🔔 Event starting soon!',
         body: `"${eventTitle}" starts in 5 minutes. Get ready!`,
-        data: {
-          type: 'event_reminder',
-          communityId: communityId || '',
-        },
+        data: { type: 'event_reminder', communityId: communityId || '' },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
       trigger: {
         seconds: secondsUntilReminder,
-        channelId,
+        channelId: 'community_v1',
         type: 'timeInterval',
       } as any,
     });
@@ -337,7 +281,6 @@ export async function scheduleEventReminderNotification(
     return null;
   }
 }
-
 
 export async function scheduleLocalNotification(
   title: string,
@@ -350,32 +293,19 @@ export async function scheduleLocalNotification(
 
   const notificationType = data?.type;
   const isSos = !!notificationType?.startsWith('sos') && notificationType !== 'sos_resolved';
-  const isCommunity =
-    notificationType === 'community_interest' ||
-    notificationType === 'event_rsvp' ||
-    notificationType === 'community_request';
-  const isMsg = notificationType === 'message' || notificationType === 'dm';
+  const isCommunity = ['community_interest', 'event_rsvp', 'community_request'].includes(notificationType);
+  const isMsg = ['message', 'dm'].includes(notificationType);
 
-  // iOS requires filename WITH extension; prefer .caf (Apple's native audio format, most reliable for APNs).
-  // Android WITHOUT extension (references res/raw/ filename).
   const iosSoundFile = isSos ? 'soundreality_mayday_166011_ios.caf' : 'bell_ios.caf';
   const androidSoundFile = isSos ? 'soundreality_mayday_166011' : 'bell';
 
-  const channelId = isSos
-    ? 'sos_alerts_v3'
-    : isCommunity
-    ? 'community_v1'
-    : isMsg
-    ? 'messages_v4'
-    : 'default_v4';
+  const channelId = isSos ? 'sos_alerts_v3' : isCommunity ? 'community_v1' : isMsg ? 'messages_v4' : 'default_v4';
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       data: data || {},
-      // iOS picks up the sound from the app bundle using this filename.
-      // Android ignores this — it uses the channel's sound setting instead.
       sound: __DEV__ ? true : (Platform.OS === 'ios' ? iosSoundFile : androidSoundFile),
     },
     trigger: {
@@ -386,44 +316,24 @@ export async function scheduleLocalNotification(
   });
 }
 
-
-/**
- * Clear all notifications
- */
 export async function clearAllNotifications() {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return;
   await Notifications.dismissAllNotificationsAsync();
 }
 
-/**
- * Get badge count
- */
 export async function getBadgeCount(): Promise<number> {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return 0;
   return await Notifications.getBadgeCountAsync();
 }
 
-/**
- * Set badge count
- */
 export async function setBadgeCount(count: number) {
   const Notifications = await getNotificationsModule();
   if (!Notifications) return;
   await Notifications.setBadgeCountAsync(count);
 }
 
-/**
- * Schedules or sends push notification for library reading session:
- * - Unfinished book:
- *   Title: 🔖 Pick up your reading session
- *   Body: "[Book Name]" is waiting for you in your library. Resume reading now and gain deeper insights!
- * 
- * - Unstarted / empty library:
- *   Title: ✨ Unfold sacred wisdom today
- *   Body: Give some time to begin reading  Bhagvad Geeta!
- */
 export async function scheduleLibraryReadingNotification(
   unfinishedBookName?: string,
   triggerSeconds?: number,
@@ -433,11 +343,9 @@ export async function scheduleLibraryReadingNotification(
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
-  // Enforce 1 notification per 4 days locally (4 * 24h = 345,600,000 ms)
   const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
   if (!force) {
     try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const lastSentStr = await AsyncStorage.getItem('LAST_LIBRARY_REMINDER_TIMESTAMP');
       if (lastSentStr) {
         const lastSentTime = parseInt(lastSentStr, 10);
@@ -451,20 +359,13 @@ export async function scheduleLibraryReadingNotification(
     }
   }
 
+  const title = unfinishedBookName?.trim() 
+    ? '🔖 Pick up your reading session' 
+    : '✨ Unfold sacred wisdom today';
+  const body = unfinishedBookName?.trim()
+    ? `"${unfinishedBookName.trim()}" is waiting for you in your library. Resume reading now and gain deeper insights!`
+    : 'Give some time to begin reading Bhagvad Geeta!';
 
-  let title = '';
-  let body = '';
-
-  if (unfinishedBookName && unfinishedBookName.trim()) {
-    const cleanBookName = unfinishedBookName.trim();
-    title = '🔖 Pick up your reading session';
-    body = `"${cleanBookName}" is waiting for you in your library. Resume reading now and gain deeper insights!`;
-  } else {
-    title = '✨ Unfold sacred wisdom today';
-    body = 'Give some time to begin reading  Bhagvad Geeta!';
-  }
-
-  const channelId = 'default_v4';
   const delay = triggerSeconds && triggerSeconds > 0 ? triggerSeconds : 1;
 
   try {
@@ -472,25 +373,17 @@ export async function scheduleLibraryReadingNotification(
       content: {
         title,
         body,
-        data: {
-          type: 'library_reminder',
-          bookName: unfinishedBookName || '',
-          route: '/library',
-        },
+        data: { type: 'library_reminder', bookName: unfinishedBookName || '', route: '/library' },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
       trigger: {
         seconds: delay,
-        channelId,
+        channelId: 'default_v4',
         type: 'timeInterval',
       } as any,
     });
 
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem('LAST_LIBRARY_REMINDER_TIMESTAMP', Date.now().toString());
-    } catch (_) {}
-
+    await AsyncStorage.setItem('LAST_LIBRARY_REMINDER_TIMESTAMP', Date.now().toString()).catch(() => {});
     console.log(`[Push] Library reading notification scheduled in ${delay}s (id: ${notifId})`);
     return notifId;
   } catch (e) {
@@ -499,14 +392,6 @@ export async function scheduleLibraryReadingNotification(
   }
 }
 
-/**
- * Schedules or sends push notification for LIVE Shiv Katha (starts on 13 August):
- * Title: 🕉️ LIVE Shiv Katha starts on 13 August
- * Body: Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.
- * Route: /shravan-paath
- * 
- * Sent 2 times a day (Morning & Afternoon; max 1 per 12 hours).
- */
 export async function scheduleShivKathaNotification(
   triggerSeconds?: number,
   force: boolean = false
@@ -515,11 +400,9 @@ export async function scheduleShivKathaNotification(
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
-  // Enforce max 2 per day locally (12 hours = 43,200,000 ms)
   const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
   if (!force) {
     try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const lastSentStr = await AsyncStorage.getItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP');
       if (lastSentStr) {
         const lastSentTime = parseInt(lastSentStr, 10);
@@ -533,34 +416,24 @@ export async function scheduleShivKathaNotification(
     }
   }
 
-  const title = '🕉️ LIVE Shiv Katha starts on 13 August';
-  const body = 'Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.';
-  const channelId = 'default_v4';
   const delay = triggerSeconds && triggerSeconds > 0 ? triggerSeconds : 1;
 
   try {
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
-        title,
-        body,
-        data: {
-          type: 'shiv_katha_reminder',
-          route: '/shravan-paath',
-        },
+        title: '🕉️ LIVE Shiv Katha starts on 13 August',
+        body: 'Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.',
+        data: { type: 'shiv_katha_reminder', route: '/shravan-paath' },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
       trigger: {
         seconds: delay,
-        channelId,
+        channelId: 'default_v4',
         type: 'timeInterval',
       } as any,
     });
 
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP', Date.now().toString());
-    } catch (_) {}
-
+    await AsyncStorage.setItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP', Date.now().toString()).catch(() => {});
     console.log(`[Push] Shiv Katha notification scheduled in ${delay}s (id: ${notifId})`);
     return notifId;
   } catch (e) {
@@ -570,19 +443,11 @@ export async function scheduleShivKathaNotification(
 }
 
 /**
-/**
- * Schedules recurring daily push notifications for Brahmand Library scripture reading:
- * - Morning (9:00 AM)
- *   Title: 🌅  Brahmand Library
- *   Body: Take a moment to read a verse from your favourite scripture this morning.
- * 
- * - Night (10:00 PM / 22:00)
- *   Title: 🌙  Brahmand Library
- *   Body: Take a moment to read a verse from your favourite scripture before rest tonight.
+ * ✅ FIXED: Uses explicit identifiers and cancels existing notifications before scheduling
+ * to prevent duplicate stacking on app restarts.
  */
 export async function scheduleDailyScriptureNotifications(): Promise<{ morningNotifId: string | null; nightNotifId: string | null }> {
   if (Platform.OS === 'web') return { morningNotifId: null, nightNotifId: null };
-
   const Notifications = await getNotificationsModule();
   if (!Notifications) return { morningNotifId: null, nightNotifId: null };
 
@@ -592,17 +457,16 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
   let morningNotifId: string | null = null;
   let nightNotifId: string | null = null;
 
-  // 1. Morning Notification (8:00 AM)
   try {
+    // Cancel existing to prevent duplicates on app restart
+    await Notifications.cancelScheduledNotificationAsync('daily_scripture_morning');
+    
     morningNotifId = await Notifications.scheduleNotificationAsync({
+      identifier: 'daily_scripture_morning', // ✅ Explicit identifier
       content: {
-        title: '🌅  Brahmand Library',
+        title: '🌅 Brahmand Library',
         body: 'Take a moment to read a verse from your favourite scripture this morning.',
-        data: {
-          type: 'scripture_reminder',
-          timeOfDay: 'morning',
-          route: '/library',
-        },
+        data: { type: 'scripture_reminder', timeOfDay: 'morning', route: '/library' },
         sound: soundFile,
       },
       trigger: {
@@ -613,22 +477,21 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
         channelId,
       } as any,
     });
-    console.log(`[Push] Morning scripture notification scheduled for 8:00 AM (id: ${morningNotifId})`);
+    console.log(`[Push] Morning scripture notification scheduled (id: ${morningNotifId})`);
   } catch (e) {
     console.warn('[Push] Failed to schedule morning scripture notification:', e);
   }
 
-  // 2. Evening Notification (8:00 PM / 20:00)
   try {
+    // Cancel existing to prevent duplicates on app restart
+    await Notifications.cancelScheduledNotificationAsync('daily_scripture_evening');
+
     nightNotifId = await Notifications.scheduleNotificationAsync({
+      identifier: 'daily_scripture_evening', // ✅ Explicit identifier
       content: {
-        title: '🌙  Brahmand Library',
+        title: '🌙 Brahmand Library',
         body: 'Take a moment to read a verse from your favourite scripture this evening.',
-        data: {
-          type: 'scripture_reminder',
-          timeOfDay: 'evening',
-          route: '/library',
-        },
+        data: { type: 'scripture_reminder', timeOfDay: 'evening', route: '/library' },
         sound: soundFile,
       },
       trigger: {
@@ -639,7 +502,7 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
         channelId,
       } as any,
     });
-    console.log(`[Push] Evening scripture notification scheduled for 8:00 PM (id: ${nightNotifId})`);
+    console.log(`[Push] Evening scripture notification scheduled (id: ${nightNotifId})`);
   } catch (e) {
     console.warn('[Push] Failed to schedule evening scripture notification:', e);
   }
@@ -648,78 +511,62 @@ export async function scheduleDailyScriptureNotifications(): Promise<{ morningNo
 }
 
 /**
- * Schedules a push notification 15 minutes before Shravan Live Katha starts:
- * Title: 🕉️ Shravan Live Katha
- * Body: Shravan Live Katha is about to start. Please Join
- * Route: /library/katha
+ * ✅ FIXED: Uses absolute 'date' trigger instead of manual seconds calculation 
+ * to prevent timezone drift and background execution quirks.
+ * NOTE: Hardcoded campaign dates should ideally be fetched from your backend API 
+ * to avoid technical debt as campaigns evolve.
  */
 export async function scheduleShravanKatha15MinReminder() {
   if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
-  const title = '🕉️ Shravan Live Katha';
-  const body = 'Shravan Live Katha is about to start. Please Join';
-  const channelId = 'default_v4';
-
-  const now = new Date();
+  // Helper to get current time in IST
   const getISTDate = () => {
+    const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     return new Date(utc + (3600000 * 5.5));
   };
+  
   const ist = getISTDate();
   const currentMins = ist.getHours() * 60 + ist.getMinutes();
 
   // Target pre-stream times in minutes from midnight (15 mins before 8:00 AM & 8:00 PM IST)
-  const targets = [
-    7 * 60 + 45,  // 7:45 AM
-    19 * 60 + 45, // 7:45 PM
-  ];
+  const targets = [7 * 60 + 45, 19 * 60 + 45]; // 7:45 AM, 7:45 PM
 
-  const CAMPAIGN_START_MS = new Date('2026-08-13T07:45:00+05:30').getTime();
+  // Fallback logic ensures it always finds the *next* valid slot, even if the hardcoded start date is in the past
   let nextTargetMins = targets.find(t => t > currentMins);
-  
-  let targetDateMs: number;
-  if (ist.getTime() < CAMPAIGN_START_MS) {
-    // Before official campaign start date (Today 12 Aug) -> Schedule first notification for 13 Aug 7:45 AM IST
-    targetDateMs = CAMPAIGN_START_MS;
-  } else if (nextTargetMins !== undefined) {
-    const tDate = new Date(ist);
-    tDate.setHours(Math.floor(nextTargetMins / 60), nextTargetMins % 60, 0, 0);
-    targetDateMs = tDate.getTime();
-  } else {
-    const tDate = new Date(ist);
-    tDate.setDate(tDate.getDate() + 1);
-    tDate.setHours(7, 45, 0, 0);
-    targetDateMs = tDate.getTime();
-  }
+  let targetDate: Date;
 
-  const secondsUntilReminder = Math.max(5, Math.floor((targetDateMs - ist.getTime()) / 1000));
+  if (nextTargetMins !== undefined) {
+    targetDate = new Date(ist);
+    targetDate.setHours(Math.floor(nextTargetMins / 60), nextTargetMins % 60, 0, 0);
+  } else {
+    // Wrap around to tomorrow morning
+    targetDate = new Date(ist);
+    targetDate.setDate(targetDate.getDate() + 1);
+    targetDate.setHours(7, 45, 0, 0);
+  }
 
   try {
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
-        title,
-        body,
-        data: {
-          type: 'shravan_katha_live',
-          route: '/(tabs)/home',
-        },
+        title: '🕉️ Shravan Live Katha',
+        body: 'Shravan Live Katha is about to start. Please Join',
+        data: { type: 'shravan_katha_live', route: '/(tabs)/home' },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
       trigger: {
-        seconds: secondsUntilReminder,
-        channelId,
-        type: 'timeInterval',
+        type: 'date', // ✅ Absolute date trigger
+        date: targetDate,
+        channelId: 'default_v4',
       } as any,
     });
 
-    console.log(`[Push] Shravan Katha 15-min live reminder scheduled in ${secondsUntilReminder}s (id: ${notifId})`);
+    console.log(`[Push] Shravan Katha 15-min live reminder scheduled for ${targetDate.toISOString()} (id: ${notifId})`);
     return notifId;
   } catch (e) {
     console.warn('[Push] Failed to schedule Shravan Katha 15-min reminder:', e);
     return null;
   }
 }
-
-

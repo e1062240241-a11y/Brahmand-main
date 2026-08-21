@@ -8,6 +8,7 @@ interface FestivalEnrichment {
   importance?: string;
   celebration?: string;
   mantra?: string;
+  fun_facts?: string[];
 }
 
 const festivalEnrichments: Record<string, FestivalEnrichment> = {

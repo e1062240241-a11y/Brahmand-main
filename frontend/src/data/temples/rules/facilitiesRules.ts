@@ -172,5 +172,36 @@ FACILITIES_RULES.push(
     id: 'gopnath',
     condition: { any: ['gopnath', 'gopnath mahadev'] },
     facilities: ['seashore_promenade', 'dharamshala', 'parking', 'prasad', 'sunset_point'],
+  },
+  {
+    id: 'kainchi_dham',
+    condition: { any: ['kainchi dham', 'neem karoli baba ashram', 'kainchi ashram', 'neem karoli baba'] },
+    facilities: ['free_bhandara', 'ashram_stay', 'shoe_counter', 'bookstore', 'restrooms', 'parking'],
+  },
+  {
+    id: 'prasanthi_nilayam',
+    condition: { any: ['prasanthi nilayam', 'sathya sai baba ashram', 'puttaparthi ashram', 'puttaparthi sai baba'] },
+    facilities: ['sai_kulwant_hall', 'super_speciality_hospital', 'canteen_south_north', 'electronics_counter', 'wheelchair_assistance', 'ashram_dormitories'],
+  },
+  {
+    id: 'swaminarayan_akshardham_delhi',
+    condition: { any: ['swaminarayan akshardham', 'akshardham delhi', 'delhi akshardham'] },
+    facilities: ['musical_fountain_show', 'boat_ride_exhibition', 'premvati_food_court', 'free_cloakroom', 'wheelchair_rental', 'atm_parking'],
+  },
+  {
+    id: 'matrimandir_auroville',
+    condition: { any: ['matrimandir', 'auroville matrimandir', 'auroville ashram'] },
+    facilities: ['visitors_centre', 'meditation_inner_chamber', 'solar_kitchen', 'banyan_tree_garden', 'shuttle_electric_vehicle', 'information_desk'],
+  },
+  {
+    id: 'iskcon_vrindavan',
+    condition: { any: ['iskcon vrindavan', 'krishna balaram mandir', 'vrindavan iskcon'] },
+    facilities: ['govindas_restaurant', 'guesthouse', '24hr_kirtan_hall', 'gift_bookstore', 'shoe_deposit', 'prasad_counters'],
+  },
+  {
+    id: 'art_of_living_bengaluru',
+    condition: { any: ['art of living', 'art of living international center', 'sri sri gurukul', 'art of living bengaluru'] },
+    facilities: ['vishalakshi_mantap', 'ayurveda_hospital_panchakarma', 'annapurna_dining_hall', 'divya_desh_bookstore', 'shuttle_buggy', 'nature_lake'],
   }
 );
+
