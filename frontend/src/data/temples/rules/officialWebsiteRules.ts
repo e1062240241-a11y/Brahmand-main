@@ -388,4 +388,35 @@ export const OFFICIAL_WEBSITE_RULES: OfficialWebsiteRule[] = [
     condition: { any: ['gopnath', 'gopnath mahadev'] },
     website: 'https://bhavnagar.nic.in',
   },
+  {
+    id: 'kainchi_dham',
+    condition: { any: ['kainchi dham', 'neem karoli baba ashram', 'kainchi ashram', 'neem karoli baba'] },
+    website: 'https://nainital.nic.in',
+  },
+  {
+    id: 'prasanthi_nilayam',
+    condition: { any: ['prasanthi nilayam', 'sathya sai baba ashram', 'puttaparthi ashram', 'puttaparthi sai baba'] },
+    website: 'https://www.sathyasai.org',
+  },
+  {
+    id: 'swaminarayan_akshardham_delhi',
+    condition: { any: ['swaminarayan akshardham', 'akshardham delhi', 'delhi akshardham'] },
+    website: 'https://akshardham.com',
+  },
+  {
+    id: 'matrimandir_auroville',
+    condition: { any: ['matrimandir', 'auroville matrimandir', 'auroville ashram'] },
+    website: 'https://auroville.org',
+  },
+  {
+    id: 'iskcon_vrindavan',
+    condition: { any: ['iskcon vrindavan', 'krishna balaram mandir', 'vrindavan iskcon'] },
+    website: 'https://www.iskconvrindavan.com',
+  },
+  {
+    id: 'art_of_living_bengaluru',
+    condition: { any: ['art of living', 'art of living international center', 'sri sri gurukul', 'art of living bengaluru'] },
+    website: 'https://www.artofliving.org',
+  },
 ];
+

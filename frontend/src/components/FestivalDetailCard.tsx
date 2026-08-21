@@ -383,12 +383,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const rawPujaVidhi = festival.puja_vidhi || (festival.rituals ? (Array.isArray(festival.rituals) ? festival.rituals.join('. ') : festival.rituals) : null);
   const rawMantra = enrichment?.mantra || festival.mantra;
 
-  const funFacts: string[] = festival.funFacts ?? festival.fun_facts ?? [
-    'Hariyali Teej is celebrated on the third day of the bright fortnight of the monsoon month Shravan.',
-    'Green glass bangles and green sarees symbolize nature’s blooming beauty and marital bliss.',
-    'Intricate Henna / Mehndi patterns applied on hands are believed to bring divine blessings.',
-    'Lush tree swings (jhulas) are traditionally set up under banyan trees for women to sing Teej songs.'
-  ];
+  const funFacts: string[] = enrichment?.fun_facts ?? festival.funFacts ?? festival.fun_facts ?? [];
 
   const sections = [
     { title: 'Story', value: rawStory },

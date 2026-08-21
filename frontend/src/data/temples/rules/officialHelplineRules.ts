@@ -270,4 +270,35 @@ export const OFFICIAL_HELPLINE_RULES: OfficialHelplineRule[] = [
     condition: { any: ['gopnath', 'gopnath mahadev'] },
     helpline: '0278-2521000',
   },
+  {
+    id: 'kainchi_dham',
+    condition: { any: ['kainchi dham', 'neem karoli baba ashram', 'kainchi ashram', 'neem karoli baba'] },
+    helpline: '+91 5942 281 028',
+  },
+  {
+    id: 'prasanthi_nilayam',
+    condition: { any: ['prasanthi nilayam', 'sathya sai baba ashram', 'puttaparthi ashram', 'puttaparthi sai baba'] },
+    helpline: '+91 8555 287 194 / +91 8555 287 236',
+  },
+  {
+    id: 'swaminarayan_akshardham_delhi',
+    condition: { any: ['swaminarayan akshardham', 'akshardham delhi', 'delhi akshardham'] },
+    helpline: '+91 11 4344 2344 / +91 11 2275 0000',
+  },
+  {
+    id: 'matrimandir_auroville',
+    condition: { any: ['matrimandir', 'auroville matrimandir', 'auroville ashram'] },
+    helpline: '+91 413 262 2239 / +91 413 262 2127',
+  },
+  {
+    id: 'iskcon_vrindavan',
+    condition: { any: ['iskcon vrindavan', 'krishna balaram mandir', 'vrindavan iskcon'] },
+    helpline: '+91 565 254 0370 / +91 73022 41108',
+  },
+  {
+    id: 'art_of_living_bengaluru',
+    condition: { any: ['art of living', 'art of living international center', 'sri sri gurukul', 'art of living bengaluru'] },
+    helpline: '+91 80 6761 2345 / +91 80 6726 2626',
+  },
 ];
+

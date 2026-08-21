@@ -617,9 +617,9 @@ function useNotificationResponseHandler() {
       }
 
       // Handle LIVE Shiv Katha notification tap - navigate user directly to Shravan Path screen
-      if (data.type === 'shiv_katha_reminder') {
+      if (data.type === 'shiv_katha_reminder' || data.type === 'shravan_katha_live') {
         const targetRoute = data.route || '/shravan-paath';
-        console.log(`[Push] Routing shiv_katha_reminder tap to ${targetRoute}`);
+        console.log(`[Push] Routing ${data.type} tap to ${targetRoute}`);
         navigateOrQueue(targetRoute);
         return;
       }
@@ -1075,6 +1075,12 @@ export default function RootLayout() {
           else titleVal = data.mantra_type.charAt(0).toUpperCase() + data.mantra_type.slice(1);
 
           navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
+          return;
+        }
+
+        if (type === 'shiv_katha_reminder' || type === 'shravan_katha_live') {
+          const targetRoute = data.route || '/shravan-paath';
+          navigateOrQueue(targetRoute);
           return;
         }
 

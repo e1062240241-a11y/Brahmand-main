@@ -882,7 +882,62 @@ export const VISITOR_GUIDELINES_RULES: VisitorGuidelinesRule[] = [
       { icon: '📵', title: 'Prohibited Items', points: ['Photography inside main Mahakali sanctum', 'Footwear on golden spire terrace', 'Alcohol & non-vegetarian food in entire Pavagadh hill area', 'Plastics on hill track'], prohibitedItems: ['Sanctum Photography', 'Footwear on Terrace', 'Alcohol & Non-Veg', 'Plastic Waste on Hill'] },
     ],
   },
+  {
+    id: 'kainchi_dham',
+    condition: { any: ['kainchi dham', 'neem karoli baba ashram', 'kainchi ashram', 'neem karoli baba'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Darshan', points: ['Free entry for all devotees', 'Maintain complete silence and decorum inside ashram premises', 'Queue moves smoothly with helpful volunteers'] },
+      { icon: '👔', title: 'Dress Code & Ethics', points: ['Modest and conservative attire required', 'Shoulders and knees must be covered', 'Warm clothing recommended from October to April'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones must be kept on silent/off mode', 'Strictly no photography allowed inside temples and Baba Neem Karoli Samadhi', 'Alcohol, tobacco, and non-vegetarian items strictly prohibited'], prohibitedItems: ['Sanctum Photography', 'Alcohol & Tobacco', 'Loud Noise / Music', 'Littering Ashram Grounds'] },
+    ],
+  },
+  {
+    id: 'prasanthi_nilayam',
+    condition: { any: ['prasanthi nilayam', 'sathya sai baba ashram', 'puttaparthi ashram', 'puttaparthi sai baba'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Security & Entry', points: ['Free entry to Sai Kulwant Hall for daily Darshan & Bhajans', 'Security check at ashram gates; photo ID required for overnight stay registration', 'Separate seating halls and queue lines for men and women'] },
+      { icon: '👔', title: 'Dress Code', points: ['Strict dress code enforced: Men in white trousers/dhoti and shirts, Women in sarees or salwar suits with dupatta', 'Shorts, sleeveless tops, and tight clothing disallowed'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones, cameras, and electronic equipment prohibited inside Sai Kulwant Hall', 'Deposit devices at the security electronics counter near entry gates'], prohibitedItems: ['Mobile Phones in Hall', 'Cameras & Electronics', 'Leather Goods in Inner Sanctum', 'Outside Food in Darshan Hall'] },
+    ],
+  },
+  {
+    id: 'swaminarayan_akshardham_delhi',
+    condition: { any: ['swaminarayan akshardham', 'akshardham delhi', 'delhi akshardham'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Tickets', points: ['Complex entry is Free; separate paid tickets for Exhibitions and Water Show', 'Closed on Mondays', 'Thorough security screening for all visitors at entry gate'] },
+      { icon: '👔', title: 'Dress Code', points: ['Modest attire covering shoulders, chest, and knees mandatory', 'Free sarongs/wraps available on deposit at entry if attire is inadequate'] },
+      { icon: '📵', title: 'Strict Electronics Prohibition', points: ['Strict zero-electronics policy inside complex: Mobile phones, cameras, smartwatches, USBs, and remote keys prohibited', 'Free secure cloakrooms available near main entry gate to store disallowed items'], prohibitedItems: ['Mobile Phones', 'Cameras', 'Smartwatches', 'Leather Belts', 'Large Bags & Backpacks', 'Food & Drinks'] },
+    ],
+  },
+  {
+    id: 'matrimandir_auroville',
+    condition: { any: ['matrimandir', 'auroville matrimandir', 'auroville ashram'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Passes & Booking', points: ['Viewing Point Pass: Free, available in-person at Visitors Centre', 'Inner Chamber Meditation Pass: Free, must be booked 1 day in advance in person at Visitors Centre', 'First-time visitors must attend an introductory video presentation'] },
+      { icon: '👔', title: 'Attire & Atmosphere', points: ['Decent, quiet attire required', 'White socks mandatory inside Inner Chamber', 'Strict silence must be maintained in the Peace Area and Meditation Chamber'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones and cameras strictly prohibited inside Peace Area and Inner Chamber', 'Children below 10 years not allowed inside Inner Chamber'], prohibitedItems: ['Mobiles & Cameras', 'Footwear inside Chamber', 'Talking / Noise', 'Children < 10 yrs in Chamber'] },
+    ],
+  },
+  {
+    id: 'iskcon_vrindavan',
+    condition: { any: ['iskcon vrindavan', 'krishna balaram mandir', 'vrindavan iskcon'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Entry & Kirtan', points: ['Free entry for all pilgrims', '24-hour non-stop Mahamantra Kirtan in central courtyard', 'Prasadam available at Govinda\'s Restaurant and prasad counters inside temple complex'] },
+      { icon: '👔', title: 'Dress Code', points: ['Modest traditional Indian clothing recommended', 'Remove footwear at free shoe deposit counters before entering main courtyard'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Photography prohibited during Aarti and Deity Darshan', 'Alcohol, tobacco, non-vegetarian food, and leather items strictly banned'], prohibitedItems: ['Deity Photography during Aarti', 'Footwear in Temple Yard', 'Alcohol & Smoking', 'Leather Items near Altar'] },
+    ],
+  },
+  {
+    id: 'art_of_living_bengaluru',
+    condition: { any: ['art of living', 'art of living international center', 'sri sri gurukul', 'art of living bengaluru'] },
+    guidelines: [
+      { icon: '🎟️', title: 'Visitor Passes & Tours', points: ['Free entry to campus; guided campus tour passes available at Reception Desk', 'Pre-registration recommended for courses, Sudarshan Kriya workshops, and stay'] },
+      { icon: '👔', title: 'Dress Code & Decorum', points: ['Comfortable, modest clothing suitable for yoga and meditation', 'Maintain quiet decorum around Vishalakshi Mantap and meditation halls'] },
+      { icon: '📵', title: 'Prohibited Items', points: ['Mobile phones must be switched off/silent inside meditation halls', 'Alcohol, smoking, non-vegetarian food, and drugs strictly prohibited in campus'], prohibitedItems: ['Phone Calls in Meditation Halls', 'Alcohol & Smoking', 'Non-Vegetarian Food', 'Plastic Littering'] },
+    ],
+  },
 ];
+
 
 
 

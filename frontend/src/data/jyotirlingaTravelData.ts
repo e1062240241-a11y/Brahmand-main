@@ -1348,7 +1348,7 @@ export const EXPLORE_NEARBY_DATA: Record<
         distance: '2.7 km',
       },
       {
-        templeId: 'kalighat-kali-temple-kolkata',
+        templeId: 'shaktipeeth-kalighat-kali-temple-kolkata',
         name: 'Kalighat Kali Temple',
         image: getTempleImageByName('Kalighat'),
         distance: '18 km',
