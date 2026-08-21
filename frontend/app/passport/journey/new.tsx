@@ -155,11 +155,19 @@ export default function NewPassportJourneyScreen() {
 
   // Derived state for suggestions
   const filteredLocations = startLocation.trim()
-    ? indianCities.filter(city => city.toLowerCase().includes(startLocation.toLowerCase()))
+    ? (() => {
+        // OPT: Lift toLowerCase out of the filter loop
+        const lowerStartLoc = startLocation.toLowerCase();
+        return indianCities.filter(city => city.toLowerCase().includes(lowerStartLoc));
+      })()
     : [];
 
   const filteredLocationsStep1 = location.trim()
-    ? indianCities.filter(city => city.toLowerCase().includes(location.toLowerCase()))
+    ? (() => {
+        // OPT: Lift toLowerCase out of the filter loop
+        const lowerLoc = location.toLowerCase();
+        return indianCities.filter(city => city.toLowerCase().includes(lowerLoc));
+      })()
     : indianCities;
 
   useEffect(() => {
