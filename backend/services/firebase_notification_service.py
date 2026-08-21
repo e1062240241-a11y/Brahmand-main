@@ -55,31 +55,108 @@ class FirebaseNotificationService:
         notification_id: Optional[str] = None,
         overwrite: bool = True
     ) -> Dict[str, Any]:
-        """Create and store notification"""
+        """Create and store notification with roll-up aggregation support for high-frequency actions"""
         db = await FirebaseNotificationService.get_db()
+        data = data or {}
+
+        # Determine actor_id
+        actor_id = data.get('actor_id') or data.get('follower_id') or data.get('actor_user_id') or data.get('sender_id') or data.get('actor_uid')
         
         # Check block status
-        try:
-            actor_id = None
-            if data:
-                actor_id = data.get('actor_id') or data.get('follower_id') or data.get('actor_user_id') or data.get('sender_id') or data.get('actor_uid')
-            
-            if actor_id:
+        if actor_id:
+            try:
                 blocked_user_ids = await FirebaseNotificationService._get_blocked_user_ids(db, user_id)
                 if actor_id in blocked_user_ids:
                     logger.info(f"Skipping notification creation for user {user_id} due to block relationship with actor {actor_id}")
                     return {"message": "Blocked"}
-        except Exception as e:
-            logger.warning(f"Error checking block status for notification creation: {e}")
+            except Exception as e:
+                logger.warning(f"Error checking block status for notification creation: {e}")
+
+        now_iso = datetime.utcnow().isoformat() + 'Z'
+        now_dt = datetime.utcnow()
+        action = (data.get('action') or notification_type or '').lower()
+        target_id = data.get('post_id') or data.get('target_id') or data.get('comment_id')
+
+        # High-frequency roll-up aggregation check (for post_like, comment, post_comment, etc.)
+        is_high_frequency = any(kw in action or kw in notification_type.lower() for kw in ['like', 'comment'])
+
+        if is_high_frequency and target_id and actor_id:
+            date_str = now_dt.strftime("%Y_%m_%d")
+            group_key = f"{notification_type}_{target_id}_{date_str}"
+
+            try:
+                # Look for existing UNREAD notification document with same group_key for this user
+                existing_docs = await db.query_documents(
+                    'notifications',
+                    filters=[
+                        ('user_id', '==', user_id),
+                        ('group_key', '==', group_key),
+                        ('is_read', '==', False)
+                    ]
+                )
+
+                # Check if created within last 24 hours (86400s)
+                valid_doc = None
+                for doc in (existing_docs or []):
+                    created_str = doc.get('created_at', '')
+                    if created_str:
+                        try:
+                            clean_str = created_str[:-1] if created_str.endswith('Z') else created_str
+                            doc_dt = datetime.fromisoformat(clean_str)
+                            if (now_dt - doc_dt).total_seconds() <= 86400:
+                                valid_doc = doc
+                                break
+                        except Exception:
+                            pass
+
+                if valid_doc and 'id' in valid_doc:
+                    doc_id = valid_doc['id']
+                    actor_ids = list(valid_doc.get('actor_ids') or [])
+                    if actor_id not in actor_ids:
+                        actor_ids.append(actor_id)
+                    actor_count = len(actor_ids)
+
+                    update_data = {
+                        "latest_actor_id": actor_id,
+                        "actor_ids": actor_ids,
+                        "actor_count": actor_count,
+                        "updated_at": now_iso,
+                        "title": title,
+                        "body": body,
+                        "data": data
+                    }
+
+                    await db.update_document('notifications', doc_id, update_data)
+                    updated_doc = {**valid_doc, **update_data}
+
+                    try:
+                        from main import sio
+                        await sio.emit('new_notification', updated_doc, room=f"user_{user_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to emit socket notification for updated doc {doc_id}: {e}")
+
+                    return updated_doc
+            except Exception as agg_err:
+                logger.warning(f"Error during notification aggregation check: {agg_err}")
+
+        # One-off or fresh document creation
+        date_str = now_dt.strftime("%Y_%m_%d")
+        group_key = f"{notification_type}_{target_id}_{date_str}" if target_id else f"{notification_type}_{now_dt.strftime('%Y_%m_%d_%H_%M_%S')}"
+        actor_ids = [actor_id] if actor_id else []
 
         notification_data = {
             "user_id": user_id,
             "title": title,
             "body": body,
             "notification_type": notification_type,
-            "data": data or {},
+            "group_key": group_key,
+            "latest_actor_id": actor_id,
+            "actor_ids": actor_ids,
+            "actor_count": len(actor_ids) if actor_ids else 1,
+            "data": data,
             "is_read": False,
-            "created_at": datetime.utcnow().isoformat() + 'Z'
+            "created_at": now_iso,
+            "updated_at": now_iso
         }
         
         inserted_id = await db.create_document('notifications', notification_data, doc_id=notification_id, overwrite=overwrite)
@@ -591,21 +668,136 @@ class FirebaseNotificationService:
     @staticmethod
     async def get_user_notifications(
         user_id: str,
-        limit: int = 50,
+        limit: int = 30,
+        cursor: Optional[str] = None,
         unread_only: bool = False
-    ) -> List[Dict[str, Any]]:
-        """Get user notifications"""
+    ) -> Dict[str, Any]:
+        """Get user notifications with server-side actor hydration, fallbacks, and cursor-based pagination"""
         db = await FirebaseNotificationService.get_db()
         
         filters: List[Tuple[str, str, Any]] = [('user_id', '==', user_id)]
         if unread_only:
             filters.append(('is_read', '==', False))
         
-        # Fetch all matching without order_by to avoid Firestore index requirement
+        # Query documents from Firestore
         docs = await db.query_documents('notifications', filters=filters)
         filtered = [d for d in (docs or []) if str(d.get('user_id', '')) == str(user_id)]
-        filtered.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-        return filtered[:limit]
+
+        # Sort by updated_at or created_at descending (latest first)
+        filtered.sort(key=lambda x: str(x.get('updated_at') or x.get('created_at') or ''), reverse=True)
+
+        # Apply cursor pagination if cursor provided
+        if cursor:
+            cutoff_idx = 0
+            for idx, item in enumerate(filtered):
+                item_ts = str(item.get('updated_at') or item.get('created_at') or '')
+                if item_ts < cursor:
+                    cutoff_idx = idx
+                    break
+            else:
+                cutoff_idx = len(filtered)
+            filtered = filtered[cutoff_idx:]
+
+        page_items = filtered[:limit]
+        next_cursor = None
+        if len(filtered) > limit:
+            last_item = page_items[-1]
+            next_cursor = str(last_item.get('updated_at') or last_item.get('created_at') or '')
+
+        if not page_items:
+            return {
+                "items": [],
+                "notifications": [],  # Backward compatibility field
+                "unread_count": 0,
+                "next_cursor": None
+            }
+
+        # Collect unique actor IDs across page items (including backward-compatible fallbacks)
+        actor_ids = set()
+        for item in page_items:
+            data = item.get('data') or {}
+            item_actors = item.get('actor_ids') or []
+            if not item_actors and item.get('latest_actor_id'):
+                item_actors = [item['latest_actor_id']]
+            if not item_actors:
+                fallback_actor = (
+                    data.get('actor_user_id') or
+                    data.get('actor_id') or
+                    data.get('sender_id') or
+                    data.get('follower_id') or
+                    data.get('actor_uid')
+                )
+                if fallback_actor:
+                    item_actors = [fallback_actor]
+            for aid in item_actors:
+                if aid:
+                    actor_ids.add(str(aid))
+
+        # Batch fetch actors from 'users' collection
+        users_map = {}
+        if actor_ids:
+            try:
+                user_docs = await db.get_documents_batch('users', list(actor_ids))
+                for u in (user_docs or []):
+                    if u and 'id' in u:
+                        users_map[str(u['id'])] = {
+                            "id": str(u['id']),
+                            "name": u.get("name") or u.get("username") or "User",
+                            "photo": u.get("photo") or u.get("photo_url") or "",
+                            "photo_url": u.get("photo") or u.get("photo_url") or "",
+                            "is_verified": bool(u.get("is_verified", False))
+                        }
+            except Exception as hyd_err:
+                logger.warning(f"Failed server-side actor hydration batch fetch: {hyd_err}")
+
+        # Hydrate each notification document
+        hydrated_items = []
+        for item in page_items:
+            data = item.get('data') or {}
+            primary_actor_id = (
+                item.get('latest_actor_id') or
+                (item.get('actor_ids') and item.get('actor_ids')[0]) or
+                data.get('actor_user_id') or
+                data.get('actor_id') or
+                data.get('sender_id') or
+                data.get('follower_id') or
+                data.get('actor_uid')
+            )
+
+            primary_actor = users_map.get(str(primary_actor_id), {
+                "id": str(primary_actor_id) if primary_actor_id else "",
+                "name": data.get('actor_name') or "Someone",
+                "photo": "",
+                "photo_url": "",
+                "is_verified": False
+            }) if primary_actor_id else None
+
+            actor_count = item.get('actor_count', 1)
+            msg_body = item.get('body', '')
+
+            # Format display_text for aggregated roll-ups
+            if primary_actor and actor_count > 1:
+                display_text = f"{primary_actor['name']} and {actor_count - 1} others {msg_body or 'interacted with your content.'}"
+            elif primary_actor:
+                display_text = f"{primary_actor['name']} {msg_body or 'sent a notification.'}"
+            else:
+                display_text = msg_body or item.get('title', 'New Notification')
+
+            hydrated_item = {
+                **item,
+                "actor": primary_actor,
+                "display_text": display_text
+            }
+            hydrated_items.append(hydrated_item)
+
+        unread_count = sum(1 for d in filtered if not d.get('is_read'))
+
+        return {
+            "items": hydrated_items,
+            "notifications": hydrated_items,  # Backward compatibility field
+            "unread_count": unread_count,
+            "next_cursor": next_cursor
+        }
     
     @staticmethod
     async def mark_as_read(user_id: str, notification_id: str) -> Dict[str, Any]:

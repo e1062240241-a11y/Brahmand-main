@@ -156,17 +156,15 @@ export default function NotificationsScreen() {
         console.warn('[Notifications] Failed to get presented notifications:', e);
       }
 
-      const [countRes, notificationsRes] = await Promise.all([
-        getUnreadNotificationCount().catch(() => ({ data: 0 })),
-        getUserNotifications().catch(() => ({ data: [] })),
-      ]);
+      const notificationsRes = await getUserNotifications(30).catch(() => ({ data: { items: [], unread_count: 0 } }));
 
-      const countValue = typeof countRes.data === 'number'
-        ? countRes.data
-        : Number(countRes.data?.unread_count ?? 0);
+      const payload = notificationsRes.data;
+      const countValue = typeof payload?.unread_count === 'number'
+        ? payload.unread_count
+        : (typeof payload === 'number' ? payload : 0);
       setUnreadCount(countValue || 0);
       
-      const serverNotifications = normalizeNotificationsResponse(notificationsRes.data);
+      const serverNotifications = normalizeNotificationsResponse(payload);
       const currentRecent = useNotificationStore.getState().recentNotifications;
       let rawList = [...presentedList, ...currentRecent, ...serverNotifications];
       
@@ -210,37 +208,57 @@ export default function NotificationsScreen() {
         });
       }
       
-      // Sort notifications by time or created_at descending (latest first)
+      // Sort notifications by time or updated_at / created_at descending (latest first)
       notificationsList.sort((a: any, b: any) => {
-        const timeA = new Date(a.time || a.created_at || 0).getTime();
-        const timeB = new Date(b.time || b.created_at || 0).getTime();
+        const timeA = new Date(a.updated_at || a.time || a.created_at || 0).getTime();
+        const timeB = new Date(b.updated_at || b.time || b.created_at || 0).getTime();
         return timeB - timeA;
       });
 
-      // Show all notifications for all functionalities without deduplication filter
+      // Populate pre-hydrated actor details directly from server response into local actorsMap
+      const newActorsMap: Record<string, any> = {};
+      notificationsList.forEach((notif) => {
+        if (notif.actor && notif.actor.id) {
+          newActorsMap[notif.actor.id] = {
+            name: notif.actor.name,
+            photo: notif.actor.photo || notif.actor.photo_url,
+            isVerified: notif.actor.is_verified || false
+          };
+        }
+      });
+      if (Object.keys(newActorsMap).length > 0) {
+        setActorsMap(prev => {
+          const merged = { ...prev, ...newActorsMap };
+          AsyncStorage.setItem('notifications_actors_map_data', JSON.stringify(merged)).catch(e => console.warn(e));
+          return merged;
+        });
+      }
+
       setNotifications(notificationsList);
       AsyncStorage.setItem('notifications_cache_data', JSON.stringify(notificationsList)).catch(e => console.warn(e));
 
-      // Batch fetch actor details
-      const actorIds = new Set<string>();
+      // Secondary fallback batch fetch only if older unhydrated actor details are missing
+      const unhydratedActorIds = new Set<string>();
       notificationsList.forEach((notif) => {
-        const itemData = typeof notif.data === 'string'
-          ? (() => { try { return JSON.parse(notif.data); } catch { return null; } })()
-          : notif.data;
-        const actorId = itemData?.actor_user_id;
-        if (actorId) {
-          actorIds.add(actorId);
+        if (!notif.actor) {
+          const itemData = typeof notif.data === 'string'
+            ? (() => { try { return JSON.parse(notif.data); } catch { return null; } })()
+            : notif.data;
+          const actorId = itemData?.actor_user_id || itemData?.sender_id;
+          if (actorId && !actorsMap[actorId] && !newActorsMap[actorId]) {
+            unhydratedActorIds.add(actorId);
+          }
         }
       });
       
-      if (actorIds.size > 0) {
+      if (unhydratedActorIds.size > 0) {
         try {
-          const batchRes = await getUsersBatch(Array.from(actorIds));
+          const batchRes = await getUsersBatch(Array.from(unhydratedActorIds));
           if (Array.isArray(batchRes.data)) {
-            const newActorsMap: Record<string, any> = {};
+            const fallbackActorsMap: Record<string, any> = {};
             batchRes.data.forEach((actorUser) => {
               if (actorUser && actorUser.id) {
-                newActorsMap[actorUser.id] = {
+                fallbackActorsMap[actorUser.id] = {
                   name: actorUser.name,
                   photo: actorUser.photo,
                   isVerified: actorUser.is_verified || false
@@ -248,13 +266,13 @@ export default function NotificationsScreen() {
               }
             });
             setActorsMap(prev => {
-              const merged = { ...prev, ...newActorsMap };
+              const merged = { ...prev, ...fallbackActorsMap };
               AsyncStorage.setItem('notifications_actors_map_data', JSON.stringify(merged)).catch(e => console.warn(e));
               return merged;
             });
           }
         } catch (err) {
-          console.warn('Failed to fetch batch actor users:', err);
+          console.warn('Failed to fetch fallback actor details:', err);
         }
       }
     } catch (error) {
