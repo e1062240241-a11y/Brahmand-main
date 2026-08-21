@@ -13,3 +13,7 @@
 ## 2026-08-20 - [Frontend Performance: O(1) Timeline Filtering]
 **Learning:** Using `Array.includes()` for checking `deletedFeedIds` inside `.filter()` operations over large feed lists causes an O(N*M) CPU bottleneck that blocks the JS thread and causes scroll jitter.
 **Action:** Always convert constraint arrays (like deleted posts) into a `Set` and use `.has(id)` for O(1) lookups during array transformations.
+
+## 2024-08-21 - [Backend Performance: O(1) Fetching during Migrations]
+**Learning:** During large-scale data migrations in the Python backend (like `backfill-follow-edges`), performing sequential `await db.get_document()` calls inside loops over unbounded collections (like user follow arrays) results in massive N+1 query bottlenecks that can exhaust database connections or severely block the asyncio event loop.
+**Action:** Always pre-aggregate all required document IDs and use `await db.get_documents_batch()` to fetch them in O(1) queries (chunking them if necessary, e.g., in batches of 100 or 500) before executing write operations.
