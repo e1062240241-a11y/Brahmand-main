@@ -309,18 +309,37 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
     React.useEffect(() => {
         if (!achPlayer) return;
-        const activeFocused = isFocused !== false; // Default to true if undefined on initial Home mount
-        if (!activeFocused) {
-            achPlayer.pause();
-        } else if (activeFocused && !videoError) {
-            try {
-                achPlayer.play();
-            } catch (err) {
-                if (__DEV__) {
-                    console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+        const activeFocused = isFocused !== false;
+
+        const updatePlayback = (appState: string = AppState.currentState) => {
+            const isAppActive = appState === 'active';
+            if (activeFocused && isAppActive && !videoError) {
+                try {
+                    achPlayer.play();
+                } catch (err) {
+                    if (__DEV__) {
+                        console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+                    }
                 }
+            } else {
+                try {
+                    achPlayer.pause();
+                } catch (_e) {}
             }
-        }
+        };
+
+        updatePlayback();
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            updatePlayback(nextAppState);
+        });
+
+        return () => {
+            subscription.remove();
+            try {
+                achPlayer.pause();
+            } catch (_e) {}
+        };
     }, [achPlayer, isFocused, videoError]);
     return (
         <View style={{ paddingTop: 4 }}>
