@@ -356,6 +356,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 fontWeight: '400',
                                 lineHeight: Platform.OS === 'android' ? 32 : 36,
                                 letterSpacing: 0,
+                                includeFontPadding: false,
+                                paddingHorizontal: 4,
                             }}>BRAHMAND</Text>
                         </View>
 

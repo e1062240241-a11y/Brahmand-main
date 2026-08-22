@@ -1258,9 +1258,9 @@ export default function RootLayout() {
           Outfit_500Medium,
           Outfit_600SemiBold,
           Outfit_700Bold,
-          'Cinzel': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf' },
-          'Poppins': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf' },
-          'RozhaOne': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/rozhaone/RozhaOne-Regular.ttf' },
+          'Cinzel': require('../assets/fonts/Cinzel-Regular.ttf'),
+          'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
+          'RozhaOne': require('../assets/fonts/RozhaOne-Regular.ttf'),
         });
       } catch (e) {
         console.warn('[Fonts] Non-blocking font load failed:', e);
