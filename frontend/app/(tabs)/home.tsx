@@ -549,6 +549,18 @@ export default function HomeScreen() {
   const hanumanStatus = getCurrentHanumanStatus(now);
   const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
+  const [kathaStatus, setKathaStatus] = useState<any | null>(null);
+
+  const fetchKathaStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/katha/status');
+      if (res && res.data && res.data.status === 'success') {
+        setKathaStatus(res.data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch katha status on home:', err);
+    }
+  }, []);
 
   const lastRemindersTimeRef = useRef<number>(0);
   const fetchReminders = async (force = false) => {
@@ -713,10 +725,8 @@ export default function HomeScreen() {
         if (!store.hasCheckedMyVendor) {
           store.fetchMyVendor().catch(() => { });
         }
-        if (!store.vendors || store.vendors.length === 0) {
-          store.fetchVendors().catch(() => { });
-        }
         fetchReminders(true);
+        fetchKathaStatus();
       });
       return () => {
         task.cancel();
@@ -825,12 +835,13 @@ export default function HomeScreen() {
     try {
       await initializeHome(true);
       await fetchReminders(true);
+      await fetchKathaStatus();
     } catch (err) {
       console.warn('Refresh failed:', err);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
-  }, [initializeHome, fetchReminders]);
+  }, [initializeHome, fetchReminders, fetchKathaStatus]);
 
   // Feed quality management is now handled by FeedSection component
 
@@ -1688,9 +1699,11 @@ export default function HomeScreen() {
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
       isFocused={isFocused}
+      kathaStatus={kathaStatus}
     />
   ), [
     isFocused,
+    kathaStatus,
     insets.top,
     user,
     firstName,
