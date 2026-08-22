@@ -973,8 +973,9 @@ export default function JaapLandingScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.bookCardKatha,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.9 }
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }
                 ]}
+                android_ripple={{ color: 'rgba(255, 107, 0, 0.22)', borderless: false }}
                 onPress={() => {
                   router.push('/library/katha' as any);
                 }}
@@ -2030,6 +2031,8 @@ const styles = StyleSheet.create({
   },
   bookCardKatha: {
     width: 192,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   coverBoxKatha: {
     width: '100%',
