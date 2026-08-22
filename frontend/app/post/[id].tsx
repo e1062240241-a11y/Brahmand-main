@@ -391,7 +391,7 @@ const PostScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -489,7 +489,7 @@ const PostScreen = () => {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [user?.id, blockedByMeUserIds, commentModalVisible]);
+  }, [user?.id, blockedByMeUserSet, commentModalVisible]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;

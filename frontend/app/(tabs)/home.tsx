@@ -1392,7 +1392,7 @@ export default function HomeScreen() {
     const targetUserId = post?.user_id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1453,13 +1453,13 @@ export default function HomeScreen() {
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedByMeUserIds, handleDeletePost, handleReportPost]);
+  }, [currentUserId, blockedByMeUserSet, handleDeletePost, handleReportPost]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1550,7 +1550,7 @@ export default function HomeScreen() {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [currentUserId, blockedByMeUserIds, commentModalVisible]);
+  }, [currentUserId, blockedByMeUserSet, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {

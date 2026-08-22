@@ -205,7 +205,7 @@ const UserProfileScreen = () => {
 
   // Global block store — shared across all screens
   const blockedUserSet = useBlockStore(state => state.blockedUserSet);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
 
@@ -357,7 +357,7 @@ const UserProfileScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -714,7 +714,7 @@ const UserProfileScreen = () => {
     const targetUserId = post?.user_id || post?.userId || post?.user?.id || profile?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -782,7 +782,7 @@ const UserProfileScreen = () => {
         { cancelable: true }
       );
     }
-  }, [profile?.id, currentUserId, blockedByMeUserIds, handleDeletePost]);
+  }, [profile?.id, currentUserId, blockedByMeUserSet, handleDeletePost]);
 
   const handleLikePost = useCallback(async (post: any) => {
     const postId = post?.id;

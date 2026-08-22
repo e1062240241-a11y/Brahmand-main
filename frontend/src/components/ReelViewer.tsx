@@ -1339,7 +1339,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   // Apple Guideline 1.2 - report comment state & blocked users
   // Global block store — shared across all screens
   const blockedUserSet = useBlockStore(state => state.blockedUserSet);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
@@ -1396,7 +1396,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1469,7 +1469,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         { cancelable: true }
       );
     }
-  }, [user?.id, blockedByMeUserIds, isCommentVisible]);
+  }, [user?.id, blockedByMeUserSet, isCommentVisible]);
 
   const [autoScroll, setAutoScroll] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
