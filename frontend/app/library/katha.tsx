@@ -98,16 +98,15 @@ export default function KathaPage() {
 
   const filteredEpisodes = useMemo(() => {
     if (!episodes) return [];
+    let list = [...episodes];
     if (activeFilter === 'LATEST') {
-      return episodes.filter(e => e.episode_number === maxEpisodeNumber || e.is_new);
+      list = episodes.filter(e => e.episode_number === maxEpisodeNumber || e.is_new);
+    } else if (activeFilter === 'PART1') {
+      list = episodes.filter(e => (e.episode_number || 0) <= 10);
+    } else if (activeFilter === 'PART2') {
+      list = episodes.filter(e => (e.episode_number || 0) > 10);
     }
-    if (activeFilter === 'PART1') {
-      return episodes.filter(e => (e.episode_number || 0) <= 10);
-    }
-    if (activeFilter === 'PART2') {
-      return episodes.filter(e => (e.episode_number || 0) > 10);
-    }
-    return episodes;
+    return list.sort((a, b) => (b.episode_number || 0) - (a.episode_number || 0));
   }, [episodes, activeFilter, maxEpisodeNumber]);
 
   // Custom Hotstar Minimalist Player States
@@ -786,7 +785,7 @@ export default function KathaPage() {
         <View style={styles.librarySection}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
-            <Text style={styles.sectionTitle}>श्रावण कथा अध्याय</Text>
+            <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
           </View>
 
           {/* Quick Filter Bar */}
@@ -801,7 +800,7 @@ export default function KathaPage() {
               onPress={() => setActiveFilter('ALL')}
             >
               <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
-                सभी अध्याय
+                All Episodes
               </Text>
             </TouchableOpacity>
 
@@ -811,7 +810,7 @@ export default function KathaPage() {
             >
               <View style={styles.chipRedDot} />
               <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
-                नवीनतम (NEW)
+                Latest (NEW)
               </Text>
             </TouchableOpacity>
 

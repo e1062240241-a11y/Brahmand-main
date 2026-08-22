@@ -424,7 +424,7 @@ async def get_katha_episodes():
                         pass
 
     if merged:
-        episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0))
+        episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0), reverse=True)
     else:
         episodes = []
 
