@@ -4340,7 +4340,7 @@ export default function CommunityDetailScreen() {
           <Text style={styles.headerMembersText}> </Text>
           <Text style={styles.headerTaglineText}> </Text>
         </LinearGradient>
-        <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
           <CustomLoader size={70} message="Loading Community Group..." />
         </View>
       </View>
