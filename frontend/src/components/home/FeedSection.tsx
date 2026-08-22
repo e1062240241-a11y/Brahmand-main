@@ -28,8 +28,8 @@ type FeedSectionProps = {
   homeHeader: React.ReactElement | null;
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
-  blockedUserIds: string[];
-  blockedByMeUserIds: string[];
+  blockedUserSet: Set<string>;
+  blockedByMeUserSet: Set<string>;
 };
 
 const FeedSection: React.FC<FeedSectionProps> = ({
@@ -46,8 +46,8 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   homeHeader,
   onRefresh,
   isRefreshing,
-  blockedUserIds,
-  blockedByMeUserIds,
+  blockedUserSet,
+  blockedByMeUserSet,
 }) => {
   const activeTab = useFeedStore(state => state.activeTab);
   const setActiveTab = useFeedStore(state => state.setActiveTab);
@@ -100,8 +100,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       let images: any[] = [];
       let commCards: any[] = [];
 
-      const blockedSet = new Set([...blockedUserIds, ...blockedByMeUserIds]);
-
       // Single pass for filtering and splitting (O(N))
       for (let i = 0; i < rawFeedPosts.length; i++) {
         const post = rawFeedPosts[i];
@@ -113,7 +111,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 
         if (uid) {
           const uidStr = String(uid);
-          if (blockedSet.has(uidStr)) {
+          if (blockedUserSet.has(uidStr) || blockedByMeUserSet.has(uidStr)) {
             continue;
           }
         }
@@ -177,7 +175,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       isActive = false;
       task.cancel();
     };
-  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds, focusTrigger]);
+  }, [rawFeedPosts, blockedUserSet, blockedByMeUserSet, focusTrigger]);
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || useFeedStore.getState().activeTab;

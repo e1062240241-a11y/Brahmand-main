@@ -17,3 +17,7 @@
 ## 2024-08-21 - [Backend Performance: O(1) Fetching during Migrations]
 **Learning:** During large-scale data migrations in the Python backend (like `backfill-follow-edges`), performing sequential `await db.get_document()` calls inside loops over unbounded collections (like user follow arrays) results in massive N+1 query bottlenecks that can exhaust database connections or severely block the asyncio event loop.
 **Action:** Always pre-aggregate all required document IDs and use `await db.get_documents_batch()` to fetch them in O(1) queries (chunking them if necessary, e.g., in batches of 100 or 500) before executing write operations.
+
+## 2024-05-18 - [Optimize blocked user checks by using Zustand Set directly]
+**Learning:** React Native state sometimes holds both an array and a `Set` counterpart for convenience. Instantiating a `new Set(array)` on every render or array mutation causes O(N) overhead which compounds heavily inside list operations like `.filter()`.
+**Action:** Always fetch the `Set` object directly from Zustand instead of fetching the array and creating a new `Set` locally. Ensure dependent list filtering operations (like `FeedSection` and `ReelViewer`) accept `Set` properties to prevent re-creation in children.

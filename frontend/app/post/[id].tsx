@@ -74,8 +74,8 @@ const PostScreen = () => {
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
 
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
 
@@ -96,21 +96,15 @@ const PostScreen = () => {
   const listRef = useRef<any>(null);
   const hasScrolled = useRef(false);
 
-  const blockedUidsRef = useRef<string[]>([]);
-  useEffect(() => {
-    blockedUidsRef.current = [...blockedUserIds, ...blockedByMeUserIds];
-  }, [blockedUserIds, blockedByMeUserIds]);
-
   const visibleFeedPosts = useMemo(() => {
-    const blocked = blockedUidsRef.current;
-    if (blocked.length === 0) return feedPosts;
-    const blockedSet = new Set(blocked);
+    if (blockedUserSet.size === 0 && blockedByMeUserSet.size === 0) return feedPosts;
     return feedPosts.filter((post: any) => {
       const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
       if (!uid) return true;
-      return !blockedSet.has(String(uid));
+      const uidStr = String(uid);
+      return !blockedUserSet.has(uidStr) && !blockedByMeUserSet.has(uidStr);
     });
-  }, [feedPosts, blockedUserIds, blockedByMeUserIds]);
+  }, [feedPosts, blockedUserSet, blockedByMeUserSet]);
 
   const feedPostKeys = useMemo(
     () => visibleFeedPosts.map((post, index) => String(post.id || post.media_url || index)),
@@ -397,7 +391,7 @@ const PostScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -495,7 +489,7 @@ const PostScreen = () => {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [user?.id, blockedByMeUserIds, commentModalVisible]);
+  }, [user?.id, blockedByMeUserSet, commentModalVisible]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
@@ -711,15 +705,14 @@ const PostScreen = () => {
               ) : postComments.length === 0 ? (
                 <Text style={styles.commentEmptyText}>{t('noCommentsYet2')}</Text>
               ) : (() => {
-                const blockedSet = new Set(blockedUserIds);
                 const parentComments = postComments.filter(c => {
                   const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                  const isBlockedUser = uid && blockedSet.has(String(uid));
+                  const isBlockedUser = uid && blockedUserSet.has(String(uid));
                   return !c.parent_id && !isBlockedUser;
                 });
                 const repliesMap = postComments.reduce((acc, c) => {
                   const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                  const isBlockedUser = uid && blockedSet.has(String(uid));
+                  const isBlockedUser = uid && blockedUserSet.has(String(uid));
                   if (c.parent_id && !isBlockedUser) {
                     if (!acc[c.parent_id]) acc[c.parent_id] = [];
                     acc[c.parent_id].push(c);

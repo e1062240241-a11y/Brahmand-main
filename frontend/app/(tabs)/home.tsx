@@ -86,9 +86,8 @@ export default function HomeScreen() {
   const currentUserId = (user as any)?.id;
 
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
-  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
   const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
@@ -1411,7 +1410,7 @@ export default function HomeScreen() {
     const targetUserId = post?.user_id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1472,13 +1471,13 @@ export default function HomeScreen() {
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedByMeUserIds, handleDeletePost, handleReportPost]);
+  }, [currentUserId, blockedByMeUserSet, handleDeletePost, handleReportPost]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1569,7 +1568,7 @@ export default function HomeScreen() {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [currentUserId, blockedByMeUserIds, commentModalVisible]);
+  }, [currentUserId, blockedByMeUserSet, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {
@@ -1765,8 +1764,8 @@ export default function HomeScreen() {
               homeHeader={memoizedHeader}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
-              blockedUserIds={blockedUserIds}
-              blockedByMeUserIds={blockedByMeUserIds}
+              blockedUserSet={blockedUserSet}
+              blockedByMeUserSet={blockedByMeUserSet}
             />
           </View>
 
@@ -2020,7 +2019,7 @@ export default function HomeScreen() {
                   ) : postComments.length > 0 ? (() => {
                     const filteredComments = postComments.filter((c: any) => {
                       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                      return !uid || !blockedSet.has(String(uid));
+                      return !uid || !blockedUserSet.has(String(uid));
                     });
                     const parentComments = filteredComments.filter(c => !c.parent_id);
                     const repliesMap = filteredComments.reduce((acc, c) => {
