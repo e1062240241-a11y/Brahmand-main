@@ -2111,7 +2111,7 @@ export default function CommunityDetailScreen() {
       let targetFetchCommId = id as string;
       if (currentSubgroup === 'state' && stateCommunityId) {
         targetFetchCommId = stateCommunityId;
-      } else if ((currentSubgroup === 'national' || currentSubgroup === 'country') && countryCommunityId) {
+      } else if (currentSubgroup === 'national' && countryCommunityId) {
         targetFetchCommId = countryCommunityId;
       }
 
@@ -2197,25 +2197,6 @@ export default function CommunityDetailScreen() {
         start_time: msg.start_time,
       }));
 
-      // Separate state & national announcements into recent (last 24 hours, to be pinned) and older (to go down the feed)
-      const nowMs = Date.now();
-      const cutoffMs = nowMs - 24 * 60 * 60 * 1000;
-      const isWithin24Hours = (createdAtStr: string) => {
-        if (!createdAtStr || createdAtStr === 'Just now') return true;
-        try {
-          const msgTime = parseUTCDate(createdAtStr).getTime();
-          return !isNaN(msgTime) && msgTime >= cutoffMs;
-        } catch (e) {
-          return true;
-        }
-      };
-
-      const recentStateMsgs = formattedStateMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
-      const olderStateMsgs = formattedStateMsgs.filter((msg: any) => !isWithin24Hours(msg.timestamp));
-
-      const recentNationalMsgs = formattedNationalMsgs.filter((msg: any) => isWithin24Hours(msg.timestamp));
-      const olderNationalMsgs = formattedNationalMsgs.filter((msg: any) => !isWithin24Hours(msg.timestamp));
-
       // Retrieve list of locally deleted post IDs to filter them from fresh server data
       const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
       const deletedIds = new Set<string>(currentCache?.deletedPostIds || []);
@@ -2227,11 +2208,7 @@ export default function CommunityDetailScreen() {
         const currentUserName = currentUser?.name || null;
 
         const serverPosts = [
-          ...formattedMsgs,
-          ...recentStateMsgs,
-          ...olderStateMsgs,
-          ...recentNationalMsgs,
-          ...olderNationalMsgs
+          ...formattedMsgs
         ];
         const serverIds = new Set(serverPosts.map((p: any) => String(p.id)));
         const prevPosts = currentCache?.communityPosts || [];
@@ -2281,11 +2258,7 @@ export default function CommunityDetailScreen() {
         const seenIds = new Set(localPosts.map((p: any) => String(p.id)));
 
         // Filter fresh server posts — exclude any that were locally deleted or are already local
-        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
-        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
-        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
-        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
-        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
+        const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
 
         const getPostTimeMs = (p: any) => {
           const ts = p.timestamp || p.created_at;
@@ -2294,21 +2267,10 @@ export default function CommunityDetailScreen() {
           return Number.isNaN(parsed) ? Date.now() : parsed;
         };
 
-        const sortedRecentNationalMsgs = [...uniqueRecentNationalMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-        const sortedRecentStateMsgs = [...uniqueRecentStateMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
-        const olderCombined = [
-          ...localPosts,
-          ...uniqueCityMsgs,
-          ...uniqueOlderStateMsgs,
-          ...uniqueOlderNationalMsgs
-        ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
         finalPosts = [
-          ...sortedRecentNationalMsgs,
-          ...sortedRecentStateMsgs,
-          ...olderCombined
-        ];
+          ...localPosts,
+          ...uniqueServerMsgs
+        ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
 
         console.log('[iOS Community] finalPosts IDs:', finalPosts.map(p => p.id));
 
@@ -2325,21 +2287,8 @@ export default function CommunityDetailScreen() {
       } else {
         // ORIGINAL reconciliation logic for Android/Web
         setCommunityPosts((prev: any[]) => {
-          const serverIds = new Set([
-            ...formattedMsgs.map((p: any) => p.id),
-            ...recentStateMsgs.map((p: any) => p.id),
-            ...olderStateMsgs.map((p: any) => p.id),
-            ...recentNationalMsgs.map((p: any) => p.id),
-            ...olderNationalMsgs.map((p: any) => p.id)
-          ]);
-
-          const serverPosts = [
-            ...formattedMsgs,
-            ...recentStateMsgs,
-            ...olderStateMsgs,
-            ...recentNationalMsgs,
-            ...olderNationalMsgs
-          ];
+          const serverIds = new Set(formattedMsgs.map((p: any) => p.id));
+          const serverPosts = [...formattedMsgs];
 
           // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
           const localPosts = prev.filter((p: any) => {
@@ -2373,11 +2322,7 @@ export default function CommunityDetailScreen() {
           const seenIds = new Set(localPosts.map((p: any) => p.id));
 
           // Filter fresh server posts — exclude any that were locally deleted
-          const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-          const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-          const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-          const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-          const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
 
           const getPostTimeMs = (p: any) => {
             const ts = p.timestamp || p.created_at;
@@ -2386,21 +2331,10 @@ export default function CommunityDetailScreen() {
             return Number.isNaN(parsed) ? Date.now() : parsed;
           };
 
-          const sortedRecentNationalMsgs = [...uniqueRecentNationalMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-          const sortedRecentStateMsgs = [...uniqueRecentStateMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
-          const olderCombined = [
-            ...localPosts,
-            ...uniqueCityMsgs,
-            ...uniqueOlderStateMsgs,
-            ...uniqueOlderNationalMsgs
-          ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
           finalPosts = [
-            ...sortedRecentNationalMsgs,
-            ...sortedRecentStateMsgs,
-            ...olderCombined
-          ];
+            ...localPosts,
+            ...uniqueServerMsgs
+          ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
 
           // CRITICAL FIX: The cache must be updated with the newly computed array.
           // Doing this outside setCommunityPosts was caching an empty array due to async React state!

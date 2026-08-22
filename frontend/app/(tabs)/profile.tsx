@@ -17,14 +17,16 @@ import {
   Animated,
   Keyboard,
   Pressable,
-  StatusBar
-  , DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
+  StatusBar,
+  ScrollView,
+  DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
 } from 'react-native';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { FlashList } from '@shopify/flash-list';
@@ -187,6 +189,42 @@ export default function ProfileScreen() {
   const LIMIT = 15;
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const settingsSheetAnim = useRef(new Animated.Value(600)).current;
+
+  const openSettingsModal = useCallback(() => {
+    setShowSettingsModal(true);
+    settingsSheetAnim.setValue(600);
+    Animated.spring(settingsSheetAnim, {
+      toValue: 0,
+      damping: 24,
+      mass: 0.8,
+      stiffness: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [settingsSheetAnim]);
+
+  const closeSettingsModal = useCallback((onFinished?: () => void) => {
+    Animated.timing(settingsSheetAnim, {
+      toValue: 600,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowSettingsModal(false);
+      if (onFinished) onFinished();
+    });
+  }, [settingsSheetAnim]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (showSettingsModal) {
+        NavigationBar.setBackgroundColorAsync('#FFFFFF').catch(() => {});
+        NavigationBar.setButtonStyleAsync('dark').catch(() => {});
+      } else {
+        NavigationBar.setBackgroundColorAsync('#000000').catch(() => {});
+        NavigationBar.setButtonStyleAsync('light').catch(() => {});
+      }
+    }
+  }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
@@ -242,7 +280,7 @@ export default function ProfileScreen() {
         return true;
       }
       if (showSettingsModal) {
-        setShowSettingsModal(false);
+        closeSettingsModal();
         return true;
       }
       if (postModalVisible) {
@@ -791,49 +829,52 @@ export default function ProfileScreen() {
 
   const handleMenuPress = (item: SettingItem) => {
     if (item.id === 'culture') {
-      setShowSettingsModal(false);
-      setTimeout(() => {
-      }, Platform.OS === 'ios' ? 400 : 50);
+      closeSettingsModal();
       return;
     }
 
     if (item.id === 'language') {
-      setShowSettingsModal(false);
-      setTimeout(() => {
+      closeSettingsModal(() => {
         setShowLanguageModal(true);
-      }, Platform.OS === 'ios' ? 400 : 50);
+      });
       return;
     }
 
     if (item.action === 'logout') {
-      // Do not dismiss settings modal first, show the native confirmation prompt directly on top of it.
-      // This prevents the UIKit transition conflict that causes the sheet to auto-dismiss and freeze the app.
       handleLogout();
       return;
     }
 
-    setShowSettingsModal(false);
-    if (item.disabled) return;
-    if (item.id === 'personality_verification') {
-      setShowSettingsModal(false);
-      const status = user?.personality_verification_status;
-      if (status === 'pending' || status === 'approved') {
-        router.push('/profile/personality-verification-success');
-      } else {
-        router.push('/profile/personality-verification');
-      }
+    if (item.disabled) {
+      closeSettingsModal();
       return;
     }
+
+    if (item.id === 'personality_verification') {
+      closeSettingsModal(() => {
+        const status = user?.personality_verification_status;
+        if (status === 'pending' || status === 'approved') {
+          router.push('/profile/personality-verification-success');
+        } else {
+          router.push('/profile/personality-verification');
+        }
+      });
+      return;
+    }
+
     if (item.route) {
-      setShowSettingsModal(false);
-      router.push(item.route as any);
+      closeSettingsModal(() => {
+        router.push(item.route as any);
+      });
+    } else {
+      closeSettingsModal();
     }
   };
 
 
   const performLogout = async () => {
     // Dismiss the settings modal now that the user has confirmed logout
-    setShowSettingsModal(false);
+    closeSettingsModal();
     try {
       await logout();
       if (Platform.OS === 'web') {
@@ -858,7 +899,7 @@ export default function ProfileScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+          title: t('logoutConfirm'),
           message: t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
           options: [
             t('cancel'),
@@ -1402,7 +1443,15 @@ export default function ProfileScreen() {
 
           <View style={styles.actionButtonsRow}>
             <Pressable
-              style={({ pressed }) => [styles.addPostButton, pressed && styles.actionPressed]}
+              style={({ pressed }) => [
+                styles.addPostButton,
+                Platform.OS === 'ios' && pressed && styles.actionPressed
+              ]}
+              android_ripple={{
+                color: 'rgba(255, 255, 255, 0.25)',
+                borderless: false,
+                foreground: true,
+              }}
               pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={() => setShowUploadModal(true)}
             >
@@ -1410,7 +1459,15 @@ export default function ProfileScreen() {
               <Text style={styles.addPostButtonText}>{t('addPost')}</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
+              style={({ pressed }) => [
+                styles.shareProfileButton,
+                Platform.OS === 'ios' && pressed && styles.actionPressed
+              ]}
+              android_ripple={{
+                color: 'rgba(255, 255, 255, 0.25)',
+                borderless: false,
+                foreground: true,
+              }}
               pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={handleShareProfile}
             >
@@ -1431,38 +1488,51 @@ export default function ProfileScreen() {
 
 
         {/* Settings Menu Modal */}
-        <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <Modal
+          visible={showSettingsModal}
+          animationType="fade"
+          transparent
+          statusBarTranslucent={true}
+          onRequestClose={() => closeSettingsModal()}
+        >
           <View style={styles.settingsModalContainer}>
             <Pressable
               style={styles.settingsBackdrop}
-              onPress={() => setShowSettingsModal(false)}
+              onPress={() => closeSettingsModal()}
             />
-            <View style={styles.settingsSheet}>
+            <Animated.View
+              style={[
+                styles.settingsSheet,
+                { transform: [{ translateY: settingsSheetAnim }] }
+              ]}
+            >
               <View style={styles.settingsHeader}>
                 <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
                 <Pressable
                   style={({ pressed }) => [
                     styles.settingsClose,
-                    pressed && { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                    Platform.OS === 'ios' && pressed && { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
                   ]}
                   android_ripple={{
-                    color: 'rgba(0, 0, 0, 0.12)',
-                    borderless: false,
-                    radius: 18,
+                    color: 'rgba(0, 0, 0, 0.15)',
+                    borderless: true,
+                    foreground: true,
+                    radius: 20,
                   }}
-                  hitSlop={{ top: 24, bottom: 24, left: 24, right: 24 }}
-                  onPress={() => setShowSettingsModal(false)}
+                  hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                  onPress={() => closeSettingsModal()}
                 >
                   <Ionicons name="close" size={24} color="#000000" />
                 </Pressable>
               </View>
-              <SafeFlashList
-                data={SETTINGS_SECTIONS}
-                estimatedItemSize={220}
+              <ScrollView
+                style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
-                keyExtractor={(section: any) => section.id}
-                renderItem={({ item: section }: { item: any }) => (
-                  <View style={styles.settingsSection}>
+                bounces={false}
+                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 28) + 40 }}
+              >
+                {SETTINGS_SECTIONS.map((section: any) => (
+                  <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
                     {section.items.map((item: SettingItem, index: number) => {
                       const iconColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
@@ -1475,31 +1545,37 @@ export default function ProfileScreen() {
                           <Pressable
                             style={({ pressed }) => [
                               styles.settingsRow,
-                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' },
-                              pressed && Platform.OS === 'ios' && { opacity: 0.7 },
+                              Platform.OS === 'ios' && pressed && { backgroundColor: item.action === 'logout' ? 'rgba(255, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
                               item.disabled && item.id !== 'location' && styles.settingsRowDisabled,
                             ]}
-                            android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
+                            android_ripple={{
+                              color: item.action === 'logout' ? 'rgba(255, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                              borderless: false,
+                              foreground: true,
+                            }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled && item.id !== 'location'}
                           >
-                            <View style={[
-                              styles.settingsIconCircle,
-                              { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
-                            ]}>
+                            <View
+                              pointerEvents="none"
+                              style={[
+                                styles.settingsIconCircle,
+                                { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
+                              ]}
+                            >
                               <Ionicons
                                 name={item.icon as any}
                                 size={18}
                                 color={iconColor}
                               />
                             </View>
-                            <View style={styles.settingsLabelWrap}>
+                            <View pointerEvents="none" style={styles.settingsLabelWrap}>
                               <Text style={[styles.settingsLabel, { color: textColor }]}>
                                 {item.label}
                               </Text>
                               {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
                             </View>
-                            <View style={styles.settingsRowRight}>
+                            <View pointerEvents="none" style={styles.settingsRowRight}>
                               {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
                               {showChevron && (
                                 <Ionicons
@@ -1522,10 +1598,9 @@ export default function ProfileScreen() {
                       );
                     })}
                   </View>
-                )}
-                contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
-              />
-            </View>
+                ))}
+              </ScrollView>
+            </Animated.View>
           </View>
         </Modal>
 
@@ -1550,28 +1625,28 @@ export default function ProfileScreen() {
             </Text>
           </Pressable>
           <View style={styles.navRightGroup}>
-            <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+              style={styles.navRightBtn}
               onPress={() => showImageSourcePicker('cover_photo')}
             >
               <Svg width={18} height={18} viewBox="0 0 16 17" fill="none">
                 <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5" />
               </Svg>
-            </Pressable>
-            <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: false, radius: 20 }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={({ pressed }) => [styles.navRightBtn, pressed && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
-              onPress={() => setShowSettingsModal(true)}
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+              style={styles.navRightBtn}
+              onPress={openSettingsModal}
             >
               <View style={{ width: 22, height: 18, justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
                 <View style={{ width: 20, height: 2.5, backgroundColor: '#FFF', borderRadius: 1.25 }} />
               </View>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -2397,6 +2472,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
   addPostButtonText: {
     color: '#FFFFFF',
@@ -2412,6 +2488,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
   actionPressed: {
     opacity: 0.82,
@@ -2562,8 +2639,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    height: Platform.OS === 'android' ? undefined : '65%',
-    maxHeight: Platform.OS === 'android' ? '85%' : undefined,
+    height: '52%',
     paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },

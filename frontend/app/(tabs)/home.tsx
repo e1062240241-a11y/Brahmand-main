@@ -13,7 +13,7 @@ import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeInit, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
+import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { socketService } from '../../src/services/socket';
 import { useAuthStore } from '../../src/store/authStore';
@@ -400,34 +400,35 @@ export default function HomeScreen() {
     try {
       lastInitTimeRef.current = nowTime;
       fetchLocalCommunities();
-      const res = await getHomeInit();
 
-      if (res && res.data) {
-        if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
-        if (res.data.next_festival) setNextFestival(res.data.next_festival);
+      // Parallel execution of Tier 1 (Shell) and Tier 2 (Feed)
+      const [shellResult, feedResult] = await Promise.allSettled([
+        getHomeShell(),
+        getHomeFeed(15, '', useFeedStore.getState().activeTab || 'for_you')
+      ]);
 
-        if (res.data.community_requests) {
-          const reqs = res.data.community_requests;
-          setCommunityRequests(reqs);
-          AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
+      if (shellResult.status === 'fulfilled' && shellResult.value?.data) {
+        const data = shellResult.value.data;
+        if (data.unread_count !== undefined) setUnreadCount(data.unread_count);
+        if (data.next_festival) setNextFestival(data.next_festival);
+        if (data.community_requests) {
+          setCommunityRequests(data.community_requests);
+          AsyncStorage.setItem('home_community_requests', JSON.stringify(data.community_requests)).catch(e => console.log(e));
         }
-        if (res.data.communities) {
-          const comms = res.data.communities;
-          setCommunities(comms);
-          AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
-        }
 
-        if (res.data.feed?.items && res.data.feed.items.length > 0) {
-          const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
+        AsyncStorage.setItem('home_shell_cache', JSON.stringify(data)).catch(e => console.log(e));
+      }
 
-          if (isRefreshing) {
-            setTabFeed(tabToLoad, {
-              posts: res.data.feed.items,
-              offset: res.data.feed.items.length,
-              hasMore: res.data.feed.has_more,
-              lastFetched: Date.now(),
-            });
-          }
+      if (feedResult.status === 'fulfilled' && feedResult.value?.data) {
+        const feedData = feedResult.value.data;
+        const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
+        if (feedData.items && Array.isArray(feedData.items)) {
+          setTabFeed(tabToLoad, {
+            posts: feedData.items,
+            offset: feedData.items.length,
+            hasMore: feedData.has_more ?? false,
+            lastFetched: Date.now(),
+          });
         }
       }
     } catch (err) {
@@ -435,14 +436,22 @@ export default function HomeScreen() {
     } finally {
       setIsHomeInitialized(true);
     }
-  }, [setUnreadCount, setTabFeed, fetchLocalCommunities, isRefreshing, token, isAuthenticated]);
+  }, [setUnreadCount, setTabFeed, fetchLocalCommunities, token, isAuthenticated]);
 
   const loadHomeCache = useCallback(async () => {
     try {
-      const [cachedCommunities, cachedRequests] = await Promise.all([
+      const [cachedCommunities, cachedRequests, cachedShell] = await Promise.all([
         AsyncStorage.getItem('home_communities'),
         AsyncStorage.getItem('home_community_requests'),
+        AsyncStorage.getItem('home_shell_cache'),
       ]);
+
+      if (cachedShell) {
+        const shell = JSON.parse(cachedShell);
+        if (shell.unread_count !== undefined) setUnreadCount(shell.unread_count);
+        if (shell.next_festival) setNextFestival(shell.next_festival);
+        if (shell.community_requests) setCommunityRequests(shell.community_requests);
+      }
 
       if (cachedCommunities) {
         const parsed = JSON.parse(cachedCommunities);
@@ -462,7 +471,7 @@ export default function HomeScreen() {
     } catch (err) {
       console.warn('Failed to load cached home data:', err);
     }
-  }, []);
+  }, [setUnreadCount]);
 
   const isCommunityFallbackId = (id?: string) => {
     if (!id) return true;

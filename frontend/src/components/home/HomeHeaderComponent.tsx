@@ -360,23 +360,45 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
 
                         <View style={styles.headerRight}>
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                style={styles.headerIconButton}
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.headerIconButton,
+                                    Platform.OS === 'ios' && pressed && { opacity: 0.6 }
+                                ]}
+                                android_ripple={{
+                                    color: 'rgba(0, 0, 0, 0.12)',
+                                    borderless: true,
+                                    foreground: true,
+                                    radius: 20,
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={() => setSearchActive(!searchActive)}
+                                accessibilityRole="button"
+                                accessibilityLabel={searchActive ? "Close search" : "Open search"}
                             >
                                 <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                style={styles.headerIconButton}
+                            </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.headerIconButton,
+                                    Platform.OS === 'ios' && pressed && { opacity: 0.6 }
+                                ]}
+                                android_ripple={{
+                                    color: 'rgba(0, 0, 0, 0.12)',
+                                    borderless: true,
+                                    foreground: true,
+                                    radius: 20,
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={handleNotificationPress}
+                                accessibilityRole="button"
+                                accessibilityLabel="Notifications"
                             >
-                                <View>
+                                <View pointerEvents="none">
                                     <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                                     {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                                 </View>
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
 

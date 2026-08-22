@@ -56,7 +56,7 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
 
   const handlePressIn = () => {
     Animated.timing(scaleAnim, {
-      toValue: 0.95, // Smooth subtle press inward
+      toValue: 0.96, // Smooth subtle press inward
       duration: 70,
       useNativeDriver: true,
     }).start();
@@ -76,9 +76,19 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={onPress}
-        style={styles.exactJoinBtn}
+        android_ripple={{
+          color: 'rgba(255, 107, 0, 0.22)',
+          borderless: false,
+          foreground: true,
+        }}
+        style={({ pressed }) => [
+          styles.exactJoinBtn,
+          Platform.OS === 'ios' && pressed && { backgroundColor: 'rgba(255, 243, 230, 0.95)' }
+        ]}
       >
-        {children}
+        <View pointerEvents="none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          {children}
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -1759,7 +1769,7 @@ const styles = StyleSheet.create({
   jaapCardBottomArea: { width: '100%' },
   jaapCardTitleExact: { color: '#FFF', fontSize: 14, fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2, marginBottom: 6 },
   jaapCardSlokExact: { display: 'none' },
-  exactJoinBtn: { backgroundColor: '#FFF', height: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', elevation: 2, justifyContent: 'center' },
+  exactJoinBtn: { backgroundColor: '#FFF', height: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', elevation: 2, justifyContent: 'center', overflow: 'hidden' },
   exactJoinText: { color: '#FF6600', fontSize: 13, fontWeight: '800' },
   waveformIconBox: { display: 'none' },
   sessionsColPadding: { paddingHorizontal: 20 },

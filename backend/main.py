@@ -113,6 +113,7 @@ from routes.event_routes import router as event_router
 from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.search_routes import router as search_router
 from routes.katha_routes import router as katha_router
+from routes.home_routes import router as home_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1470,6 +1471,7 @@ api_router.include_router(event_router)
 api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
+api_router.include_router(home_router)
 
 
 
@@ -10493,20 +10495,38 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
         uid = u.get('id') or u.get('user_id')
         if not uid:
             continue
-        # Each user's `following` array holds the user_ids they follow.
-        for followee_uid in (u.get('following') or []):
-            if not followee_uid:
-                continue
-            doc_id = f"{uid}_{followee_uid}"
-            existing = await db.get_document('user_follows', doc_id)
-            if existing:
-                skipped += 1
-                continue
-            await db.set_document('user_follows', doc_id, {
-                'follower_uid': uid,
-                'followee_uid': followee_uid,
-            })
-            created += 1
+
+        followees = u.get('following') or []
+        if not followees:
+            continue
+
+        # ⚡ Bolt Optimization: Batch fetch all follow edges for this user to prevent N+1 queries
+        # Map doc_id back to f_uid directly so we don't need string splitting later
+        doc_map = {f"{uid}_{f_uid}": f_uid for f_uid in followees if f_uid}
+        if not doc_map:
+            continue
+
+        doc_ids = list(doc_map.keys())
+
+        # Process in chunks of 100 to avoid limits
+        chunk_size = 100
+        for i in range(0, len(doc_ids), chunk_size):
+            chunk_ids = doc_ids[i:i + chunk_size]
+            existing_docs = await db.get_documents_batch('user_follows', chunk_ids)
+            # db.get_documents_batch injects the document ID into the data dict as 'id'
+            existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
+
+            for doc_id in chunk_ids:
+                if doc_id in existing_ids:
+                    skipped += 1
+                else:
+                    f_uid = doc_map[doc_id]
+                    await db.set_document('user_follows', doc_id, {
+                        'follower_uid': uid,
+                        'followee_uid': f_uid,
+                    })
+                    created += 1
+
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
 
