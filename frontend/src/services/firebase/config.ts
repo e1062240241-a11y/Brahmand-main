@@ -111,7 +111,10 @@ export const firebaseApp = initializeFirebase();
 export function getFirestoreDB(): Firestore {
   if (!db) {
     const app = initializeFirebase();
-    db = getFirestore(app);
+    const { initializeFirestore } = require('firebase/firestore');
+    db = initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+    });
   }
   return db;
 }
