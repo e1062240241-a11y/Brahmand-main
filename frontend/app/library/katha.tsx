@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,7 @@ interface KathaEpisode {
   video_url: string;
   thumbnail_url?: string;
   description?: string;
+  is_new?: boolean;
 }
 
 interface KathaStatus {
@@ -80,6 +81,7 @@ export default function KathaPage() {
   const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [hasSyncedLive, setHasSyncedLive] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'LATEST' | 'PART1' | 'PART2'>('ALL');
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
     mode: 'OFF_AIR',
@@ -88,6 +90,25 @@ export default function KathaPage() {
     banner_message: 'Shravan Katha Daily Uploaded Episodes',
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
+
+  const maxEpisodeNumber = useMemo(() => {
+    if (!episodes || episodes.length === 0) return 0;
+    return Math.max(...episodes.map(e => e.episode_number || 0));
+  }, [episodes]);
+
+  const filteredEpisodes = useMemo(() => {
+    if (!episodes) return [];
+    if (activeFilter === 'LATEST') {
+      return episodes.filter(e => e.episode_number === maxEpisodeNumber || e.is_new);
+    }
+    if (activeFilter === 'PART1') {
+      return episodes.filter(e => (e.episode_number || 0) <= 10);
+    }
+    if (activeFilter === 'PART2') {
+      return episodes.filter(e => (e.episode_number || 0) > 10);
+    }
+    return episodes;
+  }, [episodes, activeFilter, maxEpisodeNumber]);
 
   // Custom Hotstar Minimalist Player States
   const [isPlaying, setIsPlaying] = useState(true);
@@ -604,11 +625,11 @@ export default function KathaPage() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#1B1C1C" />
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+          <Ionicons name="chevron-back" size={24} color="#331800" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🔱 श्रावण कथा</Text>
-        <View style={{ width: 38 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <Animated.ScrollView
@@ -698,15 +719,6 @@ export default function KathaPage() {
           <Text style={styles.scheduleText}>
             {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
           </Text>
-
-          {/* Description Text */}
-          {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
-            <View style={styles.descriptionBox}>
-              <Text style={styles.descriptionText}>
-                {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         {/* Episode Library Section (Always available) */}
@@ -716,12 +728,58 @@ export default function KathaPage() {
             <Text style={styles.sectionTitle}>श्रावण कथा अध्याय</Text>
           </View>
 
+          {/* Quick Filter Bar */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterBarContainer}
+            style={{ marginBottom: 14 }}
+          >
+            <TouchableOpacity
+              style={[styles.filterChip, activeFilter === 'ALL' && styles.filterChipActive]}
+              onPress={() => setActiveFilter('ALL')}
+            >
+              <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
+                सभी अध्याय
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, activeFilter === 'LATEST' && styles.filterChipActive]}
+              onPress={() => setActiveFilter('LATEST')}
+            >
+              <View style={styles.chipRedDot} />
+              <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
+                नवीनतम (NEW)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, activeFilter === 'PART1' && styles.filterChipActive]}
+              onPress={() => setActiveFilter('PART1')}
+            >
+              <Text style={[styles.filterChipText, activeFilter === 'PART1' && styles.filterChipTextActive]}>
+                Day 1 - 10
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, activeFilter === 'PART2' && styles.filterChipActive]}
+              onPress={() => setActiveFilter('PART2')}
+            >
+              <Text style={[styles.filterChipText, activeFilter === 'PART2' && styles.filterChipTextActive]}>
+                Day 11+
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+
           {loading ? (
             <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
-          ) : episodes.length > 0 ? (
+          ) : filteredEpisodes.length > 0 ? (
             <View style={styles.verticalGridContainer}>
-              {episodes.map((ep) => {
+              {filteredEpisodes.map((ep) => {
                 const isSelected = activeEpisode?.id === ep.id;
+                const isNewEpisode = ep.is_new || ep.episode_number === maxEpisodeNumber;
                 return (
                   <TouchableOpacity
                     key={ep.id}
@@ -736,6 +794,15 @@ export default function KathaPage() {
                         resizeMode="cover"
                         onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                       />
+
+                      {/* NEW Video Badge Overlay */}
+                      {isNewEpisode && (
+                        <View style={styles.newBadgePill}>
+                          <View style={styles.newBadgeDot} />
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+
                       <View style={styles.playOverlay}>
                         <Ionicons
                           name={isSelected && isPlaying ? "pause" : "play"}
@@ -768,7 +835,7 @@ export default function KathaPage() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
+              <Text style={styles.emptyText}>No episodes found in this filter.</Text>
             </View>
           )}
         </View>
@@ -794,26 +861,29 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 244, 235, 0.90)', // Glassmorphism translucent warm amber tint
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 107, 0, 0.25)', // Subtle warm amber glass border
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#000000', // Deep Black 3D Text
-    letterSpacing: 0.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.20)', // Subtle 3D shadow depth for black text
-    textShadowOffset: { width: 1.5, height: 1.8 },
-    textShadowRadius: 1.5,
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#2A1508', // Rich Sacred Dark Amber
+    fontFamily: Platform.OS === 'ios' ? 'Devanagari Sangam MN' : 'serif',
+    letterSpacing: 0.4,
+    textShadowColor: 'rgba(255, 107, 0, 0.25)', // Elegant 3D Warm Glow Shadow
+    textShadowOffset: { width: 1, height: 1.5 },
+    textShadowRadius: 2.5,
   },
   playerContainer: {
     paddingHorizontal: 16,
@@ -1212,5 +1282,70 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 14,
     textAlign: 'center',
+  },
+  filterBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFF4ED',
+    borderWidth: 1,
+    borderColor: '#FFD6C2',
+  },
+  filterChipActive: {
+    backgroundColor: '#FF6B00',
+    borderColor: '#FF6B00',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5A4136',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  chipRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF0000',
+    marginRight: 5,
+  },
+  newBadgePill: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 8,
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+  },
+  newBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+    marginRight: 4,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

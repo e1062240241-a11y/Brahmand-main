@@ -70,20 +70,20 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
     const requestDetails = request
         ? (request.type === 'blood' ? `${request.hospital_name || t('emergency')}\n${request.location || t('nearby')}` : (request.description || request.location || 'Nearby'))
         : '';
-    return request ? (
-        <View key={request.id || 0} style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+    return (
+        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="rose">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                            {request.type === 'blood' ? (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
+                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                            {request?.type === 'blood' ? (
                                 <BloodDropIcon />
                             ) : (
-                                <Ionicons name="people-outline" size={20} color="#FF0022" />
+                                <Ionicons name="people-outline" size={26} color="#FF0022" />
                             )}
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{request ? requestTitle : t('needBlood')}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{request ? requestDetails : t('createUrgentRequest')}</Text>
                     </View>
                     <TouchableOpacity
                         style={{
@@ -99,7 +99,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
                             shadowOpacity: 0.3,
                             shadowRadius: 3,
                             elevation: 4,
-                            marginBottom: 6,
+                            marginBottom: 10,
                         }}
                         onPress={onPress}
                     >
@@ -107,47 +107,8 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                    <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
-                </View>
-            </View>
-        </View>
-    ) : (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                <HomeCardTextureBg texture="rose">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                            <BloodDropIcon />
-                        </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF0022',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF0022',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 6,
-                        }}
-                        onPress={onPress}
-                    >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
-                    </TouchableOpacity>
-                </HomeCardTextureBg>
-            </View>
-            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
                     <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
                 </View>
             </View>
@@ -169,15 +130,15 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
     height: number;
 }) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="peach">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
+                        <View style={{ marginBottom: 6, marginTop: -4 }}>
                             <ShopIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
                     </View>
                     <TouchableOpacity
                         style={{
@@ -193,7 +154,7 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
                             shadowOpacity: 0.3,
                             shadowRadius: 3,
                             elevation: 4,
-                            marginBottom: 6,
+                            marginBottom: 10,
                         }}
                         onPress={onPress}
                     >
@@ -201,8 +162,8 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
                     <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
                 </View>
             </View>
@@ -228,15 +189,15 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
         ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
         : 'Flower Decor\nAndheri West';
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="mint">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
+                        <View style={{ marginBottom: 6, marginTop: -4 }}>
                             <LotusIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{categoryAndLoc}</Text>
                     </View>
                     <TouchableOpacity
                         style={{
@@ -252,7 +213,7 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
                             shadowOpacity: 0.3,
                             shadowRadius: 3,
                             elevation: 4,
-                            marginBottom: 6,
+                            marginBottom: 10,
                         }}
                         onPress={onPress}
                     >
@@ -260,9 +221,9 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
+            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
+                    <Text style={{ color: '#00C781', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('verifiedVendor')}</Text>
                 </View>
             </View>
         </View>
@@ -285,34 +246,27 @@ const AartiCard = React.memo(function AartiCard({
     height: number;
 }) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-            <TouchableOpacity
-                activeOpacity={0.9}
-                style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
-                onPress={onPress}
-            >
+        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="lavender">
-                    <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
+                        <View style={{ marginBottom: 6, marginTop: -4 }}>
                             <TempleIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti.name}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
-                            <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{aarti.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 10, color: '#444', fontFamily: 'Inter_500Medium', marginRight: 3 }}>
                                 {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    onNotify();
-                                }}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                onPress={onNotify}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                                <Ionicons name="notifications-outline" size={15} color="#000" />
+                                <Ionicons name="notifications-outline" size={14} color="#444" />
                             </TouchableOpacity>
                         </View>
                     </View>
-                    <View
+                    <TouchableOpacity
                         style={{
                             width: '85%',
                             height: 28,
@@ -326,16 +280,17 @@ const AartiCard = React.memo(function AartiCard({
                             shadowOpacity: 0.3,
                             shadowRadius: 3,
                             elevation: 4,
-                            marginBottom: 6,
+                            marginBottom: 10,
                         }}
+                        onPress={onPress}
                     >
                         <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                    </View>
+                    </TouchableOpacity>
                 </HomeCardTextureBg>
-            </TouchableOpacity>
-            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                    <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+            </View>
+            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
+                    <Text style={{ color: '#8C36DB', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('templeLabel')}</Text>
                 </View>
             </View>
         </View>
@@ -352,9 +307,9 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
     const router = useRouter();
     const isFocused = useIsFocused();
     const { myVendor, vendors } = useVendorStore();
-    const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
-    const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
-    const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
+    const actionCardWidth = 132;
+    const actionCardHeight = 192;
+    const actionCardSnapInterval = 138;
     const actionCardsScrollRef = useRef<ScrollView>(null);
     const [activeAartiIndex, setActiveAartiIndex] = useState(0);
     const [activeVendorIndex, setActiveVendorIndex] = useState(0);
@@ -401,13 +356,13 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
             >
-                {req ? (
-                    <BloodRequestCard
-                        request={req}
-                        t={t}
-                        width={actionCardWidth}
-                        height={actionCardHeight}
-                        onPress={() => {
+                <BloodRequestCard
+                    request={req}
+                    t={t}
+                    width={actionCardWidth}
+                    height={actionCardHeight}
+                    onPress={() => {
+                        if (req) {
                             router.push({
                                 pathname: '/community-request/list',
                                 params: {
@@ -415,19 +370,11 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                                     community_id: req.community_id
                                 }
                             });
-                        }}
-                    />
-                ) : (
-                    <BloodRequestCard
-                        request={null}
-                        t={t}
-                        width={actionCardWidth}
-                        height={actionCardHeight}
-                        onPress={() => {
+                        } else {
                             router.push('/community-request/list');
-                        }}
-                    />
-                )}
+                        }
+                    }}
+                />
                 <RegisterBusinessCard
                     myVendor={myVendor}
                     t={t}

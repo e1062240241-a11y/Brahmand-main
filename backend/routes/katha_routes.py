@@ -344,7 +344,7 @@ async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
                         discovered[ep_id] = {
                             "id": ep_id,
                             "title": f"Shravan Shiv Katha — Day {ep_num}",
-                            "description": "Acharya Shamik Pathak Ji Shravan Maas Shiv Katha Live Broadcast & Archive.",
+                            "description": "",
                             "episode_number": ep_num,
                             "date": "2026-08-13",
                             "guru_name": "Acharya Shamik Pathak Ji",
