@@ -4163,6 +4163,15 @@ async def get_posts_feed(
         following_ids = set()
         if current_user:
             following_ids = set(current_user.get('following', []) or [])
+        if tab == 'following' and not following_ids:
+            try:
+                edge_follows = await db.query_documents('user_follows', filters=[('follower_uid', '==', current_user_id)], limit=200)
+                for ef in edge_follows:
+                    f_uid = ef.get('followee_uid')
+                    if f_uid:
+                        following_ids.add(f_uid)
+            except Exception as e:
+                logger.warning(f"Error querying user_follows for following_ids: {e}")
 
         # If following tab, fetch posts using following_inboxes (Personal Mailbox Model)
         if tab == 'following':
