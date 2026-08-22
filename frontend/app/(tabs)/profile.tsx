@@ -217,10 +217,8 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (Platform.OS === 'android') {
       if (showSettingsModal) {
-        NavigationBar.setBackgroundColorAsync('#FFFFFF').catch(() => {});
         NavigationBar.setButtonStyleAsync('dark').catch(() => {});
       } else {
-        NavigationBar.setBackgroundColorAsync('#000000').catch(() => {});
         NavigationBar.setButtonStyleAsync('light').catch(() => {});
       }
     }

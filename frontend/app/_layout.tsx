@@ -764,17 +764,10 @@ export default function RootLayout() {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
       const buttonStyle = isDark ? 'light' : 'dark';
-      const navBgColor = isDark ? '#000000' : '#FFFFFF';
-      const colorKey = `${navBgColor}:${buttonStyle}`;
-      if (lastNavColorRef.current === colorKey) return;
-      lastNavColorRef.current = colorKey;
+      if (lastNavColorRef.current === buttonStyle) return;
+      lastNavColorRef.current = buttonStyle;
 
-      NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
-        console.warn('[NavigationBar] Failed to set background color:', e);
-      });
-      NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
-        console.warn('[NavigationBar] Failed to set button style:', e);
-      });
+      NavigationBar.setButtonStyleAsync(buttonStyle).catch(() => {});
     }
   }, [pathname, isDarkScreen]);
 
