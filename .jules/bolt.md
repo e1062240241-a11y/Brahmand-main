@@ -21,3 +21,7 @@
 ## 2024-05-18 - [Optimize blocked user checks by using Zustand Set directly]
 **Learning:** React Native state sometimes holds both an array and a `Set` counterpart for convenience. Instantiating a `new Set(array)` on every render or array mutation causes O(N) overhead which compounds heavily inside list operations like `.filter()`.
 **Action:** Always fetch the `Set` object directly from Zustand instead of fetching the array and creating a new `Set` locally. Ensure dependent list filtering operations (like `FeedSection` and `ReelViewer`) accept `Set` properties to prevent re-creation in children.
+
+## 2024-08-22 - [Frontend Performance: Fix broken state reference for blockedByMeUserSet]
+**Learning:** When attempting to extract a Zustand set property (`blockedByMeUserSet`) to replace an array lookup (`blockedByMeUserIds`), be careful to correctly destructure from the store state. An incomplete change leads to `TypeError` at runtime.
+**Action:** When updating store references in component hooks, double check that the returned property is defined in the store interface and matches the destructured variable.
