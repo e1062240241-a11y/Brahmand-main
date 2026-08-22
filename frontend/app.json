@@ -2,7 +2,7 @@
   "expo": {
     "name": "Brahmand",
     "slug": "sanatan-lok",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -243,6 +243,6 @@
       "fallbackToCacheTimeout": 30000,
       "checkAutomatically": "ON_LOAD"
     },
-    "runtimeVersion": "1.4.0"
+    "runtimeVersion": "1.4.1"
   }
 }
