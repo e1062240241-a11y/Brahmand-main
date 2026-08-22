@@ -223,6 +223,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef,
     isFocused,
     kathaStatus,
+    quickAccessItems,
 }: {
     user: any;
     firstName: string;
@@ -276,8 +277,10 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef: any;
     isFocused?: boolean;
     kathaStatus?: any;
+    quickAccessItems?: any[];
 }) {
     const router = useRouter();
+    const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
@@ -562,13 +565,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 onScroll={(e) => {
                                     const x = e.nativeEvent.contentOffset.x;
                                     const idx = Math.round(x / featureSnapInterval);
-                                    const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
+                                    const clampedIdx = Math.max(0, Math.min(idx, featuredItems.length - 1));
                                     setActiveFeatureIndex(clampedIdx);
                                     topFeaturesAutoScrollIndex.current = clampedIdx;
                                 }}
                                 scrollEventThrottle={16}
                             >
-                                {baseQuickAccess.map((item, idx) => {
+                                {featuredItems.map((item, idx) => {
                                     let cardBg = '#FFFFFF';
                                     let iconBg = '#FF8A3D';
                                     if (item.label === 'Panchang') {
@@ -584,8 +587,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                     let displayLabel = item.label;
                                     let displaySubtitle = item.subtitle;
-
-
 
                                     if (t('language') === 'hi') {
                                         if (item.label === 'My Krishn') {
@@ -689,7 +690,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 })}
                             </ScrollView>
                             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                {baseQuickAccess.map((_, idx) => (
+                                {featuredItems.map((_, idx) => (
                                     <View
                                         key={idx}
                                         style={{

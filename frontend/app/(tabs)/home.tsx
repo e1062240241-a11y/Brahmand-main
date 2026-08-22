@@ -38,7 +38,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, Interacti
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
-import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess } from '../../src/components/home/homeConstants';
+import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
 import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
 
 let FileSystemModule: any = null;
@@ -281,12 +281,17 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Auto-scroll for quick access feature cards
+  // Dynamic rotational ordering for quick access feature cards
+  const [quickAccessRotation, setQuickAccessRotation] = useState(0);
+  const quickAccessItems = useMemo(() => getDynamicQuickAccess(quickAccessRotation), [quickAccessRotation]);
+
+  // Fluid smooth auto-scroll for quick access feature cards
   const topFeaturesAutoScrollIndex = useRef(0);
   useEffect(() => {
     if (!isFocused) return;
-    const CARD_WIDTH = 185; // 175 card + 10 gap
-    const TOTAL_CARDS = baseQuickAccess.length;
+    const CARD_WIDTH = featureSnapInterval || 185;
+    const TOTAL_CARDS = quickAccessItems.length;
+
     topFeaturesIntervalRef.current = setInterval(() => {
       if (AppState.currentState !== 'active') return;
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
@@ -294,11 +299,12 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 15000);
+    }, 5500);
+
     return () => {
       if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
     };
-  }, [isFocused]);
+  }, [isFocused, quickAccessItems.length, featureSnapInterval]);
 
   useEffect(() => {
     if (user?.id) {
@@ -832,6 +838,7 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    setQuickAccessRotation(prev => prev + 1);
     try {
       await initializeHome(true);
       await fetchReminders(true);
@@ -1700,10 +1707,12 @@ export default function HomeScreen() {
       bannerScrollRef={bannerScrollRef}
       isFocused={isFocused}
       kathaStatus={kathaStatus}
+      quickAccessItems={quickAccessItems}
     />
   ), [
     isFocused,
     kathaStatus,
+    quickAccessItems,
     insets.top,
     user,
     firstName,
