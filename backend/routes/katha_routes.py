@@ -364,12 +364,14 @@ async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
                                 d_h, d_m = divmod(d_m, 60)
                                 dur_str = f"{d_h:02d}:{d_m:02d}:{d_s:02d}" if d_h > 0 else f"{d_m:02d}:{d_s:02d}"
 
+                        ep_date = (datetime(2026, 8, 13, tzinfo=IST) + timedelta(days=ep_num - 1)).strftime("%d %b %Y")
+
                         discovered[ep_id] = {
                             "id": ep_id,
                             "title": f"Shravan Shiv Katha — Day {ep_num}",
                             "description": "",
                             "episode_number": ep_num,
-                            "date": "2026-08-13",
+                            "date": ep_date,
                             "guru_name": "Acharya Shamik Pathak Ji",
                             "duration": dur_str,
                             "video_url": cdn_url,
@@ -406,6 +408,8 @@ async def get_katha_episodes():
             for doc in docs:
                 d = doc.to_dict()
                 d["id"] = doc.id
+                ep_n = d.get("episode_number") or 1
+                d["date"] = (datetime(2026, 8, 13, tzinfo=IST) + timedelta(days=ep_n - 1)).strftime("%d %b %Y")
                 if doc.id not in merged:
                     merged[doc.id] = d
         except Exception as err:

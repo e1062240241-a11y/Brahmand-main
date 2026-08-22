@@ -91,6 +91,33 @@ export default function KathaPage() {
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
 
+  const formatEpisodeDate = (ep: KathaEpisode): string => {
+    const rawDate = ep.date;
+    if (rawDate && rawDate.length > 5 && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate !== '2026-08-13') {
+      return rawDate;
+    }
+    const epNum = ep.episode_number || 1;
+    const baseDate = new Date(2026, 7, 13); // 7 is August
+    baseDate.setDate(baseDate.getDate() + (epNum - 1));
+    return baseDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const getTodayISTString = (): string => {
+    return new Date().toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const isEpisodeToday = (ep: KathaEpisode): boolean => {
+    if (!ep) return false;
+    const formattedEpDate = formatEpisodeDate(ep);
+    const todayStr = getTodayISTString();
+    return formattedEpDate === todayStr;
+  };
+
   const maxEpisodeNumber = useMemo(() => {
     if (!episodes || episodes.length === 0) return 0;
     return Math.max(...episodes.map(e => e.episode_number || 0));
@@ -100,7 +127,8 @@ export default function KathaPage() {
     if (!episodes) return [];
     let list = [...episodes];
     if (activeFilter === 'LATEST') {
-      list = episodes.filter(e => e.episode_number === maxEpisodeNumber || e.is_new);
+      const todayList = episodes.filter(e => isEpisodeToday(e));
+      list = todayList.length > 0 ? todayList : episodes.filter(e => e.is_new || e.episode_number === maxEpisodeNumber);
     } else if (activeFilter === 'PART1') {
       list = episodes.filter(e => (e.episode_number || 0) <= 10);
     } else if (activeFilter === 'PART2') {
@@ -434,8 +462,9 @@ export default function KathaPage() {
         if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
           setEpisodes(epJson.episodes);
 
-          // Select the latest episode (highest episode_number)
-          const latestEp = epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
+          // Select today's episode if available, else latest released episode
+          const todayEp = epJson.episodes.find((e: KathaEpisode) => isEpisodeToday(e));
+          const latestEp = todayEp || epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
             return (prev.episode_number || 0) > (current.episode_number || 0) ? prev : current;
           });
           setActiveEpisode(latestEp);
@@ -854,7 +883,7 @@ export default function KathaPage() {
               <View style={styles.verticalGridContainer}>
                 {filteredEpisodes.map((ep) => {
                   const isSelected = activeEpisode?.id === ep.id;
-                  const isNewEpisode = ep.is_new || ep.episode_number === maxEpisodeNumber;
+                  const isToday = isEpisodeToday(ep);
                   return (
                     <TouchableOpacity
                       key={ep.id}
@@ -871,7 +900,7 @@ export default function KathaPage() {
                         />
 
                         {/* TODAY Video Badge Overlay */}
-                        {isNewEpisode && (
+                        {isToday && (
                           <View style={styles.newBadgePill}>
                             <View style={styles.newBadgeDot} />
                             <Text style={styles.newBadgeText}>TODAY</Text>
@@ -893,7 +922,7 @@ export default function KathaPage() {
                       <View style={styles.boxEpisodeMeta}>
                         <View style={styles.epHeaderRow}>
                           <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
-                          <Text style={styles.epDate}>{ep.date}</Text>
+                          <Text style={styles.epDate}>{formatEpisodeDate(ep)}</Text>
                         </View>
 
                         <Text style={styles.epTitle} numberOfLines={2}>
