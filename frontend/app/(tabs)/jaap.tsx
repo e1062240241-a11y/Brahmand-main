@@ -94,49 +94,6 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
   );
 };
 
-/* Animated Shravan Katha Card Component (Page-load Entrance Fade & Scale) */
-const AnimatedKathaCard = ({ children, style }: { children: React.ReactNode; style?: any }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(24)).current;
-  const scaleAnim = useRef(new Animated.Value(0.94)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim, scaleAnim]);
-
-  return (
-    <Animated.View
-      style={[
-        style,
-        {
-          opacity: fadeAnim,
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim },
-          ],
-        },
-      ]}
-    >
-      {children}
-    </Animated.View>
-  );
-};
 
 const UPCOMING_GRID_PADDING = Platform.OS === 'android'
   ? 12
@@ -1012,7 +969,7 @@ export default function JaapLandingScreen() {
               </View>
             </View>
 
-            <AnimatedKathaCard style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
               <Pressable
                 style={({ pressed }) => [
                   styles.bookCardKatha,
@@ -1050,7 +1007,7 @@ export default function JaapLandingScreen() {
                   <Text style={styles.bookSubKatha}>Spiritual Guru • Astrologer • Panditji</Text>
                 </View>
               </Pressable>
-            </AnimatedKathaCard>
+            </View>
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
