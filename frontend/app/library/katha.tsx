@@ -486,36 +486,18 @@ export default function KathaPage() {
         style={[styles.playerWrapper, isModal && styles.fullscreenPlayerWrapper]}
         onPress={toggleShowHideControls}
       >
-        {!status.is_live && !isUserSelectedOldEpisode ? (
-          <View style={styles.offAirContainer}>
-            <Image
-              source={shamikPathakCover}
-              style={[StyleSheet.absoluteFillObject, { opacity: 0.3 }]}
-              resizeMode="cover"
-            />
-            <Ionicons name="radio" size={48} color="#FF6B00" />
-            <Text style={styles.offAirTitle}>Currently Off-Air</Text>
-            <Text style={styles.offAirSub}>
-              {status.banner_message}
-            </Text>
-            <Text style={[styles.offAirSub, { marginTop: 12, color: '#FF6B00', fontWeight: 'bold' }]}>
-              Next stream at {status.next_stream_at ? new Date(status.next_stream_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '8:00 AM'}
-            </Text>
-          </View>
+        {activeVideoUrl ? (
+          <SafeVideoView
+            player={player}
+            ExpoVideoModule={ExpoVideoModule}
+            source={activeVideoUrl}
+            posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
+            style={styles.videoPlayer}
+            nativeControls={false}
+            contentFit={isModal ? "contain" : "fill"}
+          />
         ) : (
-          activeVideoUrl ? (
-            <SafeVideoView
-              player={player}
-              ExpoVideoModule={ExpoVideoModule}
-              source={activeVideoUrl}
-              posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
-              style={styles.videoPlayer}
-              nativeControls={false}
-              contentFit={isModal ? "contain" : "fill"}
-            />
-          ) : (
-            <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
-          )
+          <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
         )}
 
         {/* Hotstar Minimalist Control Overlay (No Seeking Bar, Clean Transparent Look) */}
@@ -536,21 +518,41 @@ export default function KathaPage() {
                 </Text>
               </View>
 
-              {status.is_live ? (
-                <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.badgeText}>
-                    {status.mode === 'REPEAT_TELECAST' ? 'REPEAT TELECAST' : 'LIVE NOW'}
-                  </Text>
-                </View>
-              ) : (
-                <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                  <Ionicons name="radio" size={12} color="#FF6B00" style={{ marginRight: 5 }} />
-                  <Text style={[styles.badgeText, { color: '#FFF' }]}>
-                    {activeEpisode ? `DAY ${activeEpisode.episode_number}` : '8:00 AM & 8:00 PM'}
-                  </Text>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {status.is_live ? (
+                  <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.badgeText}>
+                      {status.mode === 'REPEAT_TELECAST' ? 'REPEAT TELECAST' : 'LIVE NOW'}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <Ionicons name="radio" size={12} color="#FF6B00" style={{ marginRight: 5 }} />
+                    <Text style={[styles.badgeText, { color: '#FFF' }]}>
+                      {activeEpisode ? `DAY ${activeEpisode.episode_number}` : '8:00 AM & 8:00 PM'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Close Player button when off-air and viewing old episode */}
+                {!status.is_live && isUserSelectedOldEpisode && !isModal && (
+                  <TouchableOpacity
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setUserSelectedEpisode(null)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={18} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Center Big Play/Pause Button (No Circle, Thicker Icon, Smooth Scale Animation) */}
@@ -701,80 +703,84 @@ export default function KathaPage() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {/* Main Player & Hotstar Custom Minimalist Controls */}
-        <Animated.View style={[
-          styles.playerContainer,
-          {
-            transform: [
+        {/* Main Player & Hotstar Custom Minimalist Controls (Only shown when Live or Episode Selected) */}
+        {(status.is_live || isUserSelectedOldEpisode) && (
+          <>
+            <Animated.View style={[
+              styles.playerContainer,
               {
-                scale: scrollY.interpolate({
-                  inputRange: [0, 180],
-                  outputRange: [1, 0.93],
-                  extrapolate: 'clamp',
-                }),
-              },
-              {
-                translateY: scrollY.interpolate({
-                  inputRange: [0, 200],
-                  outputRange: [0, 15],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ],
-          }
-        ]}>
-          <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
-            {renderPlayerContent(false)}
-            {/* Scroll-driven Black Overlay Mask */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: '#000000',
-                  opacity: scrollY.interpolate({
-                    inputRange: [0, 150, 400],
-                    outputRange: [0, 0.15, 0.35],
-                    extrapolate: 'clamp',
-                  }),
-                },
-              ]}
-            />
-          </View>
-        </Animated.View>
+                transform: [
+                  {
+                    scale: scrollY.interpolate({
+                      inputRange: [0, 180],
+                      outputRange: [1, 0.93],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                  {
+                    translateY: scrollY.interpolate({
+                      inputRange: [0, 200],
+                      outputRange: [0, 15],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ],
+              }
+            ]}>
+              <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+                {renderPlayerContent(false)}
+                {/* Scroll-driven Black Overlay Mask */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      backgroundColor: '#000000',
+                      opacity: scrollY.interpolate({
+                        inputRange: [0, 150, 400],
+                        outputRange: [0, 0.15, 0.35],
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+            </Animated.View>
 
-        {/* Active Details / Banner Info */}
-        <View style={styles.activeDetails}>
-          {status.is_live && isUserSelectedOldEpisode && (
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#FF0000',
-                alignSelf: 'flex-start',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 20,
-                marginBottom: 10,
-                gap: 6,
-              }}
-              onPress={() => setUserSelectedEpisode(null)}
-            >
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Watch Live Stream Now</Text>
-            </TouchableOpacity>
-          )}
+            {/* Active Details / Banner Info */}
+            <View style={styles.activeDetails}>
+              {status.is_live && isUserSelectedOldEpisode && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#FF0000',
+                    alignSelf: 'flex-start',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    marginBottom: 10,
+                    gap: 6,
+                  }}
+                  onPress={() => setUserSelectedEpisode(null)}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Watch Live Stream Now</Text>
+                </TouchableOpacity>
+              )}
 
-          <Text style={styles.activeTitle}>
-            {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
-          </Text>
-          <Text style={styles.guruSubtitle}>
-            {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
-          </Text>
-          <Text style={styles.scheduleText}>
-            {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
-          </Text>
-        </View>
+              <Text style={styles.activeTitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
+              </Text>
+              <Text style={styles.guruSubtitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
+              </Text>
+              <Text style={styles.scheduleText}>
+                {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
+              </Text>
+            </View>
+          </>
+        )}
 
         {/* Episode Library Section (Always available) */}
         <View style={styles.librarySection}>
