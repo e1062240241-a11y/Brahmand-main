@@ -59,31 +59,30 @@ const AnimatedFestivalCard: React.FC<AnimatedFestivalCardProps> = ({ fest, idx, 
   };
 
   return (
-    <Animated.View
-      entering={FadeInRight.delay(80 * idx).duration(350)}
-      style={cardAnimStyle}
-    >
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          styles.uiverseCard,
-          {
-            backgroundColor: theme.bg,
-            borderColor: theme.border,
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Festival: ${fest}`}
-      >
-        <Animated.View style={[styles.uiverseIconBadge, { backgroundColor: theme.badgeBg }, iconAnimStyle]}>
-          <Ionicons name={theme.iconName} size={18} color={theme.iconColor} />
-        </Animated.View>
-        <Text style={[styles.uiverseCardText, { color: theme.textColor }]}>
-          {fest}
-        </Text>
-      </Pressable>
+    <Animated.View entering={FadeInRight.delay(80 * idx).duration(350)}>
+      <Animated.View style={cardAnimStyle}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={[
+            styles.uiverseCard,
+            {
+              backgroundColor: theme.bg,
+              borderColor: theme.border,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={`Festival: ${fest}`}
+        >
+          <Animated.View style={[styles.uiverseIconBadge, { backgroundColor: theme.badgeBg }, iconAnimStyle]}>
+            <Ionicons name={theme.iconName} size={18} color={theme.iconColor} />
+          </Animated.View>
+          <Text style={[styles.uiverseCardText, { color: theme.textColor }]}>
+            {fest}
+          </Text>
+        </Pressable>
+      </Animated.View>
     </Animated.View>
   );
 };
