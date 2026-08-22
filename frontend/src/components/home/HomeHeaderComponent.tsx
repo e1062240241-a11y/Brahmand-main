@@ -347,18 +347,23 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             alignItems: 'center',
                             zIndex: -1,
                         }} pointerEvents="none">
-                            <Text style={{
-                                color: '#000',
-                                textAlign: 'center',
-                                fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                fontSize: Platform.OS === 'android' ? 26 : 28,
-                                fontStyle: 'normal',
-                                fontWeight: '400',
-                                lineHeight: Platform.OS === 'android' ? 32 : 36,
-                                letterSpacing: 0,
-                                includeFontPadding: false,
-                                paddingHorizontal: 4,
-                            }}>BRAHMAND</Text>
+                            <Text
+                                numberOfLines={1}
+                                style={{
+                                    color: '#000',
+                                    textAlign: 'center',
+                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
+                                    fontSize: Platform.OS === 'android' ? 24 : 28,
+                                    fontStyle: 'normal',
+                                    fontWeight: '400',
+                                    lineHeight: Platform.OS === 'android' ? 30 : 36,
+                                    letterSpacing: 0.5,
+                                    includeFontPadding: false,
+                                    paddingHorizontal: 8,
+                                }}
+                            >
+                                BRAHMAND
+                            </Text>
                         </View>
 
                         <View style={styles.headerRight}>

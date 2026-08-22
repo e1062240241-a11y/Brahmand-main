@@ -177,7 +177,17 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Cinzel-Regular.ttf",
+            "./assets/fonts/Poppins-Regular.ttf",
+            "./assets/fonts/RozhaOne-Regular.ttf",
+            "./assets/fonts/SpaceMono-Regular.ttf"
+          ]
+        }
+      ],
       "expo-image",
       [
         "expo-video",
