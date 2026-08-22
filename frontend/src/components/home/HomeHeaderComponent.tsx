@@ -373,6 +373,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={() => setSearchActive(!searchActive)}
+                                accessibilityRole="button"
+                                accessibilityLabel={searchActive ? "Close search" : "Open search"}
                             >
                                 <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             </Pressable>
@@ -389,6 +391,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={handleNotificationPress}
+                                accessibilityRole="button"
+                                accessibilityLabel="Notifications"
                             >
                                 <View pointerEvents="none">
                                     <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
