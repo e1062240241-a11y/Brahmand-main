@@ -779,128 +779,142 @@ export default function KathaPage() {
               <Text style={styles.scheduleText}>
                 {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
               </Text>
+
+              {/* Back to All Episodes Button when off-air and watching selected video */}
+              {!status.is_live && isUserSelectedOldEpisode && (
+                <TouchableOpacity
+                  style={styles.backToEpisodesBtn}
+                  onPress={() => setUserSelectedEpisode(null)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="grid-outline" size={18} color="#FF6B00" />
+                  <Text style={styles.backToEpisodesText}>View All Episodes</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </>
         )}
 
-        {/* Episode Library Section (Always available) */}
-        <View style={styles.librarySection}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
-            <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
-          </View>
+        {/* Episode Library Section (Shown when no episode is playing or when Live) */}
+        {(!isUserSelectedOldEpisode || status.is_live) && (
+          <View style={styles.librarySection}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
+              <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
+            </View>
 
-          {/* Quick Filter Bar */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterBarContainer}
-            style={{ marginBottom: 14 }}
-          >
-            <TouchableOpacity
-              style={[styles.filterChip, activeFilter === 'ALL' && styles.filterChipActive]}
-              onPress={() => setActiveFilter('ALL')}
+            {/* Quick Filter Bar */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarContainer}
+              style={{ marginBottom: 14 }}
             >
-              <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
-                All Episodes
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'ALL' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('ALL')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
+                  All Episodes
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterChip, activeFilter === 'LATEST' && styles.filterChipActive]}
-              onPress={() => setActiveFilter('LATEST')}
-            >
-              <View style={styles.chipRedDot} />
-              <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
-                Latest (NEW)
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'LATEST' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('LATEST')}
+              >
+                <View style={styles.chipRedDot} />
+                <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
+                  Latest (NEW)
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterChip, activeFilter === 'PART1' && styles.filterChipActive]}
-              onPress={() => setActiveFilter('PART1')}
-            >
-              <Text style={[styles.filterChipText, activeFilter === 'PART1' && styles.filterChipTextActive]}>
-                Day 1 - 10
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'PART1' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('PART1')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'PART1' && styles.filterChipTextActive]}>
+                  Day 1 - 10
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterChip, activeFilter === 'PART2' && styles.filterChipActive]}
-              onPress={() => setActiveFilter('PART2')}
-            >
-              <Text style={[styles.filterChipText, activeFilter === 'PART2' && styles.filterChipTextActive]}>
-                Day 11+
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'PART2' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('PART2')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'PART2' && styles.filterChipTextActive]}>
+                  Day 11+
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
 
-          {loading ? (
-            <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
-          ) : filteredEpisodes.length > 0 ? (
-            <View style={styles.verticalGridContainer}>
-              {filteredEpisodes.map((ep) => {
-                const isSelected = activeEpisode?.id === ep.id;
-                const isNewEpisode = ep.is_new || ep.episode_number === maxEpisodeNumber;
-                return (
-                  <TouchableOpacity
-                    key={ep.id}
-                    style={[styles.episodeBoxCard, isSelected && styles.episodeCardSelected]}
-                    activeOpacity={0.88}
-                    onPress={() => handleSelectEpisode(ep)}
-                  >
-                    <View style={styles.thumbnailBox}>
-                      <Image
-                        source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
-                        style={styles.thumbnailImg}
-                        resizeMode="cover"
-                        onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
-                      />
-
-                      {/* NEW Video Badge Overlay */}
-                      {isNewEpisode && (
-                        <View style={styles.newBadgePill}>
-                          <View style={styles.newBadgeDot} />
-                          <Text style={styles.newBadgeText}>NEW</Text>
-                        </View>
-                      )}
-
-                      <View style={styles.playOverlay}>
-                        <Ionicons
-                          name={isSelected && isPlaying ? "pause" : "play"}
-                          size={22}
-                          color="#FFF"
+            {loading ? (
+              <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
+            ) : filteredEpisodes.length > 0 ? (
+              <View style={styles.verticalGridContainer}>
+                {filteredEpisodes.map((ep) => {
+                  const isSelected = activeEpisode?.id === ep.id;
+                  const isNewEpisode = ep.is_new || ep.episode_number === maxEpisodeNumber;
+                  return (
+                    <TouchableOpacity
+                      key={ep.id}
+                      style={[styles.episodeBoxCard, isSelected && styles.episodeCardSelected]}
+                      activeOpacity={0.88}
+                      onPress={() => handleSelectEpisode(ep)}
+                    >
+                      <View style={styles.thumbnailBox}>
+                        <Image
+                          source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
+                          style={styles.thumbnailImg}
+                          resizeMode="cover"
+                          onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                         />
-                      </View>
-                      <View style={styles.durationTag}>
-                        <Text style={styles.durationText}>{formatDurationString(ep.duration, ep.id, isSelected)}</Text>
-                      </View>
-                    </View>
 
-                    <View style={styles.boxEpisodeMeta}>
-                      <View style={styles.epHeaderRow}>
-                        <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
-                        <Text style={styles.epDate}>{ep.date}</Text>
+                        {/* NEW Video Badge Overlay */}
+                        {isNewEpisode && (
+                          <View style={styles.newBadgePill}>
+                            <View style={styles.newBadgeDot} />
+                            <Text style={styles.newBadgeText}>NEW</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.playOverlay}>
+                          <Ionicons
+                            name={isSelected && isPlaying ? "pause" : "play"}
+                            size={22}
+                            color="#FFF"
+                          />
+                        </View>
+                        <View style={styles.durationTag}>
+                          <Text style={styles.durationText}>{formatDurationString(ep.duration, ep.id, isSelected)}</Text>
+                        </View>
                       </View>
 
-                      <Text style={styles.epTitle} numberOfLines={2}>
-                        {ep.title}
-                      </Text>
+                      <View style={styles.boxEpisodeMeta}>
+                        <View style={styles.epHeaderRow}>
+                          <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
+                          <Text style={styles.epDate}>{ep.date}</Text>
+                        </View>
 
-                      <Text style={styles.epGuru} numberOfLines={1}>
-                        {ep.guru_name}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No episodes found in this filter.</Text>
-            </View>
-          )}
-        </View>
+                        <Text style={styles.epTitle} numberOfLines={2}>
+                          {ep.title}
+                        </Text>
+
+                        <Text style={styles.epGuru} numberOfLines={1}>
+                          {ep.guru_name}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No episodes found in this filter.</Text>
+              </View>
+            )}
+          </View>
+        )}
       </Animated.ScrollView>
     </View>
   );
@@ -1220,6 +1234,29 @@ const styles = StyleSheet.create({
     color: '#4A3B32',
     lineHeight: 20,
     fontWeight: '400',
+  },
+  backToEpisodesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,107,0,0.35)',
+    borderRadius: 22,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    marginTop: 18,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  backToEpisodesText: {
+    color: '#FF6B00',
+    fontSize: 14,
+    fontWeight: '700',
   },
   librarySection: {
     paddingHorizontal: 16,
