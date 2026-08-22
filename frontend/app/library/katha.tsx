@@ -122,6 +122,18 @@ export default function KathaPage() {
   const playScale = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
   const [userSelectedEpisode, setUserSelectedEpisode] = useState<KathaEpisode | null>(null);
+  const [epDurations, setEpDurations] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.getItem('KATHA_EP_DURATIONS').then((val: string | null) => {
+        if (val) {
+          try { setEpDurations(JSON.parse(val)); } catch (_e) {}
+        }
+      }).catch(() => {});
+    } catch (_e) {}
+  }, []);
   const isUserSelectedOldEpisode = !!userSelectedEpisode;
   const activeVideoUrl = isUserSelectedOldEpisode
     ? (userSelectedEpisode?.video_url || '')
@@ -207,13 +219,26 @@ export default function KathaPage() {
           }
           if (typeof player.duration === 'number' && player.duration > 0) {
             setDuration(player.duration);
+            const activeId = userSelectedEpisode?.id || activeEpisode?.id;
+            if (activeId) {
+              const formatted = formatTime(player.duration);
+              setEpDurations(prev => {
+                if (prev[activeId] === formatted) return prev;
+                const next = { ...prev, [activeId]: formatted };
+                try {
+                  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                  AsyncStorage.setItem('KATHA_EP_DURATIONS', JSON.stringify(next));
+                } catch (_e) {}
+                return next;
+              });
+            }
           }
         }
       } catch (_e) {}
     }, 500);
 
     return () => clearInterval(interval);
-  }, [player]);
+  }, [player, userSelectedEpisode?.id, activeEpisode?.id]);
 
   // Zero-Heat Thermal & Background Management: Instantly pause video when screen loses focus or app goes to background
   useEffect(() => {
@@ -317,6 +342,36 @@ export default function KathaPage() {
       return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const KNOWN_EP_DURATIONS: Record<string, string> = {
+    saavan_katha_ep1: '14:12',
+    saavan_katha_ep2: '12:33',
+    saavan_katha_ep3: '14:47',
+    saavan_katha_ep4: '15:55',
+    saavan_katha_ep5: '15:30',
+    saavan_katha_ep6: '07:45',
+    saavan_katha_ep7: '06:01',
+    saavan_katha_ep8: '10:01',
+    saavan_katha_ep9: '06:50',
+    saavan_katha_ep10: '07:39',
+  };
+
+  const formatDurationString = (dur: any, epId?: string, isSelectedEp?: boolean): string => {
+    if (isSelectedEp && duration > 0) {
+      return formatTime(duration);
+    }
+    if (epId && epDurations[epId]) {
+      return epDurations[epId];
+    }
+    if (epId && KNOWN_EP_DURATIONS[epId]) {
+      return KNOWN_EP_DURATIONS[epId];
+    }
+    if (!dur) return '00:00';
+    if (typeof dur === 'number') return formatTime(dur);
+    const s = String(dur).trim();
+    if (s.startsWith('00:')) return s.slice(3);
+    return s;
   };
 
   const handleSeek = (e: any) => {
@@ -811,7 +866,7 @@ export default function KathaPage() {
                         />
                       </View>
                       <View style={styles.durationTag}>
-                        <Text style={styles.durationText}>{ep.duration}</Text>
+                        <Text style={styles.durationText}>{formatDurationString(ep.duration, ep.id, isSelected)}</Text>
                       </View>
                     </View>
 
