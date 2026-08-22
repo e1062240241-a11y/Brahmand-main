@@ -825,7 +825,7 @@ export default function KathaPage() {
               >
                 <View style={styles.chipRedDot} />
                 <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
-                  Latest (NEW)
+                  Latest (Today)
                 </Text>
               </TouchableOpacity>
 
@@ -870,11 +870,11 @@ export default function KathaPage() {
                           onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                         />
 
-                        {/* NEW Video Badge Overlay */}
+                        {/* TODAY Video Badge Overlay */}
                         {isNewEpisode && (
                           <View style={styles.newBadgePill}>
                             <View style={styles.newBadgeDot} />
-                            <Text style={styles.newBadgeText}>NEW</Text>
+                            <Text style={styles.newBadgeText}>TODAY</Text>
                           </View>
                         )}
 
