@@ -1533,9 +1533,10 @@ export default function ProfileScreen() {
                   <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
                     {section.items.map((item: SettingItem, index: number) => {
-                      const iconColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
-                      const textColor = item.disabled ? '#A0A0A0' : (item.action === 'logout' ? COLORS.error : '#000000');
-                      const showChevron = item.id !== 'language' && !item.disabled;
+                      const isLogout = item.action === 'logout';
+                      const iconColor = item.disabled ? '#A0A0A0' : (isLogout ? COLORS.error : '#000000');
+                      const textColor = item.disabled ? '#A0A0A0' : (isLogout ? COLORS.error : '#000000');
+                      const showChevron = item.id !== 'language' && !isLogout && !item.disabled;
                       const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
 
                       return (
@@ -1543,11 +1544,17 @@ export default function ProfileScreen() {
                           <Pressable
                             style={({ pressed }) => [
                               styles.settingsRow,
-                              Platform.OS === 'ios' && pressed && { backgroundColor: item.action === 'logout' ? 'rgba(255, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
+                              isLogout && {
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                minHeight: 52,
+                                marginVertical: 4,
+                              },
+                              Platform.OS === 'ios' && pressed && { backgroundColor: isLogout ? 'rgba(255, 0, 0, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
                               item.disabled && item.id !== 'location' && styles.settingsRowDisabled,
                             ]}
                             android_ripple={{
-                              color: item.action === 'logout' ? 'rgba(255, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                              color: isLogout ? 'rgba(255, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.08)',
                               borderless: false,
                               foreground: true,
                             }}
@@ -1558,31 +1565,35 @@ export default function ProfileScreen() {
                               pointerEvents="none"
                               style={[
                                 styles.settingsIconCircle,
-                                { backgroundColor: item.action === 'logout' ? '#FFE5E5' : 'rgba(0, 0, 0, 0.04)' }
+                                isLogout
+                                  ? { backgroundColor: 'transparent', width: 'auto', height: 'auto', marginRight: 8 }
+                                  : { backgroundColor: 'rgba(0, 0, 0, 0.04)' }
                               ]}
                             >
                               <Ionicons
                                 name={item.icon as any}
-                                size={18}
+                                size={isLogout ? 22 : 18}
                                 color={iconColor}
                               />
                             </View>
-                            <View pointerEvents="none" style={styles.settingsLabelWrap}>
-                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                            <View pointerEvents="none" style={isLogout ? { flex: 0 } : styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }, isLogout && { fontWeight: '700', fontSize: 16 }]}>
                                 {item.label}
                               </Text>
                               {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
                             </View>
-                            <View pointerEvents="none" style={styles.settingsRowRight}>
-                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                              {showChevron && (
-                                <Ionicons
-                                  name="chevron-forward"
-                                  size={18}
-                                  color={chevronColor}
-                                />
-                              )}
-                            </View>
+                            {!isLogout && (
+                              <View pointerEvents="none" style={styles.settingsRowRight}>
+                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                                {showChevron && (
+                                  <Ionicons
+                                    name="chevron-forward"
+                                    size={18}
+                                    color={chevronColor}
+                                  />
+                                )}
+                              </View>
+                            )}
                           </Pressable>
                           {index < section.items.length - 1 && (
                             <View
