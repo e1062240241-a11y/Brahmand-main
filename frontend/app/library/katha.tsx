@@ -138,7 +138,9 @@ export default function KathaPage() {
     ? (userSelectedEpisode?.video_url || '')
     : (status.is_live ? (status.active_video_url || activeEpisode?.video_url || '') : '');
 
-  const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
+  const shouldCreatePlayer = Boolean((status.is_live || isUserSelectedOldEpisode) && activeVideoUrl);
+
+  const player = useSafeVideoPlayer(shouldCreatePlayer ? activeVideoUrl : null, (p) => {
     try {
       p.loop = false;
       p.muted = false;
