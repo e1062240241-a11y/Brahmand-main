@@ -1006,7 +1006,7 @@ export default function JaapLandingScreen() {
                 <View style={styles.authentic30DaysBtn}>
                   <Ionicons name="calendar-outline" size={13} color="#8A5A2B" style={{ marginRight: 4 }} />
                   <Text style={styles.authentic30DaysText}>
-                    {t('language') === 'hi' ? '30 दिवस कथा' : '30 Days Katha'}
+                    {t('language') === 'hi' ? '30 दिवस' : '30 Days'}
                   </Text>
                 </View>
               </View>
@@ -1046,7 +1046,7 @@ export default function JaapLandingScreen() {
                 </View>
 
                 <View style={styles.bookMetaKatha}>
-                  <Text style={styles.bookNameKatha}>Shamik Pathak ji</Text>
+                  <Text style={styles.bookNameKatha}>Shamik Pathak Ji</Text>
                   <Text style={styles.bookSubKatha}>Spiritual Guru • Astrologer • Panditji</Text>
                 </View>
               </Pressable>
