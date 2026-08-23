@@ -24,7 +24,6 @@ type FeedSectionProps = {
   onShare: (post: any) => void;
   scrollRef: React.RefObject<any>;
   onScroll?: (event: any) => void;
-  onCreatePost: () => void;
   homeHeader: React.ReactElement | null;
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
@@ -42,7 +41,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   onShare,
   scrollRef,
   onScroll,
-  onCreatePost,
   homeHeader,
   onRefresh,
   isRefreshing,
