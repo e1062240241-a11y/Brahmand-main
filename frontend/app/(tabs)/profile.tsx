@@ -232,7 +232,7 @@ export default function ProfileScreen() {
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const postOffsetsRef = useRef<Record<string, number>>({});
   const postHeightsRef = useRef<Record<string, number>>({});
-  const postListRef = useRef<FlatList>(null);
+  const postListRef = useRef<any>(null);
   const hasScrolledToPost = useRef(false);
   const [activeTab, setActiveTab] = useState('grid');
 
@@ -1667,7 +1667,7 @@ export default function ProfileScreen() {
           alwaysBounceVertical={true}
           data={posts}
           renderItem={renderPost}
-          keyExtractor={(item, index) => {
+          keyExtractor={(item: any, index: number) => {
             if (!item || !item.id) {
               return `post-idx-${index}`;
             }
@@ -1771,18 +1771,15 @@ export default function ProfileScreen() {
               </Text>
             </View>
             {posts.length > 0 ? (
-              <FlatList
+              <SafeFlashList
                 ref={postListRef}
                 data={posts}
-                initialScrollIndex={Math.max(0, posts.findIndex(p => p && p.id === selectedPost?.id))}
-                initialNumToRender={10}
-                maxToRenderPerBatch={5}
-                windowSize={10}
-                removeClippedSubviews={false}
+                initialScrollIndex={Math.max(0, posts.findIndex((p: any) => p && p.id === selectedPost?.id))}
+                estimatedItemSize={480}
                 contentContainerStyle={{
                   paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
                 }}
-                renderItem={({ item, index }) => {
+                renderItem={({ item, index }: { item: any, index: number }) => {
                   const postKey = item && item.id ? `profile-detail-${item.id}` : `profile-detail-idx-${index}`;
                   return (
                     <View
@@ -1816,13 +1813,13 @@ export default function ProfileScreen() {
                     </View>
                   );
                 }}
-                keyExtractor={(item, index) => {
+                keyExtractor={(item: any, index: number) => {
                   if (!item || !item.id) {
                     return `profile-detail-idx-${index}`;
                   }
                   return `profile-detail-${item.id}`;
                 }}
-                onScroll={(event) => {
+                onScroll={(event: any) => {
                   const y = event.nativeEvent.contentOffset.y;
                   let closestKey: string | null = null;
                   let maxVisible = 0;
@@ -1843,12 +1840,6 @@ export default function ProfileScreen() {
                   setActivePostKey(prev => closestKey ?? prev);
                 }}
                 scrollEventThrottle={16}
-                onScrollToIndexFailed={(info) => {
-                  const wait = new Promise(resolve => setTimeout(resolve, 500));
-                  wait.then(() => {
-                    postListRef.current?.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 });
-                  });
-                }}
                 onLayout={() => {
                   if (selectedPost && posts.length > 0 && !hasScrolledToPost.current) {
                     const idx = posts.findIndex(p => p.id === selectedPost.id);
@@ -1922,14 +1913,11 @@ export default function ProfileScreen() {
                     }, {} as Record<string, any[]>);
 
                     return (
-                      <FlatList
+                      <SafeFlashList
                         data={parentComments}
-                        keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
-                        initialNumToRender={10}
-                        maxToRenderPerBatch={5}
-                        windowSize={5}
-                        removeClippedSubviews={Platform.OS === 'android'}
-                        renderItem={({ item }) => {
+                        keyExtractor={(item: any, index: number) => item && item.id ? String(item.id) : `comment-idx-${index}`}
+                        estimatedItemSize={100}
+                        renderItem={({ item }: { item: any }) => {
                           const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                           const replies = repliesMap[item.id] || [];
                           return (
