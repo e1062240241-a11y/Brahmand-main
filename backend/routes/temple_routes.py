@@ -95,7 +95,7 @@ async def get_temple(
         user_id = token_data.get("user_id") if token_data else None
         return await TempleService.get_temple(temple_id, user_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 
@@ -116,7 +116,7 @@ async def create_temple_post(
             post_type=post.post_type.value
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("/{temple_id}/posts")
@@ -128,7 +128,7 @@ async def get_temple_posts(
     try:
         return await TempleService.get_posts(temple_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.post("/{temple_id}/posts/{post_id}/react")

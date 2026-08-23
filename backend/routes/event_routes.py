@@ -25,7 +25,7 @@ async def create_event(
             organizer_name=event_data.organizer_name
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("")
@@ -49,7 +49,7 @@ async def get_event(
     try:
         return await EventService.get_event(event_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.post("/{event_id}/attend")

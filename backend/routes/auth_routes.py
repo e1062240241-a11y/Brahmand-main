@@ -21,7 +21,7 @@ async def send_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
         return await AuthService.send_otp(request.phone)
     except ValueError as e:
         logger.warning(f"/auth/send-otp failed for phone={request.phone}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
     except Exception as e:
         logger.exception(f"Unexpected error in /auth/send-otp for phone={request.phone}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -35,7 +35,7 @@ async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
         return await AuthService.verify_otp(request.phone, request.otp)
     except ValueError as e:
         logger.warning(f"/auth/verify-otp failed for phone={request.phone}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
     except Exception as e:
         logger.exception(f"Unexpected error in /auth/verify-otp for phone={request.phone}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -47,7 +47,7 @@ async def verify_firebase_token(request: FirebaseTokenRequest, _: bool = Depends
     try:
         return await AuthService.verify_firebase_token(request.id_token)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.post("/register")
@@ -61,7 +61,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
             language=user_data.language
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.get("/clean-locust-data")

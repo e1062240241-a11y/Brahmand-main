@@ -1792,7 +1792,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         
     except firebase_auth.InvalidIdTokenError as e:
         logger.error(f"InvalidIdTokenError: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid Firebase token: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
     except firebase_auth.ExpiredIdTokenError as e:
         logger.error(f"ExpiredIdTokenError: {str(e)}")
         raise HTTPException(status_code=401, detail="Firebase token expired")
@@ -1824,7 +1824,7 @@ async def login_anonymous(request: AnonymousLoginRequest):
             language=request.language,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
     except Exception as e:
         logger.exception(f"/auth/login-anonymous failed for phone={request.phone}: {e}")
         raise HTTPException(status_code=500, detail="Anonymous login failed")
@@ -2121,7 +2121,7 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
 
     def _verify_otp_sync():
         collection_ref = db.client.collection("otp_verifications")
@@ -3845,7 +3845,7 @@ async def _upload_post_from_storage_impl(
             original_size_bytes = await _download_file_from_bunny(storage_path, temp_input_file.name)
         except Exception as download_err:
             logger.error(f"Failed to download raw video from Bunny (path: {storage_path}): {download_err}")
-            raise HTTPException(status_code=404, detail=f"Uploaded raw video not found in storage. Path: {storage_path}. Error: {str(download_err)}")
+            raise HTTPException(status_code=404, detail="Uploaded raw video not found")
 
         if original_size_bytes <= 0:
             raise HTTPException(status_code=400, detail='Stored video is empty')
@@ -7051,7 +7051,7 @@ async def join_community_by_code(
             data.get("code", "")
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
     except Exception as e:
         logger.error(f"Error joining community: {e}")
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -11458,7 +11458,7 @@ async def send_blood_request_otp(request: OTPRequest):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
     
@@ -11572,7 +11572,7 @@ async def verify_blood_request_otp(request: OTPVerify):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
     
@@ -11667,7 +11667,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
         try:
             contact_mobile = _normalize_phone(contact_number)
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid contact number: {str(exc)}")
+            raise HTTPException(status_code=400, detail="Invalid contact number")
             
         # Retrieve verification record (bypass cache)
         record = await db.find_one("blood_request_otp_verifications", [("phone", "==", contact_mobile)])
@@ -13148,7 +13148,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         else:
             raise HTTPException(status_code=400, detail="Invalid OTP")
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
 
     await db.delete_document('vendors', vendor_id)
     

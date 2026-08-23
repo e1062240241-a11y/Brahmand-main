@@ -19,7 +19,7 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     try:
         return await UserService.get_profile(token_data["user_id"])
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("")
@@ -48,7 +48,7 @@ async def update_profile(
             update.dict(exclude_none=True)
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.put("/profile/extended")
@@ -63,7 +63,7 @@ async def update_extended_profile(
             update.dict(exclude_none=True)
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.post("/location")
@@ -78,7 +78,7 @@ async def setup_location(
             location.dict()
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.post("/dual-location")
@@ -94,7 +94,7 @@ async def setup_dual_location(
             locations.office_location
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.get("/search/{sl_id}")
@@ -106,7 +106,7 @@ async def search_user_by_sl_id(
     try:
         return await UserService.search_by_sl_id(sl_id)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/verification-status")
@@ -129,7 +129,7 @@ async def request_verification(
             data.get("id_number")
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.get("/profile-completion")
@@ -144,7 +144,7 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
     try:
         return await UserService.get_horoscope(token_data["user_id"])
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.post("/personality-verification")
