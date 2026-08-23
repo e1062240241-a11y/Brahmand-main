@@ -968,6 +968,23 @@ export const getUserProfile = (userId?: string, includeLists: boolean = false) =
   return api.get(validId ? `/users/${validId}` : "/user/profile", { params });
 };
 
+export const getUserConnections = (
+  userId: string,
+  type: 'followers' | 'following' = 'followers',
+  limit: number = 20,
+  cursor?: string,
+  q?: string
+) => {
+  const params: Record<string, any> = { type, limit };
+  if (cursor && cursor.trim().length > 0) {
+    params.cursor = cursor.trim();
+  }
+  if (q && q.trim().length > 0) {
+    params.q = q.trim();
+  }
+  return api.get(`/users/${userId}/connections`, { params });
+};
+
 export const getUserPosts = (
   userId: string,
   limit: number = 20,

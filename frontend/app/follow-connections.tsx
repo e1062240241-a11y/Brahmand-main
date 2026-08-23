@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Easing,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,66 +13,40 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FlashList } from '@shopify/flash-list';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
-import { followUser, getUserProfile, unfollowUser, getUsersBatch, getAllUsers } from '../src/services/api';
+import { followUser, getUserConnections, getUserProfile, unfollowUser } from '../src/services/api';
 import { useTranslation } from '../src/utils/i18n';
+import { ConnectionUser } from '../src/types';
 
 type ConnectionTab = 'followers' | 'following';
-
-interface ConnectionUser {
-  id: string;
-  name?: string;
-  sl_id?: string;
-  photo?: string;
-}
-
-const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
-  const validIds = (ids || []).filter((id) => typeof id === 'string' && id.trim().length > 0);
-  if (!validIds.length) {
-    return [];
-  }
-
-  try {
-    const BATCH_SIZE = 100;
-    const allUsers: ConnectionUser[] = [];
-
-    for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
-      const chunk = validIds.slice(i, i + BATCH_SIZE);
-      const res = await getUsersBatch(chunk);
-      if (Array.isArray(res.data)) {
-        allUsers.push(...res.data);
-      } else {
-        console.warn('[Connections] getUsersBatch returned non-array:', typeof res.data);
-      }
-    }
-
-    console.log(`[Connections] loadUsersByIds: requested=${validIds.length}, loaded=${allUsers.length}`);
-    return allUsers;
-  } catch (error) {
-    console.warn('[Connections] Failed to batch load users:', error);
-    return [];
-  }
-};
 
 export default function FollowConnectionsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string; userId?: string }>();
   const initialTab: ConnectionTab = params.tab === 'following' ? 'following' : 'followers';
   const targetUserId = typeof params.userId === 'string' && params.userId.trim().length ? params.userId : undefined;
-  const { user, updateUser } = useAuthStore();
+  const { user } = useAuthStore();
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<ConnectionTab>(initialTab);
   const [loading, setLoading] = useState(true);
-  const [usersById, setUsersById] = useState<Record<string, ConnectionUser>>({});
-  const [followerIds, setFollowerIds] = useState<string[]>([]);
-  const [profileFollowingIds, setProfileFollowingIds] = useState<string[]>([]);
-  const [viewerFollowingIds, setViewerFollowingIds] = useState<string[]>([]);
-  const [followersSearch, setFollowersSearch] = useState('');
-  const [followingSearch, setFollowingSearch] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [items, setItems] = useState<ConnectionUser[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
+  // Counts from target user profile
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
+
+  // Search states
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Optimistic follow state map: targetUserId -> isFollowing (boolean)
+  const [optimisticFollows, setOptimisticFollows] = useState<Record<string, boolean>>({});
   const [pendingUserIds, setPendingUserIds] = useState<string[]>([]);
-  const [suggestedUsers, setSuggestedUsers] = useState<ConnectionUser[]>([]);
 
   const screenOpacity = useRef(new Animated.Value(0)).current;
   const screenTranslateY = useRef(new Animated.Value(18)).current;
@@ -81,18 +54,14 @@ export default function FollowConnectionsScreen() {
   const listTranslateY = useRef(new Animated.Value(0)).current;
 
   const currentUserId = user?.id;
-  const activeUserIdRef = useRef<string | undefined>(currentUserId);
-  const activeTargetUserIdRef = useRef<string | undefined>(targetUserId);
+  const activeSubjectId = targetUserId || currentUserId;
 
-  useEffect(() => {
-    activeUserIdRef.current = currentUserId;
-    activeTargetUserIdRef.current = targetUserId;
-  }, [currentUserId, targetUserId]);
-
+  // Sync initial tab param
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
 
+  // Entrance animation
   useEffect(() => {
     Animated.parallel([
       Animated.timing(screenOpacity, {
@@ -110,185 +79,85 @@ export default function FollowConnectionsScreen() {
     ]).start();
   }, [screenOpacity, screenTranslateY]);
 
+  // 300ms Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchText.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchText]);
+
+  // Fetch target user total counts once
+  useEffect(() => {
+    if (!activeSubjectId) return;
+    getUserProfile(activeSubjectId, false)
+      .then((res) => {
+        const profile = res.data || {};
+        if (typeof profile.followers_count === 'number') setFollowersCount(profile.followers_count);
+        if (typeof profile.following_count === 'number') setFollowingCount(profile.following_count);
+      })
+      .catch((err) => console.warn('[Connections] Error fetching profile counts:', err));
+  }, [activeSubjectId]);
+
+  // Primary Data Fetching Effect (Triggers on tab, subject ID, or search change)
   useEffect(() => {
     let isMounted = true;
 
-    // Purge previous state on ID change to prevent flashing stale data
-    setUsersById({});
-    setFollowerIds([]);
-    setProfileFollowingIds([]);
-    setViewerFollowingIds([]);
-    setSuggestedUsers([]);
+    if (!activeSubjectId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    setItems([]);
+    setNextCursor(null);
 
-    const loadConnections = async () => {
-      if (!currentUserId) {
-        setLoading(false);
-        return;
-      }
-      const requestedUserId = currentUserId;
-      const requestedTargetUserId = targetUserId;
-
-      try {
-        const [profileResponse, viewerResponse, usersResponse] = await Promise.all([
-          getUserProfile(targetUserId, true),
-          getUserProfile(undefined, true),
-          getAllUsers('', 20),
-        ]);
-
-        if (requestedUserId !== activeUserIdRef.current || requestedTargetUserId !== activeTargetUserIdRef.current) {
-          return;
+    getUserConnections(activeSubjectId, activeTab, 20, undefined, debouncedSearch)
+      .then((res) => {
+        if (!isMounted) return;
+        const data = res.data || {};
+        const loadedItems: ConnectionUser[] = Array.isArray(data.items) ? data.items : [];
+        setItems(loadedItems);
+        setNextCursor(data.next_cursor || null);
+        if (typeof data.total_count === 'number') {
+          if (activeTab === 'followers') setFollowersCount(data.total_count);
+          else setFollowingCount(data.total_count);
         }
-
-        const profile = profileResponse.data || {};
-        const viewerProfile = viewerResponse.data || {};
-        const followerIds = Array.isArray(profile.followers) ? profile.followers.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
-        const followingIds = Array.isArray(profile.following) ? profile.following.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
-        const viewerFollowing = Array.isArray(viewerProfile.following) ? viewerProfile.following.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
-
-        console.log(`[Connections] Profile followers: ${followerIds.length}, following: ${followingIds.length}, viewer following: ${viewerFollowing.length}`);
-
-        const [followerUsers, followingUsers] = await Promise.all([
-          loadUsersByIds(followerIds),
-          loadUsersByIds(followingIds),
-        ]);
-
-        if (requestedUserId !== activeUserIdRef.current || requestedTargetUserId !== activeTargetUserIdRef.current) {
-          return;
-        }
-
-        const allFetchedUsers = Array.isArray(usersResponse?.data?.users) ? usersResponse.data.users : Array.isArray(usersResponse?.data) ? usersResponse.data : [];
-        const suggestions = allFetchedUsers.filter((u: any) =>
-          u.id !== user?.id && !viewerFollowing.includes(u.id) && !followerIds.includes(u.id)
-        ).slice(0, 10);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const nextUsersById = [...followerUsers, ...followingUsers].reduce<Record<string, ConnectionUser>>(
-          (acc, item) => {
-            acc[item.id] = item;
-            return acc;
-          },
-          {}
-        );
-
-        setUsersById(nextUsersById);
-        setFollowerIds(followerIds);
-        setProfileFollowingIds(followingIds);
-        setViewerFollowingIds(viewerFollowing);
-        setSuggestedUsers(suggestions);
-      } catch (error) {
-        console.warn('Failed to load follower/following users:', error);
-        if (isMounted && requestedUserId === activeUserIdRef.current && requestedTargetUserId === activeTargetUserIdRef.current) {
-          setUsersById({});
-          setFollowerIds([]);
-          setProfileFollowingIds([]);
-          setViewerFollowingIds([]);
-          setSuggestedUsers([]);
-        }
-      } finally {
-        if (isMounted && requestedUserId === activeUserIdRef.current && requestedTargetUserId === activeTargetUserIdRef.current) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadConnections();
+      })
+      .catch((err) => {
+        console.warn('[Connections] Error fetching connections:', err);
+        if (isMounted) setItems([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [targetUserId, currentUserId]);
+  }, [activeSubjectId, activeTab, debouncedSearch]);
 
-  const followers = useMemo(() => followerIds
-    .map((id) => usersById[id])
-    .filter((item): item is ConnectionUser => Boolean(item?.id)), [followerIds, usersById]);
-  const following = useMemo(() => profileFollowingIds
-    .map((id) => usersById[id])
-    .filter((item): item is ConnectionUser => Boolean(item?.id)), [profileFollowingIds, usersById]);
+  // Cursor Pagination Handler
+  const handleLoadMore = useCallback(() => {
+    if (!nextCursor || loading || loadingMore || !activeSubjectId) return;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const mutualIdsSet = useMemo(() => {
-    // OPT: Bolt ⚡ - Convert followerIds to Set for O(1) lookup to prevent O(N*M) CPU bottleneck
-    const followerSet = new Set(followerIds);
-    return new Set(profileFollowingIds.filter((id) => followerSet.has(id)));
-  }, [profileFollowingIds, followerIds]);
-  const activeSearch = activeTab === 'followers' ? followersSearch : followingSearch;
-  const activeUsers = activeTab === 'followers' ? followers : following;
-  const filteredUsers = activeUsers.filter((item: ConnectionUser) => {
-    const query = activeSearch.trim().toLowerCase();
-    if (!query) {
-      return true;
-    }
+    setLoadingMore(true);
+    getUserConnections(activeSubjectId, activeTab, 20, nextCursor, debouncedSearch)
+      .then((res) => {
+        const data = res.data || {};
+        const newItems: ConnectionUser[] = Array.isArray(data.items) ? data.items : [];
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id || i.user_id));
+          const uniqueNew = newItems.filter((i) => !existingIds.has(i.id || i.user_id));
+          return [...prev, ...uniqueNew];
+        });
+        setNextCursor(data.next_cursor || null);
+      })
+      .catch((err) => console.warn('[Connections] Error loading more connections:', err))
+      .finally(() => setLoadingMore(false));
+  }, [nextCursor, loading, loadingMore, activeSubjectId, activeTab, debouncedSearch]);
 
-    return [item.name, item.sl_id]
-      .filter(Boolean)
-      .some((value) => value!.toLowerCase().includes(query));
-  });
-
-  const renderTabButton = (tab: ConnectionTab, label: string, count: number) => {
-    const isActive = activeTab === tab;
-
-    return (
-      <TouchableOpacity
-        style={[styles.tabButton, isActive && styles.activeTabButton]}
-        onPress={() => setActiveTab(tab)}
-        activeOpacity={0.85}
-      >
-        <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>{label}</Text>
-        <View style={[styles.badgeWrap, isActive && styles.activeBadgeWrap]}>
-          <Text style={[styles.tabCount, isActive && styles.activeTabCount]}>{count}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const isViewingOwnProfile = !targetUserId;
-
-  const handleToggleFollow = async (followTargetId: string) => {
-    const isFollowing = viewerFollowingIds.includes(followTargetId);
-    const targetUser = usersById[followTargetId];
-    const nextFollowingIds = isFollowing
-      ? viewerFollowingIds.filter((id) => id !== followTargetId)
-      : [...viewerFollowingIds, followTargetId];
-
-    const prevFollowerIds = [...followerIds];
-    const prevFollowingIds = [...viewerFollowingIds];
-    const prevProfileFollowingIds = [...profileFollowingIds];
-
-    setPendingUserIds((current) => [...current, followTargetId]);
-    setViewerFollowingIds(nextFollowingIds);
-    if (targetUser) {
-      setUsersById((current) => ({ ...current, [followTargetId]: targetUser }));
-    }
-    updateUser({ following: nextFollowingIds } as any);
-
-    // If viewing own profile, also update the profile's following list optimistically
-    if (isViewingOwnProfile) {
-      setProfileFollowingIds(nextFollowingIds);
-    }
-
-    try {
-      if (isFollowing) {
-        await unfollowUser(followTargetId);
-      } else {
-        await followUser(followTargetId);
-      }
-    } catch (error) {
-      console.warn('Failed to update follow state:', error);
-      setViewerFollowingIds(prevFollowingIds);
-      setFollowerIds(prevFollowerIds);
-      if (isViewingOwnProfile) {
-        setProfileFollowingIds(prevProfileFollowingIds);
-      }
-      updateUser({ following: prevFollowingIds } as any);
-    } finally {
-      setPendingUserIds((current) => current.filter((id) => id !== followTargetId));
-    }
-  };
-
+  // Tab switch animation
   useEffect(() => {
     listOpacity.setValue(0.82);
     listTranslateY.setValue(10);
@@ -307,7 +176,36 @@ export default function FollowConnectionsScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [activeTab, followersSearch, followingSearch, followerIds.length, profileFollowingIds.length, listOpacity, listTranslateY]);
+  }, [activeTab, listOpacity, listTranslateY]);
+
+  // Zero-Latency Optimistic Follow / Unfollow Toggle
+  const handleToggleFollow = async (targetUser: ConnectionUser) => {
+    const targetId = targetUser.id || targetUser.user_id;
+    if (!targetId || targetId === user?.id) return;
+
+    const currentFollowingStatus =
+      optimisticFollows[targetId] ?? targetUser.is_following_by_viewer ?? targetUser.is_following ?? false;
+
+    const nextFollowingStatus = !currentFollowingStatus;
+
+    // 1. Zero-latency optimistic UI update
+    setOptimisticFollows((prev) => ({ ...prev, [targetId]: nextFollowingStatus }));
+    setPendingUserIds((prev) => [...prev, targetId]);
+
+    try {
+      if (nextFollowingStatus) {
+        await followUser(targetId);
+      } else {
+        await unfollowUser(targetId);
+      }
+    } catch (error) {
+      console.warn('[Connections] Follow toggle failed, rolling back:', error);
+      // Rollback on network failure
+      setOptimisticFollows((prev) => ({ ...prev, [targetId]: currentFollowingStatus }));
+    } finally {
+      setPendingUserIds((prev) => prev.filter((id) => id !== targetId));
+    }
+  };
 
   const handleBackPress = () => {
     try {
@@ -321,63 +219,103 @@ export default function FollowConnectionsScreen() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const totalConnections = new Set([...followerIds, ...profileFollowingIds]).size;
+  const renderTabButton = (tab: ConnectionTab, label: string, count: number) => {
+    const isActive = activeTab === tab;
 
-  const renderUserCard = (item: ConnectionUser, isLast: boolean) => (
-    <View key={item.id} style={[styles.userCard, isLast && styles.lastUserCard]}>
+    return (
       <TouchableOpacity
-        style={styles.userInfoButton}
+        style={[styles.tabButton, isActive && styles.activeTabButton]}
+        onPress={() => {
+          if (activeTab !== tab) {
+            setSearchText('');
+            setDebouncedSearch('');
+            setActiveTab(tab);
+          }
+        }}
         activeOpacity={0.85}
-        onPress={() => router.push(`/profile/${item.id}` as any)}
       >
-        <Avatar name={item.name || 'User'} photo={item.photo} size={54} />
-        <View style={styles.userText}>
-          <View style={styles.userNameRow}>
-            <Text style={styles.userName}>{item.name || 'Unknown User'}</Text>
-          </View>
-          <Text style={styles.userMeta}>@{item.sl_id || 'sanatan_user'}</Text>
+        <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>{label}</Text>
+        <View style={[styles.badgeWrap, isActive && styles.activeBadgeWrap]}>
+          <Text style={[styles.tabCount, isActive && styles.activeTabCount]}>{count}</Text>
         </View>
       </TouchableOpacity>
+    );
+  };
 
-      <View style={styles.actionButtonsRow}>
-        {(!viewerFollowingIds.includes(item.id) || item.id === user?.id) ? (
-          <TouchableOpacity
-            style={[
-              styles.followButton,
-              pendingUserIds.includes(item.id) && styles.disabledButton,
-            ]}
-            activeOpacity={0.85}
-            disabled={pendingUserIds.includes(item.id) || item.id === user?.id}
-            onPress={() => handleToggleFollow(item.id)}
-          >
-            {pendingUserIds.includes(item.id) ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+  const renderUserCard = ({ item }: { item: ConnectionUser }) => {
+    const targetId = item.id || item.user_id;
+    const isSelf = targetId === user?.id;
+    const isFollowing =
+      optimisticFollows[targetId] ?? item.is_following_by_viewer ?? item.is_following ?? false;
+    const isPending = pendingUserIds.includes(targetId);
+
+    const name = item.name || 'User';
+    const username = item.sl_id || item.username || 'sanatan_user';
+    const photo = item.photo || item.photo_url;
+
+    return (
+      <View style={styles.userCard}>
+        <TouchableOpacity
+          style={styles.userInfoButton}
+          activeOpacity={0.85}
+          onPress={() => router.push(`/profile/${targetId}` as any)}
+        >
+          <Avatar name={name} photo={photo} size={54} />
+          <View style={styles.userText}>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{name}</Text>
+              {item.is_verified && (
+                <Ionicons name="checkmark-circle" size={16} color="#F25C05" style={{ marginLeft: 4 }} />
+              )}
+            </View>
+            <Text style={styles.userMeta}>@{username}</Text>
+          </View>
+        </TouchableOpacity>
+
+        {!isSelf && (
+          <View style={styles.actionButtonsRow}>
+            {!isFollowing ? (
+              <TouchableOpacity
+                style={[styles.followButton, isPending && styles.disabledButton]}
+                activeOpacity={0.85}
+                disabled={isPending}
+                onPress={() => handleToggleFollow(item)}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.followButtonText}>{t('follow')}</Text>
+                )}
+              </TouchableOpacity>
             ) : (
-              <Text style={styles.followButtonText}>{t('follow')}</Text>
+              <TouchableOpacity
+                style={styles.messageButton}
+                activeOpacity={0.85}
+                onPress={() => {
+                  const encodedName = encodeURIComponent(name);
+                  const encodedSL = encodeURIComponent(username);
+                  const encodedPhoto = encodeURIComponent(photo || '');
+                  router.push(
+                    `/dm/new?userId=${targetId}&userName=${encodedName}&userSL=${encodedSL}&userPhoto=${encodedPhoto}` as any
+                  );
+                }}
+              >
+                <Text style={styles.messageButtonText}>{t('message')}</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.messageButton}
-            activeOpacity={0.85}
-            onPress={() => {
-              const userName = encodeURIComponent(item.name || '');
-              const userSL = encodeURIComponent(item.sl_id || '');
-              const userPhoto = encodeURIComponent(item.photo || '');
-              router.push(`/dm/new?userId=${item.id}&userName=${userName}&userSL=${userSL}&userPhoto=${userPhoto}` as any);
-            }}
-          >
-            <Text style={styles.messageButtonText}>{t('message')}</Text>
-          </TouchableOpacity>
+          </View>
         )}
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.05, 0.25]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#F8EDE7']}
+        locations={[0, 0.05, 0.25]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <Animated.View
         style={[
           styles.screenContent,
@@ -392,15 +330,19 @@ export default function FollowConnectionsScreen() {
             <Ionicons name="chevron-back" size={24} color="#1E293B" />
           </TouchableOpacity>
           <Text style={styles.headerUsername}>{user?.sl_id || user?.name || 'Network'}</Text>
-          <TouchableOpacity style={styles.addMoreButtonIcon} activeOpacity={0.85} onPress={() => router.push('/home' as any)}>
+          <TouchableOpacity
+            style={styles.addMoreButtonIcon}
+            activeOpacity={0.85}
+            onPress={() => router.push('/home' as any)}
+          >
             <Ionicons name="person-add" size={20} color="#F25C05" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.tabContainer}>
           <View style={styles.tabBar}>
-            {renderTabButton('followers', t('followers'), followers.length)}
-            {renderTabButton('following', t('following'), following.length)}
+            {renderTabButton('followers', t('followers'), followersCount)}
+            {renderTabButton('following', t('following'), followingCount)}
           </View>
         </View>
 
@@ -410,10 +352,15 @@ export default function FollowConnectionsScreen() {
             style={styles.searchInput}
             placeholder={t('searchByName')}
             placeholderTextColor="#94A3B8"
-            value={activeTab === 'followers' ? followersSearch : followingSearch}
-            onChangeText={activeTab === 'followers' ? setFollowersSearch : setFollowingSearch}
+            value={searchText}
+            onChangeText={setSearchText}
             autoCapitalize="none"
           />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText('')}>
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <Animated.View
@@ -430,40 +377,43 @@ export default function FollowConnectionsScreen() {
               <ActivityIndicator size="large" color="#F25C05" />
             </View>
           ) : (
-            <ScrollView
-              style={styles.list}
+            <FlashList<ConnectionUser>
+              data={items}
+              renderItem={renderUserCard}
+              keyExtractor={(item) => item.id || item.user_id}
+              estimatedItemSize={70}
               contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {filteredUsers.length ? (
-                filteredUsers.map((item: ConnectionUser, index: number) => renderUserCard(item, index === filteredUsers.length - 1))
-              ) : (
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={{ paddingVertical: 16 }}>
+                    <ActivityIndicator size="small" color="#F25C05" />
+                  </View>
+                ) : null
+              }
+              ListEmptyComponent={
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconWrap}>
                     <Ionicons name="people" size={40} color="#FDBA74" />
                   </View>
                   <Text style={styles.emptyTitle}>
-                    {activeSearch.trim()
-                      ? t('noFound')
-                      : activeTab === 'followers' ? t('noFollowersYet') : t('noFollowingYet')}
-                  </Text>
-                  <Text style={styles.emptySubtitle}>
-                    {activeSearch.trim()
+                    {searchText.trim()
                       ? t('noFound')
                       : activeTab === 'followers'
-                        ? t('whenPeopleFollow')
-                        : t('discoverPeople')}
+                      ? t('noFollowersYet')
+                      : t('noFollowingYet')}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {searchText.trim()
+                      ? t('noFound')
+                      : activeTab === 'followers'
+                      ? t('whenPeopleFollow')
+                      : t('discoverPeople')}
                   </Text>
                 </View>
-              )}
-
-              {activeTab === 'followers' && suggestedUsers.length > 0 && !activeSearch.trim() && (
-                <View style={styles.suggestionsContainer}>
-                  <Text style={styles.suggestionsTitle}>{t('suggested')}</Text>
-                  {suggestedUsers.map((item, index) => renderUserCard(item, index === suggestedUsers.length - 1))}
-                </View>
-              )}
-            </ScrollView>
+              }
+            />
           )}
         </Animated.View>
       </Animated.View>
@@ -495,7 +445,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF4EE', // Beige background
+    backgroundColor: '#FFF4EE',
   },
   headerUsername: {
     fontSize: 18,
@@ -590,19 +540,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0F172A',
   },
-  suggestionsContainer: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#FFD7C2',
-  },
-  suggestionsTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#F25C05',
-    marginBottom: 16,
-    marginLeft: 4,
-  },
   centerState: {
     flex: 1,
     alignItems: 'center',
@@ -610,29 +547,16 @@ const styles = StyleSheet.create({
   },
   contentWrap: {
     flex: 1,
-  },
-  list: {
-    flex: 1,
     marginTop: 16,
   },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  emptyContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    marginBottom: 0,
-  },
-  lastUserCard: {
-    marginBottom: 0,
+    paddingVertical: 10,
   },
   userInfoButton: {
     flex: 1,
@@ -674,16 +598,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  followingButton: {
-    backgroundColor: '#FFF4EE',
-  },
   followButtonText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  followingButtonText: {
-    color: '#F25C05',
   },
   disabledButton: {
     opacity: 0.6,
@@ -705,6 +623,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 40,
   },
   emptyIconWrap: {
     width: 80,
@@ -726,24 +645,5 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  emptyAction: {
-    marginTop: 24,
-    paddingHorizontal: 24,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F25C05',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F25C05',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  emptyActionText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
   },
 });
