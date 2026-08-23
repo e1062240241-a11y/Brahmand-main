@@ -137,7 +137,7 @@ class NattyFishService:
                     logger.error(f"[NattyFish] Non-JSON error response: {raw}")
                     raise HTTPException(
                         status_code=502,
-                        detail=f"SMS gateway returned unexpected response: {raw[:200]}"
+                        detail="SMS gateway returned an unexpected response."
                     )
             else:
                 logger.error(f"[NattyFish] HTTP {response.status_code}: {response.text}")

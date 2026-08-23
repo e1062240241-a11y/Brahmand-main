@@ -10,7 +10,6 @@ import { MentionText } from '../../src/components/MentionText';
 import { ReportModal } from '../../src/components/ReportModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import SharePostModal from '../../src/components/SharePostModal';
-import UploadPostModal from '../../src/components/UploadPostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
@@ -20,7 +19,6 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useBlockStore } from '../../src/store/blockStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
-import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
@@ -29,7 +27,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useAudioPlayer } from 'expo-audio';
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -137,9 +134,6 @@ export default function HomeScreen() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [, setActiveCommentMenuId] = useState<string | null>(null);
-  const [showUploadPostModal, setShowUploadPostModal] = useState(false);
-  const [showProfileActions, setShowProfileActions] = useState(false);
-  const [, setUploadingPhoto] = useState(false);
   // Apple Guideline 1.2 - report modal state
   const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
   const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
@@ -742,37 +736,6 @@ export default function HomeScreen() {
     }, [])
   );
 
-  const handleUploadStart = async (
-    media: any,
-    caption: string,
-    filterName?: string,
-    communityLevel: string = 'city',
-    category: string = 'feed',
-    mediaWidth?: number,
-    mediaHeight?: number,
-    cropOffsetX?: number,
-    cropOffsetY?: number,
-    originalWidth?: number,
-    originalHeight?: number
-  ) => {
-    useUploadStore.getState().startBackgroundUpload({
-      uri: media.uri,
-      type: media.mimeType,
-      name: media.name,
-      mediaType: media.mediaType,
-      caption,
-      selectedFilter: filterName || 'Normal',
-      communityLevel,
-      uploadCategory: category,
-      mediaWidth,
-      mediaHeight,
-      offsetXPercent: cropOffsetX,
-      offsetYPercent: cropOffsetY,
-      originalWidth,
-      originalHeight
-    });
-  };
-
   useEffect(() => {
     setBioText(user?.bio || 'Sanatan Lok Community');
   }, [user?.bio]);
@@ -889,46 +852,6 @@ export default function HomeScreen() {
     } catch (error) {
       console.warn('Failed to update bio:', error);
       setBioText(user?.bio || 'Sanatan Lok Community');
-    }
-  };
-
-  const handleOpenChangeProfilePicture = async () => {
-    setShowProfileActions(false);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Media library permission required to select a profile picture.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as any,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      base64: true,
-    });
-
-    if (result.canceled || !result.assets?.length) {
-      return;
-    }
-
-    const asset = result.assets[0];
-    if (!asset.base64) {
-      alert('Could not read selected image. Please try again.');
-      return;
-    }
-
-    setUploadingPhoto(true);
-    try {
-      const mime = asset.mimeType || 'image/jpeg';
-      const photo = `data:${mime};base64,${asset.base64}`;
-      const response = await updateProfile({ photo });
-      updateUser((response.data || { photo }) as any);
-    } catch (error) {
-      console.warn('Failed to update profile photo from home:', error);
-      alert('Could not save profile picture. Check connection and try again.');
-    } finally {
-      setUploadingPhoto(false);
     }
   };
 
@@ -1576,26 +1499,6 @@ export default function HomeScreen() {
     }
   }, [router]);
 
-  const handleUploadPostSuccess = (post: any) => {
-    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-    const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
-
-    const normalizedPost = post ? {
-      ...post,
-      mediaUrl: post.mediaUrl || post.media_url,
-      media_url: post.media_url || post.mediaUrl,
-      mediaType: post.mediaType || post.media_type,
-      media_type: post.media_type || post.mediaType,
-      thumbnailUrl: post.thumbnailUrl || post.thumbnail_url || post.metadata?.thumbnail_url,
-      thumbnail_url: post.thumbnail_url || post.thumbnailUrl || post.metadata?.thumbnail_url,
-    } : post;
-
-    setTabFeed(activeTab, {
-      posts: [normalizedPost, ...currentPosts],
-      offset: currentOffset + 1
-    });
-  };
-
   const handleSubmitRequest = async (data: any) => {
     try {
       await createCommunityRequest({
@@ -1677,7 +1580,6 @@ export default function HomeScreen() {
       handleSetReminder={handleSetReminder}
       handleLiveJaapNavigation={handleLiveJaapNavigation}
       handleNotificationPress={handleNotificationPress}
-      setShowProfileActions={setShowProfileActions}
       hanumanStatus={hanumanStatus}
       shivaStatus={shivaStatus}
       hanumanChantCount={hanumanChantCount}
@@ -1685,7 +1587,6 @@ export default function HomeScreen() {
       safeCommunityRequests={safeCommunityRequests}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
-      setShowUploadPostModal={setShowUploadPostModal}
       activeFeatureIndex={activeFeatureIndex}
       setActiveFeatureIndex={setActiveFeatureIndex}
       activeBannerIndex={activeBannerIndex}
@@ -1736,7 +1637,6 @@ export default function HomeScreen() {
     handleFollowUser,
     recentSearches,
     handleNotificationPress,
-    setShowProfileActions,
     handleSetReminder,
     handleLiveJaapNavigation,
     safeCommunityRequests,
@@ -1760,7 +1660,6 @@ export default function HomeScreen() {
               onShare={handleSharePost}
               scrollRef={scrollViewRef}
               onScroll={handleHomeScroll}
-              onCreatePost={() => setShowUploadPostModal(true)}
               homeHeader={memoizedHeader}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
@@ -1802,55 +1701,6 @@ export default function HomeScreen() {
               </View>
             </View>
           </Modal>
-
-          <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
-            <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
-              <View style={styles.actionSheet}>
-                <View style={styles.bottomSheetHandle} />
-                <Text style={styles.actionSheetTitle}>Create</Text>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    setShowProfileActions(false);
-                    setShowUploadPostModal(true);
-                  }}
-                >
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="add-circle" size={24} color="#4CAF50" />
-                  </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>New Post</Text>
-                    <Text style={styles.profileActionDesc}>Share a photo or video</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="camera" size={24} color="#2196F3" />
-                  </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
-                    <Text style={styles.profileActionDesc}>Update your profile picture</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
-                  <Text style={styles.actionCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </Modal>
-
-          <UploadPostModal
-            visible={showUploadPostModal}
-            onClose={() => setShowUploadPostModal(false)}
-            onUploadSuccess={handleUploadPostSuccess}
-            onUploadStart={handleUploadStart}
-          />
 
           <RequestFormModal
             visible={showRequestModal}

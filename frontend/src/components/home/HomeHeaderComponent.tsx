@@ -194,7 +194,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder,
     handleLiveJaapNavigation,
     handleNotificationPress,
-    setShowProfileActions,
     hanumanStatus,
     shivaStatus,
     hanumanChantCount,
@@ -202,7 +201,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests,
     activeTab,
     setActiveTab,
-    setShowUploadPostModal,
     activeFeatureIndex,
     setActiveFeatureIndex,
     activeBannerIndex,
@@ -248,7 +246,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder: (mantraType: string, sessionName: string) => void;
     handleLiveJaapNavigation: (mantraType: string, title: string) => void;
     handleNotificationPress: () => void;
-    setShowProfileActions: (v: boolean) => void;
     hanumanStatus: any;
     shivaStatus: any;
     hanumanChantCount: number;
@@ -256,7 +253,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests: any[];
     activeTab: string;
     setActiveTab: (tab: string) => void;
-    setShowUploadPostModal: (v: boolean) => void;
     activeFeatureIndex: number;
     setActiveFeatureIndex: (v: number) => void;
     activeBannerIndex: number;
@@ -353,7 +349,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 activeOpacity={0.86}
                                 style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
-                                onLongPress={() => setShowProfileActions(true)}
                             >
                                 <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                             </TouchableOpacity>
@@ -1541,7 +1536,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             setActiveTab(tab);
                         });
                     }}
-                    onCreatePost={() => setShowUploadPostModal(true)}
                 />
             </View>
         </View>
