@@ -20,8 +20,11 @@
 
 ## 2024-05-18 - [Optimize blocked user checks by using Zustand Set directly]
 **Learning:** React Native state sometimes holds both an array and a `Set` counterpart for convenience. Instantiating a `new Set(array)` on every render or array mutation causes O(N) overhead which compounds heavily inside list operations like `.filter()`.
-**Action:** Always fetch the `Set` object directly from Zustand instead of fetching the array and creating a new `Set` locally. Ensure dependent list filtering operations (like `FeedSection` and `ReelViewer`) accept `Set` properties to prevent re-creation in children.
-
+**Action:** Always fetch the `Set` object directly from Zustand instead of fetching the array and creating a new `Set` locally. Ensure dependent list filtering operations (like `FeedSection` and `ReelViewer`) accept `Set` properties to prevent re-creation in <<<<<<< bolt/profile-flashlist-18720899
+## 2024-08-23 - [Frontend Performance: Optimize Profile Lists with FlashList]
+**Learning:** Using `FlatList` in React Native to render deep UI trees (like PostFeedCards or nested comments) causes noticeable scroll jitter, memory bloating, and long initial render times because it continuously measures elements off-screen and does not recycle component views.
+**Action:** Replace `FlatList` implementations with `@shopify/flash-list` (or the local `SafeFlashList` wrapper). Always provide a reasonably accurate `estimatedItemSize` (e.g., `480` for posts, `100` for comments) to prevent continuous UI measuring on the main thread during the first render frame. Remove native `FlatList` props like `windowSize` and `maxToRenderPerBatch` as `FlashList` handles view recycling automatically.
+=======
 ## 2024-08-22 - [Frontend Performance: Fix broken state reference for blockedByMeUserSet]
 **Learning:** When attempting to extract a Zustand set property (`blockedByMeUserSet`) to replace an array lookup (`blockedByMeUserIds`), be careful to correctly destructure from the store state. An incomplete change leads to `TypeError` at runtime.
 **Action:** When updating store references in component hooks, double check that the returned property is defined in the store interface and matches the destructured variable.
