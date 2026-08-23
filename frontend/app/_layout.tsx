@@ -764,17 +764,10 @@ export default function RootLayout() {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
       const buttonStyle = isDark ? 'light' : 'dark';
-      const navBgColor = isDark ? '#000000' : '#FFFFFF';
-      const colorKey = `${navBgColor}:${buttonStyle}`;
-      if (lastNavColorRef.current === colorKey) return;
-      lastNavColorRef.current = colorKey;
+      if (lastNavColorRef.current === buttonStyle) return;
+      lastNavColorRef.current = buttonStyle;
 
-      NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
-        console.warn('[NavigationBar] Failed to set background color:', e);
-      });
-      NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
-        console.warn('[NavigationBar] Failed to set button style:', e);
-      });
+      NavigationBar.setButtonStyleAsync(buttonStyle).catch(() => {});
     }
   }, [pathname, isDarkScreen]);
 
@@ -1258,9 +1251,9 @@ export default function RootLayout() {
           Outfit_500Medium,
           Outfit_600SemiBold,
           Outfit_700Bold,
-          'Cinzel': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf' },
-          'Poppins': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf' },
-          'RozhaOne': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/rozhaone/RozhaOne-Regular.ttf' },
+          'Cinzel': require('../assets/fonts/Cinzel-Regular.ttf'),
+          'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
+          'RozhaOne': require('../assets/fonts/RozhaOne-Regular.ttf'),
         });
       } catch (e) {
         console.warn('[Fonts] Non-blocking font load failed:', e);

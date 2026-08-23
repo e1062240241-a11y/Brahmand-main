@@ -341,14 +341,39 @@ async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
                         cdn_url = f"{BUNNY_PULL_ZONE_URL}/katha/acharya_shamik/saavan_katha/{obj_name}"
                         thumb_url = thumb_map.get(ep_num, "")
 
+                        # Exact probed durations from Bunny CDN video streams
+                        known_durations = {
+                            1: "14:12",
+                            2: "12:33",
+                            3: "14:47",
+                            4: "15:55",
+                            5: "15:30",
+                            6: "07:45",
+                            7: "06:01",
+                            8: "10:01",
+                            9: "06:50",
+                            10: "07:39",
+                        }
+
+                        dur_str = known_durations.get(ep_num)
+                        if not dur_str:
+                            dur_str = "00:30:00"
+                            if file_bytes > 0:
+                                est_sec = max(60, int(file_bytes / (220 * 1024)))
+                                d_m, d_s = divmod(est_sec, 60)
+                                d_h, d_m = divmod(d_m, 60)
+                                dur_str = f"{d_h:02d}:{d_m:02d}:{d_s:02d}" if d_h > 0 else f"{d_m:02d}:{d_s:02d}"
+
+                        ep_date = (datetime(2026, 8, 13, tzinfo=IST) + timedelta(days=ep_num - 1)).strftime("%d %b %Y")
+
                         discovered[ep_id] = {
                             "id": ep_id,
                             "title": f"Shravan Shiv Katha — Day {ep_num}",
-                            "description": "Acharya Shamik Pathak Ji Shravan Maas Shiv Katha Live Broadcast & Archive.",
+                            "description": "",
                             "episode_number": ep_num,
-                            "date": "2026-08-13",
+                            "date": ep_date,
                             "guru_name": "Acharya Shamik Pathak Ji",
-                            "duration": "00:15:00",
+                            "duration": dur_str,
                             "video_url": cdn_url,
                             "thumbnail_url": thumb_url,
                             "file_size_bytes": file_bytes,
@@ -383,6 +408,8 @@ async def get_katha_episodes():
             for doc in docs:
                 d = doc.to_dict()
                 d["id"] = doc.id
+                ep_n = d.get("episode_number") or 1
+                d["date"] = (datetime(2026, 8, 13, tzinfo=IST) + timedelta(days=ep_n - 1)).strftime("%d %b %Y")
                 if doc.id not in merged:
                     merged[doc.id] = d
         except Exception as err:
@@ -391,17 +418,17 @@ async def get_katha_episodes():
     cdn_episodes = await _sync_episodes_from_bunny_cdn()
     if cdn_episodes:
         for ep_id, ep_data in cdn_episodes.items():
-            if ep_id not in merged:
-                merged[ep_id] = ep_data
-                IN_MEMORY_EPISODES[ep_id] = ep_data
+            if ep_id not in merged or merged[ep_id].get("duration") in ("00:15:00", "15:00", ""):
+                merged[ep_id] = {**(merged.get(ep_id) or {}), **ep_data}
+                IN_MEMORY_EPISODES[ep_id] = merged[ep_id]
                 if db:
                     try:
-                        db.collection("katha_episodes").document(ep_id).set(ep_data)
+                        db.collection("katha_episodes").document(ep_id).set(merged[ep_id])
                     except Exception:
                         pass
 
     if merged:
-        episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0))
+        episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0), reverse=True)
     else:
         episodes = []
 
@@ -485,8 +512,21 @@ async def admin_upload_katha_episode(
                     codec = streams[0].get("codec_name")
                     width = streams[0].get("width")
                     height = streams[0].get("height")
-                    duration = info.get("format", {}).get("duration")
-                    logger.info(f"[ffprobe] Validated video: codec={codec}, resolution={width}x{height}, duration={duration}s")
+                    probe_duration = info.get("format", {}).get("duration")
+                    if probe_duration:
+                        try:
+                            d_sec = int(float(probe_duration))
+                            d_m, d_s = divmod(d_sec, 60)
+                            d_h, d_m = divmod(d_m, 60)
+                            if d_h > 0:
+                                duration = f"{d_h:02d}:{d_m:02d}:{d_s:02d}"
+                            else:
+                                duration = f"{d_m:02d}:{d_s:02d}"
+                            logger.info(f"[ffprobe] Validated video: codec={codec}, resolution={width}x{height}, duration={duration} ({d_sec}s)")
+                        except Exception:
+                            pass
+                    else:
+                        logger.info(f"[ffprobe] Validated video: codec={codec}, resolution={width}x{height}")
                 else:
                     logger.warning(f"[ffprobe] Validation warning (code {result.returncode}): {result.stderr}")
             except HTTPException:

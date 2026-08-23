@@ -98,33 +98,33 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
 
     const heroImageSource = isHariyaliTeej
-      ? require('../../assets/images/festivals/hariyali_teej_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/hariyali_teej_story_hero.webp' }
       : isKajariTeej
-      ? require('../../assets/images/festivals/kajari_teej_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/kajari_teej_story_hero.webp' }
       : isNagPanchami
-      ? require('../../assets/images/festivals/nag_panchami_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/nag_panchami_story_hero.webp' }
       : isOnam
-      ? require('../../assets/images/festivals/onam_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/onam_story_hero.webp' }
       : isRakshaBandhan
-      ? require('../../assets/images/festivals/raksha_bandhan_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/raksha_bandhan_story_hero.webp' }
       : isJanmashtami
-      ? require('../../assets/images/festivals/janmashtami_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/janmashtami_story_hero.webp' }
       : isGaneshChaturthi
-      ? require('../../assets/images/festivals/ganesh_chaturthi_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/ganesh_chaturthi_story_hero.webp' }
       : isNavratri
-      ? require('../../assets/images/festivals/navratri_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/navratri_story_hero.webp' }
       : isDiwali
-      ? require('../../assets/images/festivals/diwali_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/diwali_story_hero.webp' }
       : isShivratri
-      ? require('../../assets/images/festivals/maha_shivratri_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/maha_shivratri_story_hero.webp' }
       : festivalImg;
 
     const chapter1ImageSource = isHariyaliTeej
-      ? require('../../assets/images/festivals/parvati_longing_chapter1.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/parvati_longing_chapter1.webp' }
       : isKajariTeej
-      ? require('../../assets/images/festivals/kajari_teej_story_hero.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/kajari_teej_story_hero.webp' }
       : isNagPanchami
-      ? require('../../assets/images/festivals/nag_panchami_chapter1.webp')
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/nag_panchami_chapter1.webp' }
       : heroImageSource;
 
     const [activeTab, setActiveTab] = useState(0);

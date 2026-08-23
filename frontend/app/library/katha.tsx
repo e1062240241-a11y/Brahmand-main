@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,7 @@ interface KathaEpisode {
   video_url: string;
   thumbnail_url?: string;
   description?: string;
+  is_new?: boolean;
 }
 
 interface KathaStatus {
@@ -80,6 +81,7 @@ export default function KathaPage() {
   const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [hasSyncedLive, setHasSyncedLive] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'LATEST' | 'PART1' | 'PART2'>('ALL');
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
     mode: 'OFF_AIR',
@@ -88,6 +90,52 @@ export default function KathaPage() {
     banner_message: 'Shravan Katha Daily Uploaded Episodes',
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
+
+  const formatEpisodeDate = (ep: KathaEpisode): string => {
+    const rawDate = ep.date;
+    if (rawDate && rawDate.length > 5 && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate !== '2026-08-13') {
+      return rawDate;
+    }
+    const epNum = ep.episode_number || 1;
+    const baseDate = new Date(2026, 7, 13); // 7 is August
+    baseDate.setDate(baseDate.getDate() + (epNum - 1));
+    return baseDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const getTodayISTString = (): string => {
+    return new Date().toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const isEpisodeToday = (ep: KathaEpisode): boolean => {
+    if (!ep) return false;
+    const formattedEpDate = formatEpisodeDate(ep);
+    const todayStr = getTodayISTString();
+    return formattedEpDate === todayStr;
+  };
+
+  const maxEpisodeNumber = useMemo(() => {
+    if (!episodes || episodes.length === 0) return 0;
+    return Math.max(...episodes.map(e => e.episode_number || 0));
+  }, [episodes]);
+
+  const filteredEpisodes = useMemo(() => {
+    if (!episodes) return [];
+    let list = [...episodes];
+    if (activeFilter === 'LATEST') {
+      const todayList = episodes.filter(e => isEpisodeToday(e));
+      list = todayList.length > 0 ? todayList : episodes.filter(e => e.is_new || e.episode_number === maxEpisodeNumber);
+    } else if (activeFilter === 'PART1') {
+      list = episodes.filter(e => (e.episode_number || 0) <= 10);
+    } else if (activeFilter === 'PART2') {
+      list = episodes.filter(e => (e.episode_number || 0) > 10);
+    }
+    return list.sort((a, b) => (b.episode_number || 0) - (a.episode_number || 0));
+  }, [episodes, activeFilter, maxEpisodeNumber]);
 
   // Custom Hotstar Minimalist Player States
   const [isPlaying, setIsPlaying] = useState(true);
@@ -101,12 +149,26 @@ export default function KathaPage() {
   const playScale = useRef(new Animated.Value(1)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
   const [userSelectedEpisode, setUserSelectedEpisode] = useState<KathaEpisode | null>(null);
+  const [epDurations, setEpDurations] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.getItem('KATHA_EP_DURATIONS').then((val: string | null) => {
+        if (val) {
+          try { setEpDurations(JSON.parse(val)); } catch (_e) {}
+        }
+      }).catch(() => {});
+    } catch (_e) {}
+  }, []);
   const isUserSelectedOldEpisode = !!userSelectedEpisode;
   const activeVideoUrl = isUserSelectedOldEpisode
     ? (userSelectedEpisode?.video_url || '')
     : (status.is_live ? (status.active_video_url || activeEpisode?.video_url || '') : '');
 
-  const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
+  const shouldCreatePlayer = Boolean((status.is_live || isUserSelectedOldEpisode) && activeVideoUrl);
+
+  const player = useSafeVideoPlayer(shouldCreatePlayer ? activeVideoUrl : null, (p) => {
     try {
       p.loop = false;
       p.muted = false;
@@ -186,13 +248,26 @@ export default function KathaPage() {
           }
           if (typeof player.duration === 'number' && player.duration > 0) {
             setDuration(player.duration);
+            const activeId = userSelectedEpisode?.id || activeEpisode?.id;
+            if (activeId) {
+              const formatted = formatTime(player.duration);
+              setEpDurations(prev => {
+                if (prev[activeId] === formatted) return prev;
+                const next = { ...prev, [activeId]: formatted };
+                try {
+                  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+                  AsyncStorage.setItem('KATHA_EP_DURATIONS', JSON.stringify(next));
+                } catch (_e) {}
+                return next;
+              });
+            }
           }
         }
       } catch (_e) {}
     }, 500);
 
     return () => clearInterval(interval);
-  }, [player]);
+  }, [player, userSelectedEpisode?.id, activeEpisode?.id]);
 
   // Zero-Heat Thermal & Background Management: Instantly pause video when screen loses focus or app goes to background
   useEffect(() => {
@@ -298,6 +373,36 @@ export default function KathaPage() {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const KNOWN_EP_DURATIONS: Record<string, string> = {
+    saavan_katha_ep1: '14:12',
+    saavan_katha_ep2: '12:33',
+    saavan_katha_ep3: '14:47',
+    saavan_katha_ep4: '15:55',
+    saavan_katha_ep5: '15:30',
+    saavan_katha_ep6: '07:45',
+    saavan_katha_ep7: '06:01',
+    saavan_katha_ep8: '10:01',
+    saavan_katha_ep9: '06:50',
+    saavan_katha_ep10: '07:39',
+  };
+
+  const formatDurationString = (dur: any, epId?: string, isSelectedEp?: boolean): string => {
+    if (isSelectedEp && duration > 0) {
+      return formatTime(duration);
+    }
+    if (epId && epDurations[epId]) {
+      return epDurations[epId];
+    }
+    if (epId && KNOWN_EP_DURATIONS[epId]) {
+      return KNOWN_EP_DURATIONS[epId];
+    }
+    if (!dur) return '00:00';
+    if (typeof dur === 'number') return formatTime(dur);
+    const s = String(dur).trim();
+    if (s.startsWith('00:')) return s.slice(3);
+    return s;
+  };
+
   const handleSeek = (e: any) => {
     resetControlsTimer();
     // Strictly block seeking during live broadcast
@@ -357,8 +462,9 @@ export default function KathaPage() {
         if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
           setEpisodes(epJson.episodes);
 
-          // Select the latest episode (highest episode_number)
-          const latestEp = epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
+          // Select today's episode if available, else latest released episode
+          const todayEp = epJson.episodes.find((e: KathaEpisode) => isEpisodeToday(e));
+          const latestEp = todayEp || epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
             return (prev.episode_number || 0) > (current.episode_number || 0) ? prev : current;
           });
           setActiveEpisode(latestEp);
@@ -410,36 +516,18 @@ export default function KathaPage() {
         style={[styles.playerWrapper, isModal && styles.fullscreenPlayerWrapper]}
         onPress={toggleShowHideControls}
       >
-        {!status.is_live && !isUserSelectedOldEpisode ? (
-          <View style={styles.offAirContainer}>
-            <Image
-              source={shamikPathakCover}
-              style={[StyleSheet.absoluteFillObject, { opacity: 0.3 }]}
-              resizeMode="cover"
-            />
-            <Ionicons name="radio" size={48} color="#FF6B00" />
-            <Text style={styles.offAirTitle}>Currently Off-Air</Text>
-            <Text style={styles.offAirSub}>
-              {status.banner_message}
-            </Text>
-            <Text style={[styles.offAirSub, { marginTop: 12, color: '#FF6B00', fontWeight: 'bold' }]}>
-              Next stream at {status.next_stream_at ? new Date(status.next_stream_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '8:00 AM'}
-            </Text>
-          </View>
+        {activeVideoUrl ? (
+          <SafeVideoView
+            player={player}
+            ExpoVideoModule={ExpoVideoModule}
+            source={activeVideoUrl}
+            posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
+            style={styles.videoPlayer}
+            nativeControls={false}
+            contentFit={isModal ? "contain" : "fill"}
+          />
         ) : (
-          activeVideoUrl ? (
-            <SafeVideoView
-              player={player}
-              ExpoVideoModule={ExpoVideoModule}
-              source={activeVideoUrl}
-              posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
-              style={styles.videoPlayer}
-              nativeControls={false}
-              contentFit={isModal ? "contain" : "fill"}
-            />
-          ) : (
-            <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
-          )
+          <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
         )}
 
         {/* Hotstar Minimalist Control Overlay (No Seeking Bar, Clean Transparent Look) */}
@@ -460,21 +548,41 @@ export default function KathaPage() {
                 </Text>
               </View>
 
-              {status.is_live ? (
-                <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.badgeText}>
-                    {status.mode === 'REPEAT_TELECAST' ? 'REPEAT TELECAST' : 'LIVE NOW'}
-                  </Text>
-                </View>
-              ) : (
-                <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                  <Ionicons name="radio" size={12} color="#FF6B00" style={{ marginRight: 5 }} />
-                  <Text style={[styles.badgeText, { color: '#FFF' }]}>
-                    {activeEpisode ? `DAY ${activeEpisode.episode_number}` : '8:00 AM & 8:00 PM'}
-                  </Text>
-                </View>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {status.is_live ? (
+                  <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.badgeText}>
+                      {status.mode === 'REPEAT_TELECAST' ? 'REPEAT TELECAST' : 'LIVE NOW'}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <Ionicons name="radio" size={12} color="#FF6B00" style={{ marginRight: 5 }} />
+                    <Text style={[styles.badgeText, { color: '#FFF' }]}>
+                      {activeEpisode ? `DAY ${activeEpisode.episode_number}` : '8:00 AM & 8:00 PM'}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Close Player button when off-air and viewing old episode */}
+                {!status.is_live && isUserSelectedOldEpisode && !isModal && (
+                  <TouchableOpacity
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: 'rgba(0,0,0,0.55)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setUserSelectedEpisode(null)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={18} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Center Big Play/Pause Button (No Circle, Thicker Icon, Smooth Scale Animation) */}
@@ -604,11 +712,11 @@ export default function KathaPage() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#1B1C1C" />
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.75}>
+          <Ionicons name="chevron-back" size={24} color="#331800" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🔱 श्रावण कथा</Text>
-        <View style={{ width: 38 }} />
+        <View style={{ width: 40 }} />
       </View>
 
       <Animated.ScrollView
@@ -625,153 +733,217 @@ export default function KathaPage() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {/* Main Player & Hotstar Custom Minimalist Controls */}
-        <Animated.View style={[
-          styles.playerContainer,
-          {
-            transform: [
+        {/* Main Player & Hotstar Custom Minimalist Controls (Only shown when Live or Episode Selected) */}
+        {(status.is_live || isUserSelectedOldEpisode) && (
+          <>
+            <Animated.View style={[
+              styles.playerContainer,
               {
-                scale: scrollY.interpolate({
-                  inputRange: [0, 180],
-                  outputRange: [1, 0.93],
-                  extrapolate: 'clamp',
-                }),
-              },
-              {
-                translateY: scrollY.interpolate({
-                  inputRange: [0, 200],
-                  outputRange: [0, 15],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ],
-          }
-        ]}>
-          <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
-            {renderPlayerContent(false)}
-            {/* Scroll-driven Black Overlay Mask */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: '#000000',
-                  opacity: scrollY.interpolate({
-                    inputRange: [0, 150, 400],
-                    outputRange: [0, 0.15, 0.35],
-                    extrapolate: 'clamp',
-                  }),
-                },
-              ]}
-            />
-          </View>
-        </Animated.View>
+                transform: [
+                  {
+                    scale: scrollY.interpolate({
+                      inputRange: [0, 180],
+                      outputRange: [1, 0.93],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                  {
+                    translateY: scrollY.interpolate({
+                      inputRange: [0, 200],
+                      outputRange: [0, 15],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ],
+              }
+            ]}>
+              <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+                {renderPlayerContent(false)}
+                {/* Scroll-driven Black Overlay Mask */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      backgroundColor: '#000000',
+                      opacity: scrollY.interpolate({
+                        inputRange: [0, 150, 400],
+                        outputRange: [0, 0.15, 0.35],
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+            </Animated.View>
 
-        {/* Active Details / Banner Info */}
-        <View style={styles.activeDetails}>
-          {status.is_live && isUserSelectedOldEpisode && (
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#FF0000',
-                alignSelf: 'flex-start',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 20,
-                marginBottom: 10,
-                gap: 6,
-              }}
-              onPress={() => setUserSelectedEpisode(null)}
-            >
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Watch Live Stream Now</Text>
-            </TouchableOpacity>
-          )}
+            {/* Active Details / Banner Info */}
+            <View style={styles.activeDetails}>
+              {status.is_live && isUserSelectedOldEpisode && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#FF0000',
+                    alignSelf: 'flex-start',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    marginBottom: 10,
+                    gap: 6,
+                  }}
+                  onPress={() => setUserSelectedEpisode(null)}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>Watch Live Stream Now</Text>
+                </TouchableOpacity>
+              )}
 
-          <Text style={styles.activeTitle}>
-            {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
-          </Text>
-          <Text style={styles.guruSubtitle}>
-            {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
-          </Text>
-          <Text style={styles.scheduleText}>
-            {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
-          </Text>
-
-          {/* Description Text */}
-          {((isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description))) ? (
-            <View style={styles.descriptionBox}>
-              <Text style={styles.descriptionText}>
-                {isUserSelectedOldEpisode ? activeEpisode?.description : (activeEpisode?.description || (status as any).description)}
+              <Text style={styles.activeTitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
               </Text>
+              <Text style={styles.guruSubtitle}>
+                {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • अध्यात्म गुरु एवं कथावाचक
+              </Text>
+              <Text style={styles.scheduleText}>
+                {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
+              </Text>
+
+              {/* Back to All Episodes Button when off-air and watching selected video */}
+              {!status.is_live && isUserSelectedOldEpisode && (
+                <TouchableOpacity
+                  style={styles.backToEpisodesBtn}
+                  onPress={() => setUserSelectedEpisode(null)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="grid-outline" size={18} color="#FF6B00" />
+                  <Text style={styles.backToEpisodesText}>View All Episodes</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          ) : null}
-        </View>
+          </>
+        )}
 
-        {/* Episode Library Section (Always available) */}
-        <View style={styles.librarySection}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
-            <Text style={styles.sectionTitle}>श्रावण कथा अध्याय</Text>
-          </View>
+        {/* Episode Library Section (Shown when no episode is playing or when Live) */}
+        {(!isUserSelectedOldEpisode || status.is_live) && (
+          <View style={styles.librarySection}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
+              <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
+            </View>
 
-          {loading ? (
-            <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
-          ) : episodes.length > 0 ? (
-            <View style={styles.verticalGridContainer}>
-              {episodes.map((ep) => {
-                const isSelected = activeEpisode?.id === ep.id;
-                return (
-                  <TouchableOpacity
-                    key={ep.id}
-                    style={[styles.episodeBoxCard, isSelected && styles.episodeCardSelected]}
-                    activeOpacity={0.88}
-                    onPress={() => handleSelectEpisode(ep)}
-                  >
-                    <View style={styles.thumbnailBox}>
-                      <Image
-                        source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
-                        style={styles.thumbnailImg}
-                        resizeMode="cover"
-                        onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
-                      />
-                      <View style={styles.playOverlay}>
-                        <Ionicons
-                          name={isSelected && isPlaying ? "pause" : "play"}
-                          size={22}
-                          color="#FFF"
+            {/* Quick Filter Bar */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBarContainer}
+              style={{ marginBottom: 14 }}
+            >
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'ALL' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('ALL')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
+                  All Episodes
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'LATEST' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('LATEST')}
+              >
+                <View style={styles.chipRedDot} />
+                <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
+                  Latest (Today)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'PART1' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('PART1')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'PART1' && styles.filterChipTextActive]}>
+                  Day 1 - 10
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterChip, activeFilter === 'PART2' && styles.filterChipActive]}
+                onPress={() => setActiveFilter('PART2')}
+              >
+                <Text style={[styles.filterChipText, activeFilter === 'PART2' && styles.filterChipTextActive]}>
+                  Day 11+
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+
+            {loading ? (
+              <ActivityIndicator size="large" color="#7B2CBF" style={{ marginTop: 30 }} />
+            ) : filteredEpisodes.length > 0 ? (
+              <View style={styles.verticalGridContainer}>
+                {filteredEpisodes.map((ep) => {
+                  const isSelected = activeEpisode?.id === ep.id;
+                  const isToday = isEpisodeToday(ep);
+                  return (
+                    <TouchableOpacity
+                      key={ep.id}
+                      style={[styles.episodeBoxCard, isSelected && styles.episodeCardSelected]}
+                      activeOpacity={0.88}
+                      onPress={() => handleSelectEpisode(ep)}
+                    >
+                      <View style={styles.thumbnailBox}>
+                        <Image
+                          source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
+                          style={styles.thumbnailImg}
+                          resizeMode="cover"
+                          onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                         />
-                      </View>
-                      <View style={styles.durationTag}>
-                        <Text style={styles.durationText}>{ep.duration}</Text>
-                      </View>
-                    </View>
 
-                    <View style={styles.boxEpisodeMeta}>
-                      <View style={styles.epHeaderRow}>
-                        <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
-                        <Text style={styles.epDate}>{ep.date}</Text>
+                        {/* TODAY Video Badge Overlay */}
+                        {isToday && (
+                          <View style={styles.newBadgePill}>
+                            <View style={styles.newBadgeDot} />
+                            <Text style={styles.newBadgeText}>TODAY</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.playOverlay}>
+                          <Ionicons
+                            name={isSelected && isPlaying ? "pause" : "play"}
+                            size={22}
+                            color="#FFF"
+                          />
+                        </View>
+                        <View style={styles.durationTag}>
+                          <Text style={styles.durationText}>{formatDurationString(ep.duration, ep.id, isSelected)}</Text>
+                        </View>
                       </View>
 
-                      <Text style={styles.epTitle} numberOfLines={2}>
-                        {ep.title}
-                      </Text>
+                      <View style={styles.boxEpisodeMeta}>
+                        <View style={styles.epHeaderRow}>
+                          <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
+                          <Text style={styles.epDate}>{formatEpisodeDate(ep)}</Text>
+                        </View>
 
-                      <Text style={styles.epGuru} numberOfLines={1}>
-                        {ep.guru_name}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
-            </View>
-          )}
-        </View>
+                        <Text style={styles.epTitle} numberOfLines={2}>
+                          {ep.title}
+                        </Text>
+
+                        <Text style={styles.epGuru} numberOfLines={1}>
+                          {ep.guru_name}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No episodes found in this filter.</Text>
+              </View>
+            )}
+          </View>
+        )}
       </Animated.ScrollView>
     </View>
   );
@@ -794,26 +966,29 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 244, 235, 0.90)', // Glassmorphism translucent warm amber tint
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 107, 0, 0.25)', // Subtle warm amber glass border
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#000000', // Deep Black 3D Text
-    letterSpacing: 0.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.20)', // Subtle 3D shadow depth for black text
-    textShadowOffset: { width: 1.5, height: 1.8 },
-    textShadowRadius: 1.5,
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#2A1508', // Rich Sacred Dark Amber
+    fontFamily: Platform.OS === 'ios' ? 'Devanagari Sangam MN' : 'serif',
+    letterSpacing: 0.4,
+    textShadowColor: 'rgba(255, 107, 0, 0.25)', // Elegant 3D Warm Glow Shadow
+    textShadowOffset: { width: 1, height: 1.5 },
+    textShadowRadius: 2.5,
   },
   playerContainer: {
     paddingHorizontal: 16,
@@ -1089,6 +1264,29 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '400',
   },
+  backToEpisodesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,107,0,0.35)',
+    borderRadius: 22,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    marginTop: 18,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  backToEpisodesText: {
+    color: '#FF6B00',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   librarySection: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -1212,5 +1410,70 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 14,
     textAlign: 'center',
+  },
+  filterBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFF4ED',
+    borderWidth: 1,
+    borderColor: '#FFD6C2',
+  },
+  filterChipActive: {
+    backgroundColor: '#FF6B00',
+    borderColor: '#FF6B00',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5A4136',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  chipRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF0000',
+    marginRight: 5,
+  },
+  newBadgePill: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 8,
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+  },
+  newBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+    marginRight: 4,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

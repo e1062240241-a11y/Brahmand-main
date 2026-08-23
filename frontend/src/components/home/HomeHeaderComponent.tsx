@@ -194,7 +194,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder,
     handleLiveJaapNavigation,
     handleNotificationPress,
-    setShowProfileActions,
     hanumanStatus,
     shivaStatus,
     hanumanChantCount,
@@ -202,7 +201,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests,
     activeTab,
     setActiveTab,
-    setShowUploadPostModal,
     activeFeatureIndex,
     setActiveFeatureIndex,
     activeBannerIndex,
@@ -223,6 +221,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef,
     isFocused,
     kathaStatus,
+    quickAccessItems,
 }: {
     user: any;
     firstName: string;
@@ -247,7 +246,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder: (mantraType: string, sessionName: string) => void;
     handleLiveJaapNavigation: (mantraType: string, title: string) => void;
     handleNotificationPress: () => void;
-    setShowProfileActions: (v: boolean) => void;
     hanumanStatus: any;
     shivaStatus: any;
     hanumanChantCount: number;
@@ -255,7 +253,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests: any[];
     activeTab: string;
     setActiveTab: (tab: string) => void;
-    setShowUploadPostModal: (v: boolean) => void;
     activeFeatureIndex: number;
     setActiveFeatureIndex: (v: number) => void;
     activeBannerIndex: number;
@@ -276,8 +273,10 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef: any;
     isFocused?: boolean;
     kathaStatus?: any;
+    quickAccessItems?: any[];
 }) {
     const router = useRouter();
+    const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
@@ -306,18 +305,37 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
     React.useEffect(() => {
         if (!achPlayer) return;
-        const activeFocused = isFocused !== false; // Default to true if undefined on initial Home mount
-        if (!activeFocused) {
-            achPlayer.pause();
-        } else if (activeFocused && !videoError) {
-            try {
-                achPlayer.play();
-            } catch (err) {
-                if (__DEV__) {
-                    console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+        const activeFocused = isFocused !== false;
+
+        const updatePlayback = (appState: string = AppState.currentState) => {
+            const isAppActive = appState === 'active';
+            if (activeFocused && isAppActive && !videoError) {
+                try {
+                    achPlayer.play();
+                } catch (err) {
+                    if (__DEV__) {
+                        console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+                    }
                 }
+            } else {
+                try {
+                    achPlayer.pause();
+                } catch (_e) {}
             }
-        }
+        };
+
+        updatePlayback();
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            updatePlayback(nextAppState);
+        });
+
+        return () => {
+            subscription.remove();
+            try {
+                achPlayer.pause();
+            } catch (_e) {}
+        };
     }, [achPlayer, isFocused, videoError]);
     return (
         <View style={{ paddingTop: 4 }}>
@@ -331,7 +349,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 activeOpacity={0.86}
                                 style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
-                                onLongPress={() => setShowProfileActions(true)}
                             >
                                 <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                             </TouchableOpacity>
@@ -347,16 +364,23 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             alignItems: 'center',
                             zIndex: -1,
                         }} pointerEvents="none">
-                            <Text style={{
-                                color: '#000',
-                                textAlign: 'center',
-                                fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                fontSize: Platform.OS === 'android' ? 26 : 28,
-                                fontStyle: 'normal',
-                                fontWeight: '400',
-                                lineHeight: Platform.OS === 'android' ? 32 : 36,
-                                letterSpacing: 0,
-                            }}>BRAHMAND</Text>
+                            <Text
+                                numberOfLines={1}
+                                style={{
+                                    color: '#000',
+                                    textAlign: 'center',
+                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
+                                    fontSize: Platform.OS === 'android' ? 24 : 28,
+                                    fontStyle: 'normal',
+                                    fontWeight: '400',
+                                    lineHeight: Platform.OS === 'android' ? 30 : 36,
+                                    letterSpacing: 0.5,
+                                    includeFontPadding: false,
+                                    paddingHorizontal: 8,
+                                }}
+                            >
+                                BRAHMAND
+                            </Text>
                         </View>
 
                         <View style={styles.headerRight}>
@@ -373,6 +397,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={() => setSearchActive(!searchActive)}
+                                accessibilityRole="button"
+                                accessibilityLabel={searchActive ? "Close search" : "Open search"}
                             >
                                 <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             </Pressable>
@@ -389,6 +415,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 onPress={handleNotificationPress}
+                                accessibilityRole="button"
+                                accessibilityLabel="Notifications"
                             >
                                 <View pointerEvents="none">
                                     <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
@@ -551,13 +579,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 onScroll={(e) => {
                                     const x = e.nativeEvent.contentOffset.x;
                                     const idx = Math.round(x / featureSnapInterval);
-                                    const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
+                                    const clampedIdx = Math.max(0, Math.min(idx, featuredItems.length - 1));
                                     setActiveFeatureIndex(clampedIdx);
                                     topFeaturesAutoScrollIndex.current = clampedIdx;
                                 }}
                                 scrollEventThrottle={16}
                             >
-                                {baseQuickAccess.map((item, idx) => {
+                                {featuredItems.map((item, idx) => {
                                     let cardBg = '#FFFFFF';
                                     let iconBg = '#FF8A3D';
                                     if (item.label === 'Panchang') {
@@ -573,8 +601,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                     let displayLabel = item.label;
                                     let displaySubtitle = item.subtitle;
-
-
 
                                     if (t('language') === 'hi') {
                                         if (item.label === 'My Krishn') {
@@ -678,7 +704,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 })}
                             </ScrollView>
                             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                {baseQuickAccess.map((_, idx) => (
+                                {featuredItems.map((_, idx) => (
                                     <View
                                         key={idx}
                                         style={{
@@ -1510,7 +1536,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             setActiveTab(tab);
                         });
                     }}
-                    onCreatePost={() => setShowUploadPostModal(true)}
                 />
             </View>
         </View>

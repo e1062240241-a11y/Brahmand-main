@@ -198,21 +198,21 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
           {/* Action Buttons */}
           <View style={styles.actionsSection}>
-            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'व्हाट्सएप' : 'WhatsApp'}>
               <View style={[styles.actionIconBg, { backgroundColor: '#25D366' }]}>
                 <Ionicons name="logo-whatsapp" size={26} color="#FFF" />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'व्हाट्सएप' : 'WhatsApp'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink}>
+            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'लिंक कॉपी करें' : 'Copy link'}>
               <View style={styles.actionIconBg}>
                 <Ionicons name="link-outline" size={24} color={COLORS.text} />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'लिंक कॉपी करें' : 'Copy link'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal}>
+            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'अधिक' : 'More'}>
               <View style={styles.actionIconBg}>
                 <Ionicons name="share-social-outline" size={24} color={COLORS.text} />
               </View>

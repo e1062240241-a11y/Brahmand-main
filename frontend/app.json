@@ -2,7 +2,7 @@
   "expo": {
     "name": "Brahmand",
     "slug": "sanatan-lok",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "splash": {
@@ -177,7 +177,17 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Cinzel-Regular.ttf",
+            "./assets/fonts/Poppins-Regular.ttf",
+            "./assets/fonts/RozhaOne-Regular.ttf",
+            "./assets/fonts/SpaceMono-Regular.ttf"
+          ]
+        }
+      ],
       "expo-image",
       [
         "expo-video",
@@ -233,6 +243,6 @@
       "fallbackToCacheTimeout": 30000,
       "checkAutomatically": "ON_LOAD"
     },
-    "runtimeVersion": "1.4.0"
+    "runtimeVersion": "1.4.1"
   }
 }

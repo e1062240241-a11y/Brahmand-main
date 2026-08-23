@@ -94,49 +94,6 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
   );
 };
 
-/* Animated Shravan Katha Card Component (Page-load Entrance Fade & Scale) */
-const AnimatedKathaCard = ({ children, style }: { children: React.ReactNode; style?: any }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(24)).current;
-  const scaleAnim = useRef(new Animated.Value(0.94)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 750,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim, scaleAnim]);
-
-  return (
-    <Animated.View
-      style={[
-        style,
-        {
-          opacity: fadeAnim,
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim },
-          ],
-        },
-      ]}
-    >
-      {children}
-    </Animated.View>
-  );
-};
 
 const UPCOMING_GRID_PADDING = Platform.OS === 'android'
   ? 12
@@ -1006,32 +963,21 @@ export default function JaapLandingScreen() {
                 <View style={styles.authentic30DaysBtn}>
                   <Ionicons name="calendar-outline" size={13} color="#8A5A2B" style={{ marginRight: 4 }} />
                   <Text style={styles.authentic30DaysText}>
-                    {t('language') === 'hi' ? '30 दिवस कथा' : '30 Days Katha'}
+                    {t('language') === 'hi' ? '30 दिवस' : '30 Days'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            <AnimatedKathaCard style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
               <Pressable
                 style={({ pressed }) => [
                   styles.bookCardKatha,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.9 }
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }
                 ]}
-                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                onPress={async () => {
-                  try {
-                    const res = await api.get('/katha/status');
-                    if (res.data && res.data.is_live) {
-                      router.push('/library/katha' as any);
-                      return;
-                    }
-                  } catch (_e) {}
-                  Alert.alert(
-                    '🕉️ Shravan Live Katha',
-                    'Shravan Live Katha broadcast starts tomorrow 13th August at 8:00 AM IST.\n\nDaily Live Stream Schedule:\n• Morning Stream: 8:00 AM IST\n• Night Telecast: 8:00 PM IST',
-                    [{ text: 'OK', style: 'default' }]
-                  );
+                android_ripple={{ color: 'rgba(255, 107, 0, 0.22)', borderless: false }}
+                onPress={() => {
+                  router.push('/library/katha' as any);
                 }}
               >
                 <View style={styles.coverBoxKatha}>
@@ -1046,11 +992,11 @@ export default function JaapLandingScreen() {
                 </View>
 
                 <View style={styles.bookMetaKatha}>
-                  <Text style={styles.bookNameKatha}>Shamik Pathak ji</Text>
+                  <Text style={styles.bookNameKatha}>Shamik Pathak Ji</Text>
                   <Text style={styles.bookSubKatha}>Spiritual Guru • Astrologer • Panditji</Text>
                 </View>
               </Pressable>
-            </AnimatedKathaCard>
+            </View>
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
@@ -2085,6 +2031,8 @@ const styles = StyleSheet.create({
   },
   bookCardKatha: {
     width: 192,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   coverBoxKatha: {
     width: '100%',

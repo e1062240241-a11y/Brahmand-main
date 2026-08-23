@@ -204,8 +204,8 @@ const UserProfileScreen = () => {
   const [postToDelete, setPostToDelete] = useState<any | null>(null);
 
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
 
@@ -357,7 +357,7 @@ const UserProfileScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -454,7 +454,7 @@ const UserProfileScreen = () => {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [currentUserId, blockedUserIds, commentModalVisible]);
+  }, [currentUserId, blockedUserSet, commentModalVisible]);
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') return;
@@ -714,7 +714,7 @@ const UserProfileScreen = () => {
     const targetUserId = post?.user_id || post?.userId || post?.user?.id || profile?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -782,7 +782,7 @@ const UserProfileScreen = () => {
         { cancelable: true }
       );
     }
-  }, [profile?.id, currentUserId, blockedByMeUserIds, handleDeletePost]);
+  }, [profile?.id, currentUserId, blockedByMeUserSet, handleDeletePost]);
 
   const handleLikePost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -1180,16 +1180,14 @@ const UserProfileScreen = () => {
               <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
             </View>
           ) : (() => {
-            // OPT: Bolt ⚡ - Convert blockedUserIds to Set for O(1) lookup to prevent O(N*M) CPU bottleneck
-            const blockedSet = new Set(blockedUserIds);
             const parentComments = postComments.filter(c => {
               const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-              const isBlockedUser = uid && blockedSet.has(String(uid));
+              const isBlockedUser = uid && blockedUserSet.has(String(uid));
               return !c.parent_id && !isBlockedUser;
             });
             const repliesMap = postComments.reduce((acc, c) => {
               const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-              const isBlockedUser = uid && blockedSet.has(String(uid));
+              const isBlockedUser = uid && blockedUserSet.has(String(uid));
               if (c.parent_id && !isBlockedUser) {
                 if (!acc[c.parent_id]) acc[c.parent_id] = [];
                 acc[c.parent_id].push(c);

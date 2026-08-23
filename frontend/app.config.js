@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { withInfoPlist } = require('expo/config-plugins');
 
 // Dynamically generate google-services.json and GoogleService-Info.plist at build time
 const firebaseApiKeyAndroid = process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || 'AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE';
@@ -104,15 +103,14 @@ try {
 }
 
 module.exports = ({ config }) => {
-  // Detect target platform (Android vs iOS)
-  // EAS Build sets EAS_BUILD_PLATFORM (either 'android' or 'ios')
-  // For local prebuilds, we check process.argv
+  // Explicit platform detection without binary fallbacks
   const isAndroid = process.env.EAS_BUILD_PLATFORM === 'android' || 
-                    process.argv.some(arg => arg.includes('android') || arg.includes('run:android')) ||
-                    (!process.env.EAS_BUILD_PLATFORM && !process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios')));
-  const isIos = !isAndroid;
+                    process.argv.some(arg => arg.includes('android') || arg.includes('run:android') || arg === '-p android' || arg === '--platform android');
+  const isIos = process.env.EAS_BUILD_PLATFORM === 'ios' ||
+                process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios') || arg === '-p ios' || arg === '--platform ios');
+  const isUniversal = !isAndroid && !isIos;
 
-  console.log(`[app.config.js] Detecting build platform: isAndroid=${isAndroid}, isIos=${isIos}`);
+  console.log(`[app.config.js] Detecting build platform: isAndroid=${isAndroid}, isIos=${isIos}, isUniversal=${isUniversal}`);
 
   // Inject Google Maps API key dynamically
   if (!config.ios) config.ios = {};
@@ -142,11 +140,12 @@ module.exports = ({ config }) => {
           if (isAndroid) {
             // Android doesn't support Apple .caf files. Copying them to res/raw causes AAPT2 compilation failures.
             options.sounds = options.sounds.filter(sound => !sound.endsWith('.caf'));
+            console.log(`[app.config.js] Filtered sounds for Android expo-notifications. Original: ${originalSounds.length}, Filtered: ${options.sounds.length}`);
           } else if (isIos) {
             // iOS should only copy its compatible audio formats (or specifically .caf)
             options.sounds = options.sounds.filter(sound => !sound.endsWith('.mp3'));
+            console.log(`[app.config.js] Filtered sounds for iOS expo-notifications. Original: ${originalSounds.length}, Filtered: ${options.sounds.length}`);
           }
-          console.log(`[app.config.js] Filtered sounds for expo-notifications. Original: ${originalSounds.length}, Filtered: ${options.sounds.length}`);
         }
         return [plugin[0], options];
       }
@@ -154,7 +153,7 @@ module.exports = ({ config }) => {
       // Handle background playback for expo-video
       if (Array.isArray(plugin) && plugin[0] === 'expo-video') {
         const options = plugin[1] || {};
-        options.supportsBackgroundPlayback = !isIos;
+        options.supportsBackgroundPlayback = isIos ? false : true;
         return [plugin[0], options];
       }
 
@@ -169,6 +168,5 @@ module.exports = ({ config }) => {
     });
   }
 
-  // Removed stripping audio from UIBackgroundModes to allow background audio
   return config;
 };

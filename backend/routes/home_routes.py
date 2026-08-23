@@ -93,9 +93,8 @@ async def get_home_feed(
     token_data: dict = Depends(verify_token)
 ):
     """
-    Tier-2 Dynamic Feed with In-Feed Community Injection.
-    Serves candidate posts and injects a 'community_discover_card' item at index 4
-    if eligible unjoined communities exist.
+    Tier-2 Dynamic Feed.
+    Serves candidate posts for the user feed.
     """
     from main import get_posts_feed
 
@@ -118,33 +117,6 @@ async def get_home_feed(
     for item in items:
         if "type" not in item:
             item["type"] = "post"
-
-    # Only inject community discover card on first page (when after/cursor is empty)
-    if not after and user_id:
-        try:
-            discovered = await FirebaseCommunityService.discover_communities(user_id)
-            # Filter for unjoined communities only
-            unjoined = [c for c in discovered if not c.get("is_member")]
-
-            if unjoined:
-                # Prioritize city/local communities, then fallback to popular/state/national
-                local_comms = [c for c in unjoined if c.get("type") in ("city", "local")]
-                other_comms = [c for c in unjoined if c.get("type") not in ("city", "local")]
-                recommended = (local_comms + other_comms)[:3]
-
-                if recommended:
-                    comm_card = {
-                        "id": "community_discover_card_slot_4",
-                        "type": "community_discover_card",
-                        "title": "Recommended Communities",
-                        "communities": recommended
-                    }
-                    if len(items) >= 4:
-                        items.insert(4, comm_card)
-                    else:
-                        items.append(comm_card)
-        except Exception as e:
-            logger.warning(f"Failed to inject in-feed community card: {e}")
 
     return {
         "items": items,

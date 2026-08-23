@@ -24,12 +24,11 @@ type FeedSectionProps = {
   onShare: (post: any) => void;
   scrollRef: React.RefObject<any>;
   onScroll?: (event: any) => void;
-  onCreatePost: () => void;
   homeHeader: React.ReactElement | null;
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
-  blockedUserIds: string[];
-  blockedByMeUserIds: string[];
+  blockedUserSet: Set<string>;
+  blockedByMeUserSet: Set<string>;
 };
 
 const FeedSection: React.FC<FeedSectionProps> = ({
@@ -42,12 +41,11 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   onShare,
   scrollRef,
   onScroll,
-  onCreatePost,
   homeHeader,
   onRefresh,
   isRefreshing,
-  blockedUserIds,
-  blockedByMeUserIds,
+  blockedUserSet,
+  blockedByMeUserSet,
 }) => {
   const activeTab = useFeedStore(state => state.activeTab);
   const setActiveTab = useFeedStore(state => state.setActiveTab);
@@ -100,13 +98,10 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       let images: any[] = [];
       let commCards: any[] = [];
 
-      const blockedSet = new Set([...blockedUserIds, ...blockedByMeUserIds]);
-
       // Single pass for filtering and splitting (O(N))
       for (let i = 0; i < rawFeedPosts.length; i++) {
         const post = rawFeedPosts[i];
         if (post?.type === 'community_discover_card') {
-          commCards.push(post);
           continue;
         }
 
@@ -114,7 +109,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 
         if (uid) {
           const uidStr = String(uid);
-          if (blockedSet.has(uidStr)) {
+          if (blockedUserSet.has(uidStr) || blockedByMeUserSet.has(uidStr)) {
             continue;
           }
         }
@@ -169,16 +164,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         }
       }
 
-      if (commCards.length > 0) {
-        commCards.forEach(card => {
-          if (arranged.length >= 4) {
-            arranged.splice(4, 0, card);
-          } else {
-            arranged.push(card);
-          }
-        });
-      }
-
       if (isActive) {
         setFeedPosts(arranged);
       }
@@ -188,7 +173,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       isActive = false;
       task.cancel();
     };
-  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds, focusTrigger]);
+  }, [rawFeedPosts, blockedUserSet, blockedByMeUserSet, focusTrigger]);
 
   const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
     const tabToLoad = tabOverride || useFeedStore.getState().activeTab;
@@ -251,9 +236,9 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   }, [activeTab, loadFeedPosts, tabFeeds]);
 
   // Seed the feed from WatermelonDB cache so the feed shows instantly on app
-  // reopen instead of flashing an empty state and blocking on the network.
+  // reopen instead of flashing an empty state and blocking on the network (for_you only).
   const loadCachedFeedFromDatabase = useCallback(async (tab: string) => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web' || tab !== 'for_you') return;
     try {
       const { database } = require('../../database');
       const { Q } = require('@nozbe/watermelondb');
@@ -291,7 +276,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   }, [setTabFeed]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web' || activeTab !== 'for_you') return;
     const cached = useFeedStore.getState().tabFeeds[activeTab];
     const hasCache = cached && cached.posts && cached.posts.length > 0;
     if (!hasCache) {
@@ -324,10 +309,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       );
     }
 
-    if (item.type === 'community_discover_card') {
-      return <CommunityDiscoverCardItem cardData={item} />;
-    }
-
     const distanceFromActive = Math.abs(index - activePostIndexRef.current);
     const isActive = String(item.id) === activePostId;
     const currentUserId = user?.id;
@@ -357,10 +338,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       layout.size = 200;
       return;
     }
-    if (item.type === 'community_discover_card') {
-      layout.size = 200;
-      return;
-    }
     const availableWidth = SCREEN_WIDTH - 32;
     if (item.media_width && item.media_height && item.media_width > 0) {
       const aspectRatio = item.media_height / item.media_width;
@@ -380,7 +357,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
         renderItem={renderFeedPost}
         getItemType={(item: any) => {
-          if (item?.type === 'community_discover_card') return 'community_discover_card';
           if (item?.type === 'empty') return 'empty';
           return 'post';
         }}
@@ -410,92 +386,6 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     </View>
   );
 };
-
-const CommunityDiscoverCardItem = React.memo(function CommunityDiscoverCardItem({ cardData }: { cardData: any }) {
-  const router = useRouter();
-  const communities = cardData?.communities || [];
-
-  if (!communities.length) return null;
-
-  return (
-    <View style={cardStyles.container}>
-      <Text style={cardStyles.headerTitle}>{cardData.title || "Suggested Communities"}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={cardStyles.scrollContent}>
-        {communities.map((comm: any) => (
-          <TouchableOpacity
-            key={comm.id}
-            style={cardStyles.card}
-            activeOpacity={0.8}
-            onPress={() => router.push(`/community/${comm.id}` as any)}
-          >
-            <Ionicons name="people-circle-outline" size={38} color="#FF8D57" />
-            <Text style={cardStyles.commName} numberOfLines={1}>{comm.name}</Text>
-            <Text style={cardStyles.memberCount}>{comm.member_count || 0} members</Text>
-            <TouchableOpacity
-              style={cardStyles.joinBtn}
-              onPress={() => router.push(`/community/${comm.id}` as any)}
-            >
-              <Text style={cardStyles.joinBtnText}>Join</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-});
-
-const cardStyles = StyleSheet.create({
-  container: {
-    marginVertical: 12,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  scrollContent: {
-    paddingRight: 12,
-  },
-  card: {
-    width: 140,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 10,
-    padding: 12,
-    marginRight: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  commName: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  memberCount: {
-    color: '#AAAAAA',
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  joinBtn: {
-    backgroundColor: '#FF8D57',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  joinBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});
 
 const styles = StyleSheet.create({
   emptyFeed: {

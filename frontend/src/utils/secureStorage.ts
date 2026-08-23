@@ -23,31 +23,51 @@ const generateKey = (): string => {
 const getEncryptionKey = async (): Promise<string> => {
   if (cachedKey) return cachedKey;
 
-  try {
-    if (SecureStore && typeof SecureStore.getItemAsync === 'function') {
-      let key = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
+  if (Platform.OS === 'web') {
+    // Fallback for Web / browser environment using AsyncStorage
+    try {
+      let key = await AsyncStorage.getItem(ENCRYPTION_KEY_NAME);
       if (!key) {
         key = generateKey();
-        await SecureStore.setItemAsync(ENCRYPTION_KEY_NAME, key);
+        await AsyncStorage.setItem(ENCRYPTION_KEY_NAME, key);
       }
       cachedKey = key;
       return key;
+    } catch (_fallbackError) {
+      throw new Error('Failed to generate or retrieve encryption key securely on web.');
     }
-  } catch (error) {
-    console.warn('[SecureStorage] SecureStore unavailable, falling back to AsyncStorage key:', error);
   }
 
-  // Fallback for Web / browser environment using AsyncStorage
+  // Native iOS/Android Environments
   try {
-    let key = await AsyncStorage.getItem(ENCRYPTION_KEY_NAME);
-    if (!key) {
+    if (SecureStore && typeof SecureStore.getItemAsync === 'function') {
+      let key = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
+      if (key) {
+        cachedKey = key;
+        return key;
+      }
+
+      // Check for legacy plaintext fallback key in AsyncStorage and migrate it
+      const legacyKey = await AsyncStorage.getItem(ENCRYPTION_KEY_NAME);
+      if (legacyKey) {
+        await SecureStore.setItemAsync(ENCRYPTION_KEY_NAME, legacyKey);
+        await AsyncStorage.removeItem(ENCRYPTION_KEY_NAME);
+        cachedKey = legacyKey;
+        return legacyKey;
+      }
+
+      // Generate new secure key and store it ONLY in SecureStore
       key = generateKey();
-      await AsyncStorage.setItem(ENCRYPTION_KEY_NAME, key);
+      await SecureStore.setItemAsync(ENCRYPTION_KEY_NAME, key);
+      cachedKey = key;
+      return key;
+    } else {
+      throw new Error('SecureStore is required for native platforms but is not available.');
     }
-    cachedKey = key;
-    return key;
-  } catch (_fallbackError) {
-    throw new Error('Failed to generate or retrieve encryption key securely.');
+  } catch (error) {
+    console.error('[SecureStorage] Critical failure during native SecureStore operation:', error);
+    // FAIL SECURELY: Do not fallback to AsyncStorage in native environments.
+    throw new Error('Failed to generate or retrieve encryption key securely from SecureStore.');
   }
 };
 

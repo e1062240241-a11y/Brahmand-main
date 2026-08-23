@@ -107,7 +107,6 @@ from routes.user_routes import router as user_router
 from routes.community_routes import router as community_router
 from routes.messaging_routes import router as messaging_router
 from routes.temple_routes import router as temple_router
-from routers.temples import router as temples_v1_router
 from routes.event_routes import router as event_router
 # from routes.circle_routes import router as circle_router
 from routes.nettyfish_auth_routes import router as nettyfish_auth_router
@@ -4164,6 +4163,15 @@ async def get_posts_feed(
         following_ids = set()
         if current_user:
             following_ids = set(current_user.get('following', []) or [])
+        if tab == 'following' and not following_ids:
+            try:
+                edge_follows = await db.query_documents('user_follows', filters=[('follower_uid', '==', current_user_id)], limit=200)
+                for ef in edge_follows:
+                    f_uid = ef.get('followee_uid')
+                    if f_uid:
+                        following_ids.add(f_uid)
+            except Exception as e:
+                logger.warning(f"Error querying user_follows for following_ids: {e}")
 
         # If following tab, fetch posts using following_inboxes (Personal Mailbox Model)
         if tab == 'following':
@@ -16633,7 +16641,6 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
-app.include_router(temples_v1_router)
 app.mount("/socket.io", socket_app)
 
 
