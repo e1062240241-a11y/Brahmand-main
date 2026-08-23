@@ -51,6 +51,26 @@ export interface User {
   rashi?: string;
 }
 
+export interface ConnectionUser {
+  id: string;
+  user_id: string;
+  name: string;
+  username: string;
+  sl_id: string;
+  photo_url?: string;
+  photo?: string;
+  is_verified?: boolean;
+  is_following_by_viewer?: boolean;
+  is_following?: boolean;
+  created_at?: string;
+}
+
+export interface UserConnectionsResponse {
+  items: ConnectionUser[];
+  next_cursor: string | null;
+  total_count: number;
+}
+
 export interface Location {
   country: string;
   state: string;

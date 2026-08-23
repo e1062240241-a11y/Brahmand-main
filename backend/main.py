@@ -2652,7 +2652,147 @@ async def get_user_by_id(
     return safe_user
 
 
+@api_router.get('/users/{user_id}/connections')
+async def get_user_connections(
+    user_id: str,
+    type: str = Query('followers', regex='^(followers|following)$'),
+    limit: int = Query(20, ge=1, le=100),
+    cursor: Optional[str] = None,
+    q: Optional[str] = None,
+    token_data: dict = Depends(verify_token)
+):
+    if not user_id or user_id.lower().strip() in ('undefined', 'null', 'none', ''):
+        raise HTTPException(status_code=400, detail='Invalid user ID')
 
+    db = await get_db()
+    viewer_id = token_data.get('user_id')
+
+    # 1. Fetch target user to verify existence & total count in O(1)
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    total_count = (
+        target_user.get('followers_count') or 0
+        if type == 'followers'
+        else target_user.get('following_count') or 0
+    )
+
+    # 2. Stage 1: Cursor Slice (Junction Collection Query)
+    filters = []
+    if type == 'followers':
+        filters.append(('followee_uid', '==', user_id))
+    else:
+        filters.append(('follower_uid', '==', user_id))
+
+    if cursor and cursor.strip():
+        filters.append(('created_at', '<', cursor.strip()))
+
+    query_limit = limit * 5 if q and q.strip() else limit
+
+    edge_docs = await db.query_documents(
+        'user_follows',
+        filters=filters,
+        order_by='created_at',
+        order_direction='DESCENDING',
+        limit=query_limit
+    )
+
+    if not edge_docs:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    edge_uids = []
+    created_at_map = {}
+    for doc in edge_docs:
+        target_uid = doc.get('follower_uid') if type == 'followers' else doc.get('followee_uid')
+        if target_uid and target_uid not in created_at_map:
+            edge_uids.append(target_uid)
+            created_at_map[target_uid] = doc.get('created_at') or datetime.now(timezone.utc).isoformat()
+
+    if not edge_uids:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    # 3. Stage 2: Single Batch Profile Hydration (Server-Side)
+    hydrated_users_map = await db.get_documents_batch('users', edge_uids)
+
+    # 4. Filter by q (search query) if provided
+    matched_uids = []
+    search_q = q.strip().lower() if q and q.strip() else None
+
+    for uid in edge_uids:
+        u_doc = hydrated_users_map.get(uid)
+        if not u_doc:
+            continue
+        if search_q:
+            name = (u_doc.get('name') or '').lower()
+            sl_id = (u_doc.get('sl_id') or u_doc.get('username') or '').lower()
+            if search_q not in name and search_q not in sl_id:
+                continue
+        matched_uids.append(uid)
+        if len(matched_uids) == limit:
+            break
+
+    next_cursor = None
+    if len(edge_docs) >= query_limit and len(edge_docs) > 0:
+        next_cursor = edge_docs[-1].get('created_at')
+    elif len(matched_uids) > 0 and len(edge_docs) >= limit:
+        last_uid = matched_uids[-1]
+        next_cursor = created_at_map.get(last_uid)
+
+    if not matched_uids:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    # 5. Stage 3: Viewer Relationship Resolution (1 Batch Check)
+    viewer_follow_map = {}
+    if viewer_id:
+        viewer_edge_ids = [f"{viewer_id}_{target_uid}" for target_uid in matched_uids]
+        viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        for target_uid in matched_uids:
+            edge_key = f"{viewer_id}_{target_uid}"
+            viewer_follow_map[target_uid] = viewer_edges.get(edge_key) is not None
+
+    # 6. Stage 4: Construct Response with Dual Key Mappings
+    items = []
+    for uid in matched_uids:
+        u_doc = hydrated_users_map.get(uid) or {}
+        is_following_viewer = viewer_follow_map.get(uid, False)
+
+        name = u_doc.get('name') or 'User'
+        sl_id = u_doc.get('sl_id') or u_doc.get('username') or ''
+        photo = u_doc.get('photo') or u_doc.get('photo_url') or ''
+        is_verified = bool(u_doc.get('is_verified', False))
+
+        items.append({
+            'user_id': uid,
+            'id': uid,
+            'name': name,
+            'username': sl_id,
+            'sl_id': sl_id,
+            'photo_url': photo,
+            'photo': photo,
+            'is_verified': is_verified,
+            'is_following_by_viewer': is_following_viewer,
+            'is_following': is_following_viewer,
+            'created_at': created_at_map.get(uid)
+        })
+
+    return {
+        'items': items,
+        'next_cursor': next_cursor,
+        'total_count': total_count
+    }
 
 
 async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
@@ -2881,22 +3021,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    target_followers = target_user.get('followers', []) or []
-    if current_user_id in target_followers:
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    existing_edge = await db.get_document('user_follows', follow_doc_id)
+    if existing_edge is not None:
         return {'message': 'Already following user', 'user_id': user_id}
 
-    # Edge doc in the user_follows collection — O(1) membership check on the
-    # read path (profile view) instead of loading the (potentially huge)
-    # followers array. Array union kept as a dual-write for transition so
-    # existing array consumers (follow-connections, auth store) stay consistent.
-    follow_doc_id = f"{current_user_id}_{user_id}"
+    now_iso = datetime.now(timezone.utc).isoformat()
     await db.set_document('user_follows', follow_doc_id, {
         'follower_uid': current_user_id,
         'followee_uid': user_id,
+        'created_at': now_iso,
     })
-
-    await db.array_union_update('users', user_id, 'followers', [current_user_id])
-    await db.array_union_update('users', current_user_id, 'following', [user_id])
 
     try:
         follower_name = current_user.get('name') or current_user.get('sl_id') or 'Someone'
@@ -2956,14 +3091,11 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    # Remove the follow edge doc (primary) + the array entries (dual-write).
+    # Remove the follow edge doc (primary)
     follow_doc_id = f"{current_user_id}_{user_id}"
     edge_existed = await db.get_document('user_follows', follow_doc_id) is not None
     if edge_existed:
         await db.delete_document('user_follows', follow_doc_id)
-
-    await db.array_remove_update('users', user_id, 'followers', [current_user_id])
-    await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
     # Atomic decrements only if an edge actually existed — avoids double-decrement
     # when unfollow is called on a non-followed user.
