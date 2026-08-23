@@ -529,7 +529,7 @@ const DirectMessageScreen = () => {
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
   // Global block store — shared across all screens
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
 
@@ -544,7 +544,7 @@ const DirectMessageScreen = () => {
   }, [hideTabBar]);
 
   const targetUserId = conversation?.user?.id || userId;
-  const isBlockedByMe = targetUserId ? blockedByMeUserIds.includes(String(targetUserId)) : false;
+  const isBlockedByMe = targetUserId ? blockedByMeUserSet.has(String(targetUserId)) : false;
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
   const isBlocked = isBlockedByMe || isBlockedByThem;
   const isBlockedRef = useRef(false);
