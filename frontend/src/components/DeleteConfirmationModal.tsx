@@ -86,12 +86,14 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <Text style={styles.description}>{description || defaultDesc}</Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'रद्द करें' : 'Cancel'}>
               <Text style={styles.cancelButtonText}>{t('language') === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.confirmButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('language') === 'hi' ? 'हटाएं' : 'Delete'}
               onPress={() => {
                 onClose();
                 onConfirm();

@@ -1,4 +1,13 @@
-💡 What: The optimization refactored the `push_sync_changes` endpoint in `backend/main.py`. Previously, the code fetched the `users` document using `await db.get_document` and immediately pushed an update for each sync key (e.g., `library_progress`, `passport_journeys`, `passport_badges`, `passport_certificates`) individually. Now, it queries the document once, batches all these dictionary updates in memory, and performs a single database write.
-🎯 Why: Multiple overlapping reads and writes cause unnecessary N+1 I/O overhead on the backend and stress the Firestore database when syncing heavy user profiles.
-📊 Impact: Reduces Firestore reads by up to 3 and writes by up to 3 per sync request, decreasing latency and database billing proportional to sync volume.
-🔬 Measurement: Execute a sync pull that updates multiple fields (e.g., badges and library progress) simultaneously. Watch the backend logs or Firestore query count—it will now execute only 1 read and 1 write instead of 2-4.
+### 💡 What
+Added `accessibilityRole="button"` and context-specific `accessibilityLabel` properties to interactive `<TouchableOpacity>` elements that function as action buttons within `DeleteConfirmationModal` and `SharePostModal`.
+
+### 🎯 Why
+These buttons visually communicate their purpose but lacked the semantic tags required for screen readers. By adding accessibility roles and labels, VoiceOver (iOS) and TalkBack (Android) will accurately announce them as buttons, improving the experience for visually impaired users.
+
+### 📸 Before/After
+**Before:** Screen readers would announce interactive text but might not identify it as an actionable button element.
+**After:** Screen readers correctly announce "Cancel, button", "Delete, button", or "WhatsApp, button" making the UI more navigable and intuitive.
+
+### ♿ Accessibility
+- Added `accessibilityRole="button"` to standard app action links to comply with ARIA guidelines.
+- Internationalization (i18n) maintained in the new labels using existing ternary translation logic.
