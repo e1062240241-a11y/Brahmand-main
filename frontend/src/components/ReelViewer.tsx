@@ -1301,6 +1301,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const seenIdsRef = useRef<Set<string>>(new Set());
   // Global pool of ALL posts ever loaded this session — used for recycling when all seen
   const allSessionPostsRef = useRef<any[]>([]);
+  // O(1) lookup set for global session pool to prevent O(N) array iteration on every swipe/fetch
+  const allSessionIdsRef = useRef<Set<string>>(new Set());
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
@@ -1834,12 +1836,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       });
 
       // Add any new posts to the global session pool
-      // OPT: Use a Set for O(1) lookup to prevent O(N*M) CPU bottleneck
-      const allSessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
+      // OPT: Use a parallel Set for O(1) lookup to prevent O(N*M) CPU bottleneck
       for (const p of newPosts) {
-        if (p?.id && !allSessionIds.has(p.id)) {
+        if (p?.id && !allSessionIdsRef.current.has(p.id)) {
           allSessionPostsRef.current.push(p);
-          allSessionIds.add(p.id);
+          allSessionIdsRef.current.add(p.id);
         }
       }
 
@@ -1902,9 +1903,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         initialPostRef.current = initialPost;
         seenIdsRef.current.clear();
         allSessionPostsRef.current = [];
+        allSessionIdsRef.current.clear();
         if (initialPost?.id) {
           seenIdsRef.current.add(initialPost.id);
           allSessionPostsRef.current.push(initialPost);
+          allSessionIdsRef.current.add(initialPost.id);
         }
         setVideos([initialPost]);
         setActiveIndex(0);
@@ -2012,10 +2015,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       // Track in session seen set for smarter backend querying
       seenIdsRef.current.add(activePost.id);
       // Add to global session pool if not already there
-      // OPT: Use a Set for O(1) lookup
-      const sessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
-      if (!sessionIds.has(activePost.id)) {
+      // OPT: Use parallel Set for O(1) lookup to prevent O(N) iteration on every swipe
+      if (!allSessionIdsRef.current.has(activePost.id)) {
         allSessionPostsRef.current.push(activePost);
+        allSessionIdsRef.current.add(activePost.id);
       }
     }
   }, [activeIndex, videos]);
