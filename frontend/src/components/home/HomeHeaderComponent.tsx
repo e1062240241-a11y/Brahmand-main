@@ -279,6 +279,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
 
+    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
+
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
         player.muted = true;
@@ -488,11 +490,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     ) : loadingUsers ? (
                                         <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                                     ) : searchResults.length > 0 ? (
-                                        (() => {
-                                            // OPT: Use Set for O(1) following lookups
-                                            const followingSet = new Set(followingIds);
-                                            return searchResults.map((item) => {
-                                                const isFollowing = followingSet.has(item.id);
+                                        <>
+                                            {searchResults.map((item) => {
+                                                const isFollowing = memoizedFollowingSet.has(item.id);
                                                 return (
                                                 <View key={item.id} style={styles.userResultItem}>
                                                     <TouchableOpacity
@@ -523,8 +523,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     </TouchableOpacity>
                                                 </View>
                                             );
-                                            });
-                                        })()
+                                            })}
+                                        </>
                                     ) : (
                                         <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                                     )}
