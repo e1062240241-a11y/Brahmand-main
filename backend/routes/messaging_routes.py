@@ -42,7 +42,7 @@ async def send_community_message(
 
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("/community/{community_id}/{subgroup_type}")
@@ -82,7 +82,7 @@ async def send_circle_message(
             message_type=message.message_type.value
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 @router.get("/circle/{circle_id}")
@@ -118,7 +118,7 @@ async def send_direct_message(
             message_type=message.message_type.value
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.get("/dm/conversations")
@@ -141,4 +141,4 @@ async def get_direct_messages(
             limit
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail="Forbidden")

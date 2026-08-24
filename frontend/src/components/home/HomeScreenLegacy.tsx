@@ -319,6 +319,8 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
     onProfileLongPress: () => void;
 }) {
     const router = useRouter();
+    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
+
     return (
         <>
             <View style={styles.header}>
@@ -438,11 +440,9 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                             ) : loadingUsers ? (
                                 <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                             ) : searchResults.length > 0 ? (
-                                (() => {
-                                    // OPT: Use Set for O(1) following lookups
-                                    const followingSet = new Set(followingIds);
-                                    return searchResults.map((item) => {
-                                        const isFollowing = followingSet.has(item.id);
+                                <>
+                                    {searchResults.map((item) => {
+                                        const isFollowing = memoizedFollowingSet.has(item.id);
                                         return (
                                         <View key={item.id} style={styles.userResultItem}>
                                             <TouchableOpacity
@@ -472,8 +472,8 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                             </TouchableOpacity>
                                         </View>
                                     );
-                                    });
-                                })()
+                                    })}
+                                </>
                             ) : (
                                 <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                             )}

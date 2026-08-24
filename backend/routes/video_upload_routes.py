@@ -130,7 +130,7 @@ def _probe_video_metadata(input_path: str) -> dict:
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=400, detail=f"Unable to inspect uploaded video: {exc.stderr.strip() if exc.stderr else str(exc)}")
+        raise HTTPException(status_code=400, detail="Unable to inspect uploaded video")
     except Exception as exc:
         logger.warning(f"_probe_video_metadata execution error: {exc}")
         raise RuntimeError(f"Failed to execute ffprobe binary: {exc}")
