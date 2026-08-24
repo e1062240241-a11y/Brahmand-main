@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from fastapi import APIRouter
 
 from services.library_loader import SingleFileBook
 

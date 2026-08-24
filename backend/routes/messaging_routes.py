@@ -1,5 +1,5 @@
 """Messaging Routes"""
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends
 from models.schemas import MessageCreate, DirectMessageCreate
 from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 from middleware.security import verify_token

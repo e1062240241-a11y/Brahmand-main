@@ -1,12 +1,13 @@
 """Circle Routes"""
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
+from bson import ObjectId
 from datetime import datetime
 
 from models.schemas import CircleCreate, CircleJoin, CircleInvite
 from middleware.security import verify_token
 from config.database import get_database
-from utils.helpers import generate_circle_code, serialize_doc
+from utils.helpers import generate_circle_code
 
 router = APIRouter(prefix="/circles", tags=["Circles"])
 
