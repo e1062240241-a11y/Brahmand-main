@@ -4,17 +4,16 @@ import logging
 import asyncio
 import shutil
 import subprocess
-from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from tempfile import NamedTemporaryFile
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from uuid import uuid4
 
 import aiohttp
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 
-from middleware.security import verify_token, optional_verify_token
+from middleware.security import optional_verify_token
 from config.firebase_config import get_firestore
 
 logger = logging.getLogger(__name__)
