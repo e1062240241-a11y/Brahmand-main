@@ -106,7 +106,7 @@ module.exports = ({ config }) => {
   // Explicit platform detection without binary fallbacks
   const isAndroid = process.env.EAS_BUILD_PLATFORM === 'android' || 
                     process.argv.some(arg => arg.includes('android') || arg.includes('run:android') || arg === '-p android' || arg === '--platform android');
-  const isIos = process.env.EAS_BUILD_PLATFORM === 'ios' || 
+  const isIos = process.env.EAS_BUILD_PLATFORM === 'ios' ||
                 process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios') || arg === '-p ios' || arg === '--platform ios');
   const isUniversal = !isAndroid && !isIos;
 

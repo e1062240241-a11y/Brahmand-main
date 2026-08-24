@@ -197,8 +197,8 @@ export default function TempleDetailScreen() {
         if (localRecord) localName = (localRecord as any)._raw.name || '';
       } catch (e) {}
 
-      const dumpedTemple = (templeDataDump as any[]).find((t: any) => 
-        (localName && t.name.toLowerCase() === localName.toLowerCase()) || 
+      const dumpedTemple = (templeDataDump as any[]).find((t: any) =>
+        (localName && t.name.toLowerCase() === localName.toLowerCase()) ||
         t.slug === resolvedTempleId ||
         t.id === resolvedTempleId
       );
