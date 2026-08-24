@@ -497,7 +497,7 @@ class FirebaseAuthService:
             
         except Exception as e:
             logger.error(f"Firebase token verification failed: {e}")
-            raise ValueError(f"Invalid Firebase token: {str(e)}")
+            raise ValueError("Invalid Firebase token")
     
     @staticmethod
     async def update_fcm_token(user_id: str, fcm_token: str) -> Dict[str, Any]:
