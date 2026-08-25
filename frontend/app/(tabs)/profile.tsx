@@ -626,11 +626,24 @@ export default function ProfileScreen() {
   const handleShareProfile = async () => {
     const username = profile?.sl_id || user?.sl_id || 'profile';
     const displayName = profile?.name || user?.name || 'User';
+    const photoUrl = profile?.photo || user?.photo;
     const profileUrl = `https://brahmand.app/profile/${userId}`;
     const message = t('language') === 'hi'
       ? `ब्रह्मांड पर ${displayName} (@${username}) को देखें!\n\n${profileUrl}`
       : `Check out ${displayName} (@${username}) on Brahmand!\n\n${profileUrl}`;
     try {
+      if (Platform.OS === 'ios' && photoUrl && FileSystemModule?.downloadAsync && FileSystemModule?.cacheDirectory) {
+        const localPath = `${FileSystemModule.cacheDirectory}profile-${Date.now()}.jpg`;
+        const downloadRes = await FileSystemModule.downloadAsync(photoUrl, localPath);
+        if (downloadRes?.uri) {
+          await Share.share({
+            message,
+            url: downloadRes.uri,
+            title: t('language') === 'hi' ? `ब्रह्मांड पर ${displayName}` : `${displayName} on Brahmand`,
+          });
+          return;
+        }
+      }
       await Share.share({
         message,
         url: profileUrl,

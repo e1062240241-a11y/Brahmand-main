@@ -74,7 +74,7 @@ function NotificationsSettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="chevron-back" size={28} color="#000000" />
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {t('language') === 'hi' ? 'सूचना सेटिंग्स' : 'Notification Settings'}
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   content: {
     paddingHorizontal: SPACING.md,
@@ -228,9 +228,9 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl * 2.5,
   },
   pillContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'transparent',
     borderRadius: 24,
-    padding: SPACING.lg,
+    padding: SPACING.sm,
   },
   sectionTitle: {
     fontSize: 12,

@@ -494,37 +494,37 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             {searchResults.map((item) => {
                                                 const isFollowing = memoizedFollowingSet.has(item.id);
                                                 return (
-                                                <View key={item.id} style={styles.userResultItem}>
-                                                    <TouchableOpacity
-                                                        style={styles.userResultContent}
-                                                        activeOpacity={0.8}
-                                                        onPress={() => {
-                                                            saveRecentSearch(item);
-                                                            router.push(`/profile/${item.id}`);
-                                                        }}
-                                                    >
-                                                        <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                                                        <View style={styles.userResultText}>
-                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                                <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                                                                {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                                                    <View key={item.id} style={styles.userResultItem}>
+                                                        <TouchableOpacity
+                                                            style={styles.userResultContent}
+                                                            activeOpacity={0.8}
+                                                            onPress={() => {
+                                                                saveRecentSearch(item);
+                                                                router.push(`/profile/${item.id}`);
+                                                            }}
+                                                        >
+                                                            <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                                                            <View style={styles.userResultText}>
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                    <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                                                                    {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                                                                </View>
+                                                                <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
                                                             </View>
-                                                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
-                                                        </View>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={[styles.followButton, isFollowing && styles.followingButton]}
-                                                        activeOpacity={0.8}
-                                                        onPress={() => handleFollowUser(item.id)}
-                                                    >
-                                                        <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                                            {isFollowing ? t('following') : t('follow')}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            );
-                                            });
-                                        })()
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.followButton, isFollowing && styles.followingButton]}
+                                                            activeOpacity={0.8}
+                                                            onPress={() => handleFollowUser(item.id)}
+                                                        >
+                                                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                                                                {isFollowing ? t('following') : t('follow')}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                );
+                                            })}
+                                        </>
                                     ) : (
                                         <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
                                     )}

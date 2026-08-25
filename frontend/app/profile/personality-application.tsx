@@ -192,11 +192,11 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   optionCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'transparent',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 15,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   selectedOptionCard: {
     borderColor: '#FF6600',
-    backgroundColor: '#FFFBF9',
+    backgroundColor: 'transparent',
   },
   optionHeader: {
     flexDirection: 'row',
