@@ -31,7 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple, getTempleFromBackend } from '../../src/services/api';
+import { getTemple } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -189,42 +189,25 @@ export default function TempleDetailScreen() {
   const fetchTempleData = useCallback(async () => {
     let finalTempleData: any = null;
 
-    // 🕵️ SMART DETECTION: Is this a local WatermelonDB ID or a Backend Slug?
-    // Local IDs are usually 16-20 alphanumeric chars with NO hyphens.
-    const isLocalWatermelonId = /^[a-zA-Z0-9]{10,25}$/.test(resolvedTempleId) && !resolvedTempleId.includes('-');
-
     try {
-      // 1. ONLY call the backend if it's a real slug (not a local ID)
-      if (!isLocalWatermelonId) {
-        const backendData = await getTempleFromBackend(resolvedTempleId);
-        if (backendData) {
-          finalTempleData = mapBackendResponseToFrontend(backendData);
-        }
+      // 1. Search the rich JSON dump by Name, Slug, or ID
+      let localName = '';
+      try {
+        const localRecord = await database.get('temples').find(resolvedTempleId).catch(() => null);
+        if (localRecord) localName = (localRecord as any)._raw.name || '';
+      } catch (e) {}
+
+      const dumpedTemple = (templeDataDump as any[]).find((t: any) =>
+        (localName && t.name.toLowerCase() === localName.toLowerCase()) ||
+        t.slug === resolvedTempleId ||
+        t.id === resolvedTempleId
+      );
+
+      if (dumpedTemple) {
+        finalTempleData = mapBackendResponseToFrontend(dumpedTemple);
       }
 
-      // 2. If backend failed OR we skipped it (because it's a local ID), use the JSON Dump!
-      if (!finalTempleData) {
-        // Get the local temple name from WatermelonDB to help us search the dump
-        let localName = '';
-        try {
-          const localRecord = await database.get('temples').find(resolvedTempleId).catch(() => null);
-          if (localRecord) localName = (localRecord as any)._raw.name || '';
-        } catch (e) {}
-
-        // Search the JSON dump by Name or Slug
-        const dumpedTemple = (templeDataDump as any[]).find((t: any) => 
-          (localName && t.name.toLowerCase() === localName.toLowerCase()) || 
-          t.slug === resolvedTempleId ||
-          t.id === resolvedTempleId
-        );
-
-        if (dumpedTemple) {
-          console.log('✅ [FALLBACK] Loaded rich data from local JSON dump for:', dumpedTemple.name);
-          finalTempleData = mapBackendResponseToFrontend(dumpedTemple);
-        }
-      }
-
-      // 3. Absolute final fallback (Legacy API / Static Data)
+      // 2. Fallback to Firestore Backend / Static Data
       if (!finalTempleData) {
         const templeRes = await getTemple(resolvedTempleId).catch(() => null);
         if (templeRes?.data) {

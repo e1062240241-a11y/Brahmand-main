@@ -218,7 +218,7 @@ const FestivalPage = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
         <CustomLoader size={70} message="Loading Festivals..." />
       </View>
     );

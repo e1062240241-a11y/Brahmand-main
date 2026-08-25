@@ -107,7 +107,6 @@ from routes.user_routes import router as user_router
 from routes.community_routes import router as community_router
 from routes.messaging_routes import router as messaging_router
 from routes.temple_routes import router as temple_router
-from routers.temples import router as temples_v1_router
 from routes.event_routes import router as event_router
 # from routes.circle_routes import router as circle_router
 from routes.nettyfish_auth_routes import router as nettyfish_auth_router
@@ -1793,7 +1792,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         
     except firebase_auth.InvalidIdTokenError as e:
         logger.error(f"InvalidIdTokenError: {str(e)}")
-        raise HTTPException(status_code=401, detail=f"Invalid Firebase token: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid Firebase token")
     except firebase_auth.ExpiredIdTokenError as e:
         logger.error(f"ExpiredIdTokenError: {str(e)}")
         raise HTTPException(status_code=401, detail="Firebase token expired")
@@ -1825,7 +1824,7 @@ async def login_anonymous(request: AnonymousLoginRequest):
             language=request.language,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Validation error")
     except Exception as e:
         logger.exception(f"/auth/login-anonymous failed for phone={request.phone}: {e}")
         raise HTTPException(status_code=500, detail="Anonymous login failed")
@@ -2122,7 +2121,7 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
 
     def _verify_otp_sync():
         collection_ref = db.client.collection("otp_verifications")
@@ -2653,7 +2652,147 @@ async def get_user_by_id(
     return safe_user
 
 
+@api_router.get('/users/{user_id}/connections')
+async def get_user_connections(
+    user_id: str,
+    type: str = Query('followers', regex='^(followers|following)$'),
+    limit: int = Query(20, ge=1, le=100),
+    cursor: Optional[str] = None,
+    q: Optional[str] = None,
+    token_data: dict = Depends(verify_token)
+):
+    if not user_id or user_id.lower().strip() in ('undefined', 'null', 'none', ''):
+        raise HTTPException(status_code=400, detail='Invalid user ID')
 
+    db = await get_db()
+    viewer_id = token_data.get('user_id')
+
+    # 1. Fetch target user to verify existence & total count in O(1)
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    total_count = (
+        target_user.get('followers_count') or 0
+        if type == 'followers'
+        else target_user.get('following_count') or 0
+    )
+
+    # 2. Stage 1: Cursor Slice (Junction Collection Query)
+    filters = []
+    if type == 'followers':
+        filters.append(('followee_uid', '==', user_id))
+    else:
+        filters.append(('follower_uid', '==', user_id))
+
+    if cursor and cursor.strip():
+        filters.append(('created_at', '<', cursor.strip()))
+
+    query_limit = limit * 5 if q and q.strip() else limit
+
+    edge_docs = await db.query_documents(
+        'user_follows',
+        filters=filters,
+        order_by='created_at',
+        order_direction='DESCENDING',
+        limit=query_limit
+    )
+
+    if not edge_docs:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    edge_uids = []
+    created_at_map = {}
+    for doc in edge_docs:
+        target_uid = doc.get('follower_uid') if type == 'followers' else doc.get('followee_uid')
+        if target_uid and target_uid not in created_at_map:
+            edge_uids.append(target_uid)
+            created_at_map[target_uid] = doc.get('created_at') or datetime.now(timezone.utc).isoformat()
+
+    if not edge_uids:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    # 3. Stage 2: Single Batch Profile Hydration (Server-Side)
+    hydrated_users_map = await db.get_documents_batch('users', edge_uids)
+
+    # 4. Filter by q (search query) if provided
+    matched_uids = []
+    search_q = q.strip().lower() if q and q.strip() else None
+
+    for uid in edge_uids:
+        u_doc = hydrated_users_map.get(uid)
+        if not u_doc:
+            continue
+        if search_q:
+            name = (u_doc.get('name') or '').lower()
+            sl_id = (u_doc.get('sl_id') or u_doc.get('username') or '').lower()
+            if search_q not in name and search_q not in sl_id:
+                continue
+        matched_uids.append(uid)
+        if len(matched_uids) == limit:
+            break
+
+    next_cursor = None
+    if len(edge_docs) >= query_limit and len(edge_docs) > 0:
+        next_cursor = edge_docs[-1].get('created_at')
+    elif len(matched_uids) > 0 and len(edge_docs) >= limit:
+        last_uid = matched_uids[-1]
+        next_cursor = created_at_map.get(last_uid)
+
+    if not matched_uids:
+        return {
+            'items': [],
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    # 5. Stage 3: Viewer Relationship Resolution (1 Batch Check)
+    viewer_follow_map = {}
+    if viewer_id:
+        viewer_edge_ids = [f"{viewer_id}_{target_uid}" for target_uid in matched_uids]
+        viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        for target_uid in matched_uids:
+            edge_key = f"{viewer_id}_{target_uid}"
+            viewer_follow_map[target_uid] = viewer_edges.get(edge_key) is not None
+
+    # 6. Stage 4: Construct Response with Dual Key Mappings
+    items = []
+    for uid in matched_uids:
+        u_doc = hydrated_users_map.get(uid) or {}
+        is_following_viewer = viewer_follow_map.get(uid, False)
+
+        name = u_doc.get('name') or 'User'
+        sl_id = u_doc.get('sl_id') or u_doc.get('username') or ''
+        photo = u_doc.get('photo') or u_doc.get('photo_url') or ''
+        is_verified = bool(u_doc.get('is_verified', False))
+
+        items.append({
+            'user_id': uid,
+            'id': uid,
+            'name': name,
+            'username': sl_id,
+            'sl_id': sl_id,
+            'photo_url': photo,
+            'photo': photo,
+            'is_verified': is_verified,
+            'is_following_by_viewer': is_following_viewer,
+            'is_following': is_following_viewer,
+            'created_at': created_at_map.get(uid)
+        })
+
+    return {
+        'items': items,
+        'next_cursor': next_cursor,
+        'total_count': total_count
+    }
 
 
 async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
@@ -2882,22 +3021,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    target_followers = target_user.get('followers', []) or []
-    if current_user_id in target_followers:
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    existing_edge = await db.get_document('user_follows', follow_doc_id)
+    if existing_edge is not None:
         return {'message': 'Already following user', 'user_id': user_id}
 
-    # Edge doc in the user_follows collection — O(1) membership check on the
-    # read path (profile view) instead of loading the (potentially huge)
-    # followers array. Array union kept as a dual-write for transition so
-    # existing array consumers (follow-connections, auth store) stay consistent.
-    follow_doc_id = f"{current_user_id}_{user_id}"
+    now_iso = datetime.now(timezone.utc).isoformat()
     await db.set_document('user_follows', follow_doc_id, {
         'follower_uid': current_user_id,
         'followee_uid': user_id,
+        'created_at': now_iso,
     })
-
-    await db.array_union_update('users', user_id, 'followers', [current_user_id])
-    await db.array_union_update('users', current_user_id, 'following', [user_id])
 
     try:
         follower_name = current_user.get('name') or current_user.get('sl_id') or 'Someone'
@@ -2957,14 +3091,11 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
-    # Remove the follow edge doc (primary) + the array entries (dual-write).
+    # Remove the follow edge doc (primary)
     follow_doc_id = f"{current_user_id}_{user_id}"
     edge_existed = await db.get_document('user_follows', follow_doc_id) is not None
     if edge_existed:
         await db.delete_document('user_follows', follow_doc_id)
-
-    await db.array_remove_update('users', user_id, 'followers', [current_user_id])
-    await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
     # Atomic decrements only if an edge actually existed — avoids double-decrement
     # when unfollow is called on a non-followed user.
@@ -3714,7 +3845,7 @@ async def _upload_post_from_storage_impl(
             original_size_bytes = await _download_file_from_bunny(storage_path, temp_input_file.name)
         except Exception as download_err:
             logger.error(f"Failed to download raw video from Bunny (path: {storage_path}): {download_err}")
-            raise HTTPException(status_code=404, detail=f"Uploaded raw video not found in storage. Path: {storage_path}. Error: {str(download_err)}")
+            raise HTTPException(status_code=404, detail="Uploaded raw video not found")
 
         if original_size_bytes <= 0:
             raise HTTPException(status_code=400, detail='Stored video is empty')
@@ -4164,6 +4295,15 @@ async def get_posts_feed(
         following_ids = set()
         if current_user:
             following_ids = set(current_user.get('following', []) or [])
+        if tab == 'following' and not following_ids:
+            try:
+                edge_follows = await db.query_documents('user_follows', filters=[('follower_uid', '==', current_user_id)], limit=200)
+                for ef in edge_follows:
+                    f_uid = ef.get('followee_uid')
+                    if f_uid:
+                        following_ids.add(f_uid)
+            except Exception as e:
+                logger.warning(f"Error querying user_follows for following_ids: {e}")
 
         # If following tab, fetch posts using following_inboxes (Personal Mailbox Model)
         if tab == 'following':
@@ -6911,7 +7051,7 @@ async def join_community_by_code(
             data.get("code", "")
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Resource not found")
     except Exception as e:
         logger.error(f"Error joining community: {e}")
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -10873,10 +11013,8 @@ IDENTITY RULES:
     try:
         from datetime import datetime, timezone
         db = await get_firestore()
-        chat_ref = db.collection('krishna_chats').document(user_id)
-        chat_doc = chat_ref.get()
-        if chat_doc.exists:
-            chat_data = chat_doc.to_dict()
+        chat_data = await db.get_document('krishna_chats', user_id)
+        if chat_data:
             db_messages = chat_data.get("messages", [])
             profile = chat_data.get("profile", profile)
             history_summaries = chat_data.get("history_summaries", [])
@@ -10887,9 +11025,9 @@ IDENTITY RULES:
     # Fetch user's name from Firestore for personalization
     user_name = "mere bhakta"
     try:
-        user_doc = db.collection('users').document(user_id).get()
-        if user_doc.exists:
-            name_val = user_doc.to_dict().get("name")
+        user_data = await db.get_document('users', user_id)
+        if user_data:
+            name_val = user_data.get('name')
             if name_val and name_val.strip():
                 user_name = name_val.strip()
     except Exception as fs_name_err:
@@ -11078,7 +11216,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             # Limit history to 100 messages to respect document limits
             db_messages = db_messages[-100:]
 
-            chat_ref.set({
+            await db.set_document('krishna_chats', user_id, {
                 "messages": db_messages,
                 "profile": profile,
                 "history_summaries": history_summaries,
@@ -11107,9 +11245,9 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
     try:
         db = await get_firestore()
         user_id = token_data["user_id"]
-        chat_doc = db.collection('krishna_chats').document(user_id).get()
-        if chat_doc.exists:
-            return {"messages": chat_doc.to_dict().get("messages", [])}
+        chat_data = await db.get_document('krishna_chats', user_id)
+        if chat_data:
+            return {'messages': chat_data.get('messages', [])}
         return {"messages": []}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -11122,7 +11260,7 @@ async def delete_chat_history(token_data: dict = Depends(verify_token)):
     try:
         db = await get_firestore()
         user_id = token_data["user_id"]
-        db.collection('krishna_chats').document(user_id).delete()
+        await db.delete_document('krishna_chats', user_id)
         return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -11318,7 +11456,7 @@ async def send_blood_request_otp(request: OTPRequest):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
     
@@ -11432,7 +11570,7 @@ async def verify_blood_request_otp(request: OTPVerify):
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
     
@@ -11527,7 +11665,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
         try:
             contact_mobile = _normalize_phone(contact_number)
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Invalid contact number: {str(exc)}")
+            raise HTTPException(status_code=400, detail="Invalid contact number")
             
         # Retrieve verification record (bypass cache)
         record = await db.find_one("blood_request_otp_verifications", [("phone", "==", contact_mobile)])
@@ -13008,7 +13146,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         else:
             raise HTTPException(status_code=400, detail="Invalid OTP")
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail="Validation error")
 
     await db.delete_document('vendors', vendor_id)
     
@@ -16633,7 +16771,6 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
-app.include_router(temples_v1_router)
 app.mount("/socket.io", socket_app)
 
 

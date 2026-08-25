@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import APIRouter
 
 from services.library_loader import ChapterFileBook
 

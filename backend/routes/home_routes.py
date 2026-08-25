@@ -1,11 +1,10 @@
 import logging
 import time
 import asyncio
-from fastapi import APIRouter, Depends, Request, HTTPException
-from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, Depends, Request
+from typing import Dict, Any
 
 from middleware.security import verify_token
-from services.firebase_community_service import FirebaseCommunityService
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,6 @@ async def get_home_shell(request: Request, token_data: dict = Depends(verify_tok
     """
     from main import get_unread_count, get_next_festival, get_community_requests
 
-    user_id = token_data.get("user_id")
 
     async def _fetch_unread():
         try:
@@ -98,7 +96,6 @@ async def get_home_feed(
     """
     from main import get_posts_feed
 
-    user_id = token_data.get("user_id")
 
     # Fetch post candidates from feed pipeline
     feed_res = await get_posts_feed(

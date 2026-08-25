@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../utils/i18n';
 
 export const HOME_FEED_TABS_HEIGHT = 52;
@@ -8,10 +7,9 @@ export const HOME_FEED_TABS_HEIGHT = 52;
 type HomeFeedTabsProps = {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  onCreatePost: () => void;
 };
 
-const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) {
+const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange }: HomeFeedTabsProps) {
   const { t } = useTranslation();
   return (
     <View style={styles.feedTabs} accessibilityRole="tablist">
@@ -94,20 +92,6 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#FF6B00',
     fontWeight: '900',
-  },
-  newPostButton: {
-    width: 60,
-    height: HOME_FEED_TABS_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plusIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#FFF0E6',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

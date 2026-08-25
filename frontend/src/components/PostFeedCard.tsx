@@ -114,6 +114,37 @@ const PostFeedCardComponent = ({
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+
+  const openMenu = useCallback(() => {
+    setMenuVisible(true);
+    Animated.spring(menuAnim, {
+      toValue: 1,
+      tension: 240,
+      friction: 16,
+      useNativeDriver: true,
+    }).start();
+  }, [menuAnim]);
+
+  const closeMenu = useCallback((callback?: () => void) => {
+    Animated.timing(menuAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => {
+      setMenuVisible(false);
+      callback?.();
+    });
+  }, [menuAnim]);
+
+  const toggleMenu = useCallback(() => {
+    if (menuVisible) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }, [menuVisible, openMenu, closeMenu]);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Tab bar visibility control
@@ -602,7 +633,7 @@ const PostFeedCardComponent = ({
                   radius: 20,
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                onPress={() => setMenuVisible(!menuVisible)}
+                onPress={toggleMenu}
                 accessibilityRole="button"
                 accessibilityLabel={t('openMenu')}
               >
@@ -612,21 +643,65 @@ const PostFeedCardComponent = ({
                 </View>
               </Pressable>
               {menuVisible && (
-                <View style={styles.dropdownMenu}>
+                <Animated.View
+                  style={[
+                    styles.dropdownMenu,
+                    {
+                      opacity: menuAnim,
+                      transform: [
+                        {
+                          scale: menuAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.88, 1],
+                          }),
+                        },
+                        {
+                          translateY: menuAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-6, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
                   {postMenuType === 'delete' && onEdit && (
-                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
-                      <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[styles.dropdownItem, styles.dropdownItemBorder]}
+                      onPress={() => closeMenu(() => onEdit?.(post))}
+                    >
+                      <Ionicons name="pencil-outline" size={15} color="#3A3835" />
+                      <Text style={styles.dropdownText}>
+                        {t('language') === 'hi' ? 'संपादित करें' : 'Edit'}
+                      </Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
-                    <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
-                      {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.dropdownItem, styles.dropdownItemBorder]}
+                    onPress={() => closeMenu(() => onPostMenuPress?.(post))}
+                  >
+                    <Ionicons
+                      name={postMenuType === 'delete' ? 'trash-outline' : 'flag-outline'}
+                      size={15}
+                      color="#E03E3E"
+                    />
+                    <Text style={[styles.dropdownText, styles.dropdownDangerText]}>
+                      {postMenuType === 'delete'
+                        ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post')
+                        : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
-                    <Text style={styles.dropdownText}>{t('cancel')}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={styles.dropdownItem}
+                    onPress={() => closeMenu()}
+                  >
+                    <Ionicons name="close-circle-outline" size={15} color="#75716B" />
+                    <Text style={styles.dropdownCancelText}>{t('cancel')}</Text>
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               )}
             </View>
           )}
@@ -1048,10 +1123,50 @@ const styles = StyleSheet.create({
   timeTextLight: { color: '#666', fontSize: 11, marginTop: 2, fontWeight: '700' },
   menuBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   menuWrap: { position: 'relative', zIndex: 1000, elevation: 12 },
-  dropdownMenu: { position: 'absolute', right: 0, top: 36, minWidth: 140, backgroundColor: '#FFF', borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 20, zIndex: 1001, overflow: 'hidden' },
-  dropdownItem: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
-  dropdownText: { color: '#000000', fontSize: 13, fontWeight: '700' },
-  dropdownDangerText: { color: COLORS.error },
+  dropdownMenu: {
+    position: 'absolute',
+    right: 0,
+    top: 36,
+    minWidth: 152,
+    backgroundColor: '#FAF8F5',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ECE7DE',
+    shadowColor: '#2D2214',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 16,
+    zIndex: 1001,
+    overflow: 'hidden',
+    paddingVertical: 4,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 9,
+  },
+  dropdownItemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EBE6DE',
+  },
+  dropdownText: {
+    color: '#2E2B28',
+    fontSize: 13.5,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  dropdownDangerText: {
+    color: '#E03E3E',
+    fontWeight: '600',
+  },
+  dropdownCancelText: {
+    color: '#75716B',
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
   mediaWrap: { backgroundColor: '#000', overflow: 'hidden', position: 'relative' },
   videoContainer: { width: '100%', height: '100%', position: 'relative' },
   videoBackground: { width: '100%', height: '100%' },

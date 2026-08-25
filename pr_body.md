@@ -1,4 +1,9 @@
-💡 What: The optimization refactored the `push_sync_changes` endpoint in `backend/main.py`. Previously, the code fetched the `users` document using `await db.get_document` and immediately pushed an update for each sync key (e.g., `library_progress`, `passport_journeys`, `passport_badges`, `passport_certificates`) individually. Now, it queries the document once, batches all these dictionary updates in memory, and performs a single database write.
-🎯 Why: Multiple overlapping reads and writes cause unnecessary N+1 I/O overhead on the backend and stress the Firestore database when syncing heavy user profiles.
-📊 Impact: Reduces Firestore reads by up to 3 and writes by up to 3 per sync request, decreasing latency and database billing proportional to sync volume.
-🔬 Measurement: Execute a sync pull that updates multiple fields (e.g., badges and library progress) simultaneously. Watch the backend logs or Firestore query count—it will now execute only 1 read and 1 write instead of 2-4.
+🚨 Severity: MEDIUM
+
+💡 Vulnerability: Information Exposure (CWE-209). Exception strings outputted via `subprocess.CalledProcessError` could inadvertently be caught down the line, although they are currently caught and wrapped securely, passing `exc` into unhandled `RuntimeError` strings provides an unnecessary vector of exposure if error handling configurations are changed or unhandled by higher wrappers.
+
+🎯 Impact: Passing internal errors containing `ffprobe` or `ffmpeg` commands could potentially leak the server's directory layout, underlying tool constraints, or underlying dependencies/infrastructure paths.
+
+🔧 Fix: Replaced `RuntimeError(f"Failed to execute ffprobe binary: {exc}")` and `RuntimeError(f"Failed to execute ffmpeg binary: {exc}")` with constant, generic strings `RuntimeError("Failed to execute ffprobe binary")` and `RuntimeError("Failed to execute ffmpeg binary")` inside `backend/routes/video_upload_routes.py`. The raw strings are still securely logged internally via `logger.warning`.
+
+✅ Verification: Check `backend/routes/video_upload_routes.py` lines 137 and 229, verifying that `f"... {exc}"` formatting has been removed from `RuntimeError` constructors. Code verified via `python -m py_compile backend/routes/video_upload_routes.py`.

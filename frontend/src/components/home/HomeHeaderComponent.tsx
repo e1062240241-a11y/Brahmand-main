@@ -194,7 +194,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder,
     handleLiveJaapNavigation,
     handleNotificationPress,
-    setShowProfileActions,
     hanumanStatus,
     shivaStatus,
     hanumanChantCount,
@@ -202,7 +201,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests,
     activeTab,
     setActiveTab,
-    setShowUploadPostModal,
     activeFeatureIndex,
     setActiveFeatureIndex,
     activeBannerIndex,
@@ -223,6 +221,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef,
     isFocused,
     kathaStatus,
+    quickAccessItems,
 }: {
     user: any;
     firstName: string;
@@ -247,7 +246,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     handleSetReminder: (mantraType: string, sessionName: string) => void;
     handleLiveJaapNavigation: (mantraType: string, title: string) => void;
     handleNotificationPress: () => void;
-    setShowProfileActions: (v: boolean) => void;
     hanumanStatus: any;
     shivaStatus: any;
     hanumanChantCount: number;
@@ -255,7 +253,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     safeCommunityRequests: any[];
     activeTab: string;
     setActiveTab: (tab: string) => void;
-    setShowUploadPostModal: (v: boolean) => void;
     activeFeatureIndex: number;
     setActiveFeatureIndex: (v: number) => void;
     activeBannerIndex: number;
@@ -276,9 +273,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     bannerScrollRef: any;
     isFocused?: boolean;
     kathaStatus?: any;
+    quickAccessItems?: any[];
 }) {
     const router = useRouter();
+    const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
+
+    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
@@ -306,18 +307,37 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
     React.useEffect(() => {
         if (!achPlayer) return;
-        const activeFocused = isFocused !== false; // Default to true if undefined on initial Home mount
-        if (!activeFocused) {
-            achPlayer.pause();
-        } else if (activeFocused && !videoError) {
-            try {
-                achPlayer.play();
-            } catch (err) {
-                if (__DEV__) {
-                    console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+        const activeFocused = isFocused !== false;
+
+        const updatePlayback = (appState: string = AppState.currentState) => {
+            const isAppActive = appState === 'active';
+            if (activeFocused && isAppActive && !videoError) {
+                try {
+                    achPlayer.play();
+                } catch (err) {
+                    if (__DEV__) {
+                        console.warn('[HomeHeaderComponent] Error starting video playback:', err);
+                    }
                 }
+            } else {
+                try {
+                    achPlayer.pause();
+                } catch (_e) { }
             }
-        }
+        };
+
+        updatePlayback();
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            updatePlayback(nextAppState);
+        });
+
+        return () => {
+            subscription.remove();
+            try {
+                achPlayer.pause();
+            } catch (_e) { }
+        };
     }, [achPlayer, isFocused, videoError]);
     return (
         <View style={{ paddingTop: 4 }}>
@@ -331,7 +351,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 activeOpacity={0.86}
                                 style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
-                                onLongPress={() => setShowProfileActions(true)}
                             >
                                 <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                             </TouchableOpacity>
@@ -471,41 +490,39 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     ) : loadingUsers ? (
                                         <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
                                     ) : searchResults.length > 0 ? (
-                                        (() => {
-                                            // OPT: Use Set for O(1) following lookups
-                                            const followingSet = new Set(followingIds);
-                                            return searchResults.map((item) => {
-                                                const isFollowing = followingSet.has(item.id);
+                                        <>
+                                            {searchResults.map((item) => {
+                                                const isFollowing = memoizedFollowingSet.has(item.id);
                                                 return (
-                                                    <View key={item.id} style={styles.userResultItem}>
-                                                        <TouchableOpacity
-                                                            style={styles.userResultContent}
-                                                            activeOpacity={0.8}
-                                                            onPress={() => {
-                                                                saveRecentSearch(item);
-                                                                router.push(`/profile/${item.id}`);
-                                                            }}
-                                                        >
-                                                            <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                                                            <View style={styles.userResultText}>
-                                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                                    <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                                                                    {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-                                                                </View>
-                                                                <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                                                <View key={item.id} style={styles.userResultItem}>
+                                                    <TouchableOpacity
+                                                        style={styles.userResultContent}
+                                                        activeOpacity={0.8}
+                                                        onPress={() => {
+                                                            saveRecentSearch(item);
+                                                            router.push(`/profile/${item.id}`);
+                                                        }}
+                                                    >
+                                                        <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                                                        <View style={styles.userResultText}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                                                                {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
                                                             </View>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={[styles.followButton, isFollowing && styles.followingButton]}
-                                                            activeOpacity={0.8}
-                                                            onPress={() => handleFollowUser(item.id)}
-                                                        >
-                                                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                                                {isFollowing ? t('following') : t('follow')}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                );
+                                                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={[styles.followButton, isFollowing && styles.followingButton]}
+                                                        activeOpacity={0.8}
+                                                        onPress={() => handleFollowUser(item.id)}
+                                                    >
+                                                        <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                                                            {isFollowing ? t('following') : t('follow')}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
                                             });
                                         })()
                                     ) : (
@@ -562,13 +579,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 onScroll={(e) => {
                                     const x = e.nativeEvent.contentOffset.x;
                                     const idx = Math.round(x / featureSnapInterval);
-                                    const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
+                                    const clampedIdx = Math.max(0, Math.min(idx, featuredItems.length - 1));
                                     setActiveFeatureIndex(clampedIdx);
                                     topFeaturesAutoScrollIndex.current = clampedIdx;
                                 }}
                                 scrollEventThrottle={16}
                             >
-                                {baseQuickAccess.map((item, idx) => {
+                                {featuredItems.map((item, idx) => {
                                     let cardBg = '#FFFFFF';
                                     let iconBg = '#FF8A3D';
                                     if (item.label === 'Panchang') {
@@ -584,8 +601,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                     let displayLabel = item.label;
                                     let displaySubtitle = item.subtitle;
-
-
 
                                     if (t('language') === 'hi') {
                                         if (item.label === 'My Krishn') {
@@ -689,7 +704,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 })}
                             </ScrollView>
                             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                {baseQuickAccess.map((_, idx) => (
+                                {featuredItems.map((_, idx) => (
                                     <View
                                         key={idx}
                                         style={{
@@ -1513,17 +1528,16 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 </View>
             </View>
 
-            <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
-                <HomeFeedTabs
-                    activeTab={activeTab}
-                    onTabChange={(tab: string) => {
-                        requestAnimationFrame(() => {
-                            setActiveTab(tab);
-                        });
-                    }}
-                    onCreatePost={() => setShowUploadPostModal(true)}
-                />
+                <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
+                    <HomeFeedTabs
+                        activeTab={activeTab}
+                        onTabChange={(tab: string) => {
+                            requestAnimationFrame(() => {
+                                setActiveTab(tab);
+                            });
+                        }}
+                    />
+                </View>
             </View>
-        </View>
-    );
+            );
 });

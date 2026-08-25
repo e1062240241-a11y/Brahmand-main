@@ -15,6 +15,7 @@ export const isPlayerValid = (player: any): boolean => {
     if (player.released === true || player.isReleased === true) return false;
     // Accessing a getter on a released SharedObject in expo-modules-core will throw a CodedException.
     const _ = player.status;
+    const _live = player.isLive;
     return true;
   } catch (e) {
     return false;
@@ -33,9 +34,6 @@ const safeReleasePlayer = (p: any, delayMs = 0) => {
     try {
       if (isPlayerValid(p)) {
         p.pause();
-        if (typeof p.release === 'function') {
-          p.release();
-        }
       }
     } catch (_e) {}
   };

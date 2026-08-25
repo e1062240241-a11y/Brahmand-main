@@ -968,6 +968,23 @@ export const getUserProfile = (userId?: string, includeLists: boolean = false) =
   return api.get(validId ? `/users/${validId}` : "/user/profile", { params });
 };
 
+export const getUserConnections = (
+  userId: string,
+  type: 'followers' | 'following' = 'followers',
+  limit: number = 20,
+  cursor?: string,
+  q?: string
+) => {
+  const params: Record<string, any> = { type, limit };
+  if (cursor && cursor.trim().length > 0) {
+    params.cursor = cursor.trim();
+  }
+  if (q && q.trim().length > 0) {
+    params.q = q.trim();
+  }
+  return api.get(`/users/${userId}/connections`, { params });
+};
+
 export const getUserPosts = (
   userId: string,
   limit: number = 20,
@@ -1907,20 +1924,6 @@ export const getNearbyTemples = (lat?: number, lng?: number) =>
   api.get(`/temples/nearby${lat && lng ? `?lat=${lat}&lng=${lng}` : ""}`);
 
 export const getTemple = (templeId: string) => api.get(`/temples/${templeId}`);
-
-export const getTempleFromBackend = async (slugOrId: string) => {
-  try {
-    const response = await fetch(`${API_URL}/api/v1/temples/${encodeURIComponent(slugOrId)}`);
-    if (!response.ok) {
-      if (response.status === 404) return null; // Temple not found in DB
-      throw new Error(`Backend error: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.warn('[API] Backend fetch failed, falling back to local rules:', error);
-    return null; // Return null to trigger local fallback
-  }
-};
 
 
 export const followUser = (userId: string) =>

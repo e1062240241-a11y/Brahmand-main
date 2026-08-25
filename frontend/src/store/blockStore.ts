@@ -12,6 +12,7 @@ import { getBlockedUsersApi } from '../services/api';
 interface BlockState {
   blockedUserIds: string[];
   blockedByMeUserIds: string[];
+  // ⚡ Bolt: O(1) lookup sets maintained in sync with array counterparts
   blockedUserSet: Set<string>;
   blockedByMeUserSet: Set<string>;
   isLoading: boolean;

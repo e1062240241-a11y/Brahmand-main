@@ -1301,6 +1301,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const seenIdsRef = useRef<Set<string>>(new Set());
   // Global pool of ALL posts ever loaded this session — used for recycling when all seen
   const allSessionPostsRef = useRef<any[]>([]);
+  // O(1) lookup set for global session pool to prevent O(N) array iteration on every swipe/fetch
+  const allSessionIdsRef = useRef<Set<string>>(new Set());
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
@@ -1338,8 +1340,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   // Apple Guideline 1.2 - report comment state & blocked users
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
@@ -1396,7 +1398,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1469,7 +1471,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         { cancelable: true }
       );
     }
-  }, [user?.id, blockedByMeUserIds, isCommentVisible]);
+  }, [user?.id, blockedByMeUserSet, isCommentVisible]);
 
   const [autoScroll, setAutoScroll] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
@@ -1834,12 +1836,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       });
 
       // Add any new posts to the global session pool
-      // OPT: Use a Set for O(1) lookup to prevent O(N*M) CPU bottleneck
-      const allSessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
+      // OPT: Use a parallel Set for O(1) lookup to prevent O(N*M) CPU bottleneck
       for (const p of newPosts) {
-        if (p?.id && !allSessionIds.has(p.id)) {
+        if (p?.id && !allSessionIdsRef.current.has(p.id)) {
           allSessionPostsRef.current.push(p);
-          allSessionIds.add(p.id);
+          allSessionIdsRef.current.add(p.id);
         }
       }
 
@@ -1902,9 +1903,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         initialPostRef.current = initialPost;
         seenIdsRef.current.clear();
         allSessionPostsRef.current = [];
+        allSessionIdsRef.current.clear();
         if (initialPost?.id) {
           seenIdsRef.current.add(initialPost.id);
           allSessionPostsRef.current.push(initialPost);
+          allSessionIdsRef.current.add(initialPost.id);
         }
         setVideos([initialPost]);
         setActiveIndex(0);
@@ -2012,10 +2015,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       // Track in session seen set for smarter backend querying
       seenIdsRef.current.add(activePost.id);
       // Add to global session pool if not already there
-      // OPT: Use a Set for O(1) lookup
-      const sessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
-      if (!sessionIds.has(activePost.id)) {
+      // OPT: Use parallel Set for O(1) lookup to prevent O(N) iteration on every swipe
+      if (!allSessionIdsRef.current.has(activePost.id)) {
         allSessionPostsRef.current.push(activePost);
+        allSessionIdsRef.current.add(activePost.id);
       }
     }
   }, [activeIndex, videos]);
@@ -2108,26 +2111,24 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   // not on every parent render triggered by swipe/mute/etc.
   // Filters out comments from blocked users.
   const parentComments = React.useMemo(() => {
-    const blockedSet = new Set(blockedUserIds);
     return localComments.filter((c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedSet.has(String(uid));
+      const isBlocked = uid && blockedUserSet.has(String(uid));
       return !c.parent_id && !isBlocked;
     });
-  }, [localComments, blockedUserIds]);
+  }, [localComments, blockedUserSet]);
 
   const repliesMap = React.useMemo(() => {
-    const blockedSet = new Set(blockedUserIds);
     return localComments.reduce((acc: Record<string, any[]>, c: any) => {
       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-      const isBlocked = uid && blockedSet.has(String(uid));
+      const isBlocked = uid && blockedUserSet.has(String(uid));
       if (c.parent_id && !isBlocked) {
         if (!acc[c.parent_id]) acc[c.parent_id] = [];
         acc[c.parent_id].push(c);
       }
       return acc;
     }, {} as Record<string, any[]>);
-  }, [localComments, blockedUserIds]);
+  }, [localComments, blockedUserSet]);
 
   const handleReply = useCallback((item: any, replyUsername?: string) => {
     setReplyingToComment(item);

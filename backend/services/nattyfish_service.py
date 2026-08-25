@@ -126,7 +126,7 @@ class NattyFishService:
                         logger.error(f"[NattyFish] Send SMS failed — ErrorCode={error_code}, ErrorMessage={error_msg}")
                         raise HTTPException(
                             status_code=400,
-                            detail=f"SMS Gateway Error: {error_msg}"
+                            detail="SMS Gateway Error"
                         )
                 except (ValueError, KeyError):
                     # Response is plain text (some Nettyfish endpoints return non-JSON)
@@ -137,13 +137,13 @@ class NattyFishService:
                     logger.error(f"[NattyFish] Non-JSON error response: {raw}")
                     raise HTTPException(
                         status_code=502,
-                        detail=f"SMS gateway returned unexpected response: {raw[:200]}"
+                        detail="SMS gateway returned an unexpected response."
                     )
             else:
                 logger.error(f"[NattyFish] HTTP {response.status_code}: {response.text}")
                 raise HTTPException(
                     status_code=502,
-                    detail=f"SMS gateway HTTP error {response.status_code}"
+                    detail="SMS gateway HTTP error"
                 )
 
         except HTTPException:

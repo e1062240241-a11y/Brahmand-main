@@ -20,7 +20,7 @@ interface CustomLoaderProps {
 
 export const CustomLoader: React.FC<CustomLoaderProps> = ({
   size = 64,
-  color = '#2563EB', // Vibrant Blue
+  color = '#FF6B00', // Saffron Primary
   message,
   fullScreen = true,
   style,
@@ -49,7 +49,7 @@ export const CustomLoader: React.FC<CustomLoaderProps> = ({
   return (
     <View style={[fullScreen ? styles.fullScreenContainer : styles.inlineContainer, style]}>
       <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-        {/* Rotating Blue Arc Spinner */}
+        {/* Rotating Arc Spinner */}
         <Animated.View style={[styles.absoluteCenter, animatedSpinnerStyle]}>
           <Svg
             width={size}
@@ -81,19 +81,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent',
   },
   inlineContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
+    backgroundColor: 'transparent',
   },
   absoluteCenter: {
     position: 'absolute',
   },
   messageText: {
     marginTop: 10,
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',

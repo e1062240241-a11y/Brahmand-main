@@ -10,7 +10,6 @@ import { MentionText } from '../../src/components/MentionText';
 import { ReportModal } from '../../src/components/ReportModal';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 import SharePostModal from '../../src/components/SharePostModal';
-import UploadPostModal from '../../src/components/UploadPostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
@@ -20,7 +19,6 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useBlockStore } from '../../src/store/blockStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
-import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
@@ -29,7 +27,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useAudioPlayer } from 'expo-audio';
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -38,7 +35,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, Interacti
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
-import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess } from '../../src/components/home/homeConstants';
+import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
 import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
 
 let FileSystemModule: any = null;
@@ -86,9 +83,8 @@ export default function HomeScreen() {
   const currentUserId = (user as any)?.id;
 
   // Global block store — shared across all screens
-  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
-  const blockedSet = useMemo(() => new Set(blockedUserIds), [blockedUserIds]);
-  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const blockedUserSet = useBlockStore(state => state.blockedUserSet);
+  const blockedByMeUserSet = useBlockStore(state => state.blockedByMeUserSet);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
   const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
@@ -138,9 +134,6 @@ export default function HomeScreen() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [, setActiveCommentMenuId] = useState<string | null>(null);
-  const [showUploadPostModal, setShowUploadPostModal] = useState(false);
-  const [showProfileActions, setShowProfileActions] = useState(false);
-  const [, setUploadingPhoto] = useState(false);
   // Apple Guideline 1.2 - report modal state
   const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
   const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
@@ -281,12 +274,17 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Auto-scroll for quick access feature cards
+  // Dynamic rotational ordering for quick access feature cards
+  const [quickAccessRotation, setQuickAccessRotation] = useState(0);
+  const quickAccessItems = useMemo(() => getDynamicQuickAccess(quickAccessRotation), [quickAccessRotation]);
+
+  // Fluid smooth auto-scroll for quick access feature cards
   const topFeaturesAutoScrollIndex = useRef(0);
   useEffect(() => {
     if (!isFocused) return;
-    const CARD_WIDTH = 185; // 175 card + 10 gap
-    const TOTAL_CARDS = baseQuickAccess.length;
+    const CARD_WIDTH = featureSnapInterval || 185;
+    const TOTAL_CARDS = quickAccessItems.length;
+
     topFeaturesIntervalRef.current = setInterval(() => {
       if (AppState.currentState !== 'active') return;
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
@@ -294,11 +292,12 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 15000);
+    }, 5500);
+
     return () => {
       if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
     };
-  }, [isFocused]);
+  }, [isFocused, quickAccessItems.length, featureSnapInterval]);
 
   useEffect(() => {
     if (user?.id) {
@@ -549,6 +548,18 @@ export default function HomeScreen() {
   const hanumanStatus = getCurrentHanumanStatus(now);
   const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
+  const [kathaStatus, setKathaStatus] = useState<any | null>(null);
+
+  const fetchKathaStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/katha/status');
+      if (res && res.data && res.data.status === 'success') {
+        setKathaStatus(res.data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch katha status on home:', err);
+    }
+  }, []);
 
   const lastRemindersTimeRef = useRef<number>(0);
   const fetchReminders = async (force = false) => {
@@ -713,10 +724,8 @@ export default function HomeScreen() {
         if (!store.hasCheckedMyVendor) {
           store.fetchMyVendor().catch(() => { });
         }
-        if (!store.vendors || store.vendors.length === 0) {
-          store.fetchVendors().catch(() => { });
-        }
         fetchReminders(true);
+        fetchKathaStatus();
       });
       return () => {
         task.cancel();
@@ -726,37 +735,6 @@ export default function HomeScreen() {
       };
     }, [])
   );
-
-  const handleUploadStart = async (
-    media: any,
-    caption: string,
-    filterName?: string,
-    communityLevel: string = 'city',
-    category: string = 'feed',
-    mediaWidth?: number,
-    mediaHeight?: number,
-    cropOffsetX?: number,
-    cropOffsetY?: number,
-    originalWidth?: number,
-    originalHeight?: number
-  ) => {
-    useUploadStore.getState().startBackgroundUpload({
-      uri: media.uri,
-      type: media.mimeType,
-      name: media.name,
-      mediaType: media.mediaType,
-      caption,
-      selectedFilter: filterName || 'Normal',
-      communityLevel,
-      uploadCategory: category,
-      mediaWidth,
-      mediaHeight,
-      offsetXPercent: cropOffsetX,
-      offsetYPercent: cropOffsetY,
-      originalWidth,
-      originalHeight
-    });
-  };
 
   useEffect(() => {
     setBioText(user?.bio || 'Sanatan Lok Community');
@@ -822,15 +800,17 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    setQuickAccessRotation(prev => prev + 1);
     try {
       await initializeHome(true);
       await fetchReminders(true);
+      await fetchKathaStatus();
     } catch (err) {
       console.warn('Refresh failed:', err);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
-  }, [initializeHome, fetchReminders]);
+  }, [initializeHome, fetchReminders, fetchKathaStatus]);
 
   // Feed quality management is now handled by FeedSection component
 
@@ -872,46 +852,6 @@ export default function HomeScreen() {
     } catch (error) {
       console.warn('Failed to update bio:', error);
       setBioText(user?.bio || 'Sanatan Lok Community');
-    }
-  };
-
-  const handleOpenChangeProfilePicture = async () => {
-    setShowProfileActions(false);
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Media library permission required to select a profile picture.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as any,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      base64: true,
-    });
-
-    if (result.canceled || !result.assets?.length) {
-      return;
-    }
-
-    const asset = result.assets[0];
-    if (!asset.base64) {
-      alert('Could not read selected image. Please try again.');
-      return;
-    }
-
-    setUploadingPhoto(true);
-    try {
-      const mime = asset.mimeType || 'image/jpeg';
-      const photo = `data:${mime};base64,${asset.base64}`;
-      const response = await updateProfile({ photo });
-      updateUser((response.data || { photo }) as any);
-    } catch (error) {
-      console.warn('Failed to update profile photo from home:', error);
-      alert('Could not save profile picture. Check connection and try again.');
-    } finally {
-      setUploadingPhoto(false);
     }
   };
 
@@ -1393,7 +1333,7 @@ export default function HomeScreen() {
     const targetUserId = post?.user_id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1454,13 +1394,13 @@ export default function HomeScreen() {
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedByMeUserIds, handleDeletePost, handleReportPost]);
+  }, [currentUserId, blockedByMeUserSet, handleDeletePost, handleReportPost]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserSet.has(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
@@ -1551,33 +1491,13 @@ export default function HomeScreen() {
       ]);
       setCommentOptionsModalVisible(true);
     }
-  }, [currentUserId, blockedByMeUserIds, commentModalVisible]);
+  }, [currentUserId, blockedByMeUserSet, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {
       router.push(`/profile/${post.user_id}`);
     }
   }, [router]);
-
-  const handleUploadPostSuccess = (post: any) => {
-    const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-    const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
-
-    const normalizedPost = post ? {
-      ...post,
-      mediaUrl: post.mediaUrl || post.media_url,
-      media_url: post.media_url || post.mediaUrl,
-      mediaType: post.mediaType || post.media_type,
-      media_type: post.media_type || post.mediaType,
-      thumbnailUrl: post.thumbnailUrl || post.thumbnail_url || post.metadata?.thumbnail_url,
-      thumbnail_url: post.thumbnail_url || post.thumbnailUrl || post.metadata?.thumbnail_url,
-    } : post;
-
-    setTabFeed(activeTab, {
-      posts: [normalizedPost, ...currentPosts],
-      offset: currentOffset + 1
-    });
-  };
 
   const handleSubmitRequest = async (data: any) => {
     try {
@@ -1660,7 +1580,6 @@ export default function HomeScreen() {
       handleSetReminder={handleSetReminder}
       handleLiveJaapNavigation={handleLiveJaapNavigation}
       handleNotificationPress={handleNotificationPress}
-      setShowProfileActions={setShowProfileActions}
       hanumanStatus={hanumanStatus}
       shivaStatus={shivaStatus}
       hanumanChantCount={hanumanChantCount}
@@ -1668,7 +1587,6 @@ export default function HomeScreen() {
       safeCommunityRequests={safeCommunityRequests}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
-      setShowUploadPostModal={setShowUploadPostModal}
       activeFeatureIndex={activeFeatureIndex}
       setActiveFeatureIndex={setActiveFeatureIndex}
       activeBannerIndex={activeBannerIndex}
@@ -1688,9 +1606,13 @@ export default function HomeScreen() {
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
       isFocused={isFocused}
+      kathaStatus={kathaStatus}
+      quickAccessItems={quickAccessItems}
     />
   ), [
     isFocused,
+    kathaStatus,
+    quickAccessItems,
     insets.top,
     user,
     firstName,
@@ -1715,7 +1637,6 @@ export default function HomeScreen() {
     handleFollowUser,
     recentSearches,
     handleNotificationPress,
-    setShowProfileActions,
     handleSetReminder,
     handleLiveJaapNavigation,
     safeCommunityRequests,
@@ -1739,12 +1660,11 @@ export default function HomeScreen() {
               onShare={handleSharePost}
               scrollRef={scrollViewRef}
               onScroll={handleHomeScroll}
-              onCreatePost={() => setShowUploadPostModal(true)}
               homeHeader={memoizedHeader}
               onRefresh={onRefresh}
               isRefreshing={isRefreshing}
-              blockedUserIds={blockedUserIds}
-              blockedByMeUserIds={blockedByMeUserIds}
+              blockedUserSet={blockedUserSet}
+              blockedByMeUserSet={blockedByMeUserSet}
             />
           </View>
 
@@ -1781,55 +1701,6 @@ export default function HomeScreen() {
               </View>
             </View>
           </Modal>
-
-          <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
-            <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
-              <View style={styles.actionSheet}>
-                <View style={styles.bottomSheetHandle} />
-                <Text style={styles.actionSheetTitle}>Create</Text>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    setShowProfileActions(false);
-                    setShowUploadPostModal(true);
-                  }}
-                >
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
-                    <Ionicons name="add-circle" size={24} color="#4CAF50" />
-                  </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>New Post</Text>
-                    <Text style={styles.profileActionDesc}>Share a photo or video</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
-                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
-                    <Ionicons name="camera" size={24} color="#2196F3" />
-                  </View>
-                  <View style={styles.profileActionTextWrap}>
-                    <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
-                    <Text style={styles.profileActionDesc}>Update your profile picture</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
-                  <Text style={styles.actionCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          </Modal>
-
-          <UploadPostModal
-            visible={showUploadPostModal}
-            onClose={() => setShowUploadPostModal(false)}
-            onUploadSuccess={handleUploadPostSuccess}
-            onUploadStart={handleUploadStart}
-          />
 
           <RequestFormModal
             visible={showRequestModal}
@@ -1998,7 +1869,7 @@ export default function HomeScreen() {
                   ) : postComments.length > 0 ? (() => {
                     const filteredComments = postComments.filter((c: any) => {
                       const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                      return !uid || !blockedSet.has(String(uid));
+                      return !uid || !blockedUserSet.has(String(uid));
                     });
                     const parentComments = filteredComments.filter(c => !c.parent_id);
                     const repliesMap = filteredComments.reduce((acc, c) => {
