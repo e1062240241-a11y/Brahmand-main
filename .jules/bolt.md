@@ -33,3 +33,6 @@
 ## 2024-08-22 - [Frontend Performance: Fix broken state reference for blockedByMeUserSet]
 **Learning:** When attempting to extract a Zustand set property (`blockedByMeUserSet`) to replace an array lookup (`blockedByMeUserIds`), be careful to correctly destructure from the store state. An incomplete change leads to `TypeError` at runtime.
 **Action:** When updating store references in component hooks, double check that the returned property is defined in the store interface and matches the destructured variable.
+## 2024-11-20 - [Performance: Prevent blocking asyncio event loop with synchronous Firestore calls]
+**Learning:** To prevent blocking the asynchronous event loop in the Python backend, avoid calling synchronous Firestore methods like `ref.get()`, `ref.update()`, `ref.delete()`, `ref.set()`, or `query.stream()` inside `async def` functions. Instead, use the custom `FirestoreDB` wrapper's async batch methods, such as `await db.get_document()` or `await db.query_documents()`.
+**Action:** When updating endpoints, I will replace any calls to the synchronous `firebase-admin` client methods with their asynchronous equivalents provided by `FirestoreDB`.
