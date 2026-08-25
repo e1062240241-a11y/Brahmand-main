@@ -1,12 +1,22 @@
-## What
-Added `accessibilityRole="button"` and `accessibilityLabel` props to various icon-only buttons (`TouchableOpacity` components) in `frontend/app/senior-citizen/request.tsx`.
+## 🔍 What
+Removed unused imports from Python backend config and utility files:
+- `backend/config/database.py`: Removed unused `firestore` import.
+- `backend/config/firestore_db.py`: Removed unused `copy` import.
+- `backend/utils/krishna_gita_db.py`: Removed unused `List` from `typing`.
+- `backend/utils/krishna_personalizer.py`: Removed unused `os`, `json`, `requests`, `base64`.
+- `backend/scratch/backup_bunny.py`: Removed unused `json`.
+- `backend/middleware/rate_limiter.py`: Removed unused `Optional` and `settings`.
+- `backend/middleware/security.py`: Removed unused `Request`.
+- `backend/workers/background_tasks.py`: Removed unused `deque`.
+- `backend/offensive_detector.py`: Removed unused `List` and `Optional`.
 
-## Why
-To ensure screen reader accessibility for users relying on assistive technology. This allows the screen reader to announce these elements as buttons, state their functionality via descriptive labels, and also narrate their selected/disabled state appropriately.
+## 🎯 Why
+These modules and types were imported but never referenced in the files, acting as dead code that clutters the environment and potentially consumes minor memory on load.
 
-## Before/After
-Before: The screen reader would only announce the text inside the icon-only buttons or not announce the component at all if no text was present, leaving users confused about the interactive nature of these buttons.
-After: The screen reader will correctly announce "Close dropdown options, button", "Go back, button", "Post Request, button", etc., making it clear what action will occur when tapped.
+## ✅ Verification
+1. Used `pyflakes` to identify exactly which imports were unused.
+2. Verified changes by compiling all edited files (`python -m py_compile <filepath>`), which completed successfully with zero syntax errors.
+3. Verified via manual file reviews that the removed modules/types were definitely not referenced in the respective modules.
 
-## Accessibility
-Added ARIA labels and roles to interactive UI elements for improved screen reader support on both iOS (VoiceOver) and Android (TalkBack). Also mapped React native state variables like `urgency === item` to `accessibilityState={{ selected: urgency === item }}`.
+## 📊 Impact
+Cleaned up 9 files in the backend codebase, making the files leaner and removing compiler/linter warnings.
