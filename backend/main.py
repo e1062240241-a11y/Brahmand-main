@@ -11013,10 +11013,8 @@ IDENTITY RULES:
     try:
         from datetime import datetime, timezone
         db = await get_firestore()
-        chat_ref = db.collection('krishna_chats').document(user_id)
-        chat_doc = chat_ref.get()
-        if chat_doc.exists:
-            chat_data = chat_doc.to_dict()
+        chat_data = await db.get_document('krishna_chats', user_id)
+        if chat_data:
             db_messages = chat_data.get("messages", [])
             profile = chat_data.get("profile", profile)
             history_summaries = chat_data.get("history_summaries", [])
@@ -11027,9 +11025,9 @@ IDENTITY RULES:
     # Fetch user's name from Firestore for personalization
     user_name = "mere bhakta"
     try:
-        user_doc = db.collection('users').document(user_id).get()
-        if user_doc.exists:
-            name_val = user_doc.to_dict().get("name")
+        user_data = await db.get_document('users', user_id)
+        if user_data:
+            name_val = user_data.get('name')
             if name_val and name_val.strip():
                 user_name = name_val.strip()
     except Exception as fs_name_err:
@@ -11218,7 +11216,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             # Limit history to 100 messages to respect document limits
             db_messages = db_messages[-100:]
 
-            chat_ref.set({
+            await db.set_document('krishna_chats', user_id, {
                 "messages": db_messages,
                 "profile": profile,
                 "history_summaries": history_summaries,
@@ -11247,9 +11245,9 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
     try:
         db = await get_firestore()
         user_id = token_data["user_id"]
-        chat_doc = db.collection('krishna_chats').document(user_id).get()
-        if chat_doc.exists:
-            return {"messages": chat_doc.to_dict().get("messages", [])}
+        chat_data = await db.get_document('krishna_chats', user_id)
+        if chat_data:
+            return {'messages': chat_data.get('messages', [])}
         return {"messages": []}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -11262,7 +11260,7 @@ async def delete_chat_history(token_data: dict = Depends(verify_token)):
     try:
         db = await get_firestore()
         user_id = token_data["user_id"]
-        db.collection('krishna_chats').document(user_id).delete()
+        await db.delete_document('krishna_chats', user_id)
         return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)
