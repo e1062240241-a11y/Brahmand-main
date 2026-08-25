@@ -1,22 +1,9 @@
-## 🔍 What
-Removed unused imports from Python backend config and utility files:
-- `backend/config/database.py`: Removed unused `firestore` import.
-- `backend/config/firestore_db.py`: Removed unused `copy` import.
-- `backend/utils/krishna_gita_db.py`: Removed unused `List` from `typing`.
-- `backend/utils/krishna_personalizer.py`: Removed unused `os`, `json`, `requests`, `base64`.
-- `backend/scratch/backup_bunny.py`: Removed unused `json`.
-- `backend/middleware/rate_limiter.py`: Removed unused `Optional` and `settings`.
-- `backend/middleware/security.py`: Removed unused `Request`.
-- `backend/workers/background_tasks.py`: Removed unused `deque`.
-- `backend/offensive_detector.py`: Removed unused `List` and `Optional`.
+🚨 Severity: MEDIUM
 
-## 🎯 Why
-These modules and types were imported but never referenced in the files, acting as dead code that clutters the environment and potentially consumes minor memory on load.
+💡 Vulnerability: Information Exposure (CWE-209). Exception strings outputted via `subprocess.CalledProcessError` could inadvertently be caught down the line, although they are currently caught and wrapped securely, passing `exc` into unhandled `RuntimeError` strings provides an unnecessary vector of exposure if error handling configurations are changed or unhandled by higher wrappers.
 
-## ✅ Verification
-1. Used `pyflakes` to identify exactly which imports were unused.
-2. Verified changes by compiling all edited files (`python -m py_compile <filepath>`), which completed successfully with zero syntax errors.
-3. Verified via manual file reviews that the removed modules/types were definitely not referenced in the respective modules.
+🎯 Impact: Passing internal errors containing `ffprobe` or `ffmpeg` commands could potentially leak the server's directory layout, underlying tool constraints, or underlying dependencies/infrastructure paths.
 
-## 📊 Impact
-Cleaned up 9 files in the backend codebase, making the files leaner and removing compiler/linter warnings.
+🔧 Fix: Replaced `RuntimeError(f"Failed to execute ffprobe binary: {exc}")` and `RuntimeError(f"Failed to execute ffmpeg binary: {exc}")` with constant, generic strings `RuntimeError("Failed to execute ffprobe binary")` and `RuntimeError("Failed to execute ffmpeg binary")` inside `backend/routes/video_upload_routes.py`. The raw strings are still securely logged internally via `logger.warning`.
+
+✅ Verification: Check `backend/routes/video_upload_routes.py` lines 137 and 229, verifying that `f"... {exc}"` formatting has been removed from `RuntimeError` constructors. Code verified via `python -m py_compile backend/routes/video_upload_routes.py`.
