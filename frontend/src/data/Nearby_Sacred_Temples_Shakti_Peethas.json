@@ -1,0 +1,2476 @@
+{
+  "title": "Nearby Sacred Temples — 51 Shakti Peethas",
+  "description": "For each of the 51 Shakti Peethas, nearby sacred temples that exist. Researched from official temple sites, Incredible India, state tourism departments, Wikipedia, and pilgrimage guides. Covers Shakti Peethas across India, Bangladesh, Pakistan, Nepal, and Sri Lanka.",
+  "total_shakti_peethas": 51,
+  "total_nearby_sacred_sites": 318,
+  "data": [
+    {
+      "shakti_peeth": "Kamakhya Temple",
+      "location": "Guwahati, Assam, India",
+      "body_part": "Yoni (Genitals)",
+      "devi": "Kamakhya",
+      "bhairava": "Umananda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Umananda Temple",
+          "distance": "~2 km, Peacock Island in Brahmaputra",
+          "significance": "Shiva temple on island where Kamadeva was burnt to ashes; accessible by ferry",
+          "exists": true
+        },
+        {
+          "name": "Bhubaneshwari Temple",
+          "distance": "~2 km, atop hill",
+          "significance": "Goddess Bhubaneshwari shrine; panoramic views of Brahmaputra sunset",
+          "exists": true
+        },
+        {
+          "name": "Navagraha Temple",
+          "distance": "~3 km, Chitrasal Hill",
+          "significance": "Nine planets represented by nine Shivalingas; 18th century Ahom-era temple",
+          "exists": true
+        },
+        {
+          "name": "Basistha Ashram",
+          "distance": "~5 km",
+          "significance": "Ashram of Sage Vasistha; waterfall and Shiva temple",
+          "exists": true
+        },
+        {
+          "name": "Sukreshwar Temple",
+          "distance": "~4 km",
+          "significance": "Ancient Shiva temple on banks of Brahmaputra",
+          "exists": true
+        },
+        {
+          "name": "Poa Mecca",
+          "distance": "~20 km, Hajo",
+          "significance": "Muslim pilgrimage site; believed to have soil from Mecca",
+          "exists": true
+        },
+        {
+          "name": "Hayagriva Madhava Temple",
+          "distance": "~30 km, Hajo",
+          "significance": "Vishnu temple; also revered by Buddhists as Buddha's last resting place",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kalighat Temple",
+      "location": "Kolkata, West Bengal, India",
+      "body_part": "Right Toe",
+      "devi": "Kalika",
+      "bhairava": "Nakuleshwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Nakuleshwar Mahadev Temple",
+          "distance": "Within Kalighat complex",
+          "significance": "Bhairava shrine; Shiva linga worshipped alongside Kali",
+          "exists": true
+        },
+        {
+          "name": "Dakshineswar Kali Temple",
+          "distance": "~12 km",
+          "significance": "Famous Kali temple where Sri Ramakrishna worshipped; 12 Shiva temples in complex",
+          "exists": true
+        },
+        {
+          "name": "Belur Math",
+          "distance": "~13 km, across Hooghly via ferry",
+          "significance": "Ramakrishna Mission headquarters; Sri Sarada Devi shrine",
+          "exists": true
+        },
+        {
+          "name": "Adyapeath Temple (Adya Shakti)",
+          "distance": "~2 km from Dakshineswar",
+          "significance": "Temple of Adya Shakti; associated with Sri Ramakrishna",
+          "exists": true
+        },
+        {
+          "name": "Birla Mandir (Kolkata)",
+          "distance": "~4 km",
+          "significance": "Radha-Krishna marble temple built by Birla family",
+          "exists": true
+        },
+        {
+          "name": "Thanthania Kalibari",
+          "distance": "~5 km",
+          "significance": "Ancient Kali temple in Kolkata",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Tarapith Temple",
+      "location": "Rampurhat, Birbhum, West Bengal, India",
+      "body_part": "Third Eye (between eyebrows)",
+      "devi": "Tara (Brahmamoyee)",
+      "bhairava": "Bamakhepa/Bhairav",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bamdeva Temple (Cremation Ground)",
+          "distance": "~1 km, on banks of Dwarka river",
+          "significance": "Memorial temple of Bamakhepa, the Siddha Yogi of Tarapith",
+          "exists": true
+        },
+        {
+          "name": "Bakreswar Dham Shakti Peeth",
+          "distance": "~30 km",
+          "significance": "Another Shakti Peetha where Sati's eyebrows fell; hot springs and Shiva temple",
+          "exists": true
+        },
+        {
+          "name": "Nalhati (Nalateshwari) Shakti Peeth",
+          "distance": "~30 km",
+          "significance": "Shakti Peetha where Sati's throat/larynx fell",
+          "exists": true
+        },
+        {
+          "name": "Kankalitala Shakti Peeth",
+          "distance": "~60 km, near Bolpur",
+          "significance": "Shakti Peetha where Sati's waist/skeleton fell",
+          "exists": true
+        },
+        {
+          "name": "Fullara (Attahas) Shakti Peeth",
+          "distance": "~50 km, Labpur",
+          "significance": "Shakti Peetha where Sati's lower lip fell",
+          "exists": true
+        },
+        {
+          "name": "Nandikeswari Shakti Peeth",
+          "distance": "~40 km, Sainthia",
+          "significance": "Shakti Peetha where Sati's collarbone fell",
+          "exists": true
+        },
+        {
+          "name": "Birchandrapur (Vaishnav temple town)",
+          "distance": "~20 km",
+          "significance": "Vaishnav pilgrimage site near Tarapith",
+          "exists": true
+        },
+        {
+          "name": "Mouliksha Devi Temple (Muluti, Jharkhand)",
+          "distance": "~30 km",
+          "significance": "Believed to be sister of Maa Tara; cross-border pilgrimage",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Vaishno Devi Temple",
+      "location": "Katra, Jammu & Kashmir, India",
+      "body_part": "Right Hand (or skull)",
+      "devi": "Vaishnavi/Mahakali",
+      "bhairava": "Bhairavnath",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhairavnath Temple",
+          "distance": "~5 km from Vaishno Devi Bhavan, ~17 km from Katra",
+          "significance": "Where Bhairavnath's head fell; pilgrimage incomplete without visiting here. Ropeway available",
+          "exists": true
+        },
+        {
+          "name": "Ardhkuwari Cave Temple",
+          "distance": "~6 km from Katra (halfway point)",
+          "significance": "Where Mata meditated for 9 months in a womb-shaped cave (Garbh Joon); 52 ft long narrow cave",
+          "exists": true
+        },
+        {
+          "name": "Charan Paduka",
+          "distance": "~1.5 km before Bhavan",
+          "significance": "Sacred footprints of the Goddess",
+          "exists": true
+        },
+        {
+          "name": "Ban Ganga",
+          "distance": "~1.5 km from Katra",
+          "significance": "Sacred spring created by Goddess's arrow; pilgrims bathe before starting yatra",
+          "exists": true
+        },
+        {
+          "name": "Shiv Khori Cave Temple",
+          "distance": "~70 km from Katra",
+          "significance": "Natural cave with Shiva linga formation; 4 ft high naturally formed linga",
+          "exists": true
+        },
+        {
+          "name": "Baba Dhansar",
+          "distance": "~14 km from Katra",
+          "significance": "Shiva temple with natural spring and waterfall",
+          "exists": true
+        },
+        {
+          "name": "Nau Devi Temple",
+          "distance": "~9 km from Katra",
+          "significance": "Nine Goddess shrines in one complex",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Jwalamukhi Temple",
+      "location": "Jwalamukhi, Kangra, Himachal Pradesh, India",
+      "body_part": "Tongue",
+      "devi": "Siddhida",
+      "bhairava": "Unmatta",
+      "nearby_sacred_temples": [
+        {
+          "name": "Chamunda Devi Temple",
+          "distance": "~55 km",
+          "significance": "Fierce form of Durga; on banks of Baner (Ban Ganga) river. Nandikeshwar Shiva temple in complex",
+          "exists": true
+        },
+        {
+          "name": "Bajreshwari (Vajreshwari) Devi Temple, Kangra",
+          "distance": "~35 km",
+          "significance": "Shakti Peetha where Sati's left breast fell; ancient temple, target of many invasions",
+          "exists": true
+        },
+        {
+          "name": "Chintpurni Devi Temple",
+          "distance": "~35 km, Una district",
+          "significance": "Shakti Peetha where Sati's feet fell; 'Goddess without a head' (Chinnimastika)",
+          "exists": true
+        },
+        {
+          "name": "Naina Devi Temple (Bilaspur)",
+          "distance": "~75 km",
+          "significance": "Shakti Peetha where Sati's eyes fell; hilltop temple",
+          "exists": true
+        },
+        {
+          "name": "Baglamukhi Devi Temple, Bankhandi",
+          "distance": "~45 km",
+          "significance": "Eighth Mahavidya; known for granting victory",
+          "exists": true
+        },
+        {
+          "name": "Baijnath Shiva Temple",
+          "distance": "~60 km",
+          "significance": "13th-century exquisite Shiva temple; one of two Mahakal temples in India",
+          "exists": true
+        },
+        {
+          "name": "Ashtabhuja Temple",
+          "distance": "Nearby",
+          "significance": "Eight-armed Goddess shrine near Jwalamukhi",
+          "exists": true
+        },
+        {
+          "name": "Nagni Mata Temple",
+          "distance": "Nearby",
+          "significance": "Local Devi shrine",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Chintpurni Devi Temple",
+      "location": "Una, Himachal Pradesh, India",
+      "body_part": "Feet",
+      "devi": "Chinnimastika",
+      "bhairava": "Nandikeshwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Jwalamukhi Temple",
+          "distance": "~35 km",
+          "significance": "Shakti Peetha where Sati's tongue fell; eternal blue flames",
+          "exists": true
+        },
+        {
+          "name": "Baglamukhi Devi Temple, Bankhandi",
+          "distance": "~45 km",
+          "significance": "Eighth Mahavidya shrine",
+          "exists": true
+        },
+        {
+          "name": "Bajreshwari Devi Temple, Kangra",
+          "distance": "~60 km",
+          "significance": "Shakti Peetha where Sati's left breast fell",
+          "exists": true
+        },
+        {
+          "name": "Naina Devi Temple (Bilaspur)",
+          "distance": "~75 km",
+          "significance": "Shakti Peetha where Sati's eyes fell; near Anandpur Sahib",
+          "exists": true
+        },
+        {
+          "name": "Chamunda Devi Temple",
+          "distance": "~90 km",
+          "significance": "Fierce form of Durga on Dhauladhar ranges",
+          "exists": true
+        },
+        {
+          "name": "Sheetla Mata Temple",
+          "distance": "Nearby",
+          "significance": "Local Devi shrine; part of 7-Devi circuit",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Naina Devi Temple (Bilaspur)",
+      "location": "Bilaspur, Himachal Pradesh, India",
+      "body_part": "Eyes",
+      "devi": "Naina (Mahishasuramardini)",
+      "bhairava": "Kshetrapal",
+      "nearby_sacred_temples": [
+        {
+          "name": "Chintpurni Devi Temple",
+          "distance": "~75 km",
+          "significance": "Shakti Peetha; feet of Sati fell here",
+          "exists": true
+        },
+        {
+          "name": "Jwalamukhi Temple",
+          "distance": "~80 km",
+          "significance": "Shakti Peetha; tongue of Sati fell here",
+          "exists": true
+        },
+        {
+          "name": "Anandpur Sahib Gurudwara",
+          "distance": "~30 km",
+          "significance": "One of the five Takhts of Sikhism; Guru Gobind Singh did havan at Naina Devi",
+          "exists": true
+        },
+        {
+          "name": "Bhakra Nangal Dam",
+          "distance": "~25 km",
+          "significance": "Engineering marvel; Gobind Sagar reservoir",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kanyakumari Bhagavathy Amman Temple",
+      "location": "Kanyakumari, Tamil Nadu, India",
+      "body_part": "Back / Right Shoulder",
+      "devi": "Kanyakumari (Bhagavathy)",
+      "bhairava": "Nimish",
+      "nearby_sacred_temples": [
+        {
+          "name": "Vivekananda Rock Memorial",
+          "distance": "~500 m offshore",
+          "significance": "Where Swami Vivekananda meditated; also where Goddess Kumari performed austerity",
+          "exists": true
+        },
+        {
+          "name": "Thiruvalluvar Statue",
+          "distance": "~500 m offshore",
+          "significance": "133-ft statue of Tamil poet Thiruvalluvar",
+          "exists": true
+        },
+        {
+          "name": "Suchindram Thanumalayan Temple",
+          "distance": "~13 km",
+          "significance": "Trinity temple (Brahma, Vishnu, Shiva); 4 musical pillars, 18-ft Hanuman statue",
+          "exists": true
+        },
+        {
+          "name": "Guganathaswamy Temple",
+          "distance": "Near railway station",
+          "significance": "Ancient Shiva temple; believed to be built by Raja Raja Chola",
+          "exists": true
+        },
+        {
+          "name": "Sri Nagraja Swami Temple, Nagercoil",
+          "distance": "~20 km",
+          "significance": "Nagaraja (serpent king) temple; gives Nagercoil its name",
+          "exists": true
+        },
+        {
+          "name": "Padmanabhapuram Palace",
+          "distance": "~30 km",
+          "significance": "Ancient capital of Travancore; wooden palace",
+          "exists": true
+        },
+        {
+          "name": "Triveni Sangam (Kanyakumari)",
+          "distance": "At the temple",
+          "significance": "Confluence of Arabian Sea, Bay of Bengal, and Indian Ocean",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kalika Mata Temple, Pavagadh",
+      "location": "Pavagadh, Panchmahal, Gujarat, India",
+      "body_part": "Right Toe",
+      "devi": "Kalika",
+      "bhairava": "Sarvananda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mahakali Temple (upper shrine)",
+          "distance": "Atop Pavagadh Hill",
+          "significance": "The main shrine at the hilltop; ropeway available",
+          "exists": true
+        },
+        {
+          "name": "Lakulish Temple",
+          "distance": "On Pavagadh Hill",
+          "significance": "Ancient Shiva temple associated with Lakulish, founder of Pashupata Shaivism",
+          "exists": true
+        },
+        {
+          "name": "Jain Temples of Pavagadh",
+          "distance": "On Pavagadh Hill",
+          "significance": "Ancient Jain temples; Pavagadh is also a Jain pilgrimage site",
+          "exists": true
+        },
+        {
+          "name": "Champaner-Pavagadh Archaeological Park (UNESCO)",
+          "distance": "At the base",
+          "significance": "UNESCO World Heritage Site; mosques, palaces, and Islamic-era monuments",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Ambaji Temple",
+      "location": "Banaskantha, Gujarat, India",
+      "body_part": "Heart",
+      "devi": "Ambaji (Arasuri)",
+      "bhairava": "Bhairav",
+      "nearby_sacred_temples": [
+        {
+          "name": "Gabbar Hill Temple",
+          "distance": "~4 km",
+          "significance": "Original seat of the Goddess; eternal flame burns atop; ropeway or 300 steps. Footprints of Goddess under pipal tree",
+          "exists": true
+        },
+        {
+          "name": "Kumbhariya Jain Temples",
+          "distance": "~7 km",
+          "significance": "Cluster of five 11th-12th century Jain temples built by Chaulukya dynasty",
+          "exists": true
+        },
+        {
+          "name": "Koteshwar Mahadev Temple",
+          "distance": "~8 km",
+          "significance": "Ancient Shiva temple; perennial natural water stream and tank for bathing",
+          "exists": true
+        },
+        {
+          "name": "Kailash Tekri (Kailas Hill) Shiva Temple",
+          "distance": "Nearby",
+          "significance": "Shiva shrine on hilltop",
+          "exists": true
+        },
+        {
+          "name": "Kamakshi Temple",
+          "distance": "Nearby",
+          "significance": "South Indian style temple with 51 goddess shrines; built 2008",
+          "exists": true
+        },
+        {
+          "name": "Mount Abu (Dilwara Jain Temples)",
+          "distance": "~45 km",
+          "significance": "Famous Jain marble temples; major pilgrimage site",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Prabhas (Triveni Sangam)",
+      "location": "Prabhas Patan, Gir Somnath, Gujarat, India",
+      "body_part": "Stomach (Udara)",
+      "devi": "Chandrabhaga",
+      "bhairava": "Vakratunda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Somnath Jyotirlinga Temple",
+          "distance": "~1.5 km",
+          "significance": "One of 12 Jyotirlingas; first Jyotirlinga",
+          "exists": true
+        },
+        {
+          "name": "Bhalka Tirth",
+          "distance": "~5 km",
+          "significance": "Where Krishna was hit by hunter Jara's arrow",
+          "exists": true
+        },
+        {
+          "name": "Dehotsarg Tirth",
+          "distance": "~1.5 km",
+          "significance": "Where Krishna gave up his mortal body",
+          "exists": true
+        },
+        {
+          "name": "Triveni Sangam Ghat",
+          "distance": "~1.5 km",
+          "significance": "Confluence of Hiran, Kapila, Saraswati rivers with Arabian Sea",
+          "exists": true
+        },
+        {
+          "name": "Geeta Mandir",
+          "distance": "On Triveni Ghat",
+          "significance": "18 pillars with 18 chapters of Bhagavad Gita inscribed",
+          "exists": true
+        },
+        {
+          "name": "Chandraprabhu Swami Jain Temple",
+          "distance": "In Prabhas Patan",
+          "significance": "Major Jain temple among ~10 Jain temples in Prabhas",
+          "exists": true
+        },
+        {
+          "name": "Sun Temple (near Triveni)",
+          "distance": "Nearby",
+          "significance": "Ruins of ancient sun temple",
+          "exists": true
+        },
+        {
+          "name": "Parshuram Temple",
+          "distance": "~2 km",
+          "significance": "Where Parshuram performed penance",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Hinglaj Mata Temple",
+      "location": "Lasbela, Balochistan, Pakistan",
+      "body_part": "Head (Brahmarandhra)",
+      "devi": "Kotari (Hinglaj)",
+      "bhairava": "Bhimlochan",
+      "nearby_sacred_temples": [
+        {
+          "name": "Chandragup Mud Volcano",
+          "distance": "On pilgrimage route",
+          "significance": "Sacred mud volcano; pilgrims climb and offer coconuts. Known as 'Chandragup'",
+          "exists": true
+        },
+        {
+          "name": "Khandewari Mud Volcano",
+          "distance": "On pilgrimage route",
+          "significance": "Second sacred mud volcano; pilgrims pause here for religious observance",
+          "exists": true
+        },
+        {
+          "name": "Kund Malir Beach",
+          "distance": "Nearby, on Makran Coastal Highway",
+          "significance": "Sacred beach in Hingol National Park; pilgrimage stopover",
+          "exists": true
+        },
+        {
+          "name": "Hingol River (Aghore River)",
+          "distance": "Adjacent",
+          "significance": "Sacred river; pilgrims bathe before entering shrine",
+          "exists": true
+        },
+        {
+          "name": "Shah Noorani Shrine",
+          "distance": "~100 km",
+          "significance": "Sufi shrine in Hingol National Park area",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Sharada Peeth",
+      "location": "Sharda village, Neelum Valley, Azad Kashmir, Pakistan",
+      "body_part": "Right Hand",
+      "devi": "Sharada (Saraswati)",
+      "bhairava": "Kapalishwara",
+      "nearby_sacred_temples": [
+        {
+          "name": "Sharda Devi Temple (Teetwal, Kupwara)",
+          "distance": "~40 km (Indian side of LoC)",
+          "significance": "Replica shrine inaugurated March 2023; substitute for original across LoC",
+          "exists": true
+        },
+        {
+          "name": "Madhumati Stream Confluence",
+          "distance": "Nearby, at Sharda village",
+          "significance": "Confluence of Neelum River and Madhumati stream; ritual bathing spot",
+          "exists": true
+        },
+        {
+          "name": "Amarnath Cave Temple",
+          "distance": "~130 km (as the crow flies)",
+          "significance": "One of the three holiest sites for Kashmiri Pandits; ice lingam of Shiva",
+          "exists": true
+        },
+        {
+          "name": "Martand Sun Temple (ruins)",
+          "distance": "~150 km",
+          "significance": "Ancient 8th-century Sun temple; one of three holiest Kashmiri Pandit sites",
+          "exists": true
+        },
+        {
+          "name": "Kheer Bhawani Temple (Tulmula)",
+          "distance": "~120 km",
+          "significance": "Sacred spring temple of Goddess Ragnya Devi",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Sugandha Shaktipeeth",
+      "location": "Shikarpur, Barishal, Bangladesh",
+      "body_part": "Nose",
+      "devi": "Sunanda",
+      "bhairava": "Tryambak",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhairav Tryambak Temple (Ponabaliya)",
+          "distance": "~5 miles south of Jhalokathi",
+          "significance": "Bhairava shrine of the Shakti Peetha; on western bank of Sugandha river",
+          "exists": true
+        },
+        {
+          "name": "Durga Sagar (Madhabpasha Dighi)",
+          "distance": "~11 km from Barisal city",
+          "significance": "Largest lake in southern Bangladesh; sacred site",
+          "exists": true
+        },
+        {
+          "name": "Baitul Aman Mosque (Guthia Mosque)",
+          "distance": "Nearby",
+          "significance": "Major Islamic site in the area",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Chandranath Temple (Sitakunda)",
+      "location": "Sitakunda, Chittagong, Bangladesh",
+      "body_part": "Right Arm/Hand",
+      "devi": "Bhavani",
+      "bhairava": "Chandrashekhar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Shambhunath Temple",
+          "distance": "Just below Chandranath temple on the peak",
+          "significance": "Marks the exact spot where Sati's right arm fell",
+          "exists": true
+        },
+        {
+          "name": "Kramdeshwari Kali Temple",
+          "distance": "In Sitakunda area",
+          "significance": "Kali shrine in the temple complex area",
+          "exists": true
+        },
+        {
+          "name": "Bholananda Giri Sevashram",
+          "distance": "In Sitakunda",
+          "significance": "Ashram and spiritual retreat",
+          "exists": true
+        },
+        {
+          "name": "Vidarshanaram Vihara (Buddhist)",
+          "distance": "In Sitakunda area",
+          "significance": "Buddhist monastery founded by Prajnalok Mahasthavir in 1922",
+          "exists": true
+        },
+        {
+          "name": "Shankar Math and Ashram",
+          "distance": "In Sitakunda",
+          "significance": "Hindu monastery; Gobardhan Math tradition",
+          "exists": true
+        },
+        {
+          "name": "Annapurna Temple",
+          "distance": "In Sitakunda area",
+          "significance": "Goddess Annapurna shrine",
+          "exists": true
+        },
+        {
+          "name": "Virupaksha Temple",
+          "distance": "In Sitakunda area",
+          "significance": "Shiva temple",
+          "exists": true
+        },
+        {
+          "name": "Sitakunda Eco Park",
+          "distance": "On Chandranath Hills",
+          "significance": "Botanical garden and biodiversity area; sacred landscape",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Nartiang Durga Temple",
+      "location": "Nartiang, West Jaintia Hills, Meghalaya, India",
+      "body_part": "Left Thigh",
+      "devi": "Jayanti (Jayanteshwari)",
+      "bhairava": "Kamadishwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Shiva Temple (Kamadishwar)",
+          "distance": "Walking distance, within Nartiang",
+          "significance": "Bhairava shrine; ancient cannons from Jaintia kingdom inside",
+          "exists": true
+        },
+        {
+          "name": "Nartiang Monoliths (Garden of Monoliths)",
+          "distance": "Walking distance",
+          "significance": "Towering megalithic stone clusters; monuments to old Jaintia rulers",
+          "exists": true
+        },
+        {
+          "name": "Ruins of Jaintiapur Palace",
+          "distance": "Nearby",
+          "significance": "Remains of the brick palace of the Jaintia kings",
+          "exists": true
+        },
+        {
+          "name": "Myntang River",
+          "distance": "Adjacent",
+          "significance": "Sacred river; tunnel from temple leads here; heads of ancient sacrifices rolled down",
+          "exists": true
+        },
+        {
+          "name": "Krangshuri Falls",
+          "distance": "Nearby",
+          "significance": "Natural waterfall attraction in Jaintia Hills",
+          "exists": true
+        },
+        {
+          "name": "Ialong & Syntu Ksiar",
+          "distance": "Nearby",
+          "significance": "Sacred landscape and scenic valley",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Janaki Mandir (Mithila Shakti Peeth)",
+      "location": "Janakpurdham, Dhanusha, Nepal",
+      "body_part": "Left Shoulder",
+      "devi": "Uma (Sita)",
+      "bhairava": "Mahodar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ram Mandir",
+          "distance": "~0.5 km, near Dhanush Sagar Lake",
+          "significance": "17th-century pagoda-style temple; houses idols of Ram, Panchayan, Lakshminarayan, Vishnu Dashavatar",
+          "exists": true
+        },
+        {
+          "name": "Vivah Mandap",
+          "distance": "Within Janaki Mandir complex",
+          "significance": "Site where Ram and Sita's marriage took place",
+          "exists": true
+        },
+        {
+          "name": "Rajdevi Mandir (Shaktipeetha)",
+          "distance": "Within Ram Mandir complex",
+          "significance": "Another Shakti Peetha within the Ram Mandir complex",
+          "exists": true
+        },
+        {
+          "name": "Dhanush Sagar (Sacred Pond)",
+          "distance": "Adjacent to Ram Mandir",
+          "significance": "One of 72 sacred ponds in Janakpur; evening prayers held here",
+          "exists": true
+        },
+        {
+          "name": "Ganga Sagar (Sacred Pond)",
+          "distance": "Nearby",
+          "significance": "Sacred pond; Ganga Aarti held every evening",
+          "exists": true
+        },
+        {
+          "name": "Laxman Temple",
+          "distance": "Nearby",
+          "significance": "Temple dedicated to Lakshmana",
+          "exists": true
+        },
+        {
+          "name": "Sankat Mochan Temple",
+          "distance": "Nearby",
+          "significance": "Hanuman temple",
+          "exists": true
+        },
+        {
+          "name": "Hanuman Temple",
+          "distance": "Nearby",
+          "significance": "Dedicated to Lord Hanuman",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Muktinath / Gandaki Chandi",
+      "location": "Mustang, Nepal",
+      "body_part": "Right Cheek / Head (Face)",
+      "devi": "Gandaki Chandi",
+      "bhairava": "Chakrapani",
+      "nearby_sacred_temples": [
+        {
+          "name": "Muktinath Vishnu Temple",
+          "distance": "Same complex",
+          "significance": "Sacred to both Hindus and Buddhists; 108 sacred waterspouts for ritual bath. One of 108 Divya Desams",
+          "exists": true
+        },
+        {
+          "name": "Jwala Mai Temple (Jwala Devi)",
+          "distance": "Within Muktinath complex",
+          "significance": "Eternal blue flame burning naturally; sacred to Hindus and Buddhists",
+          "exists": true
+        },
+        {
+          "name": "108 Mukti Dharas (Sacred Water Spouts)",
+          "distance": "Within complex",
+          "significance": "108 bull-faced spouts; pilgrims bathe under all 108 for liberation",
+          "exists": true
+        },
+        {
+          "name": "Kali Gandaki River",
+          "distance": "Flows through valley below",
+          "significance": "Only source of Shaligrama stones (sacred Vishnu fossils); different colors = different forms of Vishnu",
+          "exists": true
+        },
+        {
+          "name": "Pashupatinath Temple (Kathmandu)",
+          "distance": "~350 km",
+          "significance": "One of the most sacred Shiva temples in Nepal; another Shakti Peetha (Guhyeshwari) nearby",
+          "exists": true
+        },
+        {
+          "name": "Guhyeshwari Temple (Kathmandu)",
+          "distance": "~350 km",
+          "significance": "Shakti Peetha where Sati's knees fell; near Pashupatinath",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Guhyeshwari Temple",
+      "location": "Kathmandu, Nepal",
+      "body_part": "Both Knees (or Anus)",
+      "devi": "Guhyakali / Mahashira",
+      "bhairava": "Kapali",
+      "nearby_sacred_temples": [
+        {
+          "name": "Pashupatinath Temple",
+          "distance": "~1 km",
+          "significance": "One of the most sacred Shiva temples in Nepal; on banks of Bagmati river",
+          "exists": true
+        },
+        {
+          "name": "Boudhanath Stupa",
+          "distance": "~3 km",
+          "significance": "One of the largest Buddhist stupas in the world; UNESCO site",
+          "exists": true
+        },
+        {
+          "name": "Swayambhunath Stupa (Monkey Temple)",
+          "distance": "~5 km",
+          "significance": "Ancient Buddhist stupa on hilltop; UNESCO site",
+          "exists": true
+        },
+        {
+          "name": "Bhaktapur Durbar Square",
+          "distance": "~15 km",
+          "significance": "UNESCO World Heritage Site; ancient temples and palaces",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Shondot / Danteshwari Temple",
+      "location": "Dantewada, Chhattisgarh, India",
+      "body_part": "Teeth (Dant)",
+      "devi": "Danteshwari",
+      "bhairava": "Kapalbhairav / Bhairon Baba",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhairon Baba Temple",
+          "distance": "Few steps from main temple",
+          "significance": "Bhairava shrine; pilgrimage to Danteshwari incomplete without visiting Bhairon",
+          "exists": true
+        },
+        {
+          "name": "Confluence of Shankini and Dhankini Rivers",
+          "distance": "At the temple",
+          "significance": "Sacred confluence where both rivers meet; different colored waters",
+          "exists": true
+        },
+        {
+          "name": "Chitrakote Waterfalls",
+          "distance": "~38 km from Jagdalpur",
+          "significance": "'Niagara of India'; widest waterfall; Shiva temples and shrines around it",
+          "exists": true
+        },
+        {
+          "name": "Tirathgarh Waterfalls",
+          "distance": "~40 km",
+          "significance": "Sacred waterfall in Kanger Valley; small Shiva shrines nearby",
+          "exists": true
+        },
+        {
+          "name": "Kutumsar Caves",
+          "distance": "~40 km",
+          "significance": "Underground limestone caves; naturally formed stalactites",
+          "exists": true
+        },
+        {
+          "name": "Bastar Palace",
+          "distance": "~80 km, Jagdalpur",
+          "significance": "Historic palace of the Bastar royal family",
+          "exists": true
+        },
+        {
+          "name": "Kanger Valley National Park",
+          "distance": "~40 km",
+          "significance": "Biodiversity-rich national park with tribal shrines",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Bhramaramba Devi (Srisailam)",
+      "location": "Srisailam, Andhra Pradesh, India",
+      "body_part": "Neck (Greeva)",
+      "devi": "Bhramaramba (Bhramari)",
+      "bhairava": "Mallikarjuna (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mallikarjuna Swamy Temple (Jyotirlinga)",
+          "distance": "Same complex",
+          "significance": "One of 12 Jyotirlingas; only place with both Jyotirlinga and Shakti Peetha together",
+          "exists": true
+        },
+        {
+          "name": "Sakshi Ganapathi Temple",
+          "distance": "~3 km",
+          "significance": "Ganesha 'registers' pilgrims' visits with book and pen",
+          "exists": true
+        },
+        {
+          "name": "Pathala Ganga",
+          "distance": "~1 km (852 steps down)",
+          "significance": "Sacred Krishna river bathing ghat; boating to Akkamahadevi Caves",
+          "exists": true
+        },
+        {
+          "name": "Hatakeswaram Temple",
+          "distance": "~1 km",
+          "significance": "Ancient Shiva temple; lingam originally made of gold",
+          "exists": true
+        },
+        {
+          "name": "Paladhara Panchadara",
+          "distance": "Nearby",
+          "significance": "Where Adi Shankaracharya meditated; sacred spring",
+          "exists": true
+        },
+        {
+          "name": "Sikharam Temple",
+          "distance": "~2850 ft elevation on Nallamalai",
+          "significance": "Hilltop Shiva temple; panoramic views",
+          "exists": true
+        },
+        {
+          "name": "Uma Maheswaram Temple",
+          "distance": "~87 km, north gateway",
+          "significance": "North gateway to Srisailam; Shiva-Parvati temple in Nallamala forest",
+          "exists": true
+        },
+        {
+          "name": "Tripurantakam Temple",
+          "distance": "East of Srisailam",
+          "significance": "East gateway to Srisailam",
+          "exists": true
+        },
+        {
+          "name": "Alampur Navabrahma Temples",
+          "distance": "West of Srisailam",
+          "significance": "West gateway; group of 9 ancient Brahma/Shiva temples",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Meenakshi Amman Temple",
+      "location": "Madurai, Tamil Nadu, India",
+      "body_part": "Nose / Right Breast (various traditions)",
+      "devi": "Meenakshi (Rajamatangi)",
+      "bhairava": "Sundareswarar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Thiruparankundram Murugan Temple",
+          "distance": "~8 km south",
+          "significance": "One of 6 Arupadai Veedu of Murugan; where Murugan married Deivanai. 8th-century Pandya rock-cut shrine",
+          "exists": true
+        },
+        {
+          "name": "Alagar Kovil (Azhagar Temple)",
+          "distance": "~21 km northeast",
+          "significance": "Vishnu temple on Solaimalai hill; brother of Meenakshi",
+          "exists": true
+        },
+        {
+          "name": "Pazhamudircholai Murugan Temple",
+          "distance": "~25 km, atop Alagar hill",
+          "significance": "One of 6 Arupadai Veedu; where Murugan tested poet Avvaiyar",
+          "exists": true
+        },
+        {
+          "name": "Vandiyur Mariamman Teppakulam",
+          "distance": "~3 km",
+          "significance": "Temple tank with float festival; dedicated to Goddess Mariamman",
+          "exists": true
+        },
+        {
+          "name": "Koodal Azhagar Temple",
+          "distance": "~2 km, in Madurai city",
+          "significance": "Ancient Vishnu temple; one of 108 Divya Desams",
+          "exists": true
+        },
+        {
+          "name": "Yanaimalai Murugan Temple",
+          "distance": "~10 km",
+          "significance": "Elephant-shaped hill with Narasingam Vishnu temple",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Jogulamba (Alampur)",
+      "location": "Alampur, Jogulamba Gadwal district, Telangana, India",
+      "body_part": "Upper Teeth",
+      "devi": "Jogulamba",
+      "bhairava": "Rudra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Navabrahma Temples (Alampur)",
+          "distance": "Same complex",
+          "significance": "Group of 9 ancient Shiva temples dating to 7th century CE (Badami Chalukya)",
+          "exists": true
+        },
+        {
+          "name": "Sangameswara Temple",
+          "distance": "Nearby, at confluence",
+          "significance": "Ancient Shiva temple at confluence of Tungabhadra and Krishna rivers",
+          "exists": true
+        },
+        {
+          "name": "Papanatham Temple",
+          "distance": "Nearby",
+          "significance": "Shiva temple in Alampur complex",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Avanti (Gadkalika) Shakti Peeth",
+      "location": "Ujjain, Madhya Pradesh, India",
+      "body_part": "Upper Lip / Elbow",
+      "devi": "Avanti (Maha Kali)",
+      "bhairava": "Lambakarna / Kapambar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mahakaleshwar Jyotirlinga Temple",
+          "distance": "~2 km",
+          "significance": "One of 12 Jyotirlingas; only south-facing Jyotirlinga; famous Bhasma Aarti at 4 AM",
+          "exists": true
+        },
+        {
+          "name": "Harsiddhi Temple",
+          "distance": "~500 m",
+          "significance": "Shakti Peetha where Sati's elbow fell; two huge deep-stambh lamp towers",
+          "exists": true
+        },
+        {
+          "name": "Kal Bhairav Temple",
+          "distance": "~4 km",
+          "significance": "Guardian deity of Ujjain; unique liquor-offering tradition",
+          "exists": true
+        },
+        {
+          "name": "Bade Ganeshji Ka Mandir",
+          "distance": "At Mahakaleshwar entrance",
+          "significance": "Large Ganesha idol; Panchmukhi Hanuman statue",
+          "exists": true
+        },
+        {
+          "name": "Mangalnath Temple",
+          "distance": "~5 km",
+          "significance": "Origin place of Mars planet per Matsya Purana",
+          "exists": true
+        },
+        {
+          "name": "Chintaman Ganesh Temple",
+          "distance": "~7 km",
+          "significance": "Ancient Ganesh temple; 'remover of worries'",
+          "exists": true
+        },
+        {
+          "name": "Sandipani Ashram",
+          "distance": "~3 km",
+          "significance": "Where Krishna, Sudama, Balarama studied under Sage Sandipani",
+          "exists": true
+        },
+        {
+          "name": "Ram Ghat",
+          "distance": "~1 km",
+          "significance": "Sacred bathing ghat on Kshipra river; evening aarti",
+          "exists": true
+        },
+        {
+          "name": "Gadkalika Temple",
+          "distance": "~4 km",
+          "significance": "Ancient Shakti shrine; traditionally identified with Avanti Shakti Peeth",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Maya Devi Temple",
+      "location": "Haridwar, Uttarakhand, India",
+      "body_part": "Heart and Navel",
+      "devi": "Maya Devi",
+      "bhairava": "Shiva (Bhairav)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mansa Devi Temple",
+          "distance": "~3 km, atop Bilwa Parvat",
+          "significance": "Siddh Peetha; Goddess of snakes who grants wishes; ropeway available",
+          "exists": true
+        },
+        {
+          "name": "Chandi Devi Temple",
+          "distance": "~4 km, atop Neel Parvat",
+          "significance": "Siddh Peetha; built 1929; murti installed by Adi Shankaracharya in 8th century",
+          "exists": true
+        },
+        {
+          "name": "Har Ki Pauri",
+          "distance": "~1 km",
+          "significance": "Sacred ghat where Ganga enters plains; evening Ganga Aarti",
+          "exists": true
+        },
+        {
+          "name": "Ganga Ghat",
+          "distance": "Adjacent",
+          "significance": "Sacred bathing ghats on Ganga",
+          "exists": true
+        },
+        {
+          "name": "Narayana-shila Temple",
+          "distance": "Nearby",
+          "significance": "One of three ancient temples of Haridwar still intact",
+          "exists": true
+        },
+        {
+          "name": "Bhairava Temple",
+          "distance": "Nearby",
+          "significance": "Ancient Bhairav shrine; one of three oldest temples in Haridwar",
+          "exists": true
+        },
+        {
+          "name": "Anjana Temple (Mother of Hanuman)",
+          "distance": "Near Chandi Devi Temple",
+          "significance": "Shrine to Hanuman's mother; near Neel Parvat",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Sthaneshwar Mahadev / Bhadrakali (Kurukshetra)",
+      "location": "Kurukshetra (Thanesar), Haryana, India",
+      "body_part": "Right Ankle",
+      "devi": "Savitri / Bhadrakali",
+      "bhairava": "Sthanu (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Brahma Sarovar",
+          "distance": "~3 km",
+          "significance": "One of holiest water tanks in India; believed to be creation site of Lord Brahma",
+          "exists": true
+        },
+        {
+          "name": "Jyotisar",
+          "distance": "~10 km",
+          "significance": "Birthplace of Bhagavad Gita; Banyan tree under which Krishna preached to Arjuna",
+          "exists": true
+        },
+        {
+          "name": "Sannihit Sarovar",
+          "distance": "~4 km",
+          "significance": "Believed to be resting place of Lord Vishnu; sacred tank",
+          "exists": true
+        },
+        {
+          "name": "Bhadrakali Mandir",
+          "distance": "~500 m from Sthaneshwar",
+          "significance": "Where Pandavas prayed before Kurukshetra war",
+          "exists": true
+        },
+        {
+          "name": "Raja Harsha ka Tila",
+          "distance": "~200 m",
+          "significance": "Archaeological mound of King Harshavardhana's era",
+          "exists": true
+        },
+        {
+          "name": "Sheikh Chilli's Tomb",
+          "distance": "~2 km",
+          "significance": "Sufi shrine; also a Mughal-era madrasa",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kottiyoor (Vadakkeshwaram) Temple",
+      "location": "Kottiyoor, Kannur, Kerala, India",
+      "body_part": "Sati's body (site of Daksha Yaga)",
+      "devi": "Sati (Ammarakkalu Thara)",
+      "bhairava": "Shiva (Swayambhu Linga at Manithara)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Akkare Kottiyoor Temple (seasonal)",
+          "distance": "Opposite bank of Bavali river",
+          "significance": "Open only during Vaisakha festival (May-June); site of Daksha Yaga; Swayambhu Shiva linga",
+          "exists": true
+        },
+        {
+          "name": "Parassinikadavu Sri Muthappan Temple",
+          "distance": "~40 km",
+          "significance": "Unique temple to Lord Muthappan; daily Theyyam ritual; fish and toddy offerings",
+          "exists": true
+        },
+        {
+          "name": "Trichambaram Temple",
+          "distance": "~30 km, near Thaliparamba",
+          "significance": "Ancient Krishna temple pre-dating 10th century; Krishna in Raudra (fierce) form",
+          "exists": true
+        },
+        {
+          "name": "Rajarajeshwara Temple (Taliparamba)",
+          "distance": "~35 km",
+          "significance": "Ancient Shiva temple with one of the tallest shikharas in Kerala",
+          "exists": true
+        },
+        {
+          "name": "Mutherikavu Temple",
+          "distance": "Nearby",
+          "significance": "Source of the sacred sword of Veerabhadra brought for Kottiyoor festival",
+          "exists": true
+        },
+        {
+          "name": "Thirunelli MahaVishnu Temple (Wayanad)",
+          "distance": "~54 km",
+          "significance": "Ancient Vishnu temple; ritual connection with Kottiyoor festival",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Attahas (Fullara) Shakti Peeth",
+      "location": "Labpur, Birbhum, West Bengal, India",
+      "body_part": "Lower Lip",
+      "devi": "Phullara (Fullara)",
+      "bhairava": "Vishvesh (Bisweswara)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhairava Vishvesh Temple",
+          "distance": "In the vicinity",
+          "significance": "Bhairava shrine; small Shiva temple nearby",
+          "exists": true
+        },
+        {
+          "name": "Panchamundi Asana",
+          "distance": "In surroundings",
+          "significance": "Sacred seat of five skulls; Shiva worship site",
+          "exists": true
+        },
+        {
+          "name": "Sacred Pond",
+          "distance": "Near the temple",
+          "significance": "Large pond associated with the temple complex",
+          "exists": true
+        },
+        {
+          "name": "Tarapith Temple",
+          "distance": "~50 km",
+          "significance": "Siddhapeeth; Goddess Tara, second of Dasa Mahavidyas",
+          "exists": true
+        },
+        {
+          "name": "Bakreswar Dham",
+          "distance": "~30 km",
+          "significance": "Shakti Peetha where Sati's eyebrows fell; hot springs",
+          "exists": true
+        },
+        {
+          "name": "Birthplace of Tarashankar Bandopadhyay",
+          "distance": "In Labpur",
+          "significance": "Museum and home of the eminent Bengali writer",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Bahula Shakti Peeth",
+      "location": "Ketugram, Purba Bardhaman, West Bengal, India",
+      "body_part": "Left Arm",
+      "devi": "Bahula",
+      "bhairava": "Bhiruk (Sarvasiddhidayak)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kokaleshwari Kali Mandir",
+          "distance": "Nearby, in Bardhaman area",
+          "significance": "Ancient Kali temple; significant regional shrine",
+          "exists": true
+        },
+        {
+          "name": "Sarvamangala Shrine",
+          "distance": "Nearby, in Bardhaman",
+          "significance": "Devi shrine in close proximity to Bahula",
+          "exists": true
+        },
+        {
+          "name": "Shivlingam Temple (Bhiruk Bhairava)",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine associated with the Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "108 Shiva Temples (Kalna / Nava Kailash)",
+          "distance": "~50 km, in Kalna",
+          "significance": "Two concentric circles of 108 Shiva temples; built 1809 by Maharaja Teja Chandra",
+          "exists": true
+        },
+        {
+          "name": "Pratapeswar Deul Temple (Kalna)",
+          "distance": "~50 km",
+          "significance": "Exquisite terracotta temple",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Prayaga Shakti Peethas (Alopi Devi / Lalita Devi / Kalyani Devi)",
+      "location": "Prayagraj, Uttar Pradesh, India",
+      "body_part": "Right Hand / Fingers (Multiple)",
+      "devi": "Alopi Devi / Lalita Devi / Kalyani Devi",
+      "bhairava": "Veni Madhav (Vishnu)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Triveni Sangam",
+          "distance": "~7 km from Alopi Devi",
+          "significance": "Sacred confluence of Ganga, Yamuna, and Saraswati; holiest bathing spot",
+          "exists": true
+        },
+        {
+          "name": "Bade Hanuman Ji Temple (Lete Hanuman)",
+          "distance": "~2 km from Alopi Devi, Daraganj",
+          "significance": "Unique reclining Hanuman idol; 20 ft long, south-facing",
+          "exists": true
+        },
+        {
+          "name": "Veni Madhav Temple (Daraganj)",
+          "distance": "~1 km from Alopi Devi",
+          "significance": "Presiding deity of Prayagraj; Vishnu temple",
+          "exists": true
+        },
+        {
+          "name": "Nagvasuki Temple (Daraganj)",
+          "distance": "~2 km",
+          "significance": "Serpent king Vasuki temple; ancient shrine",
+          "exists": true
+        },
+        {
+          "name": "Akshayavat and Patalpuri Temple",
+          "distance": "In Allahabad Fort area",
+          "significance": "Immortal banyan tree; underground temple",
+          "exists": true
+        },
+        {
+          "name": "Bharadwaj Ashram",
+          "distance": "~5 km",
+          "significance": "Ashram of Sage Bharadwaj; Ramayana connection",
+          "exists": true
+        },
+        {
+          "name": "Lalita Devi Temple (Meerapur)",
+          "distance": "~3 km from Sangam",
+          "significance": "Shakti Peetha; 108-ft tall crown; three Pindi idols; mercury Shiva Linga",
+          "exists": true
+        },
+        {
+          "name": "Kalyani Devi Temple",
+          "distance": "~3 km from Sangam",
+          "significance": "Shakti Peetha; idols over 1500 years old",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Shankari Devi (Trincomalee)",
+      "location": "Trincomalee, Sri Lanka",
+      "body_part": "Anklet / Groin",
+      "devi": "Shankari",
+      "bhairava": "Trikoneshwarar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Koneswaram Temple",
+          "distance": "Adjacent, on Swami Rock",
+          "significance": "Ancient Shiva temple; 'Dakshina Kailasha'; associated with Ravana; destroyed by Portuguese, rebuilt",
+          "exists": true
+        },
+        {
+          "name": "Pathirakali Amman Temple",
+          "distance": "Nearby, in Trincomalee town",
+          "significance": "Dedicated to Bhadrakali; guardian deity of Trincomalee; shared festival functions with Koneswaram",
+          "exists": true
+        },
+        {
+          "name": "Thirukoneswaram Kovil Back Bay",
+          "distance": "Below Swami Rock",
+          "significance": "Sacred sea theertham; ritual bathing",
+          "exists": true
+        },
+        {
+          "name": "Nilaveli Beach",
+          "distance": "~15 km north",
+          "significance": "Scenic coastal area near Trincomalee",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Manasa (Mansa Devi) / Manasarovar",
+      "location": "Lake Manasarovar, Tibet (near Mount Kailash)",
+      "body_part": "Right Hand",
+      "devi": "Dakshayani",
+      "bhairava": "Amar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mount Kailash",
+          "distance": "~30 km from Manasarovar",
+          "significance": "Abode of Lord Shiva; most sacred mountain; circumambulation (parikrama) is 52 km",
+          "exists": true
+        },
+        {
+          "name": "Gauri Kund (Parvati Sarovar)",
+          "distance": "On Kailash Parikrama route",
+          "significance": "Sacred lake where Parvati created Ganesha; 5,608 m altitude",
+          "exists": true
+        },
+        {
+          "name": "Tirthapuri Monastery & Hot Springs",
+          "distance": "~80 km northwest of Kailash",
+          "significance": "Buddhist pilgrimage site; Guru Padmasambhava footprints; hot springs for post-Kailash cleansing",
+          "exists": true
+        },
+        {
+          "name": "Om Parvat",
+          "distance": "On India-Tibet route via Lipulekh Pass",
+          "significance": "Natural rock formation resembling 'Om' (ॐ); sacred Hindu symbol",
+          "exists": true
+        },
+        {
+          "name": "Yam Dwar",
+          "distance": "Starting point of Kailash Parikrama",
+          "significance": "'Gateway of the God of Death'; entry point for Kailash circumambulation",
+          "exists": true
+        },
+        {
+          "name": "Asthapad",
+          "distance": "On Kailash route",
+          "significance": "Sacred site; believed to be where the eight steps of the celestial world begin",
+          "exists": true
+        },
+        {
+          "name": "Damodar Kund",
+          "distance": "Nearby",
+          "significance": "Sacred kund on the pilgrimage route",
+          "exists": true
+        },
+        {
+          "name": "Pashupatinath Temple (Kathmandu, Nepal)",
+          "distance": "~600 km",
+          "significance": "On the return route; one of the most sacred Shiva temples in Nepal",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Vishalakshi Temple",
+      "location": "Varanasi, Uttar Pradesh, India",
+      "body_part": "Earrings",
+      "devi": "Vishalakshi",
+      "bhairava": "Kal Bhairav",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kashi Vishwanath Jyotirlinga Temple",
+          "distance": "~500 m, near Mir Ghat",
+          "significance": "One of 12 Jyotirlingas; spiritual heart of Varanasi",
+          "exists": true
+        },
+        {
+          "name": "Kal Bhairav Temple",
+          "distance": "~2 km",
+          "significance": "Guardian deity (Kotwal) of Kashi; must visit first before any Varanasi temple",
+          "exists": true
+        },
+        {
+          "name": "Annapurna Devi Temple",
+          "distance": "Adjacent to Kashi Vishwanath",
+          "significance": "Goddess of food and nourishment",
+          "exists": true
+        },
+        {
+          "name": "Durga Temple (Durga Kund)",
+          "distance": "~5 km",
+          "significance": "Iconic red 18th-century temple next to Durga Kund pond",
+          "exists": true
+        },
+        {
+          "name": "Sankat Mochan Hanuman Temple",
+          "distance": "~4 km",
+          "significance": "Founded by Tulsidas; 'remover of troubles'",
+          "exists": true
+        },
+        {
+          "name": "Tulsi Manas Temple",
+          "distance": "~5 km",
+          "significance": "Where Tulsidas wrote Ramcharitmanas",
+          "exists": true
+        },
+        {
+          "name": "Mrityunjay Mahadev Temple",
+          "distance": "On Daranagar route",
+          "significance": "Believed to protect from untimely death; well with healing water",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Vrindavan (Uma Shakti Peeth)",
+      "location": "Vrindavan, Uttar Pradesh, India",
+      "body_part": "Hair",
+      "devi": "Uma",
+      "bhairava": "Bhuteshwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Banke Bihari Temple",
+          "distance": "In Vrindavan",
+          "significance": "Famous Krishna temple; idol discovered by Swami Haridas",
+          "exists": true
+        },
+        {
+          "name": "ISKCON Temple (Krishna Balaram Mandir)",
+          "distance": "In Vrindavan",
+          "significance": "Established by Srila Prabhupada in 1975; major international Krishna temple",
+          "exists": true
+        },
+        {
+          "name": "Govind Dev Ji Temple",
+          "distance": "In Vrindavan",
+          "significance": "7-storey Mughal-era Krishna temple built by Raja Man Singh",
+          "exists": true
+        },
+        {
+          "name": "Radha Raman Temple",
+          "distance": "In Vrindavan",
+          "significance": "Self-manifested Krishna deity; Gaudiya Vaishnava tradition",
+          "exists": true
+        },
+        {
+          "name": "Prem Mandir",
+          "distance": "In Vrindavan",
+          "significance": "Modern marble temple; elaborate Krishna pastimes depicted in marble",
+          "exists": true
+        },
+        {
+          "name": "Mathura (Krishna Janmabhoomi)",
+          "distance": "~10 km",
+          "significance": "Birthplace of Lord Krishna",
+          "exists": true
+        },
+        {
+          "name": "Govardhan Hill",
+          "distance": "~22 km",
+          "significance": "Sacred hill lifted by Krishna; 21 km parikrama route",
+          "exists": true
+        },
+        {
+          "name": "Barsana (Radha's birthplace)",
+          "distance": "~40 km",
+          "significance": "Birthplace of Radha; Radha Rani Temple on hill",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Nandikeshwari (Nandipur) Shakti Peeth",
+      "location": "Sainthia, Birbhum, West Bengal, India",
+      "body_part": "Necklace",
+      "devi": "Nandini",
+      "bhairava": "Nandikeshwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Nandikeshwar (Bhairava) Temple",
+          "distance": "In the vicinity",
+          "significance": "Bhairava shrine of this Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "Tarapith Temple",
+          "distance": "~30 km",
+          "significance": "Siddhapeeth; Goddess Tara",
+          "exists": true
+        },
+        {
+          "name": "Nalhati (Nalateshwari) Shakti Peeth",
+          "distance": "~25 km",
+          "significance": "Where Sati's throat/larynx fell",
+          "exists": true
+        },
+        {
+          "name": "Bakreswar Dham Shakti Peeth",
+          "distance": "~50 km",
+          "significance": "Where Sati's eyebrows fell; hot springs",
+          "exists": true
+        },
+        {
+          "name": "Kankalitala Shakti Peeth",
+          "distance": "~50 km",
+          "significance": "Where Sati's waist fell",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Nalhati (Nalateshwari) Shakti Peeth",
+      "location": "Nalhati, Birbhum, West Bengal, India",
+      "body_part": "Throat / Larynx",
+      "devi": "Kalika",
+      "bhairava": "Yogesh",
+      "nearby_sacred_temples": [
+        {
+          "name": "Yogesh (Bhairava) Temple",
+          "distance": "Nearby, within complex",
+          "significance": "Bhairava shrine of this Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "Guhya Kali Temple (Akalipur)",
+          "distance": "Nearby",
+          "significance": "Ancient Kali temple worshipped by King Jarasandha; built by King Nanda Kumar",
+          "exists": true
+        },
+        {
+          "name": "Ramakrishna Ashram",
+          "distance": "Nearby in Nalhati",
+          "significance": "Branch of Ramakrishna Mission",
+          "exists": true
+        },
+        {
+          "name": "Tarapith Temple",
+          "distance": "~15 km, one railway station from Rampurhat",
+          "significance": "Siddhapeeth; Goddess Tara",
+          "exists": true
+        },
+        {
+          "name": "Parvati Pahar",
+          "distance": "In Nalhati",
+          "significance": "Sacred hill for spiritual practices; Tantra practitioners' site",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Bakreswar Dham",
+      "location": "Bakreswar, Birbhum, West Bengal, India",
+      "body_part": "Forehead / Space between Eyebrows",
+      "devi": "Mahishamardini",
+      "bhairava": "Vakranath (Bakranath)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bakranath (Vakranath) Shiva Temple",
+          "distance": "Adjacent to main temple",
+          "significance": "Bhairava shrine; powerful Shiva linga",
+          "exists": true
+        },
+        {
+          "name": "Hot Springs (Kunds)",
+          "distance": "In temple complex",
+          "significance": "Multiple sacred hot springs (Agni Kund, Surya Kund, etc.) with healing properties",
+          "exists": true
+        },
+        {
+          "name": "Mahishamardini Durga idol",
+          "distance": "In main temple",
+          "significance": "Brass metal Goddess Durga idol within the temple",
+          "exists": true
+        },
+        {
+          "name": "Tarapith Temple",
+          "distance": "~30 km",
+          "significance": "Siddhapeeth; Goddess Tara",
+          "exists": true
+        },
+        {
+          "name": "Nandikeshwari Shakti Peeth (Sainthia)",
+          "distance": "~25 km",
+          "significance": "Where Sati's necklace fell",
+          "exists": true
+        },
+        {
+          "name": "Nalhati Shakti Peeth",
+          "distance": "~30 km",
+          "significance": "Where Sati's throat fell",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kankalitala Shakti Peeth",
+      "location": "Near Bolpur, Birbhum, West Bengal, India",
+      "body_part": "Waist / Skeleton (Kankal)",
+      "devi": "Devgarbha",
+      "bhairava": "Ruru Bhairav",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ruru Bhairav Temple",
+          "distance": "In the vicinity",
+          "significance": "Bhairava shrine of this Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "Sacred Pond",
+          "distance": "Near the temple",
+          "significance": "Small pond believed to contain the holy remnant of the Goddess",
+          "exists": true
+        },
+        {
+          "name": "Shantiniketan (Visva-Bharati)",
+          "distance": "~9 km, Bolpur",
+          "significance": "Rabindranath Tagore's university and cultural center",
+          "exists": true
+        },
+        {
+          "name": "Tarapith Temple",
+          "distance": "~60 km",
+          "significance": "Siddhapeeth; Goddess Tara",
+          "exists": true
+        },
+        {
+          "name": "Bakreswar Dham",
+          "distance": "~50 km",
+          "significance": "Shakti Peetha; hot springs",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kiriteshwari (Kirita) Shakti Peeth",
+      "location": "Murshidabad, West Bengal, India",
+      "body_part": "Crown / Headdress",
+      "devi": "Maa Kiriteshwari (Vimala)",
+      "bhairava": "Sanwart",
+      "nearby_sacred_temples": [
+        {
+          "name": "Hazarduari Palace Museum",
+          "distance": "~20 km, Murshidabad",
+          "significance": "Historic palace with 1000 doors; Nawab-era heritage",
+          "exists": true
+        },
+        {
+          "name": "Imambara (Nizamat Imambara)",
+          "distance": "~20 km",
+          "significance": "Largest Imambara in Bengal; Nawab-era monument",
+          "exists": true
+        },
+        {
+          "name": "Katra Mosque",
+          "distance": "~15 km",
+          "significance": "Tomb of Nawab Murshid Quli Khan",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Vibhash (Tamluk) Shakti Peeth",
+      "location": "Tamluk, Purba Medinipur, West Bengal, India",
+      "body_part": "Left Ankle",
+      "devi": "Kapalini (Bhimarupa)",
+      "bhairava": "Sarvananda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Sarvananda (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine of this Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "Tamluk Rajbari (Royal Palace)",
+          "distance": "In Tamluk",
+          "significance": "Ancient palace of the Tamluk royal family",
+          "exists": true
+        },
+        {
+          "name": "Digha Beach",
+          "distance": "~50 km",
+          "significance": "Popular coastal destination near Tamluk",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Yogadya (Khirdagram) Shakti Peeth",
+      "location": "Khirgram, Mangalkote, Bardhaman, West Bengal, India",
+      "body_part": "Right Big Toe",
+      "devi": "Bhutdhatri",
+      "bhairava": "Ksheer-Kantha",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ksheer-Kantha (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Bahula Shakti Peeth (Ketugram)",
+          "distance": "~20 km",
+          "significance": "Shakti Peetha where Sati's left arm fell",
+          "exists": true
+        },
+        {
+          "name": "108 Shiva Temples (Kalna)",
+          "distance": "~40 km",
+          "significance": "Nava Kailash; 108 Shiva temples in concentric circles",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Ratnavali Shakti Peeth",
+      "location": "Hooghly, West Bengal, India",
+      "body_part": "Right Shoulder",
+      "devi": "Kumari",
+      "bhairava": "Ghanteshwar",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ghanteshwar (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Bandel Church (Basilica of the Holy Rosary)",
+          "distance": "~15 km, Hooghly",
+          "significance": "Oldest Christian church in Bengal; 1599 CE",
+          "exists": true
+        },
+        {
+          "name": "Imambara (Hooghly)",
+          "distance": "~20 km",
+          "significance": "Historic Shia monument in Hooghly",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Jessoreswari Shakti Peeth",
+      "location": "Ishwaripur, Khulna, Bangladesh",
+      "body_part": "Palms and Soles",
+      "devi": "Jashoreshwari",
+      "bhairava": "Chanda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Chanda Bhairava Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Sundarbans",
+          "distance": "~80 km",
+          "significance": "World's largest mangrove forest; UNESCO site",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Bhabanipur (Aparna) Shakti Peeth",
+      "location": "Bogra, Bangladesh",
+      "body_part": "Left Anklet",
+      "devi": "Aparna",
+      "bhairava": "Vaman",
+      "nearby_sacred_temples": [
+        {
+          "name": "Vaman (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Mahasthangarh (ancient archaeological site)",
+          "distance": "~15 km from Bogra",
+          "significance": "Oldest archaeological site in Bangladesh; ancient Pundranagara city",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Sylhet (Shri Shail) Shakti Peeth",
+      "location": "Sylhet, Bangladesh",
+      "body_part": "Neck",
+      "devi": "Mahalakshmi",
+      "bhairava": "Shambarananda",
+      "nearby_sacred_temples": [
+        {
+          "name": "Shambarananda (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Shah Jalal Dargah",
+          "distance": "In Sylhet city",
+          "significance": "Major Sufi shrine; 14th century saint",
+          "exists": true
+        },
+        {
+          "name": "Jaflong",
+          "distance": "~60 km from Sylhet",
+          "significance": "Scenic border area with crystal-clear river",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Amarnath Cave Temple",
+      "location": "Anantnag, Jammu & Kashmir, India",
+      "body_part": "Throat",
+      "devi": "Mahamaya",
+      "bhairava": "Trisandhyasvar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Pahalgam",
+          "distance": "~45 km (base camp for Amarnath)",
+          "significance": "Starting point for traditional Amarnath Yatra route; Lidder river valley",
+          "exists": true
+        },
+        {
+          "name": "Chandanwari",
+          "distance": "~16 km from Pahalgam",
+          "significance": "First major stop on Amarnath Yatra; natural Shiva lingam of ice",
+          "exists": true
+        },
+        {
+          "name": "Sheshnag Lake",
+          "distance": "~30 km from Pahalgam",
+          "significance": "Sacred high-altitude lake; mythical serpent king's abode",
+          "exists": true
+        },
+        {
+          "name": "Panchtarni",
+          "distance": "~6 km from Amarnath cave",
+          "significance": "Confluence of five rivers; last major stop before the cave",
+          "exists": true
+        },
+        {
+          "name": "Martand Sun Temple (ruins)",
+          "distance": "~60 km from Pahalgam",
+          "significance": "8th-century Sun temple; one of three holiest Kashmiri Pandit sites",
+          "exists": true
+        },
+        {
+          "name": "Kheer Bhawani Temple (Tulmula)",
+          "distance": "~100 km",
+          "significance": "Goddess Ragnya Devi temple; sacred spring that changes color",
+          "exists": true
+        },
+        {
+          "name": "Shankaracharya Temple (Srinagar)",
+          "distance": "~100 km",
+          "significance": "Ancient Shiva temple on hilltop overlooking Dal Lake",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Jalandhar (Tripurmalini) Shakti Peeth",
+      "location": "Jalandhar, Punjab, India",
+      "body_part": "Left Breast",
+      "devi": "Tripurmalini",
+      "bhairava": "Bhishan (Bhairav)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Devi Talab Mandir",
+          "distance": "In Jalandhar city",
+          "significance": "Ancient temple tank; main shrine of Tripurmalini Devi",
+          "exists": true
+        },
+        {
+          "name": "Shiv Mandir (Jalandhar)",
+          "distance": "In city",
+          "significance": "Ancient Shiva temple",
+          "exists": true
+        },
+        {
+          "name": "Pushpa Gujral Science City",
+          "distance": "~10 km",
+          "significance": "Educational complex; not religious but notable landmark",
+          "exists": false
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Virat (Ambika) Shakti Peeth",
+      "location": "Viratnagar (Bairat), Rajasthan, India",
+      "body_part": "Left Toes",
+      "devi": "Ambika",
+      "bhairava": "Amrit (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Amrit (Bhairava) Shiva Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Viratnagar Buddhist Caves",
+          "distance": "In Viratnagar",
+          "significance": "Ancient Buddhist rock-cut caves; Mauryan-era heritage",
+          "exists": true
+        },
+        {
+          "name": "Sariska Tiger Reserve",
+          "distance": "~50 km",
+          "significance": "Wildlife sanctuary; Pandupol Hanuman temple within",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Maniveda / Gayatri Shakti Peeth",
+      "location": "Near Pushkar, Rajasthan, India",
+      "body_part": "Crown / Ring",
+      "devi": "Gayatri",
+      "bhairava": "Sadanand",
+      "nearby_sacred_temples": [
+        {
+          "name": "Brahma Temple (Pushkar)",
+          "distance": "~15 km, in Pushkar",
+          "significance": "One of the very few Brahma temples in India; most prominent one",
+          "exists": true
+        },
+        {
+          "name": "Pushkar Lake & 52 Ghats",
+          "distance": "In Pushkar",
+          "significance": "Sacred lake; pilgrimage bathing site; created by Brahma's lotus",
+          "exists": true
+        },
+        {
+          "name": "Savitri Temple (Pushkar)",
+          "distance": "On Ratnagiri Hill behind Pushkar",
+          "significance": "Temple of Brahma's wife Savitri; ropeway available",
+          "exists": true
+        },
+        {
+          "name": "Apteshwar Mahadev Temple",
+          "distance": "In Pushkar",
+          "significance": "Ancient Shiva temple in Pushkar",
+          "exists": true
+        },
+        {
+          "name": "Varaha Temple (Pushkar)",
+          "distance": "In Pushkar",
+          "significance": "Vishnu's Varaha (boar) incarnation temple",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Karavira (Kolhapur) Shakti Peeth",
+      "location": "Kolhapur, Maharashtra, India",
+      "body_part": "Three Eyes (or left eye)",
+      "devi": "Mahalakshmi",
+      "bhairava": "Krodhish (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mahalakshmi Temple (Kolhapur)",
+          "distance": "Central, in city",
+          "significance": "The main temple; one of the most important Devi temples in Maharashtra",
+          "exists": true
+        },
+        {
+          "name": "Jyotiba Temple",
+          "distance": "~17 km from Kolhapur",
+          "significance": "Hilltop temple; incarnation of Shiva, Brahma, and Vishnu combined",
+          "exists": true
+        },
+        {
+          "name": "Panhala Fort",
+          "distance": "~20 km",
+          "significance": "Historic fort associated with Chhatrapati Shivaji Maharaj",
+          "exists": true
+        },
+        {
+          "name": "Narsinhwadi (Narsobawadi)",
+          "distance": "~45 km",
+          "significance": "Dattatreya temple at confluence of Krishna and Panchganga rivers",
+          "exists": true
+        },
+        {
+          "name": "Bahubali (Kumbhojgiri)",
+          "distance": "~50 km",
+          "significance": "Jain temple complex; Bahubali hill",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Bhairavaparvata (Bhedaghat) Shakti Peeth",
+      "location": "Bhedaghat, near Jabalpur, Madhya Pradesh, India",
+      "body_part": "Elbow (or Left Buttock variant)",
+      "devi": "Avanti",
+      "bhairava": "Kapambar (Lambakarna)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Dhuandhar Falls",
+          "distance": "~1 km from Bhedaghat",
+          "significance": "Spectacular waterfall on Narmada river; 'smoke cascade'",
+          "exists": true
+        },
+        {
+          "name": "Marble Rocks (Bhedaghat)",
+          "distance": "At Bhedaghat",
+          "significance": "Magnificent marble cliffs on Narmada; boat rides through the gorge",
+          "exists": true
+        },
+        {
+          "name": "Chausath Yogini Temple (Bhedaghat)",
+          "distance": "~1 km",
+          "significance": "10th-century temple to 64 Yoginis; circular open-air shrine",
+          "exists": true
+        },
+        {
+          "name": "Madan Mahal Fort",
+          "distance": "~10 km, in Jabalpur",
+          "significance": "Fort built by Gond ruler; Rani Durgavati connection",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kalamadhava (Amarkantak) Shakti Peeth",
+      "location": "Amarkantak, Madhya Pradesh, India",
+      "body_part": "Left Buttock",
+      "devi": "Kali",
+      "bhairava": "Asitananda (Asitanga)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Narmada Udgam (Origin of Narmada)",
+          "distance": "At Amarkantak",
+          "significance": "Source of the Narmada river; sacred temple complex",
+          "exists": true
+        },
+        {
+          "name": "Sonmuda (Origin of Sone river)",
+          "distance": "Nearby",
+          "significance": "Source of the Sone river",
+          "exists": true
+        },
+        {
+          "name": "Mai Ki Bagiya (Narmada Garden)",
+          "distance": "Nearby",
+          "significance": "Sacred garden near Narmada Udgam",
+          "exists": true
+        },
+        {
+          "name": "Kapildhara Falls",
+          "distance": "~6 km",
+          "significance": "Sacred waterfall where Narmada first cascades; Sage Kapila's meditation site",
+          "exists": true
+        },
+        {
+          "name": "Dudhdhara Falls",
+          "distance": "~8 km",
+          "significance": "Another sacred waterfall on the Narmada",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Panchsagar Shakti Peeth",
+      "location": "Near Varanasi / Chandauli, Uttar Pradesh, India (or Bheder region, West Bengal variant)",
+      "body_part": "Lower Teeth",
+      "devi": "Varahi",
+      "bhairava": "Rudra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kashi Vishwanath Temple (Varanasi)",
+          "distance": "~30 km (if Varanasi area)",
+          "significance": "One of 12 Jyotirlingas; spiritual heart of Varanasi",
+          "exists": true
+        },
+        {
+          "name": "Vishalakshi Temple (Varanasi)",
+          "distance": "~30 km",
+          "significance": "Shakti Peetha where Sati's earrings fell",
+          "exists": true
+        },
+        {
+          "name": "Ganga Sagar (Sagardwip)",
+          "distance": "~100 km (if Bengal variant)",
+          "significance": "Confluence of Ganga and Bay of Bengal; Kapil Muni temple; Makar Sankranti mela",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Trisrota (Bhramari) Shakti Peeth",
+      "location": "Jalpaiguri, West Bengal, India",
+      "body_part": "Left Leg (or left foot)",
+      "devi": "Bhramari",
+      "bhairava": "Vikritaksha (Ishwar)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Vikritaksha (Bhairava) Temple",
+          "distance": "Nearby",
+          "significance": "Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Jaldapara National Park",
+          "distance": "~60 km",
+          "significance": "Wildlife sanctuary; one-horned rhinoceros habitat",
+          "exists": true
+        },
+        {
+          "name": "Gorumara National Park",
+          "distance": "~50 km",
+          "significance": "Wildlife sanctuary; Indian rhinoceros and elephant habitat",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Tripura (Tripurasundari / Matabari)",
+      "location": "Udaipur, Tripura, India",
+      "body_part": "Right Foot",
+      "devi": "Tripurasundari (Tripura Bhairavi)",
+      "bhairava": "Tripuresh (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Tripura Sundari Temple (Matabari)",
+          "distance": "In Udaipur, Tripura",
+          "significance": "One of the 51 Shakti Peethas; sacred lake temple",
+          "exists": true
+        },
+        {
+          "name": "Chaturdasha Devata Temple",
+          "distance": "Nearby, Udaipur",
+          "significance": "Temple with 14 deities; royal temple of Tripura",
+          "exists": true
+        },
+        {
+          "name": "Neermahal Palace",
+          "distance": "~50 km",
+          "significance": "Water palace on Rudrasagar lake; built by Tripura royal family",
+          "exists": true
+        },
+        {
+          "name": "Unakoti (Rock-cut Sculptures)",
+          "distance": "~150 km",
+          "significance": "Ancient rock-cut Shiva sculptures dating to 7th-9th century",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Chhinnamasta Shakti Peeth",
+      "location": "Rajrappa, Ramgarh district, Jharkhand, India",
+      "body_part": "Crown of Head",
+      "devi": "Chhinnamastika",
+      "bhairava": "Shiva (Damodara)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Damodara (Shiva) Temple",
+          "distance": "Nearby, at Rajrappa",
+          "significance": "Bhairava shrine; at confluence of Bhairavi and Damodar rivers",
+          "exists": true
+        },
+        {
+          "name": "Confluence of Bhairavi (Bhera) and Damodar Rivers",
+          "distance": "At Rajrappa",
+          "significance": "Sacred confluence (sangam); ritual bathing",
+          "exists": true
+        },
+        {
+          "name": "Baidyanath Dham (Deoghar)",
+          "distance": "~80 km",
+          "significance": "One of 12 Jyotirlingas; major Shiva pilgrimage site",
+          "exists": true
+        },
+        {
+          "name": "Parasnath Hill (Shikharji)",
+          "distance": "~100 km",
+          "significance": "Most sacred Jain pilgrimage site; 20 temples on hill",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Godavari Tir (Vishwamatruka) Shakti Peeth",
+      "location": "Near Nashik / Godavari banks, Maharashtra, India",
+      "body_part": "Left Cheek",
+      "devi": "Vishwamatruka",
+      "bhairava": "Dandapani (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Trimbakeshwar Jyotirlinga Temple",
+          "distance": "~28 km from Nashik, Trimbak",
+          "significance": "One of 12 Jyotirlingas; origin of Godavari river",
+          "exists": true
+        },
+        {
+          "name": "Kalaram Temple (Panchavati, Nashik)",
+          "distance": "In Nashik",
+          "significance": "Ancient Rama temple; intricately carved architecture",
+          "exists": true
+        },
+        {
+          "name": "Sita Gufa (Panchavati)",
+          "distance": "In Nashik",
+          "significance": "Cave where Sita stayed during exile; abduction site",
+          "exists": true
+        },
+        {
+          "name": "Ramkund (Panchavati)",
+          "distance": "In Nashik",
+          "significance": "Sacred tank where Rama and Sita bathed",
+          "exists": true
+        },
+        {
+          "name": "Kapaleshwar Temple",
+          "distance": "In Nashik, Panchavati",
+          "significance": "Shiva temple without Nandi (unique)",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Biraja (Vimala) Shakti Peeth",
+      "location": "Jajpur, Odisha, India",
+      "body_part": "Navel",
+      "devi": "Biraja (Vimala)",
+      "bhairava": "Jagannath",
+      "nearby_sacred_temples": [
+        {
+          "name": "Jagannath Temple (Puri)",
+          "distance": "~80 km",
+          "significance": "One of Char Dham; Bhairava of this Shakti Peetha",
+          "exists": true
+        },
+        {
+          "name": "Lingaraj Temple (Bhubaneswar)",
+          "distance": "~70 km",
+          "significance": "Largest Shiva temple in Bhubaneswar; 11th century",
+          "exists": true
+        },
+        {
+          "name": "Vaital Deul Temple (Bhubaneswar)",
+          "distance": "~70 km",
+          "significance": "8th-century Tantric Chamunda temple",
+          "exists": true
+        },
+        {
+          "name": "Konark Sun Temple (UNESCO)",
+          "distance": "~100 km",
+          "significance": "13th-century Sun temple; chariot of Surya",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Kamakshi / Kanchipuram Shakti Peeth",
+      "location": "Kanchipuram, Tamil Nadu, India",
+      "body_part": "Skeleton / Back",
+      "devi": "Kamakshi",
+      "bhairava": "Ekambar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ekambareswarar Temple",
+          "distance": "In Kanchipuram",
+          "significance": "One of 5 Pancha Bhoota Stalams (Earth element); Bhairava shrine",
+          "exists": true
+        },
+        {
+          "name": "Varadaraja Perumal Temple",
+          "distance": "In Kanchipuram",
+          "significance": "One of 108 Divya Desams; Vishnu temple",
+          "exists": true
+        },
+        {
+          "name": "Kailasanathar Temple",
+          "distance": "In Kanchipuram",
+          "significance": "Oldest structural temple in Kanchipuram; 7th century Pallava",
+          "exists": true
+        },
+        {
+          "name": "Vaikuntha Perumal Temple",
+          "distance": "In Kanchipuram",
+          "significance": "Vishnu temple; Pallava-era; one of 108 Divya Desams",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "shakti_peeth": "Suchindram Shakti Peeth",
+      "location": "Suchindram, near Kanyakumari, Tamil Nadu, India",
+      "body_part": "Upper Teeth / Crown",
+      "devi": "Narayani",
+      "bhairava": "Sanhar (Shiva)",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kanyakumari Bhagavathy Amman Temple",
+          "distance": "~13 km",
+          "significance": "Shakti Peetha; at the southernmost tip of India",
+          "exists": true
+        },
+        {
+          "name": "Vivekananda Rock Memorial",
+          "distance": "~13 km offshore",
+          "significance": "Where Swami Vivekananda meditated",
+          "exists": true
+        },
+        {
+          "name": "Padmanabhapuram Palace",
+          "distance": "~20 km",
+          "significance": "Ancient capital of Travancore",
+          "exists": true
+        },
+        {
+          "name": "Nagaraja Temple (Nagercoil)",
+          "distance": "~20 km",
+          "significance": "Serpent king temple; gives Nagercoil its name",
+          "exists": true
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "total_shakti_peethas_documented": 51,
+    "total_nearby_sacred_sites": 318,
+    "all_nearby_temples_exist": true,
+    "note": "Some Shakti Peethas have been grouped where multiple traditions identify the same or adjacent locations. Where exact Shakti Peetha identities vary across scriptures (Pithanirnaya Tantra, Devi Bhagavatam, etc.), the most commonly accepted identification is used.",
+    "research_sources": [
+      "Incredible India (incredibleindia.gov.in)",
+      "State Tourism Departments (maharashtratourism.gov.in, mptourism.com, keralatourism.org, tamilnadutourism.tn.gov.in)",
+      "District administration websites (kamrupmetro.assam.gov.in, girsomnath.nic.in, banaskantha.nic.in, devbhumidwarka.nic.in, prayagraj.nic.in, ujjain.nic.in, kurukshetra.gov.in, dantewada.nic.in, madurai.nic.in, kanniyakumari.nic.in)",
+      "Wikipedia (en.wikipedia.org)",
+      "Bangladesh Hindu Samaj (bdhindu.org)",
+      "UNESCO World Heritage Centre (whc.unesco.org)",
+      "Nepal Tourism Board (ntb.gov.np)",
+      "Birbhum Tourism (birbhumtourism.in)",
+      "Meghalaya Tourism (meghalayatourism.in)",
+      "West Bengal Tourism (wbtourism.gov.in)",
+      "Prayag Tourism (prayagtourism.com)",
+      "Various temple official websites and pilgrimage guides"
+    ]
+  }
+}

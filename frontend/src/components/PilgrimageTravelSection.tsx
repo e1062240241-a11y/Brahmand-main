@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Linking,
+  Platform,
   ImageSourcePropType,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -237,13 +238,21 @@ const SacredPlaceCard: React.FC<{ place: SacredPlaceItem; router: any }> = ({ pl
 
     // Clean search query (strip quotes & trim)
     const cleanedQuery = searchQuery.replace(/^['"]+|['"]+$/g, '').trim();
-    const primaryUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanedQuery)}`;
 
-    Linking.openURL(primaryUrl).catch((error) => {
-      console.warn('[SACRED PLACE MAP ERROR]', error);
-      // Fallback: search by plain name
-      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`;
-      Linking.openURL(fallbackUrl).catch((err) => console.error('[SACRED PLACE FALLBACK ERROR]', err));
+    // Universal Google Maps search URL
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanedQuery)}`;
+    
+    // Native Maps app intent scheme for Android / iOS fallback
+    const nativeMapsUrl = Platform.OS === 'android'
+      ? `geo:0,0?q=${encodeURIComponent(cleanedQuery)}`
+      : `maps:0,0?q=${encodeURIComponent(cleanedQuery)}`;
+
+    Linking.openURL(googleMapsUrl).catch(() => {
+      Linking.openURL(nativeMapsUrl).catch((error) => {
+        console.warn('[SACRED PLACE MAP ERROR]', error);
+        const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`;
+        Linking.openURL(fallbackUrl).catch((err) => console.error('[SACRED PLACE FALLBACK ERROR]', err));
+      });
     });
   };
 

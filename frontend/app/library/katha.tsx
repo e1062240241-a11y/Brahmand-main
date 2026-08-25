@@ -16,6 +16,7 @@ import {
   AppState,
   AppStateStatus,
   Animated,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -109,6 +110,22 @@ export default function KathaPage() {
     }
     return episodes;
   }, [episodes, activeFilter, maxEpisodeNumber]);
+
+  const handleShareKatha = async () => {
+    try {
+      const activeThumbnail = activeEpisode?.thumbnail_url || 'https://pub-f55a153205ef4aefbe1a704a29ecabfa.r2.dev/shravan_katha_banner.jpg';
+      const shareTitle = isUserSelectedOldEpisode && activeEpisode?.title ? activeEpisode.title : 'श्रावण कथा — ब्रह्मांड ऐप';
+      const shareMessage = `🔱 *ब्रह्मांड (Brahmand) — श्रावण कथा* 🚩\n\n${shareTitle}\n\nपरम पूज्य आचार्य शमिक पाठक जी की दिव्य वाणी में प्रतिदिन प्रातः 8:00 AM पर लाइव कथा का आनंद लें।\n\n📱 कथा देखने एवं ऐप डाउनलोड हेतु:\nhttps://brahmand.app/download`;
+
+      await Share.share({
+        message: shareMessage,
+        url: activeThumbnail,
+        title: shareTitle,
+      });
+    } catch (error) {
+      console.warn('Error sharing katha:', error);
+    }
+  };
 
   // Custom Hotstar Minimalist Player States
   const [isPlaying, setIsPlaying] = useState(true);
@@ -629,7 +646,9 @@ export default function KathaPage() {
           <Ionicons name="chevron-back" size={24} color="#331800" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🔱 श्रावण कथा</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.shareHeaderBtn} onPress={handleShareKatha} activeOpacity={0.75}>
+          <Ionicons name="share-social-outline" size={20} color="#FF6B00" />
+        </TouchableOpacity>
       </View>
 
       <Animated.ScrollView
@@ -867,6 +886,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 244, 235, 0.90)', // Glassmorphism translucent warm amber tint
     borderWidth: 1.2,
     borderColor: 'rgba(255, 107, 0, 0.25)', // Subtle warm amber glass border
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  shareHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 244, 235, 0.90)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 107, 0, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#FF6B00',
@@ -1143,6 +1177,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
     flexWrap: 'wrap',
+  },
+  shareBannerBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF8F2',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.3)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  shareBannerText: {
+    flex: 1,
+    marginLeft: 10,
+    marginRight: 8,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#3D2418',
   },
   descriptionBox: {
     marginTop: 10,
