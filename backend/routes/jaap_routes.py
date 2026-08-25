@@ -117,12 +117,28 @@ async def record_jaap(
     newly_unlocked = []
     milestone_config = MANTRA_MILESTONES.get(mantra_type, MANTRA_MILESTONES["default"])
 
+    # ⚡ Bolt Optimization: Batch fetch certificates instead of N+1 queries
+    cert_ids_to_check = []
+    for tier in ["bronze", "silver", "gold", "diamond"]:
+        if new_count >= milestone_config["counts"][tier]:
+            cert_ids_to_check.append(f"{user_id}_{mantra_type}_{tier}_count")
+        if new_duration >= milestone_config["durations"][tier]:
+            cert_ids_to_check.append(f"{user_id}_{mantra_type}_{tier}_duration")
+
+    existing_certs_map = {}
+    if cert_ids_to_check:
+        # Avoid get_documents_batch since some instances of firestore_db might not expose it
+        # depending on version, fallback to asyncio.gather
+        import asyncio
+        existing_certs = await asyncio.gather(*(db.get_document('jaap_certificates', cid) for cid in cert_ids_to_check))
+        existing_certs_map = {cid: cert for cid, cert in zip(cert_ids_to_check, existing_certs) if cert}
+
     for tier in ["bronze", "silver", "gold", "diamond"]:
         # 1. Count milestone
         count_threshold = milestone_config["counts"][tier]
         if new_count >= count_threshold:
             cert_id = f"{user_id}_{mantra_type}_{tier}_count"
-            existing_cert = await db.get_document('jaap_certificates', cert_id)
+            existing_cert = existing_certs_map.get(cert_id)
             if not existing_cert:
                 # Generate unique serial number
                 serial_num = f"SL-{mantra_type.upper()}-{tier.upper()}-C{str(uuid.uuid4().hex[:6]).upper()}"
@@ -146,7 +162,7 @@ async def record_jaap(
         duration_threshold = milestone_config["durations"][tier]
         if new_duration >= duration_threshold:
             cert_id = f"{user_id}_{mantra_type}_{tier}_duration"
-            existing_cert = await db.get_document('jaap_certificates', cert_id)
+            existing_cert = existing_certs_map.get(cert_id)
             if not existing_cert:
                 # Generate unique serial number
                 serial_num = f"SL-{mantra_type.upper()}-{tier.upper()}-T{str(uuid.uuid4().hex[:6]).upper()}"
