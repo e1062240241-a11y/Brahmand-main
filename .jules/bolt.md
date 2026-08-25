@@ -37,3 +37,7 @@
 ## 2025-02-12 - Prevented O(N) array-to-Set instantiation inside swipe and fetch render loops
 **Learning:** Found that recreating a `Set` from a large array state (`new Set(allSessionPostsRef.current.map(p => p.id))`) dynamically during scroll loops (`useEffect` on `activeIndex`) in the frontend created a scaling CPU bottleneck.
 **Action:** When tracking large arrays for fast membership lookup, explicitly maintain a parallel `Set` state alongside the array instead of deriving it dynamically during component render updates or side effects.
+
+## 2025-02-12 - [Frontend Performance: O(1) Session Post Ref Lookup]
+**Learning:** Checking for object inclusion in large local queue arrays (like `allSessionPostsRef`) using `.find(p => p.id === targetId)` inside initialization loops results in an O(N^2) operation. When scaling an infinite scroll session, this CPU bottleneck severely blocks the JS thread during data ingestion.
+**Action:** Always maintain a parallel Set reference (`allSessionIdsRef`) to store identifying keys and use `.has(id)` to reduce duplicate checks from O(N) down to O(1) inside array reduction or mapping functions.
