@@ -158,7 +158,7 @@ const FEATURED_VIDEOS = [
     category: 'Shiv Katha',
     duration: '1h 24m',
     views: '45K views',
-    image: require('../../assets/images/panditji.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/panditji.webp' },
   },
   {
     id: 'v2',
@@ -167,7 +167,7 @@ const FEATURED_VIDEOS = [
     category: 'Astrology Wisdom',
     duration: '42m',
     views: '89K views',
-    image: require('../../assets/images/panditji.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/panditji.webp' },
   },
   {
     id: 'v3',
@@ -176,7 +176,7 @@ const FEATURED_VIDEOS = [
     category: 'Spiritual Guide',
     duration: '28m',
     views: '62K views',
-    image: require('../../assets/images/upcoming_shiva.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shiva.webp' },
   },
 ];
 

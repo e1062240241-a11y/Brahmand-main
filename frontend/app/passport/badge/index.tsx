@@ -144,13 +144,13 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
   const getBadgeImage = (title: string) => {
     const cleanTitle = title.toLowerCase();
     if (cleanTitle.includes('gita')) {
-      return require('../../../assets/images/bhagavad_gita_3d_new.webp');
+      return { uri: 'https://brahmandfeed23.b-cdn.net/assets/bhagavad_gita_3d_new.webp' };
     } else if (cleanTitle.includes('mahabharat')) {
-      return require('../../../assets/images/mahabharata.webp');
+      return { uri: 'https://brahmandfeed23.b-cdn.net/assets/mahabharata.webp' };
     } else if (cleanTitle.includes('ramayan') || cleanTitle.includes('ramcharit')) {
-      return require('../../../assets/images/Ramcharitmanas.webp');
+      return { uri: 'https://brahmandfeed23.b-cdn.net/assets/Ramcharitmanas.webp' };
     }
-    return require('../../../assets/images/community_medal_icon.webp');
+    return { uri: 'https://brahmandfeed23.b-cdn.net/assets/community_medal_icon.webp' };
   };
 
   const handleShare = async () => {
@@ -245,7 +245,7 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
           </View>
         ) : isGita ? (
           <Image 
-            source={require('../../../assets/images/PhotoshopPreview_Image 1.webp')} 
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/PhotoshopPreview_Image_1.webp' }} 
             style={styles.gitaBadgeImage} 
             contentFit="contain"
           />

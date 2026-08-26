@@ -24,7 +24,7 @@ export default function JaapCompleted() {
 
   return (
     <ImageBackground
-      source={require('../assets/images/jaap_complete_bg.webp')}
+      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jaap_complete_bg.webp' }}
       style={styles.container}
       resizeMode="cover"
     >
@@ -42,7 +42,7 @@ export default function JaapCompleted() {
           {/* Header Lotus Icon */}
           <View style={styles.lotusContainer}>
             <Image
-              source={require('../assets/images/pink_lotus_splash.webp')}
+              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/pink_lotus_splash.webp' }}
               style={styles.lotusImage}
               resizeMode="cover"
             />

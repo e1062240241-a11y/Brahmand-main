@@ -95,7 +95,7 @@ export default function PersonalityVerificationScreen() {
             {/* Hero Illustration */}
             <View style={styles.illustrationContainer}>
               <Image 
-                source={require('../../assets/images/verification_hero.webp')} 
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/verification_hero.webp' }} 
                 style={styles.illustration}
                 resizeMode="contain"
               />

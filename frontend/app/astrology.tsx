@@ -34,11 +34,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', img: require('../assets/images/cosmic/cos1.webp') },
-  { key: 'character', label: 'Character', img: require('../assets/images/cosmic/cos2.webp') },
-  { key: 'education', label: 'Education', img: require('../assets/images/cosmic/cos3.webp') },
-  { key: 'family', label: 'Family', img: require('../assets/images/cosmic/cos4.webp') },
-  { key: 'health', label: 'Health', img: require('../assets/images/cosmic/cos5.webp') },
+  { key: 'physical', label: 'Physical', img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/cosmic/cos1.webp' } },
+  { key: 'character', label: 'Character', img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/cosmic/cos2.webp' } },
+  { key: 'education', label: 'Education', img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/cosmic/cos3.webp' } },
+  { key: 'family', label: 'Family', img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/cosmic/cos4.webp' } },
+  { key: 'health', label: 'Health', img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/cosmic/cos5.webp' } },
 ];
 
 const CITIES_DB = [
@@ -529,14 +529,14 @@ export default function AstrologyScreen() {
 
 
   const attributes = [
-    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.webp'), color: '#F59E0B' },
-    { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.webp'), color: '#C67C4E' },
-    { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.webp'), color: '#10B981' },
-    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.webp'), color: '#14B8A6' },
-    { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.webp'), color: '#EC4899' },
-    { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.webp'), color: '#EF4444' },
-    { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.webp'), color: '#3B82F6' },
-    { label: 'VASHYA', value: details.Vashya, img: require('../assets/images/iconattributes/Icon8.webp'), color: '#C67C4E' },
+    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon1.webp' }, color: '#F59E0B' },
+    { label: 'RASHI LORD', value: details.SignLord, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon2.webp' }, color: '#C67C4E' },
+    { label: 'CHARAN', value: details.Charan, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon3.webp' }, color: '#10B981' },
+    { label: 'GAN', value: details.Gan, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon4.webp' }, color: '#14B8A6' },
+    { label: 'YONI', value: details.Yoni, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon5.webp' }, color: '#EC4899' },
+    { label: 'NADI', value: details.Nadi, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon6.webp' }, color: '#EF4444' },
+    { label: 'VARNA', value: details.Varna, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon7.webp' }, color: '#3B82F6' },
+    { label: 'VASHYA', value: details.Vashya, img: { uri: 'https://brahmandfeed23.b-cdn.net/assets/iconattributes/Icon8.webp' }, color: '#C67C4E' },
   ];
 
   return (
@@ -845,7 +845,7 @@ export default function AstrologyScreen() {
               />
             ) : (
               <Image
-                source={require('../assets/images/kundli_chart.webp')}
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/kundli_chart.webp' }}
                 style={styles.chartImage}
                 resizeMode="cover"
               />

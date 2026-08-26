@@ -145,21 +145,21 @@ export default function CategoryScreen() {
     const cat = (category || '').trim().toLowerCase();
     switch (cat) {
       case 'astrologer':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/siren.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'electrician':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/lightning.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'panditji':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'carpenter':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'plumber':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/plumber_icon.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'general store':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/general_store.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'dairy':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/cow.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       case 'salon':
-        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/salon_icon.webp')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+        return <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' }} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
       default:
         return <Ionicons name="alert-circle-outline" size={48} color="#FD6500" style={{ marginBottom: 12 }} />;
     }
@@ -180,7 +180,7 @@ export default function CategoryScreen() {
           </TouchableOpacity>
           <View style={styles.titleContainer}>
             {category === 'Carpenter' && (
-               <Image source={require('../../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp')} style={{width: 24, height: 24, marginRight: 8}} resizeMode="contain" />
+               <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} style={{width: 24, height: 24, marginRight: 8}} resizeMode="contain" />
             )}
             <Text style={styles.headerTitle}>{category}</Text>
           </View>

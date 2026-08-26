@@ -655,36 +655,36 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 </View>
                                             ) : item.label === 'My Krishn' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                                    <ImageBackground source={require('../../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                                    <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/orange_circle_bg.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                                                         <ExpoImage source={require('../../../assets/images/tab-bar/my_krishna.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 42, height: 42 }} contentFit="contain" />
                                                     </ImageBackground>
                                                 </View>
                                             ) : item.label === 'Panchang' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                                    <ImageBackground source={require('../../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                                        <Image source={require('../../../assets/images/panchang_icon_3.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                                                    <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/orange_circle_bg.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/panchang_icon_3.webp' }} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                                                     </ImageBackground>
                                                 </View>
                                             ) : item.label === 'Kundli' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                                    <ImageBackground source={require('../../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                                        <Image source={require('../../../assets/images/custom_kundli_icon.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
+                                                    <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/orange_circle_bg.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_kundli_icon.webp' }} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
                                                     </ImageBackground>
                                                 </View>
                                             ) : item.label === 'Brahmand Passport' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 58, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
-                                                    <Image source={require('../../../assets/images/custom_passport_icon.webp')} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                                                    <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_passport_icon.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
                                                 </View>
                                             ) : item.label === 'Festival' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                                    <ImageBackground source={require('../../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                                        <Image source={require('../../../assets/images/custom_festival_icon_2.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                                                    <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/orange_circle_bg.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_festival_icon_2.webp' }} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                                                     </ImageBackground>
                                                 </View>
                                             ) : item.label === 'Brahmand Library' ? (
                                                 <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                                    <ImageBackground source={require('../../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                                        <Image source={require('../../../assets/images/library_icon_3.webp')} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
+                                                    <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/orange_circle_bg.webp' }} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/library_icon_3.webp' }} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
                                                     </ImageBackground>
                                                 </View>
                                             ) : (
@@ -827,7 +827,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                                             {/* Local WebP Fallback (always rendered underneath video) */}
                                             <Image
-                                                source={require('../../../assets/images/banner1_optimized.webp')}
+                                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/banner1_optimized.webp' }}
                                                 style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
                                                 resizeMode="cover"
                                             />
@@ -844,7 +844,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                             {/* Right Speaker Portrait Cutout */}
                                             <Image
-                                                source={require('../../../assets/images/shamik_cutout.webp')}
+                                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_cutout.webp' }}
                                                 style={{
                                                     position: 'absolute',
                                                     right: -24,
@@ -1160,7 +1160,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             })()}
 
                             <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
-                                <ImageBackground source={require('../../../assets/images/hanuman_banner_new.webp')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+                                <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                                     <LinearGradient
                                         colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
                                         style={styles.featuredLiveOverlay}
@@ -1482,7 +1482,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             });
                         }}
                     >
-                        <Image source={require('../../../assets/images/mumbai_pin.webp')} style={styles.communityCardIcon} />
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/mumbai_pin.webp' }} style={styles.communityCardIcon} />
                         <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                             <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
                             <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
@@ -1509,7 +1509,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         }}
                     >
                         <View style={styles.communityCardIconBox}>
-                            <Image source={require('../../../assets/images/food_sharing.webp')} style={styles.communityCardIconRound} />
+                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/food_sharing.webp' }} style={styles.communityCardIconRound} />
                         </View>
                         <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                             <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>

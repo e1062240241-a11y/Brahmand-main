@@ -38,7 +38,7 @@ try {
 
 // API_URL from src/services/api automatically resolves 10.0.2.2 for Android Emulator, LAN IP for devices, and localhost for Web/iOS
 const API_BASE_URL = (API_URL || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.webp');
+const shamikPathakCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' };
 
 interface KathaEpisode {
   id: string;
