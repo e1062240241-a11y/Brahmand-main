@@ -71,7 +71,7 @@ class VedicAstroApiService:
             return response.json()
         except Exception as e:
             logger.error("VedicAstroAPI request failed: %s", e)
-            return {"error": str(e)}
+            return {"error": "An internal error occurred while connecting to the astrology provider."}
 
     async def _fetch_svg_endpoint(self, endpoint: str, params: Dict[str, Any]) -> str:
         url = f"{self.BASE_URL}/{endpoint}"

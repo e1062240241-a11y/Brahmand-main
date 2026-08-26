@@ -1173,17 +1173,12 @@ default_allowed_origins = [
     "http://localhost:8081",
 ]
 allowed_origins = []
-allow_origin_regex = r"^https?://.*$"
 if cors_origins == '*':
-    # When using wildcard, we must be careful with allow_credentials=True.
-    # We use a broad regex instead of "*" in allow_origins.
-    allowed_origins = []
-    allow_origin_regex = r"^https?://.*$"
+    # When using wildcard with allow_credentials=True, we fall back to defaults
+    allowed_origins = default_allowed_origins.copy()
 elif cors_origins:
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
-    # Still keep the regex for localhost/loca.lt/run.app support
-    allow_origin_regex = r"^https?://.*$"
 else:
     allowed_origins = default_allowed_origins.copy()
 
@@ -1191,7 +1186,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=allowed_origins,
-    allow_origin_regex=allow_origin_regex,
     allow_methods=['*'],
     allow_headers=['*'],
     expose_headers=['*'],
@@ -16262,7 +16256,7 @@ async def handle_send_dm_socket(sid, data):
         return {'status': 'success', 'message': response_msg}
     except Exception as e:
         logger.error(f"Socket send_dm error: {e}")
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': "An internal server error occurred"}
 # =================== JAAP INVITE NOTIFICATION ===================
 
 # In-memory cooldown: { user_id: last_invite_time }

@@ -47,7 +47,7 @@ class AstrologyApiService:
             return response.json()
         except Exception as e:
             logger.error("Astrology API request failed: %s", e)
-            return {"error": str(e)}
+            return {"error": "An internal error occurred while connecting to the astrology provider."}
 
     def _build_summary(self, sources: Dict[str, Any]) -> Dict[str, Any]:
         panchang = sources.get("advanced_panchang", {})
@@ -334,7 +334,7 @@ class AstrologyApiService:
             return data
         except Exception as e:
             logger.error("Astrology API Horoscope request failed: %s", e)
-            return {"error": str(e)}
+            return {"error": "An internal error occurred while connecting to the astrology provider."}
 
     async def get_nakshatra_report(self, lat: float, lon: float, date_obj: datetime) -> Dict[str, Any]:
         """Fetch general nakshatra report for kundli."""

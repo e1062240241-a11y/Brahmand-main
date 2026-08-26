@@ -1,9 +1,17 @@
-🚨 Severity: MEDIUM
+🚨 **Severity:** High (and Medium for CWE-209)
 
-💡 Vulnerability: Information Exposure (CWE-209). Exception strings outputted via `subprocess.CalledProcessError` could inadvertently be caught down the line, although they are currently caught and wrapped securely, passing `exc` into unhandled `RuntimeError` strings provides an unnecessary vector of exposure if error handling configurations are changed or unhandled by higher wrappers.
+💡 **Vulnerability:**
+1.  **Overly Permissive CORS:** The API was using a wildcard regex (`allow_origin_regex = r"^https?://.*$"`) along with `allow_credentials=True`. This effectively allows any origin to send authenticated cross-origin requests, which could lead to CORS-based bypasses.
+2.  **Information Exposure (CWE-209):** The application caught standard `Exception` objects and serialized them into strings (`str(e)`) via JSON payloads, leaking internal stack details or provider information to users on 500 errors.
 
-🎯 Impact: Passing internal errors containing `ffprobe` or `ffmpeg` commands could potentially leak the server's directory layout, underlying tool constraints, or underlying dependencies/infrastructure paths.
+🎯 **Impact:**
+-   **CORS:** Malicious sites could potentially bypass Same-Origin Policies to make authorized requests.
+-   **CWE-209:** Exposed internal infrastructure, file paths, or service details to the end user which aids in reconnaissance.
 
-🔧 Fix: Replaced `RuntimeError(f"Failed to execute ffprobe binary: {exc}")` and `RuntimeError(f"Failed to execute ffmpeg binary: {exc}")` with constant, generic strings `RuntimeError("Failed to execute ffprobe binary")` and `RuntimeError("Failed to execute ffmpeg binary")` inside `backend/routes/video_upload_routes.py`. The raw strings are still securely logged internally via `logger.warning`.
+🔧 **Fix:**
+-   **CORS:** Removed `allow_origin_regex` entirely from the `CORSMiddleware`. Allowed origins now strictly rely on explicitly allowed lists defined in `default_allowed_origins` and the `CORS_ORIGINS` environment variable.
+-   **CWE-209:** Replaced `str(e)` inside catch blocks in `backend/main.py`, `backend/services/astrology_api_service.py`, `backend/services/vedic_astro_api_service.py`, and `backend/services/firebase_notification_service.py` with generic static error messages (e.g., "An internal server error occurred").
 
-✅ Verification: Check `backend/routes/video_upload_routes.py` lines 137 and 229, verifying that `f"... {exc}"` formatting has been removed from `RuntimeError` constructors. Code verified via `python -m py_compile backend/routes/video_upload_routes.py`.
+✅ **Verification:**
+-   Verified CORS logic passes local execution correctly and syntax changes are valid via `python -m py_compile backend/main.py`.
+-   Verified backend files syntax via `python -m py_compile`.
