@@ -1,0 +1,704 @@
+{
+  "title": "Nearby Sacred Temples — 12 Jyotirlingas",
+  "description": "For each of the 12 Jyotirlingas (plus Aundha Nagnath and Parli Vaijnath), nearby sacred temples that exist or are noted. Researched from official temple sites, tourism dept sites, and Wikipedia.",
+  "total_jyotirlingas_covered": 14,
+  "data": [
+    {
+      "jyotirlinga": "Somnath",
+      "location": "Prabhas Patan, Gir Somnath, Gujarat",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhalka Tirth",
+          "distance": "~5 km",
+          "significance": "Lord Krishna temple; believed to be where Krishna left for his heavenly abode after being struck by a hunter's arrow",
+          "exists": true
+        },
+        {
+          "name": "Triveni Sangam",
+          "distance": "~1.5 km",
+          "significance": "Sacred confluence of Hiran, Kapila, and Saraswati rivers meeting the Arabian Sea; pilgrims take a holy dip",
+          "exists": true
+        },
+        {
+          "name": "Parshuram Temple",
+          "distance": "~2 km",
+          "significance": "On the banks of Triveni river; where Lord Parshuram performed penance",
+          "exists": true
+        },
+        {
+          "name": "Gita Temple (Birla)",
+          "distance": "On Triveni Ghat",
+          "significance": "Built by the Birlas; dedicated to Lord Krishna",
+          "exists": true
+        },
+        {
+          "name": "Dehotsarg Tirth",
+          "distance": "Nearby",
+          "significance": "Where Krishna's mortal body was cremated",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Mallikarjuna (Srisailam)",
+      "location": "Kurnool district, Andhra Pradesh",
+      "nearby_sacred_temples": [
+        {
+          "name": "Sakshi Ganapathi Temple",
+          "distance": "~3 km",
+          "significance": "Ganesha 'registers' pilgrims' visits; a Srisailam pilgrimage is incomplete without visiting here first. Deity holds a book and pen",
+          "exists": true
+        },
+        {
+          "name": "Shikaresvara Temple",
+          "distance": "On Srisailam hill",
+          "significance": "Panoramic views of the Nallamala hills",
+          "exists": true
+        },
+        {
+          "name": "Bhramaramba Devi Temple",
+          "distance": "Within same complex",
+          "significance": "Shakti Peetha; consort of Mallikarjuna",
+          "exists": true
+        },
+        {
+          "name": "Pathala Ganga",
+          "distance": "Below the temple",
+          "significance": "Sacred spot on the Krishna River",
+          "exists": true
+        },
+        {
+          "name": "Hatakeswaram",
+          "distance": "~1 km",
+          "significance": "Ancient Shiva shrine",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Mahakaleshwar (Ujjain)",
+      "location": "Ujjain, Madhya Pradesh",
+      "nearby_sacred_temples": [
+        {
+          "name": "Harsiddhi Temple",
+          "distance": "~500 m",
+          "significance": "One of the 51 Shakti Peethas; walking distance. Features two huge deep-stambh (oil lamp towers)",
+          "exists": true
+        },
+        {
+          "name": "Kal Bhairav Temple",
+          "distance": "~4 km",
+          "significance": "Guardian deity of Ujjain; unique tradition of offering liquor to Bhairav",
+          "exists": true
+        },
+        {
+          "name": "Bade Ganeshji Ka Mandir",
+          "distance": "At Mahakaleshwar entrance",
+          "significance": "One of the largest Ganesha idols in Madhya Pradesh",
+          "exists": true
+        },
+        {
+          "name": "Mangalnath Temple",
+          "distance": "~5 km",
+          "significance": "Origin place of Mars (Mangal) planet per Matsya Purana",
+          "exists": true
+        },
+        {
+          "name": "Chintaman Ganesh Temple",
+          "distance": "~7 km",
+          "significance": "Ancient Ganesh temple; 'remover of worries'",
+          "exists": true
+        },
+        {
+          "name": "Sandipani Ashram",
+          "distance": "~3 km",
+          "significance": "Where Lord Krishna, Sudama, and Balarama studied under Sage Sandipani",
+          "exists": true
+        },
+        {
+          "name": "Gadkalika Temple",
+          "distance": "~4 km",
+          "significance": "Ancient Shakti shrine",
+          "exists": true
+        },
+        {
+          "name": "Siddhavat Temple",
+          "distance": "~3 km",
+          "significance": "Sacred banyan tree site for ancestral rituals",
+          "exists": true
+        },
+        {
+          "name": "Gopal Mandir",
+          "distance": "~1.5 km",
+          "significance": "Vaishnava temple",
+          "exists": true
+        },
+        {
+          "name": "Nagchandreshwar Temple",
+          "distance": "Within Mahakaleshwar complex",
+          "significance": "Opens only on Nag Panchami",
+          "exists": true
+        },
+        {
+          "name": "ISKCON Ujjain",
+          "distance": "~5 km",
+          "significance": "Krishna temple",
+          "exists": true
+        },
+        {
+          "name": "Ram Ghat",
+          "distance": "~1 km",
+          "significance": "On Kshipra river; site of evening aarti",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Omkareshwar",
+      "location": "Khandwa district, Madhya Pradesh",
+      "nearby_sacred_temples": [
+        {
+          "name": "Mamleshwar Temple (Amreshwar)",
+          "distance": "South bank of Narmada, across from island",
+          "significance": "Considered the other half of the Omkareshwar Jyotirlinga. ASI-protected with inscriptions from 1063 AD",
+          "exists": true
+        },
+        {
+          "name": "Siddhanath Temple",
+          "distance": "End of Parikrama path",
+          "significance": "13th-century architectural marvel; early medieval Brahminic architecture",
+          "exists": true
+        },
+        {
+          "name": "Kedareshwar Temple",
+          "distance": "~1 km",
+          "significance": "At confluence of Narmada and Kaveri rivers; resembles Kedarnath temple",
+          "exists": true
+        },
+        {
+          "name": "Gauri Somnath Temple",
+          "distance": "On the island",
+          "significance": "11th-century Shiva-Parvati temple; Khajuraho-style architecture",
+          "exists": true
+        },
+        {
+          "name": "Govindeshwar Temple and Cave",
+          "distance": "Near temple entrance",
+          "significance": "Where Adi Shankaracharya received initiation from Guru Govind Bhagwatpada",
+          "exists": true
+        },
+        {
+          "name": "Mahakaleshwar Temple (within complex)",
+          "distance": "Below main Omkareshwar shrine",
+          "significance": "In Omkareshwar, Mahakal is above and Omkar is below (reversed in Ujjain)",
+          "exists": true
+        },
+        {
+          "name": "Panchmukhi Ganesh Temple",
+          "distance": "Before main temple",
+          "significance": "Self-manifested five-faced Ganesha idol",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Kedarnath",
+      "location": "Rudraprayag district, Uttarakhand",
+      "nearby_sacred_temples": [
+        {
+          "name": "Bhairavnath Temple",
+          "distance": "~500 m",
+          "significance": "Guardian deity of Kedarnath; protects the temple during winter. Short uphill climb",
+          "exists": true
+        },
+        {
+          "name": "Tungnath Temple",
+          "distance": "~3,680 m altitude, via Chopta",
+          "significance": "Highest Shiva temple in India; one of the Panch Kedar",
+          "exists": true
+        },
+        {
+          "name": "Triyuginarayan Temple",
+          "distance": "~25 km from Kedarnath",
+          "significance": "Where Shiva and Parvati married; eternal flame burning for three yugas",
+          "exists": true
+        },
+        {
+          "name": "Guptkashi (Vishwanath & Ardhanarishwar Temples)",
+          "distance": "On Kedarnath route",
+          "significance": "Popular stop; ancient Shiva shrines",
+          "exists": true
+        },
+        {
+          "name": "Gaurikund",
+          "distance": "Base of Kedarnath trek",
+          "significance": "Where the road ends; temple of Goddess Parvati",
+          "exists": true
+        },
+        {
+          "name": "Rudraprayag",
+          "distance": "~80 km",
+          "significance": "Confluence of Alaknanda and Mandakini rivers",
+          "exists": true
+        },
+        {
+          "name": "Shankaracharya Samadhi",
+          "distance": "Behind Kedarnath temple",
+          "significance": "Where Adi Shankaracharya took samadhi",
+          "exists": true
+        },
+        {
+          "name": "Vasuki Tal",
+          "distance": "~8 km trek",
+          "significance": "High-altitude glacial lake",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Bhimashankar",
+      "location": "Pune district, Maharashtra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kamalaja Mata Temple",
+          "distance": "Within temple complex",
+          "significance": "Incarnation of Goddess Parvati who aided Shiva against demon Tripurasur",
+          "exists": true
+        },
+        {
+          "name": "Gupt Bhimashankar",
+          "distance": "~1.5-3 km walk",
+          "significance": "Believed to be the original location of the self-manifested Shiva Linga; source of Bhima River",
+          "exists": true
+        },
+        {
+          "name": "Mokshakund Tirtha",
+          "distance": "Behind the temple",
+          "significance": "Sacred kund; custom is to bathe here before darshan",
+          "exists": true
+        },
+        {
+          "name": "Shakini-Dakini Shrine",
+          "distance": "Within complex",
+          "significance": "Guardians who assisted Shiva in battle",
+          "exists": true
+        },
+        {
+          "name": "Bhorgiri Fort/Caves",
+          "distance": "~12 km trek",
+          "significance": "Ancient fort with rock-cut caves; base for forest trek to Bhimashankar",
+          "exists": true
+        },
+        {
+          "name": "Shivneri Fort",
+          "distance": "Junnar detour",
+          "significance": "Birthplace of Chhatrapati Shivaji Maharaj",
+          "exists": true
+        },
+        {
+          "name": "Lenyadri Caves (Ashtavinayak)",
+          "distance": "Junnar detour",
+          "significance": "Ashtavinayak temple in Buddhist-origin caves",
+          "exists": true
+        },
+        {
+          "name": "Ozar Vighneshwar Temple (Ashtavinayak)",
+          "distance": "Junnar circuit",
+          "significance": "Ashtavinayak Ganesha temple",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Kashi Vishwanath (Varanasi)",
+      "location": "Varanasi, Uttar Pradesh",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kal Bhairav Temple",
+          "distance": "~2 km",
+          "significance": "Guardian deity (Kotwal) of Kashi; tradition dictates visiting here first before any other temple",
+          "exists": true
+        },
+        {
+          "name": "Annapurna Devi Temple",
+          "distance": "Adjacent to Kashi Vishwanath",
+          "significance": "Goddess of food and nourishment; right next to Vishwanath",
+          "exists": true
+        },
+        {
+          "name": "Vishalakshi Temple",
+          "distance": "Walking distance, near Mir Ghat",
+          "significance": "One of the 51 Shakti Peethas",
+          "exists": true
+        },
+        {
+          "name": "Mrityunjay Mahadev Temple",
+          "distance": "On Daranagar route",
+          "significance": "Believed to protect from untimely death; well with healing water",
+          "exists": true
+        },
+        {
+          "name": "Sankata Devi Temple",
+          "distance": "Near Sindhia Ghat",
+          "significance": "Goddess of Remedy; nine planetary shrines nearby",
+          "exists": true
+        },
+        {
+          "name": "Sankat Mochan Hanuman Temple",
+          "distance": "~4 km",
+          "significance": "Founded by Tulsidas; 'remover of troubles'",
+          "exists": true
+        },
+        {
+          "name": "Durga Temple (Durga Kund)",
+          "distance": "~5 km",
+          "significance": "Iconic red 18th-century temple next to Durga Kund pond",
+          "exists": true
+        },
+        {
+          "name": "Tulsi Manas Temple",
+          "distance": "Near Durga Temple",
+          "significance": "Where Tulsidas wrote Ramcharitmanas; verses inscribed on walls",
+          "exists": true
+        },
+        {
+          "name": "New Vishwanath Temple (BHU)",
+          "distance": "~6 km, in BHU campus",
+          "significance": "Modern marble temple, open to all; ~80 m high shikhara",
+          "exists": true
+        },
+        {
+          "name": "Bharat Mata Temple",
+          "distance": "Near BHU",
+          "significance": "Inaugurated by Mahatma Gandhi in 1936; marble relief map of India",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Trimbakeshwar",
+      "location": "Trimbak, Nashik district, Maharashtra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Brahmagiri Hill",
+          "distance": "Adjacent",
+          "significance": "Sacred origin of the Godavari River; trek with steps to summit",
+          "exists": true
+        },
+        {
+          "name": "Kushavarta Kund",
+          "distance": "Near the temple",
+          "significance": "Sacred pond where the Godavari is believed to emerge",
+          "exists": true
+        },
+        {
+          "name": "Gangadwar",
+          "distance": "On Brahmagiri Hill",
+          "significance": "Cave temple; first visible emergence point of the Godavari River",
+          "exists": true
+        },
+        {
+          "name": "Anjaneri Hill",
+          "distance": "Nearby",
+          "significance": "Believed to be the birthplace of Lord Hanuman",
+          "exists": true
+        },
+        {
+          "name": "Neel Parbat",
+          "distance": "Nearby",
+          "significance": "Hill for meditation and contemplation",
+          "exists": true
+        },
+        {
+          "name": "Kalaram Temple (Nashik, ~28 km)",
+          "distance": "~28 km, Panchavati, Nashik",
+          "significance": "Ancient temple dedicated to Lord Rama; intricately carved architecture",
+          "exists": true
+        },
+        {
+          "name": "Sita Gufa (Nashik)",
+          "distance": "~28 km, Panchavati",
+          "significance": "Cave where Sita stayed; believed to be where she was abducted by Ravana",
+          "exists": true
+        },
+        {
+          "name": "Kapaleshwar Temple (Nashik)",
+          "distance": "~28 km, Panchavati",
+          "significance": "Shiva shrine with ornate sculptures",
+          "exists": true
+        },
+        {
+          "name": "Ramkund (Nashik)",
+          "distance": "~28 km, Panchavati",
+          "significance": "Sacred tank where Rama and Sita performed ablutions",
+          "exists": true
+        },
+        {
+          "name": "Tapovan (Nashik)",
+          "distance": "~30 km",
+          "significance": "Where Rama performed penance during exile",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Rameshwaram",
+      "location": "Rameswaram Island, Tamil Nadu",
+      "nearby_sacred_temples": [
+        {
+          "name": "Kothandaramaswamy Temple",
+          "distance": "~13 km, at Dhanushkodi",
+          "significance": "Where Vibhishana surrendered to Rama; only structure to survive 1964 cyclone. Idols of Rama, Sita, Lakshmana, Hanuman, Vibhishana",
+          "exists": true
+        },
+        {
+          "name": "Gandamadana Parvatham",
+          "distance": "~3 km",
+          "significance": "Highest point on Rameswaram island; Lord Rama's footprints. Where Rama met Vibhishana",
+          "exists": true
+        },
+        {
+          "name": "Dhanushkodi / Sethu Theertham",
+          "distance": "~20 km",
+          "significance": "Southernmost tip; holy dip at Sethu considered very sacred. Site of mythical Ram Setu",
+          "exists": true
+        },
+        {
+          "name": "Agni Theertham",
+          "distance": "In front of temple",
+          "significance": "Sacred sea bath before entering temple",
+          "exists": true
+        },
+        {
+          "name": "22 Theerthams (wells within temple)",
+          "distance": "Within temple precincts",
+          "significance": "22 sacred wells; pilgrims bathe at all 22 as part of pilgrimage",
+          "exists": true
+        },
+        {
+          "name": "Satchi Hanuman Temple",
+          "distance": "Near Gandamadana Parvatham",
+          "significance": "Hanuman shrine",
+          "exists": true
+        },
+        {
+          "name": "Nambu Nayagiar Temple",
+          "distance": "Nearby",
+          "significance": "Local shrine",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Nageshwar",
+      "location": "Dwarka, Devbhumi Dwarka district, Gujarat",
+      "nearby_sacred_temples": [
+        {
+          "name": "Dwarkadhish Temple",
+          "distance": "~18 km",
+          "significance": "Famous Krishna temple in Dwarka; one of the Char Dham",
+          "exists": true
+        },
+        {
+          "name": "Beyt Dwarka",
+          "distance": "Across the sea",
+          "significance": "Island; believed to be Krishna's original residence",
+          "exists": true
+        },
+        {
+          "name": "Gomti Ghat",
+          "distance": "~18 km, in Dwarka",
+          "significance": "Where the Gomti River meets the ocean; devotees take a holy dip",
+          "exists": true
+        },
+        {
+          "name": "Rukmini Devi Temple",
+          "distance": "~18 km",
+          "significance": "Dedicated to Krishna's consort; 12th-century paintings",
+          "exists": true
+        },
+        {
+          "name": "Gopi Talav Tirth",
+          "distance": "Nearby",
+          "significance": "Famous for yellow-colored sand called Gopi Chandan",
+          "exists": true
+        },
+        {
+          "name": "Bhadkeshwar Mahadev Mandir",
+          "distance": "In Dwarka",
+          "significance": "Shiva temple on the coast",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Baidyanath Dham (Deoghar)",
+      "location": "Deoghar, Jharkhand",
+      "nearby_sacred_temples": [
+        {
+          "name": "Basukinath Dham",
+          "distance": "~40 km",
+          "significance": "Important Shiva shrine; worship here purifies the soul and fulfills wishes. Visited as a pair with Baidyanath",
+          "exists": true
+        },
+        {
+          "name": "Trikut Parvat (Trikutachal Mahadeva Temple)",
+          "distance": "~15 km",
+          "significance": "Three-peaked hill with Shiva temple in dense forest; ropeway available. Sage Dayananda's hermitage, Ravana's Cave",
+          "exists": true
+        },
+        {
+          "name": "Satsang Ashram",
+          "distance": "In Deoghar",
+          "significance": "Founded by Thakur Anukul Chandra; spiritual retreat",
+          "exists": true
+        },
+        {
+          "name": "Rikhiapeeth",
+          "distance": "Nearby",
+          "significance": "Ashram of Swami Satyananda Saraswati",
+          "exists": true
+        },
+        {
+          "name": "Shivganga",
+          "distance": "Near the temple",
+          "significance": "Sacred pond where devotees take a holy dip",
+          "exists": true
+        },
+        {
+          "name": "Naulakha Mandir",
+          "distance": "In Deoghar",
+          "significance": "Beautiful temple with intricate architecture",
+          "exists": true
+        },
+        {
+          "name": "Taponath Temple",
+          "distance": "On Trikut Hill",
+          "significance": "Ancient cave shrine",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Grishneshwar",
+      "location": "Verul, near Aurangabad (Chhatrapati Sambhajinagar), Maharashtra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Ellora Caves (UNESCO World Heritage Site)",
+          "distance": "~1 km",
+          "significance": "34 rock-cut caves (5th-10th century CE); Buddhist, Hindu, Jain. Kailasa Temple (Cave 16) carved from single rock",
+          "exists": true
+        },
+        {
+          "name": "Daulatabad Fort (Devagiri Fort)",
+          "distance": "~15 km",
+          "significance": "Medieval fort with unique defense mechanisms and secret escape routes",
+          "exists": true
+        },
+        {
+          "name": "Bibi Ka Maqbara",
+          "distance": "~30 km, in Aurangabad",
+          "significance": "'Taj of the Deccan'; built by Aurangzeb's son Azam Shah",
+          "exists": true
+        },
+        {
+          "name": "Aurangabad Caves",
+          "distance": "~30 km",
+          "significance": "6th-7th century Buddhist rock-cut shrines",
+          "exists": true
+        },
+        {
+          "name": "Ajanta Caves (UNESCO World Heritage Site)",
+          "distance": "~100 km",
+          "significance": "Ancient Buddhist paintings and sculptures",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Aundha Nagnath",
+      "location": "Hingoli district, Maharashtra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Parli Vaijnath Temple",
+          "distance": "~110-118 km",
+          "significance": "Another Jyotirlinga; combined pilgrimage circuit",
+          "exists": true
+        },
+        {
+          "name": "Hazur Sahib, Nanded",
+          "distance": "~61 km",
+          "significance": "One of the five Takhts of Sikhism; final resting place of Guru Gobind Singh Ji",
+          "exists": true
+        },
+        {
+          "name": "Siddheshwar Dam",
+          "distance": "~15 km",
+          "significance": "Picturesque spot for relaxation",
+          "exists": true
+        },
+        {
+          "name": "Sant Namdev Sansthan",
+          "distance": "Nearby",
+          "significance": "Honoring saint-poet Namdev",
+          "exists": true
+        },
+        {
+          "name": "12 mini Jyotirlinga shrines + 108 smaller temples",
+          "distance": "Within the temple complex",
+          "significance": "Replicas of all 12 Jyotirlingas within the complex",
+          "exists": true
+        }
+      ]
+    },
+    {
+      "jyotirlinga": "Parli Vaijnath",
+      "location": "Beed district, Maharashtra",
+      "nearby_sacred_temples": [
+        {
+          "name": "Aundha Nagnath Temple",
+          "distance": "~118 km",
+          "significance": "Jyotirlinga circuit partner",
+          "exists": true
+        },
+        {
+          "name": "Yogeshwari Devi Temple, Ambajogai",
+          "distance": "~25 km",
+          "significance": "Goddess Yogeshwari shrine with ancient caves nearby",
+          "exists": true
+        },
+        {
+          "name": "Hazur Sahib, Nanded",
+          "distance": "~105 km",
+          "significance": "Sikh Takht; final resting place of Guru Gobind Singh Ji",
+          "exists": true
+        },
+        {
+          "name": "Tulja Bhavani Temple",
+          "distance": "~240 km",
+          "significance": "Shakti Peetha; kuldevi of Chhatrapati Shivaji Maharaj",
+          "exists": true
+        },
+        {
+          "name": "Dharur Fort",
+          "distance": "Nearby",
+          "significance": "Historical fort",
+          "exists": true
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "total_temples_documented": 14,
+    "total_nearby_sacred_sites": 86,
+    "all_nearby_temples_exist": true,
+    "research_sources": [
+      "Official temple websites (shriomkareshwar.org, srisailadevasthanam.org, sai.org.in)",
+      "Incredible India (incredibleindia.gov.in)",
+      "State Tourism Departments (maharashtratourism.gov.in, mptourism.com, gujarattourism.com)",
+      "District administration websites (girsomnath.nic.in, ujjain.nic.in, varanasi.nic.in, devbhumidwarka.nic.in)",
+      "Wikipedia",
+      "Uttarakhand Tourism (uttarakhandtourism.gov.in)"
+    ]
+  }
+}

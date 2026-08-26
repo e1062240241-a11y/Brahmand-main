@@ -601,7 +601,7 @@ export default function ChangeLocationScreen() {
         <View style={styles.header}>
           {hasValidLocation ? (
             <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="chevron-back" size={28} color="#000000" />
+              <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 40 }} />
@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#000000",
+    color: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -894,17 +894,9 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-    borderRadius: 16,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.5)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: "transparent",
+    padding: SPACING.xs,
+    marginBottom: SPACING.md,
   },
   infoText: {
     flex: 1,
@@ -916,10 +908,10 @@ const styles = StyleSheet.create({
   },
   locationCard: {
     borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
+    padding: SPACING.sm,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    backgroundColor: "transparent",
+    borderWidth: 0,
   },
   locationHeader: {
     flexDirection: "row",
@@ -970,12 +962,11 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF5F0",
+    backgroundColor: "rgba(255, 245, 240, 0.6)",
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FFD9C6",
+    borderWidth: 0,
   },
   actionButtonText: {
     fontSize: 13,
@@ -990,11 +981,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFF5F0",
+    backgroundColor: "rgba(255, 245, 240, 0.6)",
     paddingVertical: SPACING.md,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#FFD9C6",
+    borderWidth: 0,
   },
   detectText: {
     fontSize: 14,
@@ -1017,12 +1007,11 @@ const styles = StyleSheet.create({
     marginVertical: SPACING.md,
   },
   previewBox: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: "transparent",
     borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
+    padding: SPACING.sm,
     marginTop: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    borderWidth: 0,
   },
   previewTitle: {
     fontSize: 14,

@@ -334,8 +334,31 @@ export default function TempleDetailScreen() {
 
   const handleShare = async () => {
     try {
+      const city = (locationStr && locationStr !== 'Unknown location') ? locationStr.split(',')[0].trim() : 'Bharat';
+      const deityText = temple?.deity
+        ? `A serene abode of *${temple.deity}*, welcoming pilgrims for divine darshan and blessings. 🏔️✨`
+        : `A revered sacred shrine welcoming pilgrims for divine darshan and blessings. 🏔️✨`;
+
+      const shareMessage = [
+        `🛕 *Have you discovered this sacred gem in ${city}?* 🙏`,
+        ``,
+        `*${displayName}*`,
+        `📍 ${locationStr || 'Bharat'}`,
+        ``,
+        deityText,
+        ``,
+        `And this is just *one of the thousands of sacred places waiting to be discovered on Brahmand.*`,
+        ``,
+        `🛕 Temples • 📖 Sacred Stories • 🗺️ Pilgrimage • 🔱 Spiritual Journeys`,
+        ``,
+        `🪔 *Discover Bharat. Discover the Divine. Discover Brahmand.*`,
+        ``,
+        `Download Brahmand & begin your spiritual journey:`,
+        `https://play.google.com/store/apps/details?id=com.brahmand.app`,
+      ].join('\n');
+
       await Share.share({
-        message: `🛕 ${displayName}\n📍 ${locationStr}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
+        message: shareMessage,
         title: displayName,
       });
     } catch (error) {
@@ -1209,6 +1232,7 @@ export default function TempleDetailScreen() {
             <DarshanAartiTimeline
               openingTime={authenticDarshanDetails?.opening || '4:00 AM'}
               closingTime={authenticDarshanDetails?.closing || '9:00 PM'}
+              generalDarshanText={authenticDarshanDetails?.generalDarshan}
               aartis={(() => {
                 const parseTimeString = (timeStr: string): { minutes: number; formatted: string } | null => {
                   if (!timeStr) return null;

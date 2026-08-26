@@ -4,7 +4,7 @@
     "slug": "sanatan-lok",
     "version": "1.4.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "splash": {
       "image": "./assets/images/splash-composed.png",
       "resizeMode": "contain",
@@ -127,7 +127,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/adaptive-icon.png"
     },
     "plugins": [
       "expo-router",
@@ -214,7 +214,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/adaptive-icon.png",
           "color": "#FF6B00",
           "defaultChannel": "default_v4",
           "sounds": [

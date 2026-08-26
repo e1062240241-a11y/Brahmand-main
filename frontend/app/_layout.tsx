@@ -507,10 +507,9 @@ function useNotificationResponseHandler() {
         // Trigger background sync immediately when user taps on DM notification
         if (Platform.OS !== 'web') {
           try {
-            const { SyncManager } = require('../src/database/syncManager');
             SyncManager.requestSync();
           } catch (e) {
-            console.warn('[Push] Failed to require SyncManager:', e);
+            console.warn('[Push] Failed SyncManager requestSync:', e);
           }
         }
         navigateToDm(data.chat_id);
@@ -670,10 +669,9 @@ function useMutedNotificationFilter() {
         if (data?.type === 'dm' || data?.type === 'message' || data?.type === 'circle_message') {
           if (Platform.OS !== 'web') {
             try {
-              const { SyncManager } = require('../src/database/syncManager');
               SyncManager.requestSync();
             } catch (e) {
-              console.warn('[Push] Failed to require SyncManager:', e);
+              console.warn('[Push] Failed SyncManager requestSync:', e);
             }
           }
         }
@@ -697,23 +695,7 @@ function useMutedNotificationFilter() {
   }, []);
 }
 
-// Safe Slot wrapper to isolate navigation errors
-function SafeSlot() {
-  try {
-    return <Slot />;
-  } catch (error) {
-    console.warn('Slot rendering crashed, showing fallback.', error);
-    // For navigation errors, show a more user-friendly message
-    if ((error as any)?.message?.includes('stale')) {
-      return (
-        <BrandedLoading message="Loading..." />
-      );
-    }
-    return (
-      <BrandedLoading />
-    );
-  }
-}
+
 
 export default function RootLayout() {
   const router = useRouter();
@@ -725,27 +707,39 @@ export default function RootLayout() {
     pathname === '/community-tweets' ||
     pathname === '/index' ||
     pathname === '/' ||
-    pathname === '' ||
     pathname.includes('/auth') ||
     pathname.includes('/privacy-policy');
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
-  const [fontsReady, setFontsReady] = useState(false);
+  const [isRootReady, setIsRootReady] = useState(false);
 
+  const [googleFontsLoaded, googleFontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    'Cinzel': require('../assets/fonts/Cinzel-Regular.ttf'),
+    'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
+    'RozhaOne': require('../assets/fonts/RozhaOne-Regular.ttf'),
+  });
+
+  const fontsLoaded = googleFontsLoaded || !!googleFontError;
 
   useDeepLinkHandler();
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
 
-  const [isRootReady, setIsRootReady] = useState(false);
-
   useEffect(() => {
-    if (!isLoading && fontsReady && isRootReady) {
+    if (!isLoading && fontsLoaded && isRootReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [isLoading, fontsReady, isRootReady]);
+  }, [isLoading, fontsLoaded, isRootReady]);
 
   useEffect(() => {
     clearLegacyLibraryCache();
@@ -923,7 +917,7 @@ export default function RootLayout() {
     }).catch((error) => {
       console.warn('[Push] Auto init on app load failed:', error);
     });
-  }, [isLoading, token, isAuthenticated, initPushNotifications]);
+  }, [isLoading, token, isAuthenticated, initPushNotifications, router]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -1001,10 +995,9 @@ export default function RootLayout() {
         if (type === 'dm' && data.chat_id) {
           if (Platform.OS !== 'web') {
             try {
-              const { SyncManager } = require('../src/database/syncManager');
               SyncManager.requestSync();
             } catch (e) {
-              console.warn('[NotificationTap] Failed to require SyncManager:', e);
+              console.warn('[NotificationTap] Failed SyncManager requestSync:', e);
             }
           }
           navigateOrQueue(`/dm/${data.chat_id}`);
@@ -1230,29 +1223,7 @@ export default function RootLayout() {
     }
   }, [isLoading, isAuthenticated, token, pathname]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const Font = require('expo-font');
-        await Font.loadAsync({
-          Inter_400Regular,
-          Inter_500Medium,
-          Inter_600SemiBold,
-          Inter_700Bold,
-          Outfit_400Regular,
-          Outfit_500Medium,
-          Outfit_600SemiBold,
-          Outfit_700Bold,
-          'Cinzel': require('../assets/fonts/Cinzel-Regular.ttf'),
-          'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
-          'RozhaOne': require('../assets/fonts/RozhaOne-Regular.ttf'),
-        });
-      } catch (e) {
-        console.warn('[Fonts] Non-blocking font load failed:', e);
-      }
-      setFontsReady(true);
-    })();
-  }, []);
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={() => setIsRootReady(true)}>

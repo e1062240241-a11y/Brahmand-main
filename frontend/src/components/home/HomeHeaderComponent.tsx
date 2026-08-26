@@ -322,7 +322,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
             } else {
                 try {
                     achPlayer.pause();
-                } catch (_e) {}
+                } catch (_e) { }
             }
         };
 
@@ -336,7 +336,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
             subscription.remove();
             try {
                 achPlayer.pause();
-            } catch (_e) {}
+            } catch (_e) { }
         };
     }, [achPlayer, isFocused, videoError]);
     return (
@@ -428,7 +428,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     </View>
 
-                    {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
+                    {/*     {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
                         <TouchableOpacity
                             style={styles.festivalAlertCard}
                             activeOpacity={0.9}
@@ -447,7 +447,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             </View>
                             <Ionicons name="chevron-forward" size={20} color="#FFF" />
                         </TouchableOpacity>
-                    )}
+                    )}. */}
 
                     {searchActive ? (
                         <View style={styles.searchPanel}>
@@ -494,35 +494,35 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             {searchResults.map((item) => {
                                                 const isFollowing = memoizedFollowingSet.has(item.id);
                                                 return (
-                                                <View key={item.id} style={styles.userResultItem}>
-                                                    <TouchableOpacity
-                                                        style={styles.userResultContent}
-                                                        activeOpacity={0.8}
-                                                        onPress={() => {
-                                                            saveRecentSearch(item);
-                                                            router.push(`/profile/${item.id}`);
-                                                        }}
-                                                    >
-                                                        <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
-                                                        <View style={styles.userResultText}>
-                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                                <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
-                                                                {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                                                    <View key={item.id} style={styles.userResultItem}>
+                                                        <TouchableOpacity
+                                                            style={styles.userResultContent}
+                                                            activeOpacity={0.8}
+                                                            onPress={() => {
+                                                                saveRecentSearch(item);
+                                                                router.push(`/profile/${item.id}`);
+                                                            }}
+                                                        >
+                                                            <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                                                            <View style={styles.userResultText}>
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                    <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                                                                    {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                                                                </View>
+                                                                <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
                                                             </View>
-                                                            <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
-                                                        </View>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={[styles.followButton, isFollowing && styles.followingButton]}
-                                                        activeOpacity={0.8}
-                                                        onPress={() => handleFollowUser(item.id)}
-                                                    >
-                                                        <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                                                            {isFollowing ? t('following') : t('follow')}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            );
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.followButton, isFollowing && styles.followingButton]}
+                                                            activeOpacity={0.8}
+                                                            onPress={() => handleFollowUser(item.id)}
+                                                        >
+                                                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                                                                {isFollowing ? t('following') : t('follow')}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                );
                                             })}
                                         </>
                                     ) : (
@@ -1528,16 +1528,16 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 </View>
             </View>
 
-            <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
-                <HomeFeedTabs
-                    activeTab={activeTab}
-                    onTabChange={(tab: string) => {
-                        requestAnimationFrame(() => {
-                            setActiveTab(tab);
-                        });
-                    }}
-                />
+                <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
+                    <HomeFeedTabs
+                        activeTab={activeTab}
+                        onTabChange={(tab: string) => {
+                            requestAnimationFrame(() => {
+                                setActiveTab(tab);
+                            });
+                        }}
+                    />
+                </View>
             </View>
-        </View>
-    );
+            );
 });

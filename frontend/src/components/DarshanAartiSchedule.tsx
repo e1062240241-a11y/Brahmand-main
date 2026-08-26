@@ -130,9 +130,9 @@ const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = (
                 <Ionicons name="sunny" size={20} color="#D97706" />
               </Animated.View>
             </View>
-            <View>
+            <View style={styles.timingTextContainer}>
               <Text style={styles.timingLabel}>Opening Time</Text>
-              <Text style={styles.timingValue}>{openingTime}</Text>
+              <Text style={styles.timingValue} numberOfLines={3}>{openingTime}</Text>
             </View>
           </View>
 
@@ -142,9 +142,9 @@ const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = (
             <View style={[styles.timingIconWrap, { backgroundColor: '#E0E7FF' }]}>
               <Ionicons name="moon" size={18} color="#4F46E5" />
             </View>
-            <View>
+            <View style={styles.timingTextContainer}>
               <Text style={styles.timingLabel}>Closing Time</Text>
-              <Text style={styles.timingValue}>{closingTime}</Text>
+              <Text style={styles.timingValue} numberOfLines={3}>{closingTime}</Text>
             </View>
           </View>
         </Animated.View>
@@ -194,7 +194,7 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
       {/* Optional General Darshan Info Banner */}
       {generalDarshanText ? (
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.generalDarshanBanner}>
-          <Ionicons name="information-circle-outline" size={16} color="#2563EB" />
+          <Ionicons name="information-circle-outline" size={18} color="#2563EB" style={{ marginTop: 1, flexShrink: 0 }} />
           <Text style={styles.generalDarshanText}>
             General Darshan: <Text style={styles.generalDarshanBold}>{generalDarshanText}</Text>
           </Text>
@@ -231,7 +231,7 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
           <View style={styles.vipBadgeIcon}>
             <Ionicons name="sparkles" size={16} color="#059669" />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, flexShrink: 1 }}>
             <Text style={styles.vipTitle}>VIP & Special Queue</Text>
             <Text style={styles.vipSubtext}>{vipInfoText}</Text>
           </View>
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -288,18 +288,25 @@ const styles = StyleSheet.create({
   timingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  timingTextContainer: {
+    flex: 1,
+    flexShrink: 1,
   },
   timingIconWrap: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   timingLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
     marginBottom: 2,
@@ -307,21 +314,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   timingValue: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#0F172A',
+    lineHeight: 18,
+    flexWrap: 'wrap',
   },
   timingDivider: {
     width: 1,
-    height: 32,
+    height: 36,
     backgroundColor: '#E2E8F0',
-    marginHorizontal: 12,
+    marginHorizontal: 8,
+    flexShrink: 0,
   },
 
   /* General Darshan Banner */
   generalDarshanBanner: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 8,
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
@@ -335,6 +345,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E40AF',
     flex: 1,
+    flexShrink: 1,
+    lineHeight: 18,
   },
   generalDarshanBold: {
     fontWeight: '700',
@@ -369,7 +381,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: 8,
   },
@@ -380,8 +392,10 @@ const styles = StyleSheet.create({
   aartiLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   aartiIconBox: {
     width: 34,
@@ -389,32 +403,39 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   aartiNameText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1E293B',
     flex: 1,
+    flexShrink: 1,
+    lineHeight: 18,
   },
   aartiTimeBadge: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexShrink: 1,
+    maxWidth: '55%',
   },
   aartiTimeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0F172A',
+    textAlign: 'right',
+    flexWrap: 'wrap',
   },
 
   /* 3. VIP Banner */
   vipCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: 10,
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: '#A7F3D0',
@@ -429,17 +450,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
   },
   vipTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#065F46',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   vipSubtext: {
     fontSize: 13,
     fontWeight: '500',
     color: '#047857',
+    lineHeight: 18,
+    flexWrap: 'wrap',
   },
 });
 

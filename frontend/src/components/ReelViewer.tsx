@@ -16,7 +16,8 @@ import {
   Alert,
   AppState,
   ActionSheetIOS,
-  Share, KeyboardAvoidingView, Keyboard, BackHandler } from 'react-native';
+  Share, KeyboardAvoidingView, Keyboard, BackHandler
+} from 'react-native';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,7 @@ import {
   blockUser,
   unblockUser,
 } from '../services/firebase/moderationService';
-import api, { reportComment , API_URL, getPostComments, addPostComment, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
+import api, { reportComment, API_URL, getPostComments, addPostComment, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useBlockStore } from '../store/blockStore';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -86,7 +87,7 @@ const NativeVideoPlayer = React.memo(({
       if (Platform.OS !== 'web') {
         p.bufferOptions = {
           preferredForwardBufferDuration: 2,
-          waitsToMinimizeStalling: true,    
+          waitsToMinimizeStalling: true,
           minBufferForPlayback: 0.3,
           maxBufferBytes: 10 * 1024 * 1024,
           prioritizeTimeOverSizeThreshold: true,
@@ -506,14 +507,14 @@ const ReelVideoItem = React.memo(({
           if (Platform.OS !== 'web') {
             player.destroy?.();
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (Platform.OS === 'web' && videoRef.current) {
         try {
           videoRef.current.pause();
           videoRef.current.src = '';
           videoRef.current.load();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, [player]);
@@ -530,7 +531,7 @@ const ReelVideoItem = React.memo(({
           } else if (typeof player.replace === 'function') {
             player.replace(null);
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       prevPostIdRef.current = currentPostId;
     }
@@ -1085,10 +1086,10 @@ const ReelVideoItem = React.memo(({
 
         {/* Comment */}
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('comments') || 'Comments'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleComment}>
-          <Ionicons 
-            name="chatbubble" 
-            size={32} 
-            color="#FFF" 
+          <Ionicons
+            name="chatbubble"
+            size={32}
+            color="#FFF"
             style={{
               textShadowColor: 'rgba(0, 0, 0, 0.4)',
               textShadowOffset: { width: 0, height: 2 },
@@ -1099,9 +1100,9 @@ const ReelVideoItem = React.memo(({
 
         {/* Share */}
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('share') || 'Share'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
-          <Ionicons 
-            name="paper-plane" 
-            size={32} 
+          <Ionicons
+            name="send"
+            size={32}
             color="#FFF"
             style={{
               textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -1113,9 +1114,9 @@ const ReelVideoItem = React.memo(({
 
         {/* Options (Three Dots) */}
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('openMenu') || 'Open menu'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
-          <Ionicons 
-            name="ellipsis-horizontal" 
-            size={32} 
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={32}
             color="#FFF"
             style={{
               textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -1129,15 +1130,15 @@ const ReelVideoItem = React.memo(({
   );
 });
 
-const CommentItem = React.memo(({ 
-  item, 
-  replies, 
-  user, 
-  selectedPost, 
-  onDelete, 
-  onMenuPress, 
+const CommentItem = React.memo(({
+  item,
+  replies,
+  user,
+  selectedPost,
+  onDelete,
+  onMenuPress,
   onReply,
-  t 
+  t
 }: any) => {
   const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
   return (
@@ -1301,6 +1302,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const seenIdsRef = useRef<Set<string>>(new Set());
   // Global pool of ALL posts ever loaded this session — used for recycling when all seen
   const allSessionPostsRef = useRef<any[]>([]);
+  // O(1) lookup set for global session pool to prevent O(N) array iteration on every swipe/fetch
+  const allSessionIdsRef = useRef<Set<string>>(new Set());
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
@@ -1353,7 +1356,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const tabBar = useTabBar();
     showTabBar = tabBar.showTabBar;
     hideTabBar = tabBar.hideTabBar;
-  } catch (e) {}
+  } catch (e) { }
 
   useEffect(() => {
     if (isVisible) {
@@ -1392,7 +1395,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     if (!comment || !user?.id) return;
-    
+
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
@@ -1456,14 +1459,16 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         'Choose an action:',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Report Comment', onPress: () => {
-            setPendingReportComment(comment);
-            setCommentModalToRestore(isCommentVisible);
-            setIsCommentVisible(false);
-            setTimeout(() => {
-              setReportCommentModalVisible(true);
-            }, 300);
-          }},
+          {
+            text: 'Report Comment', onPress: () => {
+              setPendingReportComment(comment);
+              setCommentModalToRestore(isCommentVisible);
+              setIsCommentVisible(false);
+              setTimeout(() => {
+                setReportCommentModalVisible(true);
+              }, 300);
+            }
+          },
           { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
         ],
         { cancelable: true }
@@ -1591,7 +1596,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const postId = String(selectedPost.id);
     const room = `post_${postId}`;
 
-    socketService.joinRoom(room).catch(() => {});
+    socketService.joinRoom(room).catch(() => { });
 
     socketService.onEvent('new_comment', handleNewComment);
     socketService.onEvent('comment_deleted', handleCommentDeleted);
@@ -1651,7 +1656,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } catch (e) {
       setLocalComments(prev => prev.filter(c => c.id !== tempId));
       Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'त्रुटि' : 'Error',
         t('language') === 'hi' ? 'टिप्पणी पोस्ट नहीं की जा सकी। कृपया पुनः प्रयास करें।' : 'Could not post comment. Please try again.'
       );
     } finally {
@@ -1697,7 +1702,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       setVideos(originalVideos);
       const detail = error.response?.data?.detail || error.message;
       Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'त्रुटि' : 'Error',
         detail || (t('language') === 'hi' ? 'टिप्पणी हटाई नहीं जा सकी। कृपया पुनः प्रयास करें।' : 'Could not delete comment. Please try again.')
       );
     }
@@ -1709,7 +1714,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const link = `https://brahmand.app/post/${postId}`;
     await Clipboard.setStringAsync(link);
     Alert.alert(
-      t('language') === 'hi' ? 'लिंक कॉपी हो गया' : 'Link Copied', 
+      t('language') === 'hi' ? 'लिंक कॉपी हो गया' : 'Link Copied',
       t('language') === 'hi' ? 'पोस्ट लिंक आपके क्लिपबोर्ड पर कॉपी हो गया है।' : 'The post link has been copied to your clipboard.'
     );
   };
@@ -1825,7 +1830,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
       const res = await getPostsFeed(20, 0, 'for_you', allSeenIds);
       const rawPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
-      
+
       // Only keep video posts in the ReelViewer
       const newPosts = rawPosts.filter((p: any) => {
         const mediaUrl = p?.media_url || p?.mediaUrl || p?.image_url || p?.imageUrl || p?.image || '';
@@ -1834,12 +1839,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       });
 
       // Add any new posts to the global session pool
-      // OPT: Use a Set for O(1) lookup to prevent O(N*M) CPU bottleneck
-      const allSessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
+      // OPT: Use a parallel Set for O(1) lookup to prevent O(N*M) CPU bottleneck
       for (const p of newPosts) {
-        if (p?.id && !allSessionIds.has(p.id)) {
+        if (p?.id && !allSessionIdsRef.current.has(p.id)) {
           allSessionPostsRef.current.push(p);
-          allSessionIds.add(p.id);
+          allSessionIdsRef.current.add(p.id);
         }
       }
 
@@ -1902,9 +1906,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         initialPostRef.current = initialPost;
         seenIdsRef.current.clear();
         allSessionPostsRef.current = [];
+        allSessionIdsRef.current.clear();
         if (initialPost?.id) {
           seenIdsRef.current.add(initialPost.id);
           allSessionPostsRef.current.push(initialPost);
+          allSessionIdsRef.current.add(initialPost.id);
         }
         setVideos([initialPost]);
         setActiveIndex(0);
@@ -1932,7 +1938,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       watch_seconds: watchSecs,
       duration_seconds: durSecs,
       rewatched: false,
-    }).catch(() => {}); // fire-and-forget
+    }).catch(() => { }); // fire-and-forget
   }, []);
 
   const handleClose = useCallback(() => {
@@ -2012,10 +2018,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       // Track in session seen set for smarter backend querying
       seenIdsRef.current.add(activePost.id);
       // Add to global session pool if not already there
-      // OPT: Use a Set for O(1) lookup
-      const sessionIds = new Set(allSessionPostsRef.current.map((p: any) => p.id).filter(Boolean));
-      if (!sessionIds.has(activePost.id)) {
+      // OPT: Use parallel Set for O(1) lookup to prevent O(N) iteration on every swipe
+      if (!allSessionIdsRef.current.has(activePost.id)) {
         allSessionPostsRef.current.push(activePost);
+        allSessionIdsRef.current.add(activePost.id);
       }
     }
   }, [activeIndex, videos]);
@@ -2168,9 +2174,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             renderItem={renderItem}
             extraData={isMuted}
             // OPT-1: key by post.id (stable) instead of array index
-          // This makes FlatList use O(1) key matching on mutations instead
-          // of O(n) full reconciliation every time setVideos() is called.
-          keyExtractor={(item, index) => item?.id ? `reel-${item.id}` : `reel-idx-${index}`}
+            // This makes FlatList use O(1) key matching on mutations instead
+            // of O(n) full reconciliation every time setVideos() is called.
+            keyExtractor={(item, index) => item?.id ? `reel-${item.id}` : `reel-idx-${index}`}
             pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}
@@ -2246,24 +2252,24 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
               {/* OPT-5: repliesMap & parentComments are now pre-computed useMemo values */}
               <FlatList
-                    data={parentComments}
-                    keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
-                    initialNumToRender={10}
-                    maxToRenderPerBatch={5}
-                    windowSize={5}
-                    removeClippedSubviews={Platform.OS === 'android'}
-                    renderItem={renderCommentItem}
-                    ListEmptyComponent={
-                      commentsLoading ? (
-                        <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-                      ) : (
-                        <View style={{ marginTop: 60, alignItems: 'center' }}>
-                          <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
-                          <Text style={{ color: '#999', marginTop: 10 }}>{t('noCommentsYet')}</Text>
-                        </View>
-                      )
-                    }
-                  />
+                data={parentComments}
+                keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                initialNumToRender={10}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                renderItem={renderCommentItem}
+                ListEmptyComponent={
+                  commentsLoading ? (
+                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                  ) : (
+                    <View style={{ marginTop: 60, alignItems: 'center' }}>
+                      <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
+                      <Text style={{ color: '#999', marginTop: 10 }}>{t('noCommentsYet')}</Text>
+                    </View>
+                  )
+                }
+              />
 
 
               {replyingToComment && (

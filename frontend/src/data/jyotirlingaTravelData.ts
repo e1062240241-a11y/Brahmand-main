@@ -1,5 +1,7 @@
 import { getTempleImageById, getTempleImageByName } from '../constants/templeImages';
 import { CENTRALIZED_SACRED_PLACES_DATA } from './templeSacredPlacesData';
+import JYOTIRLINGA_JSON_DATA from './Nearby_Sacred_Temples_12_Jyotirlingas.json';
+import SHAKTI_PEETHAS_JSON_DATA from './Nearby_Sacred_Temples_Shakti_Peethas.json';
 
 export interface SacredPlaceItem {
   id: string;
@@ -516,6 +518,140 @@ export function normalizeTempleKey(rawInput: string, nameInput?: string): string
     : nameInput
     ? String(nameInput).toLowerCase().trim()
     : '';
+}
+
+const JYOTIRLINGA_NAME_MAP: Record<string, string> = {
+  'somnath': 'somnath',
+  'mallikarjuna (srisailam)': 'srisailam',
+  'mahakaleshwar (ujjain)': 'mahakaleshwar',
+  'omkareshwar': 'omkareshwar',
+  'kedarnath': 'kedarnath',
+  'bhimashankar': 'bhimashankar',
+  'kashi vishwanath (varanasi)': 'kashi-vishwanath',
+  'trimbakeshwar': 'trimbakeshwar',
+  'rameshwaram': 'ramanathaswamy',
+  'nageshwar': 'nageshwar',
+  'baidyanath dham (deoghar)': 'baidyanath',
+  'grishneshwar': 'grishneshwar',
+  'aundha nagnath': 'aundha-nagnath',
+  'parli vaijnath': 'parli-vaijnath',
+};
+
+export const JYOTIRLINGA_SACRED_PLACES_DATA: Record<string, SacredPlaceItem[]> = {};
+
+if (JYOTIRLINGA_JSON_DATA && Array.isArray((JYOTIRLINGA_JSON_DATA as any).data)) {
+  for (const entry of (JYOTIRLINGA_JSON_DATA as any).data) {
+    const rawName = String(entry.jyotirlinga || '').toLowerCase().trim();
+    const canonicalKey = JYOTIRLINGA_NAME_MAP[rawName] || normalizeTempleKey(rawName);
+    const locationStr = String(entry.location || '').trim();
+
+    if (canonicalKey && Array.isArray(entry.nearby_sacred_temples)) {
+      const places: SacredPlaceItem[] = [];
+
+      for (let idx = 0; idx < entry.nearby_sacred_temples.length; idx++) {
+        const item = entry.nearby_sacred_temples[idx];
+        if (item.exists === false) continue;
+
+        const placeName = String(item.name || '').trim();
+        if (!placeName) continue;
+
+        const cleanDist = String(item.distance || '').replace('~', '').trim();
+        const dummyItem = { name: placeName, category: 'Shrine' as const } as SacredPlaceItem;
+        const normCategory = normalizeSacredPlaceCategory(dummyItem);
+
+        places.push({
+          id: `${canonicalKey}_jyo_${idx + 1}`,
+          name: placeName,
+          category: normCategory,
+          distance: cleanDist || 'Nearby',
+          significance: String(item.significance || '').trim(),
+          locationQuery: `${placeName}, ${locationStr}`,
+        });
+      }
+
+      if (places.length > 0) {
+        JYOTIRLINGA_SACRED_PLACES_DATA[canonicalKey] = places;
+      }
+    }
+  }
+}
+
+const SHAKTI_TEMPLE_ALIAS_MAP: Record<string, string[]> = {
+  'kamakhya temple': ['kamakhya', 'bGqr42M269EFeCmbPQ1f', 'kamakhya-temple-guwahati', 'kamakhya-devi-sanctuary-assam', '8ulQF8kVt3yQAwAQC208', 'shaktipeeth-kamakhya-temple-guwahati'],
+  'kalighat temple': ['kalighat', 'R0rCbxgp6wWizA0bQDk3', 'kalighat-kali-temple-kolkata', 'kalighat-kali-shrine-kolkata'],
+  'tarapith temple': ['tarapith', '9FpEMJtXRlC8ooeLeqS0', 'tarapith-temple-birbhum'],
+  'vaishno devi temple': ['vaishno-devi', '5vawXjLGFdM16y0JdIlE', 'vaishno-devi-temple-jammu-kashmir'],
+  'jwalamukhi temple': ['jwalamukhi', 'Khngz0yKSfUmeEwreNHL', 'jwala-ji-temple-kangra', 'jwalamukhi-temple-kangra', 'e5DUhLAcDqrLC4o7IgJv', 'chamunda-devi-temple-kangra', 'o2EfRgCyXDbTicfV2j1c', 'brajeshwari-devi-temple-kangra'],
+  'chintpurni devi temple': ['chintpurni', 'J7qGPHAmVDKqnVBjDoKz', 'chintpurni-devi-temple-una'],
+  'naina devi temple (bilaspur)': ['naina-devi', 'aZUIh0yRZgKTUQF2h7Yq', 'naina-devi-temple-bilaspur'],
+  'kanyakumari bhagavathy amman temple': ['kanyakumari-bhagavathy', 'cesyNvigMvTFq7i7qBug', 'kanyakumari-devi-temple-kanyakumari'],
+  'kalika mata temple, pavagadh': ['kalika-mata-pavagadh', '8sz8D7ODqv3cA0jmS8zg', 'kalika-mata-temple-pavagadh'],
+  'ambaji temple': ['ambaji', 'tTPEJVrk4FYklMYIc7dU', 'ambaji-temple-gujarat'],
+  'hinglaj mata temple': ['hinglaj', '89OA8R8mKzUODJCtWnlN', 'hinglaj-mata-temple-barmer'],
+  'sharada peeth': ['sharada-peeth', 'BlI0l8wJGcIE1WBlmuBu', 'sharada-peeth-kashmir', 'ZXpdi065TQXVJBTRUw7S', 'sharada-devi-temple-maihar'],
+  'tripura (tripurasundari / matabari)': ['tripura-sundari', 'E35DqFvnB2ZJ60Gp4Goi', 'tripura-sundari-temple-udaipur'],
+  'shondot / danteshwari temple': ['danteshwari', 'ibTnhap9UDqJASab5PTa', 'danteshwari-temple-dantewada'],
+  'attahas (fullara) shakti peeth': ['fullara-attahas', 'wPeAggfGaqHEaC0JGX7n', 'fullara-attahas-temple-birbhum'],
+  'kankalitala shakti peeth': ['kankalitala', 'x7pqfMwvM8n3BucndCcz', 'kankalitala-temple-bolpur'],
+  'nalhati (nalateshwari) shakti peeth': ['nalhati', 'vpMToG0KQdYoDNFqBSCN', 'nalateswari-temple-nalhati'],
+  'bakreswar dham': ['bakreshwar', '4btYs0KS1COTglTH5bLm', 'bakreshwar-temple-birbhum'],
+  'prayaga shakti peethas (alopi devi / lalita devi / kalyani devi)': ['alopi-devi', 'sStkB4MtHN88qI4N7W6M', 'alopi-devi-temple-prayagraj', 'ICgj9P6dgETsIXxqobw3', 'devi-patan-temple-tulsipur'],
+  'biraja (vimala) shakti peeth': ['biraja', 'S9Q9YZ8cyecGkqnJ1084', 'biraja-temple-jajpur', 'gM0FGwHQWEqqRdE277GL', 'tara-tarini-temple-ganjam'],
+  'karavira (kolhapur) shakti peeth': ['kolhapur-mahalaxmi', 'YyBwlm5wyyZkgxrvScDR', 'mahalaxmi-temple-kolhapur', '08pXdMR1eLLkHjrtHADk', 'renuka-devi-temple-mahur', 'FEowNmwowgheGJSN1uZs', 'saptashrungi-nivasini-temple-vani', 'OVWk1L9Z2HLI64V84L3m', 'tulja-bhavani-temple-tuljapur'],
+  'kamakshi / kanchipuram shakti peeth': ['kamakshi-amman', 'kamakshi-amman-temple-kanchipuram'],
+  'chhinnamasta shakti peeth': ['chinnamasta', 'c8YyaSSSqH8EoSMqMR2T', 'chinnamasta-temple-rajrappa'],
+  'yogadya (khirdagram) shakti peeth': ['khirgram-jogadya', 'dpGJtzLLhjI0ozYX2w1q', 'jogadya-temple-khirgram'],
+  'meenakshi amman temple': ['meenakshi-amman', 'oLcJ1cE4dIDdK7D7SCq8', 'chamundeshwari-temple-mysore'],
+  'vishalakshi temple': ['shaktipeeth-vishalakshi-temple-varanasi', 'boYR6tKcdOcuGYebPDkR', 'vindhyavasini-temple-vindhyachal'],
+  'avanti (gadkalika) shakti peeth': ['gadkalika-ujjain', 'RWHljJGGXrXtNPSni8gB', 'harsiddhi-mata-temple-ujjain'],
+};
+
+export const SHAKTI_PEETHA_SACRED_PLACES_DATA: Record<string, SacredPlaceItem[]> = {};
+
+if (SHAKTI_PEETHAS_JSON_DATA && Array.isArray((SHAKTI_PEETHAS_JSON_DATA as any).data)) {
+  for (const entry of (SHAKTI_PEETHAS_JSON_DATA as any).data) {
+    const rawName = String(entry.shakti_peeth || '').toLowerCase().trim();
+    const cleanRawKey = rawName.replace(/\s*\(.*?\)/g, '').replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '-');
+    const locationStr = String(entry.location || '').trim();
+
+    if (Array.isArray(entry.nearby_sacred_temples)) {
+      const places: SacredPlaceItem[] = [];
+
+      for (let idx = 0; idx < entry.nearby_sacred_temples.length; idx++) {
+        const item = entry.nearby_sacred_temples[idx];
+        if (item.exists === false) continue;
+
+        const placeName = String(item.name || '').trim();
+        if (!placeName) continue;
+
+        const cleanDist = String(item.distance || '').replace('~', '').trim();
+        const dummyItem = { name: placeName, category: 'Shrine' as const } as SacredPlaceItem;
+        const normCategory = normalizeSacredPlaceCategory(dummyItem);
+
+        places.push({
+          id: `${cleanRawKey}_sp_${idx + 1}`,
+          name: placeName,
+          category: normCategory,
+          distance: cleanDist || 'Nearby',
+          significance: String(item.significance || '').trim(),
+          locationQuery: `${placeName}, ${locationStr}`,
+        });
+      }
+
+      if (places.length > 0) {
+        SHAKTI_PEETHA_SACRED_PLACES_DATA[rawName] = places;
+        if (cleanRawKey) {
+          SHAKTI_PEETHA_SACRED_PLACES_DATA[cleanRawKey] = places;
+        }
+        
+        const aliases = SHAKTI_TEMPLE_ALIAS_MAP[rawName] || [];
+        for (const alias of aliases) {
+          SHAKTI_PEETHA_SACRED_PLACES_DATA[alias] = places;
+          SHAKTI_PEETHA_SACRED_PLACES_DATA[alias.toLowerCase()] = places;
+        }
+      }
+    }
+  }
 }
 
 export const EXPLORE_NEARBY_DATA: Record<
@@ -1581,6 +1717,8 @@ export const JYOTIRLINGA_CANONICAL_KEYS = new Set([
   'nageshwar',
   'ramanathaswamy',
   'grishneshwar',
+  'aundha-nagnath',
+  'parli-vaijnath',
 ]);
 
 export function isJyotirlinga(input: any, templeName: string = '', category: string = ''): boolean {
@@ -1787,6 +1925,23 @@ export function getNearbyCacheStats(): { cachedCount: number } {
 }
 
 /**
+ * Intelligently normalizes the visual category of a sacred place based on its name and attributes.
+ */
+export function normalizeSacredPlaceCategory(place: SacredPlaceItem): SacredPlaceItem['category'] {
+  if (!place || !place.name) return place?.category || 'Shrine';
+  const n = place.name.toLowerCase();
+
+  if (n.includes('cave') || n.includes('gufa') || n.includes('gupha')) return 'Cave';
+  if (n.includes('fort') || n.includes('killa') || n.includes('garh')) return 'Fort';
+  if (n.includes('lake') || n.includes(' tal ') || n.endsWith(' tal') || (n.includes('sarovar') && !n.includes('temple'))) return 'Lake';
+  if (n.includes('ghat') || n.includes('kund') || n.includes('pokhari') || n.includes('sangam') || n.includes('theertham') || n.includes('bathing')) return 'Ghat';
+  if (n.includes('mandir') || n.includes('temple') || n.includes('jyotirling') || n.includes('shakti peeth') || n.includes('ashram') || n.includes('math') || n.includes('matha') || n.includes('shrine')) return 'Temple';
+  if (n.includes('bridge') || n.includes('village') || n.includes('promenade') || n.includes('rock') || n.includes('dam') || n.includes('setu') || n.includes('trail') || n.includes('path') || n.includes('trek')) return 'Heritage';
+
+  return place.category || 'Shrine';
+}
+
+/**
  * Main resolution engine for "Explore Nearby" sacred places, temples, and circuit journeys.
  *
  * Priority Resolution Pipeline:
@@ -1840,11 +1995,28 @@ export function getExploreNearbyData(
   // Retrieve curated entry
   const curatedData = EXPLORE_NEARBY_DATA[currentTempleKey];
 
-  // 1. Priority Data Logic: Curated non-empty sacred places take precedence, otherwise fall back to Centralized master dataset lookup
+  // 1. Priority Data Logic: Curated non-empty sacred places take precedence, followed by JSON research dataset, then Centralized master dataset lookup
   const curatedSacred =
     curatedData?.sacredPlaces && curatedData.sacredPlaces.length > 0
       ? curatedData.sacredPlaces
       : null;
+
+  const jsonSacred =
+    JYOTIRLINGA_SACRED_PLACES_DATA[currentTempleKey] ??
+    JYOTIRLINGA_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
+    JYOTIRLINGA_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
+    null;
+
+  const cleanIdKey = String(templeId || '').toLowerCase().trim();
+  const cleanNameSlug = String(templeName || '').replace(/[\–\–\—\-\(\)\/,]/g, ' ').toLowerCase().trim().replace(/\s+/g, '-');
+
+  const jsonShaktiSacred =
+    SHAKTI_PEETHA_SACRED_PLACES_DATA[cleanIdKey] ??
+    SHAKTI_PEETHA_SACRED_PLACES_DATA[cleanNameSlug] ??
+    SHAKTI_PEETHA_SACRED_PLACES_DATA[currentTempleKey] ??
+    SHAKTI_PEETHA_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
+    SHAKTI_PEETHA_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
+    null;
 
   const centralizedSacred =
     CENTRALIZED_SACRED_PLACES_DATA[templeId] ??
@@ -1854,7 +2026,7 @@ export function getExploreNearbyData(
     CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
     [];
 
-  const initialSacredPlaces: SacredPlaceItem[] = curatedSacred ?? centralizedSacred;
+  const initialSacredPlaces: SacredPlaceItem[] = curatedSacred ?? jsonSacred ?? jsonShaktiSacred ?? centralizedSacred;
   const rawSacredPlaces = initialSacredPlaces;
 
   // 2. Nearby Temples: Curated non-empty nearby temples OR Cached Coordinate-based Fallback
@@ -1947,8 +2119,19 @@ export function getExploreNearbyData(
     return false;
   };
 
-  // Final Output Level Self-Filtering across all collections
-  const filteredSacredPlaces = rawSacredPlaces.filter((item) => !isCurrentTemple(item));
+  // Helper to identify auto-generated filler template items
+  const isGenericSyntheticSacredPlace = (item: SacredPlaceItem) => {
+    if (!item || !item.name) return false;
+    const name = item.name;
+    return (
+      name.endsWith('Sanctum Complex') ||
+      name.endsWith('Heritage Bathing Ghat & Kund') ||
+      name.endsWith('Ancient Meditation Hill')
+    );
+  };
+
+  // Final Output Level Self-Filtering across all collections (filtering synthetic filler)
+  const filteredSacredPlaces = rawSacredPlaces.filter((item) => !isCurrentTemple(item) && !isGenericSyntheticSacredPlace(item));
   const filteredNearbyTemples = rawNearbyTemples.filter((item) => !isCurrentTemple(item));
   const filteredCircuit = circuitJourney.filter((item) => !isCurrentTemple(item));
 
@@ -1974,7 +2157,10 @@ export function getExploreNearbyData(
     const cleanName = String(item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     if (cleanName && !seenSacredNames.has(cleanName)) {
       seenSacredNames.add(cleanName);
-      deduplicatedSacredPlaces.push(item);
+      deduplicatedSacredPlaces.push({
+        ...item,
+        category: normalizeSacredPlaceCategory(item),
+      });
     }
   }
 

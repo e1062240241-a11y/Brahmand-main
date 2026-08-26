@@ -33,3 +33,7 @@
 ## 2024-08-22 - [Frontend Performance: Fix broken state reference for blockedByMeUserSet]
 **Learning:** When attempting to extract a Zustand set property (`blockedByMeUserSet`) to replace an array lookup (`blockedByMeUserIds`), be careful to correctly destructure from the store state. An incomplete change leads to `TypeError` at runtime.
 **Action:** When updating store references in component hooks, double check that the returned property is defined in the store interface and matches the destructured variable.
+
+## 2025-02-12 - Prevented O(N) array-to-Set instantiation inside swipe and fetch render loops
+**Learning:** Found that recreating a `Set` from a large array state (`new Set(allSessionPostsRef.current.map(p => p.id))`) dynamically during scroll loops (`useEffect` on `activeIndex`) in the frontend created a scaling CPU bottleneck.
+**Action:** When tracking large arrays for fast membership lookup, explicitly maintain a parallel `Set` state alongside the array instead of deriving it dynamically during component render updates or side effects.

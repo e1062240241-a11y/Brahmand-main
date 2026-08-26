@@ -941,7 +941,7 @@ const PostFeedCardComponent = ({
             accessibilityRole="button"
             accessibilityLabel={t('share')}
           >
-            <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+            <Ionicons name="send-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}

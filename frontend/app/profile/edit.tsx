@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -293,36 +294,47 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>
-            {t('language') === 'hi' ? 'प्रोफ़ाइल लोड हो रही है...' : 'Loading profile...'}
-          </Text>
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.1, 0.25]}
+        style={styles.container}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={[styles.loadingText, { color: '#FFFFFF' }]}>
+              {t('language') === 'hi' ? 'प्रोफ़ाइल लोड हो रही है...' : 'Loading profile...'}
+            </Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardWrap}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleBack}
-            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-            style={styles.backBtn}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {t('language') === 'hi' ? 'प्रोफ़ाइल संपादित करें' : 'Edit Profile'}
-          </Text>
-          <View style={styles.headerSpacer} />
-        </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.1, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={styles.keyboardWrap}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={handleBack}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+              style={styles.backBtn}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {t('language') === 'hi' ? 'प्रोफ़ाइल संपादित करें' : 'Edit Profile'}
+            </Text>
+            <View style={styles.headerSpacer} />
+          </View>
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
@@ -673,14 +685,14 @@ export default function EditProfileScreen() {
         description={t('language') === 'hi' ? 'खाता हटाने के लिए OTP सत्यापित करें' : 'Verify OTP to delete your account'}
       />
 
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   keyboardWrap: {
     flex: 1,
@@ -690,14 +702,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    backgroundColor: 'transparent',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#FFFFFF',
   },
   backBtn: {
     minWidth: 44,
@@ -725,9 +735,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   heroCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
+    backgroundColor: 'transparent',
+    paddingVertical: SPACING.sm,
     marginBottom: SPACING.md,
   },
   heroTitle: {
@@ -773,13 +782,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#331A00',
     marginBottom: SPACING.sm,
   },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
+    backgroundColor: 'transparent',
+    paddingVertical: SPACING.xs,
   },
   helperText: {
     color: COLORS.textSecondary,
@@ -809,11 +817,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   dangerZoneCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: `${COLORS.error}33`,
+    backgroundColor: 'transparent',
+    paddingVertical: SPACING.xs,
   },
   dangerZoneText: {
     color: COLORS.textSecondary,
@@ -912,7 +917,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'transparent',
     gap: 6,
   },
   genderButtonActive: {
@@ -934,7 +939,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFDF9',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
     width: 320,

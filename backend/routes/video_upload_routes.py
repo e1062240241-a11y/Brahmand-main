@@ -134,7 +134,7 @@ def _probe_video_metadata(input_path: str) -> dict:
         raise HTTPException(status_code=400, detail="Unable to inspect uploaded video. The file may be corrupt or an unsupported format.")
     except Exception as exc:
         logger.warning(f"_probe_video_metadata execution error: {exc}")
-        raise RuntimeError(f"Failed to execute ffprobe binary: {exc}")
+        raise RuntimeError("Failed to execute ffprobe binary")
 
     try:
         metadata = json.loads(result.stdout or "{}")
@@ -226,7 +226,7 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         raise HTTPException(status_code=500, detail="An internal server error occurred")
     except Exception as exc:
         logger.warning(f"_compress_video execution error: {exc}")
-        raise RuntimeError(f"Failed to execute ffmpeg binary: {exc}")
+        raise RuntimeError("Failed to execute ffmpeg binary")
 
 
 def _generate_video_thumbnail(video_path: str, thumbnail_path: str, width: int = 400) -> None:

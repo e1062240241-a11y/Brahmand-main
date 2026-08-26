@@ -114,7 +114,7 @@ export default function SeniorCitizenRequestScreen() {
           <View style={styles.modalBar} />
           <View style={styles.modalHeaderOrange}>
             <Text style={styles.modalTitleWhite}>Dropdown Options</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite} accessibilityRole="button" accessibilityLabel="Close dropdown options">
               <Ionicons name="close" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
@@ -126,6 +126,8 @@ export default function SeniorCitizenRequestScreen() {
               <TouchableOpacity 
                 style={[styles.optionItem, (helpType === item || ageGroup === item || contactPref === item) && styles.optionItemSelected]} 
                 onPress={() => handleSelectOption(item)}
+                accessibilityRole="button"
+                accessibilityLabel={item}
               >
                 <Text style={[styles.optionText, (helpType === item || ageGroup === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
                 {(helpType === item || ageGroup === item || contactPref === item) && (
@@ -153,7 +155,7 @@ export default function SeniorCitizenRequestScreen() {
             <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
               <View style={styles.headerBar}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
                   <Ionicons name="chevron-back" size={22} color="#111" />
                 </TouchableOpacity>
                 <LinearGradient colors={['#E8EAF6', '#C5CAE9']} style={styles.iconCircle}>
@@ -167,7 +169,7 @@ export default function SeniorCitizenRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Type of Help Needed <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('help')}>
+                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('help')} accessibilityRole="button" accessibilityLabel="Select Type of Help">
                   <Text style={[styles.dropdownButtonText, !helpType && styles.placeholderText]}>{helpType || 'Select Type of Help'}</Text>
                   <Ionicons name="chevron-down" size={18} color="#AAA" />
                 </TouchableOpacity>
@@ -227,7 +229,7 @@ export default function SeniorCitizenRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Age Group</Text>
-                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('age')}>
+                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('age')} accessibilityRole="button" accessibilityLabel="Select Age Group">
                   <Text style={[styles.dropdownButtonText, !ageGroup && styles.placeholderText]}>{ageGroup || 'Select Age Group'}</Text>
                   <Ionicons name="chevron-down" size={18} color="#AAA" />
                 </TouchableOpacity>
@@ -237,7 +239,7 @@ export default function SeniorCitizenRequestScreen() {
                 <Text style={styles.fieldLabel}>Urgency Level <Text style={styles.requiredAsterisk}>*</Text></Text>
                 <View style={styles.segmentedControl}>
                   {URGENCY_LEVELS.map((item) => (
-                    <TouchableOpacity key={item} style={[styles.segmentButton, urgency === item && (item === 'Urgent' ? styles.segmentButtonSelectedUrgent : styles.segmentButtonSelected)]} onPress={() => setUrgency(item)}>
+                    <TouchableOpacity key={item} style={[styles.segmentButton, urgency === item && (item === 'Urgent' ? styles.segmentButtonSelectedUrgent : styles.segmentButtonSelected)]} onPress={() => setUrgency(item)} accessibilityRole="button" accessibilityLabel={`Set urgency to ${item}`}>
                       <Text style={[styles.segmentButtonText, urgency === item && (item === 'Urgent' ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)]}>{item}</Text>
                     </TouchableOpacity>
                   ))}
@@ -246,13 +248,13 @@ export default function SeniorCitizenRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Contact Preference <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('contact')}>
+                <TouchableOpacity style={styles.dropdownButton} activeOpacity={0.7} onPress={() => openModal('contact')} accessibilityRole="button" accessibilityLabel="Select contact method">
                   <Text style={[styles.dropdownButtonText, !contactPref && styles.placeholderText]}>{contactPref || 'Select contact method'}</Text>
                   <Ionicons name="chevron-down" size={18} color="#AAA" />
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={[styles.continueButton, isSubmitting && { opacity: 0.7 }]} onPress={handleContinue} disabled={isSubmitting}>
+              <TouchableOpacity style={[styles.continueButton, isSubmitting && { opacity: 0.7 }]} onPress={handleContinue} disabled={isSubmitting} accessibilityRole="button" accessibilityLabel="Post Request">
                 <LinearGradient colors={['#F25C05', '#D35400']} style={styles.continueGradient}>
                   {isSubmitting ? <ActivityIndicator color="#FFF" /> : (
                     <>

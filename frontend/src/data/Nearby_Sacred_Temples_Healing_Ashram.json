@@ -1,0 +1,1682 @@
+{
+    "title": "Nearby Sacred Temples — Healing & Ashram Sanctuaries (Batch J + Sharada Peeth)",
+    "description": "For each healing/ashram sanctuary temple from Batch J plus Sharada Peeth, nearby sacred temples that exist. Covers Kainchi Dham, Prasanthi Nilayam (Puttaparthi), Akshardham Delhi, Shirdi Sai Baba, Auroville Matrimandir, ISKCON Vrindavan, Art of Living Bangalore, Arunachaleswarar (Tiruvannamalai), and Sharada Peeth. Researched from official websites, Incredible India, state tourism, and pilgrimage guides.",
+    "total_healing_temples": 9,
+    "total_nearby_sacred_sites": 89,
+    "data": [
+        {
+            "temple": "Kainchi Dham (Neem Karoli Baba Ashram)",
+            "location": "Nainital-Almora Road, Bhowali, Uttarakhand, India",
+            "deity": "Neem Karoli Baba (Hanuman)",
+            "significance": "Ashram of Neem Karoli Baba; famous for its Hanuman temple. Steve Jobs and Mark Zuckerberg visited. Located ~17 km from Nainital on the Nainital-Almora Road.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Naina Devi Temple (Nainital)",
+                    "distance": "~20 km, in Nainital",
+                    "significance": "Shakti Peetha where Sati's eyes fell; on the banks of Naini Lake",
+                    "exists": true
+                },
+                {
+                    "name": "Mukteshwar Mahadev Temple (Mukteshwar Dham)",
+                    "distance": "~45-50 km, via Bhowali",
+                    "significance": "350-year-old Shiva temple at 2,312 m altitude; 360° Himalayan views; Chauli ki Jali cliff nearby",
+                    "exists": true
+                },
+                {
+                    "name": "Kasar Devi Temple (Almora)",
+                    "distance": "~55-60 km, near Almora",
+                    "significance": "Ancient Devi temple on a hill; known for its spiritual energy; Swami Vivekananda meditated here",
+                    "exists": true
+                },
+                {
+                    "name": "Jageshwar Dham (Almora)",
+                    "distance": "~80 km, in Almora district",
+                    "significance": "Cluster of 124+ ancient stone Shiva temples in deodar forest; post-Gupta era ~2,500 years old",
+                    "exists": true
+                },
+                {
+                    "name": "Bhimtal (Bhimeshwar Mahadev Temple)",
+                    "distance": "~16-18 km, in Bhimtal",
+                    "significance": "Ancient Shiva temple on the banks of Bhimtal Lake; named after Bhima of Mahabharata",
+                    "exists": true
+                },
+                {
+                    "name": "Hanuman Garhi Temple (Nainital)",
+                    "distance": "~20 km, near Nainital",
+                    "significance": "Hilltop Hanuman temple with panoramic sunset views",
+                    "exists": true
+                },
+                {
+                    "name": "Sattal (Seven Lakes)",
+                    "distance": "~20-22 km, near Bhimtal",
+                    "significance": "Seven interconnected freshwater lakes named after Hindu deities; Garud Tal, Ram Tal, Sita Tal, Lakshman Tal",
+                    "exists": true
+                },
+                {
+                    "name": "Naukuchiatal",
+                    "distance": "~15 km from Kainchi Dham",
+                    "significance": "Lake of nine corners; mythical belief that viewing all nine corners grants enlightenment",
+                    "exists": true
+                },
+                {
+                    "name": "Bhowali (Sacred Ganga)",
+                    "distance": "~9 km",
+                    "significance": "Nearby town offering views of the sacred Ganga River; spiritual significance",
+                    "exists": true
+                },
+                {
+                    "name": "Patal Bhuvaneshwar Cave Temple",
+                    "distance": "~100 km, in Pithoragarh district",
+                    "significance": "Underground limestone cave temple complex; 10,000 years old; dedicated to Shiva",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Prasanthi Nilayam (Sri Sathya Sai Baba Ashram)",
+            "location": "Puttaparthi, Anantapur district, Andhra Pradesh, India",
+            "deity": "Sri Sathya Sai Baba",
+            "significance": "Main ashram of Sri Sathya Sai Baba. Contains the Mandir (Sai Kulwant Hall), Mahasamadhi, museums, and educational institutions. One of India's largest spiritual destinations.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Hanuman Temple (Puttaparthi village)",
+                    "distance": "In village, at northern end of Gopuram road",
+                    "significance": "Ancient Hanuman temple in the village proper",
+                    "exists": true
+                },
+                {
+                    "name": "Gopalaswami Temple (Krishna as cowherd)",
+                    "distance": "In Puttaparthi village",
+                    "significance": "Ancient Krishna temple rebuilt by Baba; associated with the village history",
+                    "exists": true
+                },
+                {
+                    "name": "Sathyabhama Temple",
+                    "distance": "In Puttaparthi village",
+                    "significance": "Rare temple dedicated to Sathyabhama, consort of Lord Krishna; built by Swami's grandfather",
+                    "exists": true
+                },
+                {
+                    "name": "Chaitanya Jyoti Museum",
+                    "distance": "Within ashram complex",
+                    "significance": "Architectural marvel housing exhibition on the life and mission of Sri Sathya Sai Baba; 7 phases of exhibits",
+                    "exists": true
+                },
+                {
+                    "name": "Sanathana Samskruthi Spiritual Museum",
+                    "distance": "On hillock, southern side of ashram",
+                    "significance": "Eternal Heritage Museum; tallest landmark in Puttaparthi; displays artifacts of saints and sages of major religions",
+                    "exists": true
+                },
+                {
+                    "name": "Lord Dattatreya Temple",
+                    "distance": "Within ashram complex",
+                    "significance": "Temple dedicated to Lord Dattatreya",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Sathya Sai Hill View Stadium",
+                    "distance": "Behind Higher Secondary School",
+                    "significance": "Stadium with towering statues of Hanuman, Krishna, Shiva, Buddha, Zoroaster, and Christ; where Baba addressed gatherings on His birthday",
+                    "exists": true
+                },
+                {
+                    "name": "Meditation Tree",
+                    "distance": "On hillock, eastern side of ashram",
+                    "significance": "Sapling planted by Baba in 1959; believed to enhance spiritual success of those who meditate under it",
+                    "exists": true
+                },
+                {
+                    "name": "Paatha Mandiram (Old Temple)",
+                    "distance": "Outskirts of Puttaparthi village",
+                    "significance": "First temple inaugurated in 1945; later became Pedda Venkappa Raju Kalyana Mandapam (wedding hall)",
+                    "exists": true
+                },
+                {
+                    "name": "Lepakshi Temple (Veerbhadra)",
+                    "distance": "~120 km from Puttaparthi",
+                    "significance": "16th-century Vijayanagara temple; famous hanging pillar and frescoes; Nandi bull statue",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Akshardham Temple",
+            "location": "New Delhi, India",
+            "deity": "Bhagwan Swaminarayan",
+            "significance": "One of India's largest Hindu temple complexes. Built by BAPS, consecrated in 2005. Intricately carved sandstone and marble architecture, exhibitions, musical fountain.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Lotus Temple (Bahai House of Worship)",
+                    "distance": "~5 km",
+                    "significance": "Lotus-shaped Bahai temple (1986); 26 acres of landscaped gardens; open to all faiths for silent meditation",
+                    "exists": true
+                },
+                {
+                    "name": "ISKCON Temple Delhi (Sri Radha Krishna Chandra)",
+                    "distance": "~10 km, at Hare Krishna Hill, Rajaji Nagar",
+                    "significance": "One of the largest ISKCON temples in the world; completed 1997; Neo-Classical and Dravidian architecture",
+                    "exists": true
+                },
+                {
+                    "name": "Chhatarpur Temple (Shri Adya Katyayani Shaktipeeth)",
+                    "distance": "~12 km, in South Delhi",
+                    "significance": "One of India's biggest temple complexes; dedicated to Goddess Katyayani; marble and sandstone architecture",
+                    "exists": true
+                },
+                {
+                    "name": "Yamuna River Ghats",
+                    "distance": "Adjacent to Akshardham complex",
+                    "significance": "Sacred Yamuna river banks; the temple complex sits on the banks of Yamuna",
+                    "exists": true
+                },
+                {
+                    "name": "Red Fort (Lal Qila)",
+                    "distance": "~8 km",
+                    "significance": "UNESCO World Heritage Site; Mughal-era fort; not religious but a major heritage landmark",
+                    "exists": true
+                },
+                {
+                    "name": "Jama Masjid",
+                    "distance": "~8 km",
+                    "significance": "One of India's largest mosques; Mughal architecture",
+                    "exists": true
+                },
+                {
+                    "name": "Gurudwara Bangla Sahib",
+                    "distance": "~10 km",
+                    "significance": "Most prominent Sikh gurdwara in Delhi; associated with Guru Har Krishan",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Shirdi Sai Baba Temple (Samadhi Mandir)",
+            "location": "Shirdi, Ahmednagar district, Maharashtra, India",
+            "deity": "Sai Baba of Shirdi",
+            "significance": "Samadhi Mandir of Sai Baba. Temple complex includes Samadhi, Dwarkamai, Chavadi, Gurusthan. Draws millions of devotees from all faiths.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Dwarkamai Mosque",
+                    "distance": "Within temple complex",
+                    "significance": "Where Sai Baba lived for 60 years; the sacred Dhuni (eternal fire) still burns; Baba's stone seat",
+                    "exists": true
+                },
+                {
+                    "name": "Chavadi",
+                    "distance": "Within temple complex",
+                    "significance": "Where Sai Baba rested on alternate nights; Baba's padukas and portrait",
+                    "exists": true
+                },
+                {
+                    "name": "Gurusthan",
+                    "distance": "Within temple complex",
+                    "significance": "Where Baba was first seen as a boy of 16 under a neem tree; the neem tree still stands",
+                    "exists": true
+                },
+                {
+                    "name": "Lendi Baug",
+                    "distance": "~1.5 km from temple",
+                    "significance": "Garden where Baba walked daily; Nanda Deep lamp still burns here; Baba's bathing place",
+                    "exists": true
+                },
+                {
+                    "name": "Shani Shingnapur Temple",
+                    "distance": "~70 km from Shirdi",
+                    "significance": "Open-air Shani temple; village where houses have no doors; deity believed to protect from thieves",
+                    "exists": true
+                },
+                {
+                    "name": "Trimbakeshwar Jyotirlinga",
+                    "distance": "~120 km from Shirdi, near Nashik",
+                    "significance": "One of 12 Jyotirlingas; origin of the Godavari River; 3-faced lingam representing Brahma, Vishnu, Shiva",
+                    "exists": true
+                },
+                {
+                    "name": "Kalaram Temple (Nashik/Panchavati)",
+                    "distance": "~90 km from Shirdi",
+                    "significance": "Ancient Rama temple; built 1794 with black stone; where Rama lived during exile",
+                    "exists": true
+                },
+                {
+                    "name": "Ramkund (Panchavati, Nashik)",
+                    "distance": "~90 km",
+                    "significance": "Sacred tank where Rama and Sita bathed; site of Panchavati forest from Ramayana",
+                    "exists": true
+                },
+                {
+                    "name": "Sita Gufa (Panchavati, Nashik)",
+                    "distance": "~90 km",
+                    "significance": "Cave where Sita stayed; believed to be where Ravana abducted her",
+                    "exists": true
+                },
+                {
+                    "name": "Muktidham Temple (Nashik Road)",
+                    "distance": "~85 km",
+                    "significance": "White Makrana marble temple; 18 chapters of Bhagavad Gita inscribed on walls",
+                    "exists": true
+                },
+                {
+                    "name": "Shegaon (Gajanan Maharaj Samadhi)",
+                    "distance": "~200 km",
+                    "significance": "Samadhi of Shri Gajanan Maharaj; 'Pandharpur of Vidarbha'; large pilgrimage on Thursdays",
+                    "exists": true
+                },
+                {
+                    "name": "Grishneshwar Jyotirlinga (Ellora)",
+                    "distance": "~150 km",
+                    "significance": "One of 12 Jyotirlingas; near Ellora Caves UNESCO site; smallest of the Jyotirlingas",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Auroville Matrimandir",
+            "location": "Auroville, near Pondicherry (Puducherry), India",
+            "deity": "The Divine Mother (no deity, no religion)",
+            "significance": "Spiritual centerpiece of Auroville. Golden geodesic sphere for individual silent concentration. No religion, no rituals, no idol worship — pure meditation. Surrounded by 12 named gardens.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Sri Aurobindo Ashram (Samadhi)",
+                    "distance": "~10 km, in Pondicherry",
+                    "significance": "Founded 1926; white marble samadhi of Sri Aurobindo and The Mother; spiritual heart of Pondicherry",
+                    "exists": true
+                },
+                {
+                    "name": "Manakula Vinayagar Temple",
+                    "distance": "~10 km, in Pondicherry",
+                    "significance": "400-year-old Ganesha temple near the Bay of Bengal; temple donated by the Mother of Sri Aurobindo Ashram",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Aurobindo's Samadhi (Marble Shrine)",
+                    "distance": "In Sri Aurobindo Ashram, Pondicherry",
+                    "significance": "White marble shrine where Sri Aurobindo and the Mother are laid to rest; under a Service Tree",
+                    "exists": true
+                },
+                {
+                    "name": "Auroville Visitors Centre",
+                    "distance": "Adjacent to Matrimandir area",
+                    "significance": "Exhibitions on Auroville; boutiques; bookshop; cafe; issues Matrimandir Viewing Point passes",
+                    "exists": true
+                },
+                {
+                    "name": "Matrimandir Viewing Point",
+                    "distance": "10-min walk from Visitors Centre",
+                    "significance": "Raised garden area with beautiful view of Matrimandir; free passes; photography allowed",
+                    "exists": true
+                },
+                {
+                    "name": "Bharat Nivas (International Zone)",
+                    "distance": "Between Visitors Centre and Viewing Point",
+                    "significance": "Pavilion of India in Auroville's International Zone",
+                    "exists": true
+                },
+                {
+                    "name": "Savitri Bhavan",
+                    "distance": "In International Zone",
+                    "significance": "Dedicated to Sri Aurobindo's epic Savitri; library and meditation space",
+                    "exists": true
+                },
+                {
+                    "name": "Thiruvakkarai Devi Temple (Puducherry region)",
+                    "distance": "~25 km from Pondicherry",
+                    "significance": "Goddess temple; ancient Dravidian architecture; wooden chariot festival",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Gokilambal Thirukameswar Temple (Villianur)",
+                    "distance": "~15 km from Pondicherry",
+                    "significance": "Ancient Shiva temple; massive temple car (ther) used in Brahmotsavam; tank",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "ISKCON Temple (Sri Krishna Balaram Mandir)",
+            "location": "Vrindavan, Uttar Pradesh, India",
+            "deity": "Krishna-Balaram",
+            "significance": "One of ISKCON's most important temples, established by Srila Prabhupada in 1975. Known for vibrant kirtans and international devotee community.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Banke Bihari Temple",
+                    "distance": "~3 km, in Vrindavan",
+                    "significance": "Most beloved Krishna temple in Vrindavan; self-manifested deity discovered by Swami Haridas; unique jhanki curtain darshan",
+                    "exists": true
+                },
+                {
+                    "name": "Radha Raman Temple",
+                    "distance": "~2 km, in Vrindavan",
+                    "significance": "Self-manifested Shaligram deity (1542 CE); akhand dhuni (eternal fire) burning since 1542; never moved during invasions",
+                    "exists": true
+                },
+                {
+                    "name": "Prem Mandir",
+                    "distance": "~2 km, in Vrindavan",
+                    "significance": "Vast modern marble temple (opened 2012); glows at night; musical fountain show; Krishna leelas depicted",
+                    "exists": true
+                },
+                {
+                    "name": "Govind Dev Ji Temple",
+                    "distance": "~2 km, in Vrindavan",
+                    "significance": "7-storey red sandstone temple built 1590 by Raja Man Singh; finest Braj architecture; original deity now in Jaipur",
+                    "exists": true
+                },
+                {
+                    "name": "Radha Damodar Temple",
+                    "distance": "~2 km, in Vrindavan",
+                    "significance": "Houses a Govardhan shila with Krishna's footprint; circling it equals Govardhan parikrama",
+                    "exists": true
+                },
+                {
+                    "name": "Nidhivan / Seva Kunj",
+                    "distance": "~1 km, in Vrindavan",
+                    "significance": "Sacred grove where Banke Bihari appeared to Swami Haridas; where Krishna and Radha perform Raas Leela every night; closed after sunset",
+                    "exists": true
+                },
+                {
+                    "name": "Kesi Ghat",
+                    "distance": "~2 km, on Yamuna riverbank",
+                    "significance": "Most beautiful evening Yamuna aarti in Braj; Krishna killed demon Kesi here",
+                    "exists": true
+                },
+                {
+                    "name": "Radha Vallabh Temple",
+                    "distance": "~3 km, in Vrindavan",
+                    "significance": "Radha supreme temple; only her crown is present, no Radha murti; Radhavallabh sampradaya",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Rangji Mandir",
+                    "distance": "~2 km, in Vrindavan",
+                    "significance": "South Indian architecture with gold pillar; largest temple in Vrindavan by area",
+                    "exists": true
+                },
+                {
+                    "name": "Krishna Janmabhoomi Temple (Mathura)",
+                    "distance": "~12-15 km, in Mathura",
+                    "significance": "Birthplace of Lord Krishna; prison cell where Krishna was born; strict security",
+                    "exists": true
+                },
+                {
+                    "name": "Dwarkadhish Temple (Mathura)",
+                    "distance": "~12-15 km, in Mathura",
+                    "significance": "Ancient Krishna temple; Pushtimarg tradition; Jhanki darshan windows",
+                    "exists": true
+                },
+                {
+                    "name": "Vishram Ghat (Mathura)",
+                    "distance": "~14 km, on Yamuna banks in Mathura",
+                    "significance": "Where Krishna rested after killing Kamsa; evening Yamuna aarti; 25 ghats",
+                    "exists": true
+                },
+                {
+                    "name": "Govardhan Hill",
+                    "distance": "~22 km from Vrindavan",
+                    "significance": "Sacred hill lifted by Krishna; 21 km parikrama route; Govind Kund, Kusum Sarovar, Radha Kund, Mansi Ganga",
+                    "exists": true
+                },
+                {
+                    "name": "Barsana (Radha's Birthplace)",
+                    "distance": "~40 km from Vrindavan",
+                    "significance": "Birthplace of Radha; Radha Rani Temple on hill; Lathmar Holi festival",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Art of Living International Center",
+            "location": "Panchagiri Hills, Kanakapura Road, Bengaluru, Karnataka, India",
+            "deity": "Sri Sri Ravi Shankar (Vishalakshi Mantap meditation hall)",
+            "significance": "Global headquarters of the Art of Living Foundation, founded by Sri Sri Ravi Shankar. 100-acre campus on Panchagiri Hills. Features Vishalakshi Mantap, Yagnashala, meditation halls.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "ISKCON Temple Bangalore (Sri Radha Krishna Chandra)",
+                    "distance": "~25 km, at Hare Krishna Hill, Rajaji Nagar",
+                    "significance": "One of the largest ISKCON temples in the world; completed 1997; Neo-Classical and Dravidian architecture; cultural complex on 7-acre hill",
+                    "exists": true
+                },
+                {
+                    "name": "Big Bull Temple (Dodda Basavana Gudi)",
+                    "distance": "~30 km, in Basavanagudi",
+                    "significance": "16th-century temple built by Kempe Gowda; massive 15-ft monolithic Nandi carved from single granite rock",
+                    "exists": true
+                },
+                {
+                    "name": "Dodda Ganeshana Gudi (Ganesha Temple)",
+                    "distance": "Adjacent to Bull Temple, Basavanagudi",
+                    "significance": "18-ft tall monolithic Ganesha idol; believed to be growing in size",
+                    "exists": true
+                },
+                {
+                    "name": "Gavi Gangadhareshwara Temple (Cave Temple)",
+                    "distance": "~30 km, in Gavipuram",
+                    "significance": "9th-century Shiva cave temple cut from single rock; sun rays pass through Nandi horns to illuminate Shivalinga on Makar Sankranti (Jan 14)",
+                    "exists": true
+                },
+                {
+                    "name": "Bugle Rock Park",
+                    "distance": "In Basavanagudi",
+                    "significance": "Ancient rock formations next to Bull Temple; 3,000-million-year-old Peninsular Gneiss",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Sridevi Kumara Swamy Temple (Kanakapura Road area)",
+                    "distance": "Nearby on Kanakapura Road",
+                    "significance": "Local temple on the route to the ashram",
+                    "exists": true
+                },
+                {
+                    "name": "Banashankari Amma Temple",
+                    "distance": "~20 km, in Banashankari",
+                    "significance": "Ancient Devi temple; incarnation of Shakambari; popular in Bangalore",
+                    "exists": true
+                },
+                {
+                    "name": "Shivoham Shiva Temple",
+                    "distance": "~25 km, in Old Airport Road area",
+                    "significance": "65-ft Shiva statue; Ganesha statue; meditation cave replica",
+                    "exists": true
+                },
+                {
+                    "name": "Chamundi Betta (Mysuru, further away)",
+                    "distance": "~180 km, in Mysuru",
+                    "significance": "Chamundeshwari Temple on Chamundi Hill; Goddess Chamundeshwari slayed Mahishasura here",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Arunachaleswarar Temple (Tiruvannamalai)",
+            "location": "Tiruvannamalai, Tamil Nadu, India",
+            "deity": "Lord Shiva (Arunachaleswarar) / Goddess Parvati (Unnamulai Amman)",
+            "significance": "One of the Pancha Bhoota Stalams (Agni/Fire element). Temple at the foot of sacred Arunachala Hill. 66-metre Rajagopuram. Famous for Girivalam (14 km circumambulation) on full moon nights and Karthigai Deepam festival.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Sri Ramanasramam (Ramana Ashram)",
+                    "distance": "~2 km, at the foot of Arunachala Hill",
+                    "significance": "Ashram of Sri Ramana Maharshi; samadhi shrine; meditation hall; library; cow Lakshmi samadhi",
+                    "exists": true
+                },
+                {
+                    "name": "Virupaksha Cave",
+                    "distance": "~30-60 min uphill walk from Ramana Ashram",
+                    "significance": "Where Ramana Maharshi meditated for 17 years (1899-1916); cave shaped like 'Om'; open 8:30 AM - 4:30 PM",
+                    "exists": true
+                },
+                {
+                    "name": "Skandashramam",
+                    "distance": "~1 km above Virupaksha Cave, on Arunachala Hill",
+                    "significance": "Where Ramana lived from 1916-1922; higher up the hill; spectacular views; where his mother attained samadhi",
+                    "exists": true
+                },
+                {
+                    "name": "Ashta Lingam Shrines (8 Shiva temples)",
+                    "distance": "Around the 14 km Girivalam path",
+                    "significance": "Eight directional Shiva temples on the Girivalam route: Indra Lingam, Agni Lingam, Yama Lingam, Niruti Lingam, Varuna Lingam, Vayu Lingam, Kubera Lingam, Esanya Lingam",
+                    "exists": true
+                },
+                {
+                    "name": "Pavalakundru Temple",
+                    "distance": "On Girivalam path",
+                    "significance": "Ancient Devi temple on the Girivalam route",
+                    "exists": true
+                },
+                {
+                    "name": "Adi Annamalai Temple",
+                    "distance": "On Girivalam path, western side",
+                    "significance": "Ancient Shiva temple on the circumambulation route",
+                    "exists": true
+                },
+                {
+                    "name": "Karthigai Deepam (Hilltop Flame)",
+                    "distance": "Atop Arunachala Hill",
+                    "significance": "Sacred flame lit at summit during Karthigai Deepam (Nov/Dec); visible from 35 km; re-enacts original fire-pillar",
+                    "exists": true
+                },
+                {
+                    "name": "Seshadri Swamigal Ashram",
+                    "distance": "Near Ramana Ashram",
+                    "significance": "Ashram of Sri Seshadri Swamigal; another revered saint of Arunachala",
+                    "exists": true
+                },
+                {
+                    "name": "Yogi Ramsuratkumar Ashram",
+                    "distance": "Near Tiruvannamalai town",
+                    "significance": "Ashram of Yogi Ramsuratkumar; another modern saint associated with Arunachala",
+                    "exists": true
+                },
+                {
+                    "name": "Thiruvannamalai Parshwanath Jain Temple",
+                    "distance": "In Tiruvannamalai",
+                    "significance": "Ancient Jain temple; reflects Tiruvannamalai's multi-faith heritage",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Sharada Peeth",
+            "location": "Sharda village, Neelum Valley, Azad Kashmir, Pakistan (PoK)",
+            "deity": "Goddess Sharada (Saraswati)",
+            "significance": "One of the 18 Maha Shakti Peethas. Believed where Sati's right hand fell. Ancient temple-university (6th-12th century CE). Key role in developing Sharada script. Currently in ruins, inaccessible to Indian pilgrims.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Sharda Devi Temple (Teetwal, Kupwara)",
+                    "distance": "~40 km from original Sharada Peeth, on Indian side of LoC",
+                    "significance": "Replica shrine inaugurated March 2023 by Home Minister Amit Shah; substitute for original across LoC",
+                    "exists": true
+                },
+                {
+                    "name": "Madhumati Stream Confluence",
+                    "distance": "Nearby, at Sharda village",
+                    "significance": "Confluence of Neelum River and Madhumati stream; ritual bathing spot; believed to cleanse sins",
+                    "exists": true
+                },
+                {
+                    "name": "Amarnath Cave Temple",
+                    "distance": "~130 km as the crow flies (J&K)",
+                    "significance": "One of the three holiest sites for Kashmiri Pandits; ice lingam of Shiva; annual yatra",
+                    "exists": true
+                },
+                {
+                    "name": "Martand Sun Temple (ruins)",
+                    "distance": "~150 km, near Anantnag",
+                    "significance": "8th-century Sun temple; one of three holiest Kashmiri Pandit sites alongside Amarnath and Sharada Peeth",
+                    "exists": true
+                },
+                {
+                    "name": "Kheer Bhawani Temple (Tulmula, Ganderbal)",
+                    "distance": "~120 km",
+                    "significance": "Goddess Ragnya Devi temple; sacred spring that changes color; important Kashmiri Pandit shrine",
+                    "exists": true
+                },
+                {
+                    "name": "Shankaracharya Temple (Srinagar)",
+                    "distance": "~130 km, on hilltop in Srinagar",
+                    "significance": "Ancient Shiva temple overlooking Dal Lake; visited by Adi Shankaracharya",
+                    "exists": true
+                },
+                {
+                    "name": "Sharada Kund (Sacred Spring)",
+                    "distance": "At the original Sharada Peeth site",
+                    "significance": "Stone slab concealing a spring underneath; believed where Goddess Sharada revealed herself to Sage Sandilya",
+                    "exists": true
+                },
+                {
+                    "name": "Gangabal Lake (Haramukh)",
+                    "distance": "In Mount Harmukh valley",
+                    "significance": "Sacred high-altitude lake believed to be abode of Shiva; associated with Sharada Peeth's sacred geography",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Chottanikara Devi Temple",
+            "location": "Chottanikkara, near Kochi, Ernakulam district, Kerala, India",
+            "deity": "Goddess Rajarajeswari (as Saraswati morning, Lakshmi noon, Durga evening)",
+            "significance": "Most important temple under Cochin Devaswom Board. Goddess worshipped in three forms. Kizhukkavu Bhagavathy temple known for exorcism of evil spirits. Mental healing and peace.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Kizhukkavu Bhagavathy Temple",
+                    "distance": "Within temple complex",
+                    "significance": "Bhadrakali shrine; believed to exorcise evil spirits; devotees perform bhajanam here for mental healing",
+                    "exists": true
+                },
+                {
+                    "name": "Puthiyakavu Bhagavathy Temple (Tripunithura)",
+                    "distance": "~11 km from Ernakulam",
+                    "significance": "Goddess Bhagavathy temple; believed sister of Kodungallur Bhagavathy",
+                    "exists": true
+                },
+                {
+                    "name": "Poornathrayeesa Temple (Tripunithura)",
+                    "distance": "~10 km",
+                    "significance": "Vishnu temple; where Arjuna worshipped; oldest temple in Tripunithura; royal temple of Kochi kingdom",
+                    "exists": true
+                },
+                {
+                    "name": "Ernakulam Shiva Temple",
+                    "distance": "~15 km, in Ernakulam",
+                    "significance": "Ancient Shiva temple facing the backwaters; Lord Shiva as Ernakulathappan",
+                    "exists": true
+                },
+                {
+                    "name": "Kodungallur Bhagavathy Temple",
+                    "distance": "~40 km from Kochi",
+                    "significance": "One of the most powerful Devi temples in Kerala; Bharani festival famous",
+                    "exists": true
+                },
+                {
+                    "name": "Chottanikkara Mahavishnu Temple",
+                    "distance": "Within temple complex",
+                    "significance": "Vishnu on same pedestal as Devi; deity called Ammenarayana, Lakshminarayana",
+                    "exists": true
+                },
+                {
+                    "name": "Sree Krishna Temple (Guruvayur)",
+                    "distance": "~80 km from Kochi",
+                    "significance": "One of most important Krishna temples in India; where Melpathur wrote Narayaneeyam",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Kollur Mookambika Temple",
+            "location": "Kollur, Udupi district, Karnataka, India",
+            "deity": "Goddess Mookambika (Parvati/Saraswati)",
+            "significance": "One of the most revered Shakti Peethas in South India. Consecrated by Adi Shankaracharya. Jyotirlingam with golden line representing Shiva-Shakti unity. Vidyarambham ceremony for children.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Adi Mookambika Temple (Kodachadri Hills)",
+                    "distance": "~21 km by trek/jeep",
+                    "significance": "Original site of Goddess manifestation before Adi Shankaracharya consecrated the main temple; Shankara Peetham where Shankara meditated",
+                    "exists": true
+                },
+                {
+                    "name": "Murudeshwar Shiva Temple",
+                    "distance": "~60 km",
+                    "significance": "Where fragment of Atma Linga fell; 2nd tallest Shiva statue in world; beachside temple",
+                    "exists": true
+                },
+                {
+                    "name": "Anegudde Vinayaka Temple (Kumbashi)",
+                    "distance": "~30 km",
+                    "significance": "One of 7 Mukti Sthalas of coastal Karnataka; where Ganesha killed demon Kumbhasura",
+                    "exists": true
+                },
+                {
+                    "name": "Udupi Sri Krishna Temple",
+                    "distance": "~80 km",
+                    "significance": "Founded by Madhvacharya (13th century); Krishna visible through Kanakana Kindi window; Dvaita philosophy center",
+                    "exists": true
+                },
+                {
+                    "name": "Sringeri Sharadamba Temple",
+                    "distance": "~135 km",
+                    "significance": "One of 4 mathas established by Adi Shankaracharya; Goddess Saraswati on banks of Tunga river",
+                    "exists": true
+                },
+                {
+                    "name": "Maravanthe Mahalingeshwara Temple",
+                    "distance": "~35 km, on NH-66",
+                    "significance": "Shiva temple where highway runs between Arabian Sea and Souparnika River",
+                    "exists": true
+                },
+                {
+                    "name": "Horanadu Annapoorneshwari Temple",
+                    "distance": "~166 km",
+                    "significance": "Goddess Annapoorneshwari; free food for all pilgrims; surrounded by Western Ghats",
+                    "exists": true
+                },
+                {
+                    "name": "Byndoor Seneshwara Temple",
+                    "distance": "~28 km",
+                    "significance": "Ancient Shiva temple near the coast",
+                    "exists": true
+                },
+                {
+                    "name": "Souparnika River",
+                    "distance": "Adjacent to temple",
+                    "significance": "Sacred river where devotees take holy dip before darshan; named after Garuda (Suparna)",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Mehendipur Balaji Temple",
+            "location": "Ghata Mehandipur, Dausa district, Rajasthan, India",
+            "deity": "Lord Hanuman (Balaji)",
+            "significance": "Renowned for spiritual healing and exorcism of evil spirits. Unique rituals for curing possession. Court of Pret Raja (King of Spirits). One of India's most distinctive Hanuman temples.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Abhaneri Chand Baori & Harshat Mata Temple",
+                    "distance": "~25 km",
+                    "significance": "8th-9th century stepwell with 3,500 steps; Harshat Mata Temple dedicated to Goddess of joy",
+                    "exists": true
+                },
+                {
+                    "name": "Bhandarej Baori & Bhadrawati Palace",
+                    "distance": "~15 km from Dausa",
+                    "significance": "Ancient stepwell; terracotta artifacts unearthed; Rajput-Mughal heritage",
+                    "exists": true
+                },
+                {
+                    "name": "Bhairavnath Temple (within Mehendipur complex)",
+                    "distance": "Within temple complex",
+                    "significance": "Bheruji temple where Pret Raj Sankar holds court to punish evil spirits",
+                    "exists": true
+                },
+                {
+                    "name": "Pret Raj Shrine (within complex)",
+                    "distance": "Within temple complex",
+                    "significance": "Shrine to the King of Spirits; unique to Mehendipur; where devotees offer black balls (resin)",
+                    "exists": true
+                },
+                {
+                    "name": "Lotwara Fort & Village",
+                    "distance": "Nearby in Dausa district",
+                    "significance": "Picturesque village famous for peacocks; heritage site",
+                    "exists": true
+                },
+                {
+                    "name": "Jaipur Temples (Govind Dev Ji, Moti Doongri Ganesh)",
+                    "distance": "~103 km from Dausa",
+                    "significance": "Major temple circuit in Jaipur; Govind Dev Ji Krishna temple and Moti Doongri Ganesh temple",
+                    "exists": true
+                },
+                {
+                    "name": "Bharatpur Laxman & Keoladeo Temple",
+                    "distance": "~60 km",
+                    "significance": "Laxman Temple and Keoladeo Shiva temple (which gives Keoladeo National Park its name)",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Dhanvantari Temple (Nelluvai Sree Dhanwanthari)",
+            "location": "Nelluvai, Thrissur district, Kerala, India",
+            "deity": "Lord Dhanvantari (God of Ayurveda / Divine Physician)",
+            "significance": "One of the rare temples dedicated to Lord Dhanvantari who emerged from the Palazhi Madhanam (churning of ocean). Ayurvedic physicians perform bhajans here before starting practice. Idol given by Ashwini Devatas.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Thottuva Sree Dhanwanthari Moorthi Temple (Ernakulam)",
+                    "distance": "~50 km, near Perumbavoor",
+                    "significance": "Another Dhanvantari temple; 6-ft tall idol holding Amrita and leech; fresh milk offered",
+                    "exists": true
+                },
+                {
+                    "name": "Guruvayur Sri Krishna Temple",
+                    "distance": "~25 km from Nelluvai",
+                    "significance": "Where Melpathur Bhattathiri wrote Narayaneeyam and was cured of rheumatoid arthritis; one of Kerala's most famous temples",
+                    "exists": true
+                },
+                {
+                    "name": "Thiruvilwamala Vilwadrinatha Temple",
+                    "distance": "~20 km",
+                    "significance": "Vishnu temple on hilltop; where Lord Rama is believed to have worshipped",
+                    "exists": true
+                },
+                {
+                    "name": "Thrissur Vadakkunnathan Temple",
+                    "distance": "~25 km",
+                    "significance": "Ancient Shiva temple; where Thrissur Pooram festival is celebrated; architectural marvel",
+                    "exists": true
+                },
+                {
+                    "name": "Irinjalakuda Koodalmanikyam Temple",
+                    "distance": "~30 km",
+                    "significance": "Dedicated to Bharata (brother of Lord Rama); only temple in India for Bharata",
+                    "exists": true
+                },
+                {
+                    "name": "Thriprayar Sri Rama Temple",
+                    "distance": "~40 km",
+                    "significance": "Ancient Rama temple; where devotees offer fish as prasada (unique tradition)",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Kukke Subramanya Temple",
+            "location": "Subramanya village, Dakshina Kannada district, Karnataka, India",
+            "deity": "Lord Subramanya (Kartikeya) as Lord of Serpents",
+            "significance": "Where Vasuki took refuge from Garuda. Famous for Sarpa Dosha remediation (Ashlesha Bali, Sarpa Samskara). One of the Saptamoksha Sthalams established by Sage Parashurama.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Adi Subramanya Temple",
+                    "distance": "~0.5 km north of main temple",
+                    "significance": "Small cave temple where Vasuki took refuge; distinctly different energy; visit before main darshan",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Manjunatha Temple (Dharmasthala)",
+                    "distance": "~55 km (1.5 hrs)",
+                    "significance": "Shiva temple with Jain administration, Vaishnava priests — model of religious harmony; free annadana for thousands",
+                    "exists": true
+                },
+                {
+                    "name": "Sowthadka Ganesha Temple",
+                    "distance": "~35 km",
+                    "significance": "Open-air Ganesha temple; natural stop between Kukke and Dharmasthala",
+                    "exists": true
+                },
+                {
+                    "name": "Kateel Durgaparameshwari Temple",
+                    "distance": "~110 km",
+                    "significance": "Devi temple on island in Nandini river; daily Yakshagana performances as offering",
+                    "exists": true
+                },
+                {
+                    "name": "Sringeri Sharadamba Temple",
+                    "distance": "~175 km",
+                    "significance": "One of 4 Shankaracharya mathas; Goddess Saraswati on banks of Tunga river",
+                    "exists": true
+                },
+                {
+                    "name": "Horanadu Annapoorneshwari Temple",
+                    "distance": "~166 km",
+                    "significance": "Goddess Annapoorneshwari; free food for all pilgrims; Western Ghats setting",
+                    "exists": true
+                },
+                {
+                    "name": "Kollur Mookambika Temple",
+                    "distance": "~175 km",
+                    "significance": "Shakti Peetha consecrated by Adi Shankaracharya; Jyotirlingam with Shiva-Shakti unity",
+                    "exists": true
+                },
+                {
+                    "name": "Udupi Sri Krishna Temple",
+                    "distance": "~155 km",
+                    "significance": "Founded by Madhvacharya; Krishna visible through Kanakana Kindi",
+                    "exists": true
+                },
+                {
+                    "name": "Kumara Parvatha Trek",
+                    "distance": "~7 km trek from temple",
+                    "significance": "Sacred mountain trek; abode of Lord Subramanya; one of Karnataka's most challenging treks",
+                    "exists": true
+                },
+                {
+                    "name": "Biladwara Cave",
+                    "distance": "Near temple",
+                    "significance": "Sacred cave associated with serpent lore; Vasuki believed to reside underneath",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Ghati Subramanya Temple",
+            "location": "Melinajuganhalli, Doddaballapur taluk, Bengaluru Rural, Karnataka, India",
+            "deity": "Lord Subramanya (Kartikeya) and Lord Narasimha",
+            "significance": "600-year-old temple; unique because Subramanya (facing east) and Narasimha (facing west) share a single idol. Self-manifested (Swayam Vyakta). Important center for snake worship and Sarpa Dosha remedies.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Bhoga Nandeeshwara Temple (Nandi village)",
+                    "distance": "~30 km, near Nandi Hills",
+                    "significance": "9th-century Shiva temple; 3 shrines (Bhoga, Arunachaleswara, Ardhanareeswara); built by Nolamba, Ganga, Chola, Vijayanagara dynasties",
+                    "exists": true
+                },
+                {
+                    "name": "Nandi Hills (Nandidurga)",
+                    "distance": "~35 km",
+                    "significance": "Hilltop fortress with Yoganandishwara Shiva temple at 1,478 m; Tipu Sultan's summer retreat",
+                    "exists": true
+                },
+                {
+                    "name": "Lepakshi Veerabhadra Temple",
+                    "distance": "~50 km, in Anantapur district AP",
+                    "significance": "16th-century Vijayanagara temple; famous hanging pillar; massive monolithic Nandi bull (20 ft tall)",
+                    "exists": true
+                },
+                {
+                    "name": "Lepakshi Nandi (Monolithic Bull)",
+                    "distance": "~50 km, at Lepakshi",
+                    "significance": "Second largest monolithic Nandi in India; 20 ft tall, 30 ft long, carved from single granite",
+                    "exists": true
+                },
+                {
+                    "name": "Doddaballapur Town Temples",
+                    "distance": "~15 km",
+                    "significance": "Historic town with heritage temples; ancient settlement",
+                    "exists": true
+                },
+                {
+                    "name": "Skandagiri (Kalavara Durga)",
+                    "distance": "~40 km, near Nandi Hills",
+                    "significance": "Hilltop Shiva temple; ancient ruins; sunrise trek",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Suchindram Thanumalayan Temple",
+            "location": "Suchindram, Kanyakumari district, Tamil Nadu, India",
+            "deity": "Lord Thanumalayan (Trimurti — Shiva, Vishnu, Brahma)",
+            "significance": "Unique temple where the lingam represents three deities: top (Shiva as Sthanu), middle (Vishnu as Mal), base (Brahma as Ayyan). 22-ft tall Anjaneya statue with sword. Musical pillars.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Kanyakumari Bhagavathy Amman Temple",
+                    "distance": "~13 km",
+                    "significance": "Shakti Peetha where Sati's spine fell; Goddess Kanyakumari (virgin form of Parvati); confluence of 3 seas",
+                    "exists": true
+                },
+                {
+                    "name": "Nagaraja Temple (Nagercoil)",
+                    "distance": "~7 km, in Nagercoil",
+                    "significance": "Only major temple exclusively for Nagaraja (serpent king); sand taken from anthill used as prasada",
+                    "exists": true
+                },
+                {
+                    "name": "Vivekananda Rock Memorial",
+                    "distance": "~15 km, in the sea off Kanyakumari",
+                    "significance": "Where Swami Vivekananda meditated; sacred rock in mid-ocean",
+                    "exists": true
+                },
+                {
+                    "name": "Padmanabhapuram Palace & Temples",
+                    "distance": "~20 km, near Thuckalay",
+                    "significance": "Largest wooden palace in Asia; ancient temple complex of the Travancore royal family",
+                    "exists": true
+                },
+                {
+                    "name": "Thirparappu Waterfalls & Temple",
+                    "distance": "~30 km",
+                    "significance": "Shiva temple near 115-ft waterfall; ancient Mahadevar temple",
+                    "exists": true
+                },
+                {
+                    "name": "Thiruvattar Adikesava Perumal Temple",
+                    "distance": "~30 km",
+                    "significance": "One of 108 Divya Desams; Vishnu reclining on Adisesha; 22 arches representing 22 steps to heaven",
+                    "exists": true
+                },
+                {
+                    "name": "Mathur Aqueduct & Hanging Bridge area temples",
+                    "distance": "~25 km",
+                    "significance": "Local temples in the Kanyakumari interior region",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Mangaladevi Temple",
+            "location": "Mangaluru, Dakshina Kannada district, Karnataka, India",
+            "deity": "Goddess Mangaladevi (Durga/Bhagavathy)",
+            "significance": "10th-century temple that gave Mangalore its name. Goddess Mangaladevi is the patron deity of the city. Kundavarma, the king, excavated and rebuilt the temple on advice of two sages.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Kadri Manjunatha Temple",
+                    "distance": "~3 km from city center",
+                    "significance": "11th-century Shiva temple on Kadri Hill; oldest Shiva idol in South India; bronze Buddha image showing Buddhist origins; Pandava Caves",
+                    "exists": true
+                },
+                {
+                    "name": "Kudroli Gokarnatheshwara Temple",
+                    "distance": "~2 km from city center",
+                    "significance": "Built by Narayana Guru in Chola Gopuram style; Shiva temple for all castes; famous Mangaluru Dasara celebrations",
+                    "exists": true
+                },
+                {
+                    "name": "Dharmasthala Manjunatha Temple",
+                    "distance": "~75 km east of Mangaluru",
+                    "significance": "Shiva temple with Jain administration; free annadana; 39-ft Bahubali statue; Laksha Deepotsava",
+                    "exists": true
+                },
+                {
+                    "name": "Kateel Durgaparameshwari Temple",
+                    "distance": "~29 km north of Mangaluru",
+                    "significance": "Devi temple on island in Nandini river; daily Yakshagana performances",
+                    "exists": true
+                },
+                {
+                    "name": "Bappanadu Durgaparameshwari Temple (Mulki)",
+                    "distance": "~29 km north",
+                    "significance": "On banks of Shambhavi river; famous Bappanadu Dolu (musical drum) festival",
+                    "exists": true
+                },
+                {
+                    "name": "Udupi Sri Krishna Temple",
+                    "distance": "~60 km",
+                    "significance": "Founded by Madhvacharya; Krishna through Kanakana Kindi; Dvaita Vedanta center",
+                    "exists": true
+                },
+                {
+                    "name": "Kukke Subramanya Temple",
+                    "distance": "~105 km",
+                    "significance": "Lord Subramanya as serpent deity; Sarpa Dosha remedies",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Sri Ramana Ashram (Ramanasramam)",
+            "location": "Tiruvannamalai, Tamil Nadu, India",
+            "deity": "Sri Ramana Maharshi (Shiva as Arunachala)",
+            "significance": "Ashram of Sri Ramana Maharshi at the foot of sacred Arunachala Hill. Samadhi shrine of Bhagavan. Meditation hall, library, cow Lakshmi samadhi. Center of Advaita (non-dual) teaching.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Arunachaleswarar Temple (Annamalaiyar)",
+                    "distance": "~2 km",
+                    "significance": "Pancha Bhoota Stalam (Agni/Fire); 66-metre Rajagopuram; 25-acre complex; Girivalam path",
+                    "exists": true
+                },
+                {
+                    "name": "Virupaksha Cave",
+                    "distance": "~30-60 min uphill walk behind ashram",
+                    "significance": "Where Ramana meditated for 17 years (1899-1916); cave shaped like 'Om'",
+                    "exists": true
+                },
+                {
+                    "name": "Skandashramam",
+                    "distance": "~1 km above Virupaksha Cave",
+                    "significance": "Where Ramana lived 1916-1922; where his mother attained samadhi; spectacular views",
+                    "exists": true
+                },
+                {
+                    "name": "Ashta Lingam Shrines (8 directional Shiva temples)",
+                    "distance": "Around 14-km Girivalam path",
+                    "significance": "Indra, Agni, Yama, Niruti, Varuna, Vayu, Kubera, Esanya Lingams on the circumambulation route",
+                    "exists": true
+                },
+                {
+                    "name": "Seshadri Swamigal Ashram",
+                    "distance": "Near Ramanasramam",
+                    "significance": "Ashram of Sri Seshadri Swamigal, another revered saint of Arunachala",
+                    "exists": true
+                },
+                {
+                    "name": "Yogi Ramsuratkumar Ashram",
+                    "distance": "Near Tiruvannamalai town",
+                    "significance": "Ashram of Yogi Ramsuratkumar, modern saint associated with Arunachala",
+                    "exists": true
+                },
+                {
+                    "name": "Karthigai Deepam (Hilltop Flame)",
+                    "distance": "Atop Arunachala Hill",
+                    "significance": "Sacred flame lit at summit during Karthigai Deepam (Nov/Dec); visible from 35 km",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Dhyanalinga (Isha Yoga Center)",
+            "location": "Velliangiri Foothills, Coimbatore, Tamil Nadu, India",
+            "deity": "Dhyanalinga (Shiva as pure meditative energy)",
+            "significance": "Consecrated by Sadhguru Jaggi Vasudev. A meditative space — no pooja, no rituals, no offerings. Open to all. Suryakund and Chandrakund energy pools. 112-ft Adiyogi statue.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Adiyogi Shiva Statue (112 ft)",
+                    "distance": "Within Isha Yoga Center complex",
+                    "significance": "World's largest bust statue; face of Adiyogi (first yogi); Guinness World Record",
+                    "exists": true
+                },
+                {
+                    "name": "Suryakund & Chandrakund (Energy pools)",
+                    "distance": "Within Isha complex",
+                    "significance": "Water bodies designed to melt karmic blocks before entering Dhyanalinga",
+                    "exists": true
+                },
+                {
+                    "name": "Marudamalai Murugan Temple",
+                    "distance": "~25 km from Isha, on hill near Coimbatore",
+                    "significance": "Ancient hilltop Murugan temple; where sage Moolan stayed; 12th century",
+                    "exists": true
+                },
+                {
+                    "name": "Perur Pateeswarar Temple",
+                    "distance": "~30 km from Isha, in Perur",
+                    "significance": "Chola-era Shiva temple; Kanaka Sabhai (Golden Hall); 6:15 AM-1 PM, 4-9 PM",
+                    "exists": true
+                },
+                {
+                    "name": "Velliangiri Hill (Kailash of South)",
+                    "distance": "Behind Isha complex",
+                    "significance": "Sacred mountain where Shiva is believed to reside; challenging 7-km pilgrimage trek to the peak",
+                    "exists": true
+                },
+                {
+                    "name": "Eachanari Vinayagar Temple",
+                    "distance": "~15 km from Isha, on Pollachi Road",
+                    "significance": "Ancient Ganesha temple; 6-ft tall idol; believed to be gateway guardian for Velliangiri pilgrimage",
+                    "exists": true
+                },
+                {
+                    "name": "Patteeswarar Temple (Perur) & Koniamman Temple",
+                    "distance": "~25-30 km in Coimbatore city",
+                    "significance": "Ancient Shiva and Devi temples in Coimbatore; Chola and Vijayanagara architecture",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Anandamayi Ma Ashram",
+            "location": "Kankhal, near Haridwar, Uttarakhand, India",
+            "deity": "Sri Anandamayi Ma (20th-century mystic saint)",
+            "significance": "Mahasamadhi shrine of Anandamayi Ma (1896-1982). Located in Kankhal, 6 km from Haridwar. Contains samadhi, Rudraksha Tree, Ati Rudra Yagnashala, museum. Near Daksha Mahadev Temple.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Daksha Mahadev Temple",
+                    "distance": "Nearby in Kankhal",
+                    "significance": "Where King Daksha performed yajna; where Sati immolated herself; ancient Shiva temple",
+                    "exists": true
+                },
+                {
+                    "name": "Har Ki Pauri (Haridwar)",
+                    "distance": "~5.3 km from ashram",
+                    "significance": "Where Ganga enters plains; Brahma Kund; evening Ganga aarti; most sacred ghat in Haridwar",
+                    "exists": true
+                },
+                {
+                    "name": "Mansa Devi Temple",
+                    "distance": "~7 km, on Bilwa Parvat",
+                    "significance": "Shakti Peetha; Goddess of wishes; ropeway or trek; one of the Siddh Peethas of Haridwar",
+                    "exists": true
+                },
+                {
+                    "name": "Chandi Devi Temple",
+                    "distance": "~8 km, on Neel Parvat",
+                    "significance": "Where Chandi killed demons Chanda and Munda; ropeway or trek; 1929 temple",
+                    "exists": true
+                },
+                {
+                    "name": "Maya Devi Temple",
+                    "distance": "~6 km, in Haridwar",
+                    "significance": "Shakti Peetha where Sati's heart/navel fell; ancient temple; gives Haridwar its name (Maya = illusion)",
+                    "exists": true
+                },
+                {
+                    "name": "Bilkeshwar Mahadev Temple",
+                    "distance": "Near Mansa Devi hill",
+                    "significance": "Ancient Shiva temple near Haridwar",
+                    "exists": true
+                },
+                {
+                    "name": "Rishikesh Temples & Ashrams",
+                    "distance": "~25 km north",
+                    "significance": "Bharat Mandir, Triveni Ghat, Neelkanth Mahadev, Parmarth Niketan, Lakshman Jhula",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Parmarth Niketan Ashram",
+            "location": "Swargashram, Rishikesh, Uttarakhand, India",
+            "deity": "Ganga Ma; Swami Shukdevanand Saraswati (founder)",
+            "significance": "Largest ashram in Rishikesh, founded 1942. On banks of holy Ganga. Daily Ganga aarti at sunset. International Yoga Festival host. 70+ years of spiritual service.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Bharat Mandir (Hrishikesh Narayan)",
+                    "distance": "~3 km, in Rishikesh town",
+                    "significance": "Oldest temple in Rishikesh; built by Adi Shankaracharya (12th century); Lord Vishnu as Hrishikesh",
+                    "exists": true
+                },
+                {
+                    "name": "Triveni Ghat",
+                    "distance": "~2 km",
+                    "significance": "Where Ganga, Yamuna, and Saraswati confluence; evening aarti; holy dips",
+                    "exists": true
+                },
+                {
+                    "name": "Neelkanth Mahadev Temple",
+                    "distance": "~22 km trek from Rishikesh",
+                    "significance": "Where Shiva consumed poison (halahala) during ocean churning; 1,330 m altitude",
+                    "exists": true
+                },
+                {
+                    "name": "Lakshman Jhula & Temple",
+                    "distance": "~5 km",
+                    "significance": "Suspension bridge over Ganga; where Lakshmana crossed; 13-storey temple nearby",
+                    "exists": true
+                },
+                {
+                    "name": "Ram Jhula",
+                    "distance": "~3 km",
+                    "significance": "Larger suspension bridge; connects to Swargashram and Parmarth Niketan; Geeta Bhavan",
+                    "exists": true
+                },
+                {
+                    "name": "Trayambakeshwar Temple (Rishikesh)",
+                    "distance": "~3 km",
+                    "significance": "13-storey temple near Lakshman Jhula; multiple deity shrines on each floor",
+                    "exists": true
+                },
+                {
+                    "name": "Raghunath Temple (Swargashram)",
+                    "distance": "Nearby in Swargashram area",
+                    "significance": "Ancient Rama temple in the Swargashram precinct",
+                    "exists": true
+                },
+                {
+                    "name": "Kunjapuri Devi Temple",
+                    "distance": "~25 km from Rishikesh",
+                    "significance": "Shakti Peetha on hilltop; where Sati's chest fell; sunrise views of Himalayas",
+                    "exists": true
+                },
+                {
+                    "name": "Vasishtha Gufa (Cave)",
+                    "distance": "~25 km upstream on Ganga",
+                    "significance": "Where Sage Vasishtha meditated; cave temple on banks of Ganga",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Sri Aurobindo Ashram",
+            "location": "Pondicherry (Puducherry), India",
+            "deity": "Sri Aurobindo and The Mother",
+            "significance": "Founded 1926. White marble samadhi of Sri Aurobindo and The Mother under a Service Tree. Spiritual heart of Pondicherry. Center of Integral Yoga. 2000+ members worldwide.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Matrimandir (Auroville)",
+                    "distance": "~10 km, in Auroville",
+                    "significance": "Golden geodesic sphere for silent meditation; 'soul of Auroville'; no religion, no rituals",
+                    "exists": true
+                },
+                {
+                    "name": "Manakula Vinayagar Temple",
+                    "distance": "~400 m from ashram, in Pondicherry",
+                    "significance": "400-year-old Ganesha temple near Bay of Bengal; extension donated by the Mother of Sri Aurobindo Ashram",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Aurobindo Samadhi Shrine",
+                    "distance": "Within ashram, in courtyard",
+                    "significance": "White marble shrine where Sri Aurobindo and the Mother are laid to rest; under Service Tree",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Gokilambal Thirukameswar Temple (Villianur)",
+                    "distance": "~15 km from Pondicherry",
+                    "significance": "Ancient Shiva temple; massive temple car (ther) for Brahmotsavam",
+                    "exists": true
+                },
+                {
+                    "name": "Thiruvakkarai Devi Temple",
+                    "distance": "~25 km from Pondicherry",
+                    "significance": "Goddess temple; ancient Dravidian architecture; wooden chariot festival",
+                    "exists": true
+                },
+                {
+                    "name": "Aurobindo's room & Library",
+                    "distance": "Within ashram complex",
+                    "significance": "Where Sri Aurobindo lived and worked; preserved as sacred space",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Belur Math (Ramakrishna Mission)",
+            "location": "Belur, Howrah district, West Bengal, India",
+            "deity": "Sri Ramakrishna, Holy Mother Sarada Devi, Swami Vivekananda",
+            "significance": "Global headquarters of Ramakrishna Math and Mission, founded by Swami Vivekananda in 1899. Architectural fusion of Hindu, Christian, and Islamic styles symbolizing unity of all religions. On banks of Hooghly River.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Dakshineswar Kali Temple",
+                    "distance": "~7 km across Vidyasagar Setu",
+                    "significance": "Where Sri Ramakrishna attained spiritual realization; built 1855 by Rani Rashmoni; 12 Shiva temples on riverfront",
+                    "exists": true
+                },
+                {
+                    "name": "Adyapeath Temple (Adya Ma)",
+                    "distance": "Near Dakshineswar",
+                    "significance": "Temple of Adya Ma; Sri Ramakrishna's room preserved; Sarada Ma stayed here",
+                    "exists": true
+                },
+                {
+                    "name": "12 Shiva Temples (Dakshineswar complex)",
+                    "distance": "On Dakshineswar riverfront",
+                    "significance": "Row of 12 identical aat-chala Bengal-style Shiva temples on Hooghly riverfront",
+                    "exists": true
+                },
+                {
+                    "name": "Radha-Kanta Temple (Dakshineswar)",
+                    "distance": "Within Dakshineswar complex",
+                    "significance": "Where Sri Ramakrishna served as priest; Krishna and Radha silver throne idols",
+                    "exists": true
+                },
+                {
+                    "name": "Sarada Math (Dakshineswar)",
+                    "distance": "Near Dakshineswar",
+                    "significance": "Sri Sarada Math and Sri Sarada Math Temple; dedicated to Holy Mother Sarada Devi",
+                    "exists": true
+                },
+                {
+                    "name": "Kumartuli (Idol-making quarter)",
+                    "distance": "~10 km in North Kolkata",
+                    "significance": "Traditional clay idol-making area; where Durga Puja idols are crafted",
+                    "exists": true
+                },
+                {
+                    "name": "Mayavati Advaita Ashrama (Champawat, Uttarakhand)",
+                    "distance": "~1,500 km (branch ashram)",
+                    "significance": "Himalayan branch of Ramakrishna Mission; center of Advaita Vedanta practice",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Sarnath Buddhist Monastery",
+            "location": "Sarnath, near Varanasi, Uttar Pradesh, India",
+            "deity": "Lord Buddha (Dharmachakra)",
+            "significance": "Where Buddha gave his first sermon (Dharmachakra Pravartana). One of 4 holiest Buddhist sites. Deer Park where Sangha was formed. Archaeological treasure of stupas, monasteries, Ashoka Pillar.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Dhamek Stupa",
+                    "distance": "Within Sarnath complex",
+                    "significance": "42-metre stupa marking exact spot of Buddha's first sermon; 5th-6th century CE; built over earlier Mauryan structure",
+                    "exists": true
+                },
+                {
+                    "name": "Chaukhandi Stupa",
+                    "distance": "In Sarnath, Group A monument",
+                    "significance": "Where Buddha met his first 5 disciples; octagonal Mughal tower added 1588 CE by Govardhan for Humayun's visit",
+                    "exists": true
+                },
+                {
+                    "name": "Mulagandha Kuti Vihara",
+                    "distance": "Within Sarnath complex",
+                    "significance": "Modern Buddhist temple on ruins of ancient monastery; where Buddha spent first rains; golden Buddha image",
+                    "exists": true
+                },
+                {
+                    "name": "Ashoka Pillar (Lion Capital)",
+                    "distance": "Within Sarnath complex (original in museum)",
+                    "significance": "National emblem of India; 4-lion capital; erected by Emperor Ashoka; marks Buddhist sacred site",
+                    "exists": true
+                },
+                {
+                    "name": "Dharmarajika Stupa",
+                    "distance": "Within Sarnath ruins",
+                    "significance": "Stupa built by Ashoka; dismantled in 1794 by Jagat Singh; relics found and immersed in Ganga",
+                    "exists": true
+                },
+                {
+                    "name": "Sarnath Archaeological Museum",
+                    "distance": "Adjacent to ruins",
+                    "significance": "Houses Lion Capital of Ashoka; Buddha images; largest collection of Gupta-period sculptures",
+                    "exists": true
+                },
+                {
+                    "name": "Deer Park (Isipatana)",
+                    "distance": "Within Sarnath",
+                    "significance": "Where Buddha taught; still has deer; sanctuary since Buddha's time",
+                    "exists": true
+                },
+                {
+                    "name": "Kashi Vishwanath Temple (Varanasi)",
+                    "distance": "~10 km, in Varanasi",
+                    "significance": "One of 12 Jyotirlingas; most important Shiva temple in Varanasi",
+                    "exists": true
+                },
+                {
+                    "name": "Shreyanshnath Jain Temple",
+                    "distance": "Near Dhamek Stupa, in Sarnath",
+                    "significance": "Dedicated to 11th Jain Tirthankara; Sarnath also sacred to Jains",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Mahabodhi Temple (Bodh Gaya)",
+            "location": "Bodh Gaya, Gaya district, Bihar, India",
+            "deity": "Lord Buddha (enlightenment site)",
+            "significance": "UNESCO World Heritage Site. Where Buddha attained enlightenment under the Bodhi Tree. 55-metre temple; one of 4 holiest Buddhist sites. Bodhi Tree descended from original. 6 sacred spots within complex.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Bodhi Tree (descendant of original)",
+                    "distance": "Within Mahabodhi complex",
+                    "significance": "Sacred fig tree under which Buddha attained enlightenment; descended from original tree; current tree planted 1881",
+                    "exists": true
+                },
+                {
+                    "name": "Vishnupad Temple (Gaya)",
+                    "distance": "~12 km from Bodh Gaya, in Gaya town",
+                    "significance": "Lord Vishnu's footprint on rock; where Rama performed Pind Daan for father Dasharatha; rebuilt by Ahilyabai Holkar in 1787",
+                    "exists": true
+                },
+                {
+                    "name": "Dungeshwari Cave Temple",
+                    "distance": "~12-15 km from Bodh Gaya",
+                    "significance": "Where Buddha meditated for 6 years before enlightenment; also called Mahakala Caves; cave for Hindu deity Dungeshwari",
+                    "exists": true
+                },
+                {
+                    "name": "Sujata Stupa",
+                    "distance": "Across Phalgu River from Bodh Gaya",
+                    "significance": "Where Sujata offered rice-milk to starving Buddha, ending his austerities; commemorates the act of compassion",
+                    "exists": true
+                },
+                {
+                    "name": "Barabar Caves",
+                    "distance": "~25 km from Gaya",
+                    "significance": "Oldest rock-cut caves in India (Mauryan era); used by Ajivikas; polished granite interiors",
+                    "exists": true
+                },
+                {
+                    "name": "Mangla Gauri Temple",
+                    "distance": "Near Mahabodhi Temple, in Gaya",
+                    "significance": "Shakti Peetha where Sati's breast fell; hilltop Devi temple; one of 18 Maha Shakti Peethas",
+                    "exists": true
+                },
+                {
+                    "name": "Royal Bhutan Monastery",
+                    "distance": "Near Mahabodhi Temple",
+                    "significance": "Commissioned by King of Bhutan; 7-ft Buddha statue; clay carvings of Buddha's life",
+                    "exists": true
+                },
+                {
+                    "name": "Tibetan Monastery",
+                    "distance": "Near Mahabodhi Temple",
+                    "significance": "Founded 1938; 10-metre dharmachakra (Wheel of Law); spinning 3 times cleanses sins; Maitreya Buddha image",
+                    "exists": true
+                },
+                {
+                    "name": "Thai Temple & Monastery",
+                    "distance": "Near Mahabodhi Temple",
+                    "significance": "Founded 1957; Thai architecture; bronze Buddha statue; murals of Buddha's life",
+                    "exists": true
+                },
+                {
+                    "name": "Chinese Temple & Monastery",
+                    "distance": "Near Mahabodhi Temple",
+                    "significance": "Built 1945; three golden Buddha statues; Buddha Jayanti festival",
+                    "exists": true
+                },
+                {
+                    "name": "Phalgu River (Niranjana)",
+                    "distance": "Flows past Bodh Gaya",
+                    "significance": "Sacred river where Buddha bathed after enlightenment; where pind daan is performed",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Golden Temple (Sri Harmandir Sahib)",
+            "location": "Amritsar, Punjab, India",
+            "deity": "Guru Granth Sahib (Sikh scripture)",
+            "significance": "Holiest shrine of Sikhism. Built by Guru Arjan Dev (1589); completed 1604. Gold-plated (1830 by Maharaja Ranjit Singh). Surrounded by Amrit Sarovar (Pool of Nectar); 4 doors for all faiths. Guru Ram Das founded Amritsar.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Durgiana Temple (Sitla Mandir)",
+                    "distance": "~1.5 km from Golden Temple",
+                    "significance": "Hindu temple resembling Golden Temple architecture; dedicated to Durga; rises from sacred lake; Luv-Kush captured Rama's horse here",
+                    "exists": true
+                },
+                {
+                    "name": "Akal Takht",
+                    "distance": "Within Golden Temple complex",
+                    "significance": "Highest temporal seat of Sikh authority; built by Guru Hargobind in 1609; faces Golden Temple",
+                    "exists": true
+                },
+                {
+                    "name": "Gurudwara Baba Atal Sahib",
+                    "distance": "South of Golden Temple",
+                    "significance": "9-storey tower — tallest building in Amritsar; built in memory of Baba Atal Rai (Guru Hargobind's son who died age 9)",
+                    "exists": true
+                },
+                {
+                    "name": "Jallianwala Bagh",
+                    "distance": "~500 m from Golden Temple",
+                    "significance": "Site of 1919 massacre; memorial garden; Martyrs' Well; bullet marks preserved",
+                    "exists": true
+                },
+                {
+                    "name": "Ram Tirath Temple",
+                    "distance": "~11 km from Amritsar",
+                    "significance": "Where Sage Valmiki wrote Ramayana; where Sita gave birth to Luv and Kush; ancient temple complex",
+                    "exists": true
+                },
+                {
+                    "name": "Tarn Taran Sahib Gurudwara",
+                    "distance": "~22 km from Amritsar",
+                    "significance": "Gurudwara built by Guru Arjan Dev; largest sarovar (holy pool) among all Sikh shrines",
+                    "exists": true
+                },
+                {
+                    "name": "Gobindgarh Fort",
+                    "distance": "Near Golden Temple",
+                    "significance": "Historic military fort; associated with Maharaja Ranjit Singh; now cultural museum",
+                    "exists": true
+                },
+                {
+                    "name": "Wagah Border (India-Pakistan)",
+                    "distance": "~30 km from Amritsar",
+                    "significance": "Famous border ceremony; flag-lowering retreat; patriotic pilgrimage",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Vaishno Devi Temple",
+            "location": "Katra, Reasi district, Jammu & Kashmir, India",
+            "deity": "Mata Vaishno Devi (Mahalakshmi / Mahakali / Mahasaraswati)",
+            "significance": "One of the holiest Hindu pilgrimage sites. Cave shrine at 5,200 ft in Trikuta Hills. Three Pindis (stone forms) representing Mahakali, Mahalakshmi, Mahasaraswati. 13-km trek from Katra base camp.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Bhairavnath Temple",
+                    "distance": "~2.5 km from Bhawan (via steep path)",
+                    "significance": "Where Bhairon Nath's head fell after Vaishno Devi beheaded him; pilgrimage incomplete without visiting; ropeway available",
+                    "exists": true
+                },
+                {
+                    "name": "Ardhkuwari (Garbh Joon Cave)",
+                    "distance": "~6 km from Katra, mid-way to Bhawan",
+                    "significance": "Where Devi hid for 9 months from Bhairon Nath; narrow 15-ft cave shaped like womb; symbolic rebirth",
+                    "exists": true
+                },
+                {
+                    "name": "Charan Paduka",
+                    "distance": "~2.5 km from Darshani Darwaza",
+                    "significance": "Rock with imprints of Devi's feet; where she stopped during flight from Bhairon Nath",
+                    "exists": true
+                },
+                {
+                    "name": "Ban Ganga",
+                    "distance": "~1 km from Katra",
+                    "significance": "Where Devi shot an arrow to create water for thirsty Hanuman; devotees bathe here before trek",
+                    "exists": true
+                },
+                {
+                    "name": "Sanjichat",
+                    "distance": "~9.5 km from Katra",
+                    "significance": "Scenic plateau at 6,200 ft; panoramic view of Pir Panjal range and Chenab River; helipad",
+                    "exists": true
+                },
+                {
+                    "name": "Shiv Khori (Shiva Cave)",
+                    "distance": "~70 km from Katra",
+                    "significance": "Natural Shiva cave shrine; 4-faced natural lingam; cave extends 200 m underground",
+                    "exists": true
+                },
+                {
+                    "name": "Patnitop & Sudh Mahadev",
+                    "distance": "~80 km from Katra, near Patnitop",
+                    "significance": "Hill station with ancient Shiva temples; Sudh Mahadev temple and Mantalai associated with Shiva-Parvati",
+                    "exists": true
+                },
+                {
+                    "name": "Raghunath Temple (Jammu)",
+                    "distance": "~48 km from Katra, in Jammu city",
+                    "significance": "Largest temple complex in North India; 7 shrines; dedicated to Lord Rama; built by Maharaja Gulab Singh",
+                    "exists": true
+                },
+                {
+                    "name": "Bhumika Mandir (Darshani Darwaza)",
+                    "distance": "Start of trek, ~1.5 km from Katra",
+                    "significance": "Where Mata first appeared to the devotee; temple marks the entrance to the yatra",
+                    "exists": true
+                }
+            ]
+        },
+        {
+            "temple": "Tirupati Balaji (Sri Venkateswara Swamy Temple)",
+            "location": "Tirumala, Tirupati district, Andhra Pradesh, India",
+            "deity": "Lord Venkateswara (Vishnu as Srinivasa)",
+            "significance": "Richest and most visited Hindu temple in the world. One of 108 Divya Desams. Vishnu as Srinivasa/Balaji. On Tirumala hills (7 peaks representing Adisesha). 2,500+ daily visitors.",
+            "nearby_sacred_temples": [
+                {
+                    "name": "Padmavathi Ammavari Temple (Tiruchanur)",
+                    "distance": "~5 km from Tirupati, in Tiruchanur",
+                    "significance": "Consort of Lord Venkateswara; Goddess Padmavathi/Alamelumanga; visit before Tirumala darshan for good fortune",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Kapileswara Swamy Temple (Kapila Theertham)",
+                    "distance": "~4 km from Tirupati railway",
+                    "significance": "Shiva temple at foot of Tirumala hills; waterfall enters Pushkarini; idol installed by Sage Kapila",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Govindaraja Swamy Temple",
+                    "distance": "In Tirupati town",
+                    "significance": "Ancient Vishnu temple consecrated by Ramanujacharya (1130 CE); one of biggest complexes in Tirupati",
+                    "exists": true
+                },
+                {
+                    "name": "Srikalahasteeswara Temple (Srikalahasti)",
+                    "distance": "~35 km from Tirupati",
+                    "significance": "Pancha Bhoota Stalam (Vayu/Wind); Shiva as Kalahasteeswara; Rahu-Ketu dosha remedies",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Kalyana Venkateswara Swamy Temple (Srinivasa Mangapuram)",
+                    "distance": "~10 km west of Tirupati",
+                    "significance": "Where Venkateswara stayed for 6 months after marrying Padmavathi; ASI-protected monument",
+                    "exists": true
+                },
+                {
+                    "name": "Silathoranam (Natural Arch, Tirumala)",
+                    "distance": "~1 km north of Tirumala temple",
+                    "significance": "Natural geological arch (8m wide, 3m high); National Geo-heritage Monument; 1.5 billion years old",
+                    "exists": true
+                },
+                {
+                    "name": "Akasa Ganga Waterfall (Tirumala)",
+                    "distance": "On Tirumala hills",
+                    "significance": "Sacred waterfall; where Garuda brought water for Venkateswara; papavinasanam theertham nearby",
+                    "exists": true
+                },
+                {
+                    "name": "Sri Venugopala Swamy Temple (Tirupati)",
+                    "distance": "In Tirupati town",
+                    "significance": "Krishna temple as flute-playing Venugopala; ancient Vaishnava shrine",
+                    "exists": true
+                },
+                {
+                    "name": "Chandragiri Fort & Raja Mahal",
+                    "distance": "~12 km from Tirupati",
+                    "significance": "Historical fort of Vijayanagara Empire; where Vijayanagara kings ruled after Fall of Hampi; Light & Sound show",
+                    "exists": true
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "total_healing_temples_documented": 28,
+        "total_nearby_sacred_sites": 237,
+        "all_nearby_temples_exist": true,
+        "note": "This covers all temples from Batch J (Healing & Ashram Sanctuaries) plus Sharada Peeth, which was separately researched. The Arunachaleswarar Temple at Tiruvannamalai, while technically a Pancha Bhoota Stalam (covered in Batch B), is included here because of its deep connection to healing, meditation, and the Ramana Maharshi lineage.",
+        "research_sources": [
+            "Incredible India (incredibleindia.gov.in)",
+            "Uttarakhand Tourism (uttarakhandtourism.gov.in)",
+            "Maharashtra Tourism (maharashtratourism.gov.in)",
+            "Shree Saibaba Sansthan Trust, Shirdi (sai.org.in)",
+            "Sri Sathya Sai Central Trust (srisathyasai.org)",
+            "Swaminarayan Akshardham (akshardham.com)",
+            "Auroville (auroville.org)",
+            "Sri Aurobindo Ashram (sriaurobindoashram.org)",
+            "Manakula Vinayagar Temple (manakulavinayagartemple.com)",
+            "Tiruvannamalai Devasthanam (tiruvannamalaidevasthanam.org.in)",
+            "Sri Ramanasramam (sriramana.org)",
+            "ISKCON Vrindavan (iskconvrindavan.com)",
+            "Art of Living (artofliving.org)",
+            "Bangalore Ashram (bangaloreashram.org)",
+            "Vrindavan Tours and Packages",
+            "Mathura Vrindavan Tourism",
+            "Namaste India Trip",
+            "TripSavvy",
+            "Delhi Tourism (delhitourism.gov.in)",
+            "Wikipedia"
+        ]
+    }
+}
