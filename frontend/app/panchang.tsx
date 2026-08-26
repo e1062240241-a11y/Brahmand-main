@@ -413,7 +413,7 @@ export default function PanchangScreen() {
           <View style={styles.sunMoonGrid}>
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Image source={require('../assets/images/zodiac/su/sun.webp')} style={{width: 20, height: 20}} resizeMode="contain" />
+                <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/sun.webp' }} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>SUNRISE</Text>
@@ -423,7 +423,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Image source={require('../assets/images/zodiac/su/sunset.webp')} style={{width: 20, height: 20}} resizeMode="contain" />
+                <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/sunset.webp' }} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>SUNSET</Text>
@@ -433,7 +433,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Image source={require('../assets/images/zodiac/su/moonrise.webp')} style={{width: 20, height: 20}} resizeMode="contain" />
+                <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/moonrise.webp' }} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>MOONRISE</Text>
@@ -443,7 +443,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Image source={require('../assets/images/zodiac/su/moonset.webp')} style={{width: 20, height: 20}} resizeMode="contain" />
+                <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/moonset.webp' }} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>MOONSET</Text>
@@ -499,13 +499,13 @@ export default function PanchangScreen() {
 
   const renderHoraTab = () => {
     const planetIcons: any = {
-      Sun: require('../assets/images/zodiac/su/sun2.webp'),
-      Venus: require('../assets/images/zodiac/su/venus.webp'),
-      Mercury: require('../assets/images/zodiac/su/mercury.webp'),
-      Moon: require('../assets/images/zodiac/su/mon.webp'),
-      Saturn: require('../assets/images/zodiac/su/saturn.webp'),
-      Jupiter: require('../assets/images/zodiac/su/jupiter2.webp'),
-      Mars: require('../assets/images/zodiac/su/mars.webp'),
+      Sun: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/sun2.webp' },
+      Venus: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/venus.webp' },
+      Mercury: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/mercury.webp' },
+      Moon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/mon.webp' },
+      Saturn: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/saturn.webp' },
+      Jupiter: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/jupiter2.webp' },
+      Mars: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/mars.webp' },
     };
 
     // horaList is memoized above (depends only on payload).
@@ -606,13 +606,13 @@ export default function PanchangScreen() {
     const planetsSource = getPlanetsSource();
 
     const planetDetails: Record<string, { sanskrit: string; desc: string; icon: any }> = {
-      Sun: { sanskrit: 'SURYA', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.webp') },
-      Moon: { sanskrit: 'CHANDRA', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.webp') },
-      Jupiter: { sanskrit: 'GURU', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.webp') },
-      Mars: { sanskrit: 'MANGAL', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.webp') },
-      Saturn: { sanskrit: 'SHANI', desc: 'Focus on discipline and planning. Patience is key.', icon: require('../assets/images/zodiac/su/saturn2.webp') },
-      Rahu: { sanskrit: 'RAHU', desc: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.webp') },
-      Ketu: { sanskrit: 'KETU', desc: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.webp') },
+      Sun: { sanskrit: 'SURYA', desc: 'Auspicious for new beginnings and leadership roles.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/sun3.webp' } },
+      Moon: { sanskrit: 'CHANDRA', desc: 'Mental peace and emotional stability. Good for family.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/moon2.webp' } },
+      Jupiter: { sanskrit: 'GURU', desc: 'Internal growth. Re-evaluate financial investments.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/jupiter2.webp' } },
+      Mars: { sanskrit: 'MANGAL', desc: 'High courage and ambition. Avoid arguments today.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/mars2.webp' } },
+      Saturn: { sanskrit: 'SHANI', desc: 'Focus on discipline and planning. Patience is key.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/saturn2.webp' } },
+      Rahu: { sanskrit: 'RAHU', desc: 'TRANSFORMATION', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/rahu.webp' } },
+      Ketu: { sanskrit: 'KETU', desc: 'WISDOM', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/ketu.webp' } },
     };
 
     const getPlanetFromApi = (name: string, fallback: any) => {
@@ -652,15 +652,15 @@ export default function PanchangScreen() {
     };
 
     const mainPlanets = [
-      getPlanetFromApi('Sun', { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.webp') }),
-      getPlanetFromApi('Moon', { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.webp') }),
-      getPlanetFromApi('Jupiter', { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.webp') }),
-      getPlanetFromApi('Mars', { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.webp') }),
+      getPlanetFromApi('Sun', { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/sun3.webp' } }),
+      getPlanetFromApi('Moon', { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/moon2.webp' } }),
+      getPlanetFromApi('Jupiter', { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/jupiter2.webp' } }),
+      getPlanetFromApi('Mars', { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/mars2.webp' } }),
     ];
 
     const shadowPlanets = [
-      getShadowPlanetFromApi('Rahu', { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.webp') }),
-      getShadowPlanetFromApi('Ketu', { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.webp') }),
+      getShadowPlanetFromApi('Rahu', { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/rahu.webp' } }),
+      getShadowPlanetFromApi('Ketu', { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM', icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/ketu.webp' } }),
     ];
 
     const saturnData = getPlanetFromApi('Saturn', {
@@ -670,7 +670,7 @@ export default function PanchangScreen() {
       degree: "28° 02'",
       motion: 'DIRECT',
       desc: 'Focus on discipline and planning. Patience is key.',
-      icon: require('../assets/images/zodiac/su/saturn2.webp'),
+      icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/saturn2.webp' },
     });
 
     return (
@@ -738,7 +738,7 @@ export default function PanchangScreen() {
         {/* Celestial Event */}
         <View style={styles.celestialCard}>
           <View style={styles.celestialIconBox}>
-            <Image source={require('../assets/images/zodiac/su/celestial.webp')} style={{ width: 24, height: 24, tintColor: '#FFF' }} resizeMode="contain" />
+            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/zodiac/su/celestial.webp' }} style={{ width: 24, height: 24, tintColor: '#FFF' }} resizeMode="contain" />
           </View>
           <View style={styles.celestialTextCol}>
             <View style={styles.celestialTopRow}>

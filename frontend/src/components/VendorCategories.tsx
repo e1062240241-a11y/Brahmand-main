@@ -16,27 +16,27 @@ import { useRouter } from 'expo-router';
 
 // Map of category names to their respective local assets
 const CATEGORY_IMAGES: Record<string, any> = {
-  gym: require('../../assets/images/tab-bar/rashi/vendor/gym.webp'),
-  travel: require('../../assets/images/tab-bar/rashi/vendor/travel.webp'),
-  catering: require('../../assets/images/tab-bar/rashi/vendor/halvai.webp'),
-  beauty: require('../../assets/images/tab-bar/rashi/vendor/Beauty.webp'),
-  decorator: require('../../assets/images/tab-bar/rashi/vendor/Decorator.webp'),
-  astrologer: require('../../assets/images/tab-bar/rashi/vendor/Astrologer.webp'),
-  electrician: require('../../assets/images/tab-bar/rashi/vendor/Electrician.webp'),
-  panditji: require('../../assets/images/tab-bar/rashi/vendor/panditji.webp'),
-  carpenter: require('../../assets/images/tab-bar/rashi/vendor/carpener.webp'),
-  plumber: require('../../assets/images/tab-bar/rashi/vendor/plumber.webp'),
-  'general store': require('../../assets/images/tab-bar/rashi/vendor/generalstore.webp'),
-  dairy: require('../../assets/images/tab-bar/rashi/vendor/dairy.webp'),
-  salon: require('../../assets/images/tab-bar/rashi/vendor/salon.webp'),
-  cow: require('../../assets/images/tab-bar/rashi/vendor/cow.webp'),
-  general_store_icon: require('../../assets/images/tab-bar/rashi/vendor/general_store.webp'),
-  lightning: require('../../assets/images/tab-bar/rashi/vendor/lightning.webp'),
-  panditji_icon: require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp'),
-  plumber_icon: require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.webp'),
-  salon_icon: require('../../assets/images/tab-bar/rashi/vendor/salon_icon.webp'),
-  siren: require('../../assets/images/tab-bar/rashi/vendor/siren.webp'),
-  hammer: require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp'),
+  gym: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/gym.webp' },
+  travel: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/travel.webp' },
+  catering: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/halvai.webp' },
+  beauty: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Beauty.webp' },
+  decorator: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Decorator.webp' },
+  astrologer: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' },
+  electrician: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' },
+  panditji: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp' },
+  carpenter: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp' },
+  plumber: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp' },
+  'general store': { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp' },
+  dairy: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp' },
+  salon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' },
+  cow: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' },
+  general_store_icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' },
+  lightning: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' },
+  panditji_icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' },
+  plumber_icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' },
+  salon_icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' },
+  siren: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' },
+  hammer: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' },
 };
 
 const getCategoryIconSource = (category: string) => {
@@ -51,7 +51,7 @@ const getCategoryIconSource = (category: string) => {
     }
   }
   // Default fallback image
-  return require('../../assets/images/tab-bar/rashi/vendor/Decorator.webp');
+  return { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Decorator.webp' };
 };
 
 export interface VendorCategoriesProps {

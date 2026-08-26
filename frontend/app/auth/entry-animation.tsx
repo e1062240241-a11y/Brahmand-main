@@ -86,8 +86,7 @@ export default function EntryAnimationScreen() {
   const availableContentHeight = screenHeight - (insets.top + insets.bottom + 210); // 210px accounts for footer + iconsRow
   const cardHeight = Math.min(474, Math.max(280, availableContentHeight));
   const imageContainerHeight = Math.min(364, Math.max(180, cardHeight - 110));
-
-  const titleFontSize = screenHeight < 700 ? 22 : 28;
+  const titleFontSize = screenHeight < 700 ? 20 : (isAndroid ? 24 : 28);
 
   const iconsRowWidth = Math.min(329, screenWidth - 32);
   const iconsRowGap = screenWidth < 360 ? 12 : 32;
@@ -154,7 +153,14 @@ export default function EntryAnimationScreen() {
             </View>
 
             <View style={styles.contentContainer}>
-              <Text style={[styles.title, { fontSize: titleFontSize }]}>BRAHMAND</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={[styles.title, { fontSize: titleFontSize }]}
+              >
+                BRAHMAND
+              </Text>
               <View style={styles.dividerContainer}>
                 <View style={styles.line} />
                 <View style={styles.ornamentWrapper}>
@@ -271,16 +277,18 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.0 }],
   },
   title: {
-    fontSize: Platform.OS === 'android' ? 20 : 32,
+    fontSize: Platform.OS === 'android' ? 24 : 28,
     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
-    letterSpacing: Platform.OS === 'android' ? 8 : 14,
+    letterSpacing: Platform.OS === 'android' ? 3.5 : 6,
     textAlign: 'center',
-    paddingLeft: Platform.OS === 'android' ? 8 : 14,
+    alignSelf: 'center',
     fontStyle: 'normal',
-    lineHeight: Platform.OS === 'android' ? 26 : 36,
+    lineHeight: Platform.OS === 'android' ? 30 : 36,
     marginTop: 2,
     marginBottom: 5,
+    includeFontPadding: false,
+    paddingHorizontal: 12,
   },
   contentContainer: {
     flex: 1,

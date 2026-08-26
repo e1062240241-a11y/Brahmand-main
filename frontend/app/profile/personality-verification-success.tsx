@@ -68,8 +68,8 @@ export default function PersonalitySuccessScreen() {
           <View style={styles.illustrationContainer}>
             <Image 
               source={isApproved 
-                ? require('../../assets/images/verification_success_shield_clean.webp')
-                : require('../../assets/images/verification_thank_you_illustration.webp')
+                ? { uri: 'https://brahmandfeed23.b-cdn.net/assets/verification_success_shield_clean.webp' }
+                : { uri: 'https://brahmandfeed23.b-cdn.net/assets/verification_thank_you_illustration.webp' }
               } 
               style={styles.illustration}
               resizeMode="contain"

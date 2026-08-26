@@ -742,14 +742,6 @@ export default function RootLayout() {
   }, [isLoading, fontsLoaded, isRootReady]);
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      NavigationBar.setPositionAsync('relative').catch((e) => {
-        console.warn('[NavigationBar] Failed to set relative position:', e);
-      });
-    }
-  }, []);
-
-  useEffect(() => {
     clearLegacyLibraryCache();
   }, []);
 

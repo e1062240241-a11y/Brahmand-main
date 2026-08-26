@@ -800,7 +800,7 @@ function MessagesScreen({
 
   const renderMedalIcon = () => (
     <Image
-      source={require('../../assets/images/community_medal_icon.webp')}
+      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/community_medal_icon.webp' }}
       style={styles.medalIconImage}
       resizeMode="contain"
     />
@@ -887,7 +887,7 @@ function MessagesScreen({
           >
             <View style={styles.mumbaiIconSquare}>
               <Image
-                source={require('../../assets/images/mumbai_pin.webp')}
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/mumbai_pin.webp' }}
                 style={styles.mumbaiIconImage}
                 resizeMode="contain"
               />
@@ -980,7 +980,7 @@ function MessagesScreen({
 
           {/* Centered Background Illustration */}
           <Image
-            source={require('../../assets/images/community_banner_heart.webp')}
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/community_banner_heart.webp' }}
             style={styles.heroImageDeco}
             resizeMode="contain"
           />

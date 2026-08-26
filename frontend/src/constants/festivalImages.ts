@@ -1,14 +1,14 @@
 // Available image assets mapped to festivals for variety
-const imgDiya = require('../../assets/images/traditional_diya_footer.webp');
-const imgShiva = require('../../assets/images/upcoming_shiva.webp');
-const imgGanesh = require('../../assets/images/upcoming_ganesh.webp');
-const imgDurga = require('../../assets/images/upcoming_durga.webp');
-const imgGanga = require('../../assets/images/upcoming_ganga.webp');
-const imgShani = require('../../assets/images/upcoming_shani.webp');
-const imgRadha = require('../../assets/images/upcoming_radha_rani.webp');
-const imgHanuman = require('../../assets/images/hanuman_banner_new.webp');
-const imgKrishna = require('../../assets/images/krishna_arjuna_chariot.webp');
-const imgGeeta = require('../../assets/images/Bhagvad-geeta.webp');
+const imgDiya = { uri: 'https://brahmandfeed23.b-cdn.net/assets/traditional_diya_footer.webp' };
+const imgShiva = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shiva.webp' };
+const imgGanesh = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganesh.webp' };
+const imgDurga = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_durga.webp' };
+const imgGanga = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganga.webp' };
+const imgShani = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shani.webp' };
+const imgRadha = { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_radha_rani.webp' };
+const imgHanuman = { uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' };
+const imgKrishna = { uri: 'https://brahmandfeed23.b-cdn.net/assets/krishna_arjuna_chariot.webp' };
+const imgGeeta = { uri: 'https://brahmandfeed23.b-cdn.net/assets/Bhagvad-geeta.webp' };
 
 const CDN_FESTIVALS_BASE = 'https://brahmandfeed23.b-cdn.net/festivals';
 
