@@ -185,7 +185,7 @@ const TempleCardImageItem = React.memo(({
 });
 
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (Platform.OS === 'android' && !(global as any).nativeFabricUIManager && !(global as any)._IS_FABRIC && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -194,28 +194,28 @@ const LIVE_JAAPS = [
     id: '1',
     title: 'Hanuman\nChalisa',
     devotees: '9.6K',
-    image: require('../../assets/images/hanuman_jaap_card_v2.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_jaap_card_v2.webp' },
     slok: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि...'
   },
   {
     id: '2',
     title: 'Hare Krishna\nJaap',
     devotees: '6.4K',
-    image: require('../../assets/images/krishna_jaap_card_v2.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/krishna_jaap_card_v2.webp' },
     slok: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे...'
   },
   {
     id: '3',
     title: 'Om Namah\nShivaya',
     devotees: '5.2K',
-    image: require('../../assets/images/shiva_jaap_card_v2.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/shiva_jaap_card_v2.webp' },
     slok: 'ॐ नमः शिवाय ॐ नमः शिवाय...'
   },
   {
     id: '4',
     title: 'Gayatri\nMantra',
     devotees: '4.8K',
-    image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/gayatri_jaap_card_v4_exact_clean.webp' },
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
 ];
@@ -226,7 +226,7 @@ const UPCOMING_JAAPS = [
     title: 'Ganesh Jaap',
     titleHi: 'गणेश जाप',
     mantraType: 'ganesh_aarti',
-    image: require('../../assets/images/upcoming_ganesh.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganesh.webp' },
     allowedDays: [3], // Wednesday
   },
   {
@@ -234,7 +234,7 @@ const UPCOMING_JAAPS = [
     title: 'Shani Chalisa',
     titleHi: 'शनि चालीसा',
     mantraType: 'shani_chalisa',
-    image: require('../../assets/images/upcoming_shani.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shani.webp' },
     allowedDays: [6], // Saturday
   },
   {
@@ -242,7 +242,7 @@ const UPCOMING_JAAPS = [
     title: 'Shiv Mantra',
     titleHi: 'शिव मंत्र',
     mantraType: 'shiva',
-    image: require('../../assets/images/upcoming_shiva.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shiva.webp' },
     allowedDays: [1], // Monday
   },
   {
@@ -250,7 +250,7 @@ const UPCOMING_JAAPS = [
     title: 'Ganga Mantra',
     titleHi: 'गंगा मंत्र',
     mantraType: 'ganga',
-    image: require('../../assets/images/upcoming_ganga.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganga.webp' },
     allowedDays: [0], // Sunday
   },
   {
@@ -258,7 +258,7 @@ const UPCOMING_JAAPS = [
     title: 'Radha Rani Jaap',
     titleHi: 'राधा रानी जाप',
     mantraType: 'radha_rani',
-    image: require('../../assets/images/upcoming_radha_rani.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_radha_rani.webp' },
     allowedDays: [5], // Friday
   },
   {
@@ -266,7 +266,7 @@ const UPCOMING_JAAPS = [
     title: 'Durga Saptashati',
     titleHi: 'दुर्गा सप्तशती',
     mantraType: 'durga',
-    image: require('../../assets/images/upcoming_durga.webp'),
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_durga.webp' },
     allowedDays: [2], // Tuesday
   },
 ];
@@ -650,7 +650,7 @@ export default function JaapLandingScreen() {
             <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
               <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
                 <ImageBackground
-                  source={require('../../assets/images/jaap_hero_shiva_final.webp')}
+                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jaap_hero_shiva_final.webp' }}
                   style={styles.heroBannerFill}
                   imageStyle={styles.heroBannerImageStyle}
                   resizeMode="cover"
@@ -982,7 +982,7 @@ export default function JaapLandingScreen() {
               >
                 <View style={styles.coverBoxKatha}>
                   <Image
-                    source={require('../../assets/images/shamik_pathak_ji.webp')}
+                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' }}
                     style={styles.coverImgKatha}
                     resizeMode="cover"
                   />

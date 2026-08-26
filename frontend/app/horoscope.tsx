@@ -29,25 +29,25 @@ import { useAuthStore } from '../src/store/authStore';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ZODIAC_SIGNS = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: require('../assets/images/tab-bar/rashi/Aries.webp') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: require('../assets/images/tab-bar/rashi/Taurus.webp') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: require('../assets/images/tab-bar/rashi/gemini.webp') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: require('../assets/images/tab-bar/rashi/cancer.webp') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: require('../assets/images/tab-bar/rashi/Leo.webp') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: require('../assets/images/tab-bar/rashi/Virgo.webp') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: require('../assets/images/tab-bar/rashi/Libra.webp') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: require('../assets/images/tab-bar/rashi/Scorpio.webp') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: require('../assets/images/tab-bar/rashi/sagittarius.webp') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: require('../assets/images/tab-bar/rashi/Capricorn.webp') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: require('../assets/images/tab-bar/rashi/Aquarius.webp') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: require('../assets/images/tab-bar/rashi/Pisces.webp') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: '♈', dates: '21 March - 19 April', color: '#FF6B00', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Aries.webp' } },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: '♉', dates: '20 April - 20 May', color: '#8E44AD', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Taurus.webp' } },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: '♊', dates: '21 May - 20 June', color: '#2ECC71', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/gemini.webp' } },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: '♋', dates: '21 June - 22 July', color: '#3498DB', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/cancer.webp' } },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: '♌', dates: '23 July - 22 August', color: '#F1C40F', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Leo.webp' } },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: '♍', dates: '23 August - 22 September', color: '#16A085', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Virgo.webp' } },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: '♎', dates: '23 September - 22 October', color: '#E67E22', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Libra.webp' } },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: '♏', dates: '23 October - 21 November', color: '#C0392B', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Scorpio.webp' } },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: '♐', dates: '22 November - 21 December', color: '#2980B9', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/sagittarius.webp' } },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: '♑', dates: '22 December - 19 January', color: '#273C75', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Capricorn.webp' } },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: '♒', dates: '20 January - 18 February', color: '#192A56', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Aquarius.webp' } },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: '♓', dates: '19 February - 20 March', color: '#44BD32', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Pisces.webp' } },
 ];
 
 const PREDICTION_SECTIONS = [
-  { label: 'LOVE', keys: ['love', 'fiance', 'personal_life', 'personal'], icon: require('../assets/images/jyotish/love.webp'), fallback: 'Focus on harmony and understanding in your personal relationships today.' },
-  { label: 'FINANCE', keys: ['finance', 'profession', 'career'], icon: require('../assets/images/jyotish/finance.webp'), fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
-  { label: 'HEALTH', keys: ['health'], icon: require('../assets/images/jyotish/health.webp'), fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
-  { label: 'OVERALL', keys: ['overall', 'emotion', 'emotions', 'luck'], icon: require('../assets/images/jyotish/overall.webp'), fallback: 'A generally positive day ahead. Trust your intuition.' },
+  { label: 'LOVE', keys: ['love', 'fiance', 'personal_life', 'personal'], icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/love.webp' }, fallback: 'Focus on harmony and understanding in your personal relationships today.' },
+  { label: 'FINANCE', keys: ['finance', 'profession', 'career'], icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/finance.webp' }, fallback: 'Keep a steady pace at work. Patience and diligence will bring long-term success.' },
+  { label: 'HEALTH', keys: ['health'], icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/health.webp' }, fallback: 'Take time to rest and recharge. Balance your physical and mental well-being.' },
+  { label: 'OVERALL', keys: ['overall', 'emotion', 'emotions', 'luck'], icon: { uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/overall.webp' }, fallback: 'A generally positive day ahead. Trust your intuition.' },
 ];
 
 const getLuckyColorConfig = (colorName: string) => {
@@ -338,23 +338,23 @@ export default function HoroscopeScreen() {
                 </View>
                 <View style={styles.aiTagsRow}>
                   <View style={styles.aiTag}>
-                    <ExpoImage source={require('../assets/images/jyotish/love.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/love.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Love</Text>
                   </View>
                   <View style={styles.aiTag}>
-                    <ExpoImage source={require('../assets/images/jyotish/career.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/career.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Career</Text>
                   </View>
                   <View style={styles.aiTag}>
-                    <ExpoImage source={require('../assets/images/jyotish/health_new.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/health_new.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Health</Text>
                   </View>
                   <View style={styles.aiTag}>
-                    <ExpoImage source={require('../assets/images/jyotish/auspicious.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/auspicious.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Auspicious Timing</Text>
                   </View>
                   <View style={styles.aiTag}>
-                    <ExpoImage source={require('../assets/images/jyotish/spiritual.svg')} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
+                    <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/spiritual.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
                     <Text style={styles.aiTagText}>Spiritual Guidance</Text>
                   </View>
                 </View>

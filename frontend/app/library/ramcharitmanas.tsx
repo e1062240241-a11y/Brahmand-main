@@ -36,10 +36,10 @@ import { loadRamcharitmanasKand } from '../../src/services/ramcharitmanas-servic
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Ramcharitmanas image provided by the user
-const geeta3DImage = require('../../assets/images/tab-bar/books/ramcharit.webp');
+const geeta3DImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/books/ramcharit.webp' };
 // Custom bookmark icons
-const bookmarkIconImage = require('../../assets/images/bookmark_icon.webp');
-const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.webp');
+const bookmarkIconImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/bookmark_icon.webp' };
+const bookmarkIconFilledImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/bookmark_icon_filled.webp' };
 
 const BOOK_ID = 'ramcharitmanas';
 const TOTAL_CHAPTERS = 7;
@@ -322,7 +322,7 @@ export default function RamcharitmanasPage() {
         </LinearGradient>
       ) : (
         <View style={{ flex: 1 }}>
-          <ImageBackground source={require('../../assets/images/clean_parchment_bg.webp')} style={styles.root}>
+          <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/clean_parchment_bg.webp' }} style={styles.root}>
             {/* Unified Sticky Header */}
             <View style={{
               backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)',

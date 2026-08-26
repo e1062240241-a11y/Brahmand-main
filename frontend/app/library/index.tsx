@@ -24,15 +24,15 @@ import { scheduleDailyScriptureNotifications } from '../../src/services/pushNoti
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ── Assets ────────────────────────────────────────────────────────────────
-const geetaCover = require('../../assets/images/featured_book_6.webp');
-const ramcharitmanasCover = require('../../assets/images/featured_book_1.webp');
-const atharvavedCover = require('../../assets/images/user_upload_0.webp');
-const mahabharataCover = require('../../assets/images/featured_book_4.webp');
-const rigvedaCover = require('../../assets/images/featured_book_2.webp');
-const ramayanCover = require('../../assets/images/featured_book_5.webp');
-const yajurvedaCover = require('../../assets/images/featured_book_3.webp');
-const heroImage = require('../../assets/images/library_banner_new.webp');
-const diyaImage = require('../../assets/images/library_diya_new.webp');
+const geetaCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_6.webp' };
+const ramcharitmanasCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_1.webp' };
+const atharvavedCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/user_upload_0.webp' };
+const mahabharataCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_4.webp' };
+const rigvedaCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_2.webp' };
+const ramayanCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_5.webp' };
+const yajurvedaCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_3.webp' };
+const heroImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/library_banner_new.webp' };
+const diyaImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/library_diya_new.webp' };
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const CARD_W = 192; // ~240px Figma scaled
@@ -48,7 +48,7 @@ const BOOKS = [
   { id: 'mahabharata', title: 'Mahabharata', subtitle: 'THE GREAT EPIC', cover: mahabharataCover, route: '/library/mahabharata', progress: 0.25 },
   { id: 'ramayan', title: 'Ramayan', subtitle: 'VALMIKI RAMAYAN', cover: ramayanCover, route: '/library/ramayan', progress: 0.60 },
   { id: 'ramcharitmanas', title: 'Ramcharitmanas', subtitle: 'TULSIDAS', cover: ramcharitmanasCover, route: '/library/ramcharitmanas', progress: 0.20 },
-  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: require('../../assets/images/featured_book_7.webp'), route: '/library/upanishads', progress: 0.30 },
+  { id: 'upanishads', title: 'Upanishads', subtitle: 'VEDIC TEXTS', cover: { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_7.webp' }, route: '/library/upanishads', progress: 0.30 },
   { id: 'rigveda', title: 'Rigveda', subtitle: 'RIGVEDA SAMHITA', cover: rigvedaCover, route: '/library/rigveda', progress: 0.15 },
   { id: 'yajurveda', title: 'Yajurveda', subtitle: 'YAJURVEDA', cover: yajurvedaCover, route: '/library/yajurveda', progress: 0.50 },
   { id: 'atharvaved', title: 'Atharvaved', subtitle: 'THE ATHARVA VEDA', cover: atharvavedCover, route: '/library/atharvaved', progress: 0.45 },

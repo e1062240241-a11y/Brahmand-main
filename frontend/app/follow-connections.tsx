@@ -381,7 +381,6 @@ export default function FollowConnectionsScreen() {
               data={items}
               renderItem={renderUserCard}
               keyExtractor={(item) => item.id || item.user_id}
-              estimatedItemSize={70}
               contentContainerStyle={styles.listContent}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}

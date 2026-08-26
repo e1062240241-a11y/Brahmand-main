@@ -18,4 +18,3 @@ export * from './resolvers/visitorGuidelinesResolver';
 export * from './resolvers/authenticTempleDetailsResolver';
 
 export * from './coverage';
-export * from './verification';

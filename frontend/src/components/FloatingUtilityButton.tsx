@@ -1039,19 +1039,19 @@ export const FloatingUtilityButton = () => {
  
                   {/* Red Themed Menu Items in Background */}
                   <View style={[styles.menuItem, styles.posTopLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_library_icon.webp')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                    <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_library_icon.webp' }} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
                     <Text style={styles.itemTitleSOSSmall}>{t('brahmandLibrary').replace('\n', ' ')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posTopRight, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_passport_icon.webp')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                    <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_passport_icon.webp' }} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
                     <Text style={styles.itemTitleSOSSmall}>{t('brahmandPassport').replace('\n', ' ')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posBottomLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_festival_icon.webp')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                    <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_festival_icon.webp' }} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
                     <Text style={styles.itemTitleSOSSmall}>{t('horoscope')}</Text>
                   </View>
                   <View style={[styles.menuItem, styles.posLeft, { opacity: 0.4 }]}>
-                    <Image source={require('../../assets/images/custom_panchang_icon.webp')} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
+                    <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_panchang_icon.webp' }} style={{ width: 20, height: 20, tintColor: '#FFF' }} resizeMode="contain" />
                     <Text style={styles.itemTitleSOSSmall}>{t('panchang')}</Text>
                   </View>
  
@@ -1195,19 +1195,19 @@ export const FloatingUtilityButton = () => {
  
                   <View style={styles.wheelWrapper}>
                     <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }} accessibilityRole="button" accessibilityLabel="Open Brahmand Library">
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_library_icon.webp')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_library_icon.webp' }} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('brahmandLibrary')}</Text>
                       <Text style={styles.itemSub}>{t('knowledgeWisdom')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }} accessibilityRole="button" accessibilityLabel="Open Brahmand Passport">
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_passport_icon.webp')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_passport_icon.webp' }} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('brahmandPassport')}</Text>
                       <Text style={styles.itemSub}>{t('spiritualJourney')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }} accessibilityRole="button" accessibilityLabel="Open Kundli">
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_kundli_icon.webp')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_kundli_icon.webp' }} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('kundli')}</Text>
                       <Text style={styles.itemSub}>{t('planetView')}</Text>
                     </TouchableOpacity>
@@ -1227,13 +1227,13 @@ export const FloatingUtilityButton = () => {
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }} accessibilityRole="button" accessibilityLabel="Open Horoscope">
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_festival_icon_2.webp')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_festival_icon_2.webp' }} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('horoscope')}</Text>
                       <Text style={styles.itemSub}>{t('dailyPredictions')}</Text>
                     </TouchableOpacity>
  
                     <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation} accessibilityRole="button" accessibilityLabel="Open Panchang">
-                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_panchang_icon.webp')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
+                      <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_panchang_icon.webp' }} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('panchang')}</Text>
                       <Text style={styles.itemSub}>{t('dailyHinduCalendar')}</Text>
                     </TouchableOpacity>
