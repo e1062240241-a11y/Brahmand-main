@@ -1,12 +1,21 @@
 ## What
-Added `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` to the `Input` component (a wrapper for `TextInput`).
+Removed unused standard library imports across the Python backend:
+- Removed `import copy` from `backend/config/firestore_db.py`
+- Removed `Optional` from `from typing import Dict, Optional` in `backend/middleware/rate_limiter.py`
+- Removed `import json` from `backend/scratch/backup_bunny.py`
 
 ## Why
-This makes the `Input` component much more accessible for screen reader users by properly associating the label with the input field, clearly announcing if the input state is invalid, and reading out the specific error message associated with the input. This is a critical micro-UX improvement for accessibility on forms.
+- `backend/config/firestore_db.py`: The `copy` module was unused as the file defines and utilizes a custom, faster `fast_copy` method instead.
+- `backend/middleware/rate_limiter.py`: The `Optional` type hint was imported but never referenced in the file.
+- `backend/scratch/backup_bunny.py`: The `json` module was imported but never used in the script.
 
-## Before/After
-Before: The `Input` component simply rendered a visual label and a visual error message, but screen readers could not programmatically associate them with the `TextInput`, meaning users wouldn't hear the label or the error when focusing on the input field.
-After: The `TextInput` now includes `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` props, ensuring screen readers announce the label, whether there is an error, and the error message itself.
+## Verification
+- Ran `cd backend && python -m pyflakes .` which confirmed these modules were flagged as "imported but unused".
+- Checked the `pyflakes` output post-removal to ensure the warnings disappeared and no new issues were introduced.
+- Ran `grep -r "copy" backend/config/firestore_db.py` to confirm no dynamic references or usages of the `copy` module existed.
+- Ran `python -m py_compile` on all modified files to guarantee no syntax regressions were introduced.
 
-## Accessibility
-This significantly improves screen reader support for all forms that use the `Input` component by communicating the field's purpose, its validation state, and the specific validation error.
+## Impact
+- Cleaned up 3 files.
+- Removed 3 unused import statements.
+- Reduced dead code and slightly improved file readability without altering any functional logic or error-handling paths.
