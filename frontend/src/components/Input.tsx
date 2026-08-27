@@ -18,6 +18,9 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
           style,
         ]}
         placeholderTextColor={COLORS.textLight}
+        accessibilityLabel={label}
+        aria-invalid={!!error}
+        aria-errormessage={error}
         {...props}
       />
       {error && <Text style={styles.error}>{error}</Text>}
