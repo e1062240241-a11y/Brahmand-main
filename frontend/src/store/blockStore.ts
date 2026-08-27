@@ -81,22 +81,36 @@ export const useBlockStore = create<BlockState>((set, get) => ({
 
   addBlock: (uid: string) => {
     const uidStr = String(uid);
-    set((state) => ({
-      blockedUserIds: Array.from(new Set([...state.blockedUserIds, uidStr])),
-      blockedByMeUserIds: Array.from(new Set([...state.blockedByMeUserIds, uidStr])),
-      blockedUserSet: new Set([...state.blockedUserIds, uidStr]),
-      blockedByMeUserSet: new Set([...state.blockedByMeUserIds, uidStr]),
-    }));
+    set((state) => {
+      const nextUserSet = new Set(state.blockedUserSet);
+      nextUserSet.add(uidStr);
+      const nextByMeSet = new Set(state.blockedByMeUserSet);
+      nextByMeSet.add(uidStr);
+
+      return {
+        blockedUserIds: Array.from(nextUserSet),
+        blockedByMeUserIds: Array.from(nextByMeSet),
+        blockedUserSet: nextUserSet,
+        blockedByMeUserSet: nextByMeSet,
+      };
+    });
   },
 
   removeBlock: (uid: string) => {
     const uidStr = String(uid);
-    set((state) => ({
-      blockedUserIds: state.blockedUserIds.filter((id) => id !== uidStr),
-      blockedByMeUserIds: state.blockedByMeUserIds.filter((id) => id !== uidStr),
-      blockedUserSet: new Set(state.blockedUserIds.filter((id) => id !== uidStr)),
-      blockedByMeUserSet: new Set(state.blockedByMeUserIds.filter((id) => id !== uidStr)),
-    }));
+    set((state) => {
+      const nextUserSet = new Set(state.blockedUserSet);
+      nextUserSet.delete(uidStr);
+      const nextByMeSet = new Set(state.blockedByMeUserSet);
+      nextByMeSet.delete(uidStr);
+
+      return {
+        blockedUserIds: Array.from(nextUserSet),
+        blockedByMeUserIds: Array.from(nextByMeSet),
+        blockedUserSet: nextUserSet,
+        blockedByMeUserSet: nextByMeSet,
+      };
+    });
   },
 
   isBlocked: (uid: string) => {
