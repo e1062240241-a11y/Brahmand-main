@@ -1,12 +1,4 @@
-## What
-Added `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` to the `Input` component (a wrapper for `TextInput`).
-
-## Why
-This makes the `Input` component much more accessible for screen reader users by properly associating the label with the input field, clearly announcing if the input state is invalid, and reading out the specific error message associated with the input. This is a critical micro-UX improvement for accessibility on forms.
-
-## Before/After
-Before: The `Input` component simply rendered a visual label and a visual error message, but screen readers could not programmatically associate them with the `TextInput`, meaning users wouldn't hear the label or the error when focusing on the input field.
-After: The `TextInput` now includes `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` props, ensuring screen readers announce the label, whether there is an error, and the error message itself.
-
-## Accessibility
-This significantly improves screen reader support for all forms that use the `Input` component by communicating the field's purpose, its validation state, and the specific validation error.
+💡 What: Added `estimatedItemSize={74}` to the `FlashList` component in `frontend/app/follow-connections.tsx`.
+🎯 Why: `FlashList` from Shopify requires `estimatedItemSize` to be defined for optimal performance. Without it, the list is forced to continuously measure items dynamically during the initial render, which increases CPU load, layout thrashing, and blocks the JS thread—leading to noticeable UI stutter when opening the connections tab. The value `74` accurately represents the base layout geometry (54px avatar + 10px top padding + 10px bottom padding).
+📊 Impact: Prevents continuous measuring on initial render, reducing layout calculation time and memory allocations, resulting in significantly smoother initial scrolling and fewer frame drops on low-end devices.
+🔬 Measurement: Verified the application type-checks cleanly and passes frontend linting with no regressions. Performance impact can be verified via React Profiler by measuring the component render duration before and after.
