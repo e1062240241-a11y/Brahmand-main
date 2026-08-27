@@ -18,7 +18,14 @@
       },
       "env": {
         "EXPO_PUBLIC_BACKEND_URL": "https://brahmand-backend-hi4rz6fdrq-uc.a.run.app",
-        "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+        "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDiFc4xPsRp0Bd1AteqkTJmdA2l50cahJ4",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "sanatan-lok.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "sanatan-lok",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "sanatan-lok.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "103222994071",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:103222994071:ios:3b0a738a0cb398f7e8f5d2",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": ""
       }
     }
   },

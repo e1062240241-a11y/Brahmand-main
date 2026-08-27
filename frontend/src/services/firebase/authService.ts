@@ -291,7 +291,14 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
 }
 
 export function startAuthStateListener(onChange?: (user: any) => void): (() => void) {
-  const auth = initializeFirebaseAuth();
+  let auth: any;
+  try {
+    auth = initializeFirebaseAuth();
+  } catch (error) {
+    console.warn('[Firebase] Failed to start auth state listener:', error);
+    return () => {};
+  }
+
   if (!auth || typeof auth.onAuthStateChanged !== 'function') {
     return () => {};
   }

@@ -1,0 +1,39 @@
+diff --git a/node_modules/react-native-agora/ios/AgoraRtcNg.mm b/node_modules/react-native-agora/ios/AgoraRtcNg.mm
+--- a/node_modules/react-native-agora/ios/AgoraRtcNg.mm
++++ b/node_modules/react-native-agora/ios/AgoraRtcNg.mm
+@@ -77,8 +77,15 @@ RCT_EXPORT_MODULE()
+   if (self = [super init]) {
+     self.irisApiEngine = nullptr;
+     self.eventHandler = new agora::iris::EventHandler((__bridge void *)self);
+-    self.pipController = [[AgoraPIPController alloc]
+-        initWith:(id<AgoraPIPStateChangedDelegate>)self];
++    void (^setupPipController)(void) = ^{
++      self.pipController = [[AgoraPIPController alloc]
++          initWith:(id<AgoraPIPStateChangedDelegate>)self];
++    };
++    if ([NSThread isMainThread]) {
++      setupPipController();
++    } else {
++      dispatch_sync(dispatch_get_main_queue(), setupPipController);
++    }
+     instance = self;
+   }
+   return instance;
+@@ -86,8 +93,15 @@ RCT_EXPORT_MODULE()
+ 
+ - (void)dealloc {
+   if (self.pipController) {
+-    [self.pipController dispose];
+-    self.pipController = nil;
++    void (^disposePipController)(void) = ^{
++      [self.pipController dispose];
++      self.pipController = nil;
++    };
++    if ([NSThread isMainThread]) {
++      disposePipController();
++    } else {
++      dispatch_sync(dispatch_get_main_queue(), disposePipController);
++    }
+   }
+   if (self.irisApiEngine) {
+     delete self.irisApiEngine;

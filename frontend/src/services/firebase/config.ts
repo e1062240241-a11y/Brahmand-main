@@ -32,14 +32,24 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
 
 const anonymousPhoneList = process.env.EXPO_PUBLIC_ANONYMOUS_PREDEFINED_NUMBERS || '';
 
+const defaultFirebaseConfig = {
+  apiKey: 'AIzaSyDiFc4xPsRp0Bd1AteqkTJmdA2l50cahJ4',
+  authDomain: 'sanatan-lok.firebaseapp.com',
+  projectId: 'sanatan-lok',
+  storageBucket: 'sanatan-lok.firebasestorage.app',
+  messagingSenderId: '103222994071',
+  appId: '1:103222994071:ios:3b0a738a0cb398f7e8f5d2',
+  measurementId: ''
+};
+
 export const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: getEnvVar('EXPO_PUBLIC_FIREBASE_API_KEY', defaultFirebaseConfig.apiKey),
+  authDomain: getEnvVar('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', defaultFirebaseConfig.authDomain),
+  projectId: getEnvVar('EXPO_PUBLIC_FIREBASE_PROJECT_ID', defaultFirebaseConfig.projectId),
+  storageBucket: getEnvVar('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', defaultFirebaseConfig.storageBucket),
+  messagingSenderId: getEnvVar('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', defaultFirebaseConfig.messagingSenderId),
+  appId: getEnvVar('EXPO_PUBLIC_FIREBASE_APP_ID', defaultFirebaseConfig.appId),
+  measurementId: getEnvVar('EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID', defaultFirebaseConfig.measurementId)
 };
 
 function normalizePhone(phone: string): string {
