@@ -130,7 +130,7 @@ from utils.helpers import (
     generate_sl_id
 )
 from utils.cache import cache_manager
-from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS, normalize_location
+from utils.helpers import generate_circle_code, normalize_location
 from offensive_detector import is_offensive, is_text_safe
 from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 

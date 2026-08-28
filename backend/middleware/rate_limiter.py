@@ -1,4 +1,5 @@
 """Rate limiting middleware"""
+from config.settings import settings
 import time
 import logging
 from typing import Dict
@@ -6,7 +7,6 @@ from fastapi import Request, HTTPException
 from collections import defaultdict
 import asyncio
 
-from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,6 @@ async def upload_rate_limit(request: Request):
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             import jwt as _jwt
-            from config.settings import settings
             token = auth_header[7:]
             # Decode without verification just to extract user_id for rate-limit keying
             payload = _jwt.decode(token, options={"verify_signature": False})

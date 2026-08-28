@@ -3,7 +3,7 @@ import jwt
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
-from fastapi import HTTPException, Depends, Request
+from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from config.settings import settings
