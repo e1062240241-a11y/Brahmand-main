@@ -1068,6 +1068,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Register Business"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />

@@ -1173,17 +1173,12 @@ default_allowed_origins = [
     "http://localhost:8081",
 ]
 allowed_origins = []
-allow_origin_regex = r"^https?://.*$"
+allow_origin_regex = None
 if cors_origins == '*':
-    # When using wildcard, we must be careful with allow_credentials=True.
-    # We use a broad regex instead of "*" in allow_origins.
-    allowed_origins = []
-    allow_origin_regex = r"^https?://.*$"
+    allowed_origins = default_allowed_origins.copy()
 elif cors_origins:
     configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
     allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
-    # Still keep the regex for localhost/loca.lt/run.app support
-    allow_origin_regex = r"^https?://.*$"
 else:
     allowed_origins = default_allowed_origins.copy()
 
@@ -1191,7 +1186,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=allowed_origins,
-    allow_origin_regex=allow_origin_regex,
     allow_methods=['*'],
     allow_headers=['*'],
     expose_headers=['*'],
@@ -1203,12 +1197,7 @@ def _is_origin_allowed(origin: str) -> bool:
         return True
     if allowed_origins and ("*" in allowed_origins or origin in allowed_origins):
         return True
-    if allow_origin_regex:
-        try:
-            return re.match(allow_origin_regex, origin) is not None
-        except re.error:
-            return True
-    return True
+    return False
 
 
 def _apply_cors_headers(response: Response, origin: str, request: Optional[Request] = None) -> Response:

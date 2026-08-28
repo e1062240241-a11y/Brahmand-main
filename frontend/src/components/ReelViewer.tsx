@@ -1862,20 +1862,20 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         // All returned posts already queued — recycle from the full session pool
         const pool = allSessionPostsRef.current;
         if (pool.length > 1) {
-          // Shuffle the entire session pool and append, giving a fresh experience
-          const shuffled = [...pool].sort(() => Math.random() - 0.5);
+          // Shuffle only the necessary items to avoid O(N log N) sorting on large pools
           setVideos(prev => {
             const existingIds = new Set(prev.map((p: any) => p.id));
-            const filtered = shuffled.filter((p: any) => !existingIds.has(p.id));
-            return filtered.length > 0 ? [...prev, ...filtered] : prev;
+            const recyclable = pool.filter(p => p?.id && !existingIds.has(p.id));
+            const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
+            return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
           });
         } else if (currentVideos.length > 1) {
           // Fallback: recycle what's currently queued
-          const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
           setVideos(prev => {
             const existingIds = new Set(prev.map((p: any) => p.id));
-            const filtered = shuffled.filter((p: any) => !existingIds.has(p.id));
-            return filtered.length > 0 ? [...prev, ...filtered] : prev;
+            const recyclable = currentVideos.filter(p => p?.id && !existingIds.has(p.id));
+            const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
+            return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
           });
         }
       }
