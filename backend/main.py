@@ -292,10 +292,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# =================== CORS CONFIGURATION ===================
+
+cors_origins = os.getenv('CORS_ORIGINS', '*')
+default_allowed_origins = [
+    "https://brahmand.app",
+    "https://www.brahmand.app",
+    "http://brahmand.app",
+    "http://www.brahmand.app",
+    "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
+    "http://0.0.0.0:8001",
+    "http://127.0.0.1:8001",
+    "http://localhost:8001",
+    "http://0.0.0.0:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://0.0.0.0:8081",
+    "http://localhost:8081",
+]
+allowed_origins = []
+allow_origin_regex = None
+if cors_origins == '*':
+    allowed_origins = default_allowed_origins.copy()
+elif cors_origins:
+    configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
+else:
+    allowed_origins = default_allowed_origins.copy()
+
 # Socket.IO for real-time
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',
+    cors_allowed_origins=allowed_origins,
     ping_interval=settings.WS_PING_INTERVAL,
     ping_timeout=settings.WS_PING_TIMEOUT
 )
@@ -1156,31 +1184,6 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
 
 # =================== MIDDLEWARE ===================
 
-cors_origins = os.getenv('CORS_ORIGINS', '*')
-default_allowed_origins = [
-    "https://brahmand.app",
-    "https://www.brahmand.app",
-    "http://brahmand.app",
-    "http://www.brahmand.app",
-    "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
-    "http://0.0.0.0:8001",
-    "http://127.0.0.1:8001",
-    "http://localhost:8001",
-    "http://0.0.0.0:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "http://0.0.0.0:8081",
-    "http://localhost:8081",
-]
-allowed_origins = []
-allow_origin_regex = None
-if cors_origins == '*':
-    allowed_origins = default_allowed_origins.copy()
-elif cors_origins:
-    configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
-    allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
-else:
-    allowed_origins = default_allowed_origins.copy()
 
 app.add_middleware(
     CORSMiddleware,

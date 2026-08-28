@@ -1,4 +1,5 @@
-## 2025-02-18 - Overly Permissive CORS Configuration
-**Vulnerability:** The FastAPI backend used a wildcard regular expression (`r"^https?://.*$"`) as a fallback for allowed origins while simultaneously setting `allow_credentials=True`. This essentially allowed any HTTP/HTTPS origin to bypass CORS restrictions and send authenticated requests.
-**Learning:** This misconfiguration allowed Cross-Site Request Forgery (CSRF) and cross-origin data reads, which completely bypassed the intended security mechanisms for session/token management. The codebase allowed it because it sought to be robust for local testing (loca.lt/localhost), but doing so introduced a severe vulnerability.
-**Prevention:** Always restrict `allow_origins` strictly to predefined, trusted lists like `default_allowed_origins` and those explicitly configured via environment variables (like `CORS_ORIGINS`). Never use broad regex matching for origins when credentials are allowed.
+## 2025-02-27 - Restrict Overly Permissive WebSocket CORS
+
+**Vulnerability:** The Socket.IO server in `backend/main.py` was initialized with `cors_allowed_origins='*'`, potentially exposing real-time WebSocket endpoints to malicious cross-origin requests.
+**Learning:** While HTTP endpoints were protected by FastAPI's `CORSMiddleware`, the Socket.IO instance was configured independently at initialization, bypassing the restrictive allowed origin checks.
+**Prevention:** Always ensure WebSocket frameworks share the same dynamic CORS policy configuration object (`allowed_origins`) as the main HTTP application to prevent inconsistent access controls.
