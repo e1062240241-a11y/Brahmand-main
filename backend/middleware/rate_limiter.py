@@ -1,7 +1,7 @@
 """Rate limiting middleware"""
 import time
 import logging
-from typing import Dict, Optional
+from typing import Dict
 from fastapi import Request, HTTPException
 from collections import defaultdict
 import asyncio

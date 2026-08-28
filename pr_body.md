@@ -1,12 +1,21 @@
 ## What
-Added missing `accessibilityState` props for disabled loading states on key action buttons in the UI.
+Removed unused standard library imports across the Python backend:
+- Removed `import copy` from `backend/config/firestore_db.py`
+- Removed `Optional` from `from typing import Dict, Optional` in `backend/middleware/rate_limiter.py`
+- Removed `import json` from `backend/scratch/backup_bunny.py`
 
 ## Why
-When action buttons like the "Register Business" or "Create Post" buttons are actively processing and showing loading spinners (which naturally disables them from further taps), they lacked the explicit semantic `accessibilityState` definitions for VoiceOver and TalkBack. Adding `accessibilityState={{ disabled: true, busy: true }}` explicitly notifies screen readers of these states, preventing confusion.
+- `backend/config/firestore_db.py`: The `copy` module was unused as the file defines and utilizes a custom, faster `fast_copy` method instead.
+- `backend/middleware/rate_limiter.py`: The `Optional` type hint was imported but never referenced in the file.
+- `backend/scratch/backup_bunny.py`: The `json` module was imported but never used in the script.
 
-## Before/After
-- **Before:** Buttons visually showed loading indicators and were functionally disabled, but screen readers only saw them as normal interactive elements (or sometimes with no roles defined, as in VendorRegistrationModal).
-- **After:** Both `UploadPostModal` and `VendorRegistrationModal` action buttons properly define `accessibilityRole="button"`, accurate `accessibilityLabel` attributes, and dynamically update their `accessibilityState` attributes.
+## Verification
+- Ran `cd backend && python -m pyflakes .` which confirmed these modules were flagged as "imported but unused".
+- Checked the `pyflakes` output post-removal to ensure the warnings disappeared and no new issues were introduced.
+- Ran `grep -r "copy" backend/config/firestore_db.py` to confirm no dynamic references or usages of the `copy` module existed.
+- Ran `python -m py_compile` on all modified files to guarantee no syntax regressions were introduced.
 
-## Accessibility
-Fully conforms to WCAG 4.1.2 Name, Role, Value by providing accurate state bindings to custom interactive elements.
+## Impact
+- Cleaned up 3 files.
+- Removed 3 unused import statements.
+- Reduced dead code and slightly improved file readability without altering any functional logic or error-handling paths.
