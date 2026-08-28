@@ -1,3 +1,7 @@
+💡 What: Added `estimatedItemSize={74}` to the `FlashList` component in `frontend/app/follow-connections.tsx`.
+🎯 Why: `FlashList` from Shopify requires `estimatedItemSize` to be defined for optimal performance. Without it, the list is forced to continuously measure items dynamically during the initial render, which increases CPU load, layout thrashing, and blocks the JS thread—leading to noticeable UI stutter when opening the connections tab. The value `74` accurately represents the base layout geometry (54px avatar + 10px top padding + 10px bottom padding).
+📊 Impact: Prevents continuous measuring on initial render, reducing layout calculation time and memory allocations, resulting in significantly smoother initial scrolling and fewer frame drops on low-end devices.
+🔬 Measurement: Verified the application type-checks cleanly and passes frontend linting with no regressions. Performance impact can be verified via React Profiler by measuring the component render duration before and after.
 ## What
 Removed unused standard library imports across the Python backend:
 - Removed `import copy` from `backend/config/firestore_db.py`
