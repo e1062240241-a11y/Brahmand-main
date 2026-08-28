@@ -174,8 +174,11 @@ const PostScreen = () => {
 
       if (append) {
         setFeedPosts(prev => {
-          const existing = new Set(prev.map(p => String(p.id)));
-          const newItems = cleanItems.filter(p => !existing.has(String(p.id)));
+          const existing = new Set<string>();
+          for (let i = 0; i < prev.length; i++) {
+            if (prev[i]?.id) existing.add(String(prev[i].id));
+          }
+          const newItems = cleanItems.filter(p => p?.id && !existing.has(String(p.id)));
 
           if (newItems.length === 0) {
             // All returned posts already visible — recycle from session pool (shuffled)
