@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 # ──────────────────────────────────────────────────────────────
 # PROBLEM DATABASE — HAR SENTENCE/PROBLEM KA ALAG SHLOK

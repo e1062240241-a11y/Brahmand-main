@@ -1,9 +1,5 @@
-import os
-import json
 import logging
 from datetime import datetime, timezone
-import requests
-import base64
 
 logger = logging.getLogger(__name__)
 

@@ -1377,6 +1377,7 @@ export const UploadPostModal = ({
                     activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel={t("createPost")}
+                    accessibilityState={{ disabled: !canUpload }}
                   >
                     {canUpload ? (
                       <LinearGradient

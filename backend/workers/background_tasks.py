@@ -3,7 +3,6 @@ import asyncio
 import logging
 from typing import Callable, Any, Dict, List
 from datetime import datetime
-from collections import deque
 
 logger = logging.getLogger(__name__)
 
