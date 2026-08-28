@@ -1,6 +1,6 @@
 """Firestore Database Operations Layer using Sync Client"""
 import logging
-import copy
+
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 import asyncio
