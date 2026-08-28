@@ -1,12 +1,12 @@
 ## What
-Added `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` to the `Input` component (a wrapper for `TextInput`).
+Added missing `accessibilityState` props for disabled loading states on key action buttons in the UI.
 
 ## Why
-This makes the `Input` component much more accessible for screen reader users by properly associating the label with the input field, clearly announcing if the input state is invalid, and reading out the specific error message associated with the input. This is a critical micro-UX improvement for accessibility on forms.
+When action buttons like the "Register Business" or "Create Post" buttons are actively processing and showing loading spinners (which naturally disables them from further taps), they lacked the explicit semantic `accessibilityState` definitions for VoiceOver and TalkBack. Adding `accessibilityState={{ disabled: true, busy: true }}` explicitly notifies screen readers of these states, preventing confusion.
 
 ## Before/After
-Before: The `Input` component simply rendered a visual label and a visual error message, but screen readers could not programmatically associate them with the `TextInput`, meaning users wouldn't hear the label or the error when focusing on the input field.
-After: The `TextInput` now includes `accessibilityLabel`, `aria-invalid`, and `aria-errormessage` props, ensuring screen readers announce the label, whether there is an error, and the error message itself.
+- **Before:** Buttons visually showed loading indicators and were functionally disabled, but screen readers only saw them as normal interactive elements (or sometimes with no roles defined, as in VendorRegistrationModal).
+- **After:** Both `UploadPostModal` and `VendorRegistrationModal` action buttons properly define `accessibilityRole="button"`, accurate `accessibilityLabel` attributes, and dynamically update their `accessibilityState` attributes.
 
 ## Accessibility
-This significantly improves screen reader support for all forms that use the `Input` component by communicating the field's purpose, its validation state, and the specific validation error.
+Fully conforms to WCAG 4.1.2 Name, Role, Value by providing accurate state bindings to custom interactive elements.
