@@ -1337,15 +1337,16 @@ export default function CommunityDetailScreen() {
       return {
         id: 'dummy-lost-found-item',
         isRequestItem: true,
-        title: 'Mock Lost & Found: Gold Ring Found near Temple Entrance',
-        description: 'Found a gold ring with initials "S.J." near the main temple steps yesterday evening. Owner can claim by providing verification.',
-        request_type: 'lost_found',
+        title: 'Lost & Found: Gold Ring Found near Temple Entrance',
+        description: 'Found a engraved gold ring with initials "S.J." near the main temple steps yesterday evening during Aarti. Please contact to claim with proof.',
+        request_type: 'LOST & FOUND',
         support_needed: 'Lost & Found Alert',
         urgency_level: 'normal',
-        user_name: 'Aarti Jain (Mock)',
+        user_name: 'Aarti Jain (Temple Sevadar)',
         contact_number: '+919876543210',
         created_at: now,
         status: 'pending',
+        location: 'Main Temple Entrance Steps',
         interested_count: 1
       };
     }
@@ -1374,12 +1375,13 @@ export default function CommunityDetailScreen() {
           isVerified: true,
           verificationLabel: 'Official',
         },
-        content: 'Reconstruction of Inner Sanctum\n\nThe reconstruction of the main Shikhar and Garbhagriha is underway. Daily darshan timings are adjusted to 6 AM - 10 AM and 4 PM - 8 PM.',
+        content: '🛕 Temple Timings & Sanctum Update\n\nDaily Darshan & Aarti timings:\n• Morning Aarti: 6:00 AM - 7:00 AM\n• Evening Aarti: 6:30 PM - 7:30 PM\n\nSpecial Puja arrangements are active for the upcoming festival. All devotees are requested to maintain queue decorum.',
         timestamp: 'Just now',
-        likes: 12,
-        comments: 3,
-        reposts: 2,
+        likes: 24,
+        comments: 5,
+        reposts: 4,
         category: 'Temple Updates',
+        contact_number: '+919876543210',
       };
     }
     if (tabName === 'My Posts') {
@@ -3209,23 +3211,23 @@ export default function CommunityDetailScreen() {
     
     return (
       <View style={styles.festEventCard}>
-        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
-          <View style={{ marginLeft: 10, flex: 1 }}>
+        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 6 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={34} />
+          <View style={{ marginLeft: 8, flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={styles.feedPostUserName} numberOfLines={1}>{ownerName}</Text>
-              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
-              <Text style={styles.postHandle} numberOfLines={1}>
+              <Text style={[styles.feedPostUserName, { fontSize: 13 }]} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}>
                 {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
               </Text>
-              <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
-              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
               </View>
             </View>
           </View>
         </View>
-        <View style={[{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
+        <View style={[{ backgroundColor: 'transparent', borderRadius: 14, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : 'rgba(0,0,0,0.06)', padding: 10 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
           <View style={styles.festEventMain}>
             {(item.image || item.image_url || item.media_url) && (
               <CommunityMediaItem
@@ -3247,25 +3249,25 @@ export default function CommunityDetailScreen() {
                     onPress={() => handleOpenMap(item.location)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location" size={14} color="#FF6B00" />
+                    <Ionicons name="location" size={12} color="#FF6B00" />
                     <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
                       {item.location}
                     </Text>
                   </TouchableOpacity>
                 ) : null}
                 <View style={styles.festMetaRow}>
-                  <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
+                  <Ionicons name={iconDetails.name as any} size={12} color={iconDetails.color} />
                   <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
                 </View>
                 <View style={styles.festMetaRow}>
-                  <Ionicons name="time-outline" size={14} color="#FF3B30" />
+                  <Ionicons name="time-outline" size={12} color="#FF3B30" />
                   <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 }} />
+          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 8 }} />
 
           <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
           {phone ? (
@@ -5149,7 +5151,7 @@ const styles = StyleSheet.create({
   viewAll: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
 
   eventsList: { paddingLeft: 20, paddingRight: 10 },
-  eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginRight: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F0F0F0' },
+  eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: 'transparent', borderRadius: 0, padding: 16, marginRight: 15, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   eventInfoRow: { flexDirection: 'row', alignItems: 'center' },
   eventDateCol: { alignItems: 'center', marginRight: 15 },
   eventDate: { fontSize: 24, fontWeight: '900', color: '#FF3B30' },
@@ -5171,7 +5173,7 @@ const styles = StyleSheet.create({
   verifiedMessagesText: { fontSize: 12, color: '#444', fontWeight: '600' },
   viewAllInline: { fontSize: 12, color: '#FF3B30', fontWeight: '700', marginLeft: 8 },
 
-  discussionCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, padding: 16, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  discussionCard: { backgroundColor: 'transparent', marginHorizontal: 20, borderRadius: 0, padding: 16, marginBottom: 15, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
   postUserMeta: { flex: 1, marginLeft: 12 },
   postNameRow: { flexDirection: 'row', alignItems: 'center' },
@@ -5221,7 +5223,7 @@ const styles = StyleSheet.create({
   requestIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   helpBtn: { backgroundColor: '#F25C05', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
   helpBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  sevaInfoCard: { backgroundColor: '#FFF7ED', borderRadius: 16, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#FDE3CE' },
+  sevaInfoCard: { backgroundColor: 'rgba(255, 247, 237, 0.5)', borderRadius: 12, padding: 10, marginTop: 8, borderWidth: 1, borderColor: 'rgba(253, 227, 206, 0.6)' },
   sevaInfoLabel: { fontSize: 12, fontWeight: '800', color: '#C55D00', marginBottom: 6, textTransform: 'uppercase' },
   sevaInfoText: { fontSize: 14, lineHeight: 20, color: '#4D2F00' },
 
@@ -5241,7 +5243,7 @@ const styles = StyleSheet.create({
   commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, minHeight: 38, maxHeight: 100 },
   postCommentBtn: { color: '#FF3B30', fontWeight: '800', fontSize: 14 },
 
-  postContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
+  postContainer: { backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
   repostHeaderLabel: { flexDirection: 'row', alignItems: 'center', marginLeft: 40, marginBottom: 4, gap: 4 },
   repostHeaderText: { fontSize: 13, color: '#536471', fontWeight: '700' },
   postMainRow: { flexDirection: 'row' },
@@ -5320,27 +5322,23 @@ const styles = StyleSheet.create({
   requestOwnerSubtext: { fontSize: 12, color: '#64748B', marginTop: 2 },
   requestOwnerTime: { fontSize: 12, color: '#64748B' },
   festEventCard: { 
-    marginHorizontal: 20, 
-    backgroundColor: '#FFF', 
-    borderRadius: 24, 
-    padding: 18, 
-    marginBottom: 18, 
-    elevation: 6, 
-    shadowColor: '#FF6B00', 
-    shadowOpacity: 0.12, 
-    shadowRadius: 12, 
-    shadowOffset: { width: 0, height: 6 }, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,107,0,0.15)' 
+    marginHorizontal: 16, 
+    backgroundColor: 'transparent', 
+    borderRadius: 0, 
+    padding: 12, 
+    marginBottom: 12, 
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  festEventMain: { flexDirection: 'row', marginBottom: 12 },
-  festEventImage: { width: 90, height: 90, borderRadius: 16 },
-  festEventInfo: { flex: 1, marginLeft: 16 },
-  festEventTitle: { fontSize: 17, fontWeight: '800', color: '#111', marginBottom: 6 },
-  festEventDesc: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10 },
-  festEventMeta: { gap: 6 },
-  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  festMetaText: { fontSize: 12, color: '#444', fontWeight: '600', flexShrink: 1 },
+  festEventMain: { flexDirection: 'row', marginBottom: 8 },
+  festEventImage: { width: 72, height: 72, borderRadius: 12 },
+  festEventInfo: { flex: 1, marginLeft: 12 },
+  festEventTitle: { fontSize: 15, fontWeight: '700', color: '#111', marginBottom: 4, lineHeight: 20 },
+  festEventDesc: { fontSize: 12, color: '#555', lineHeight: 16, marginBottom: 6 },
+  festEventMeta: { gap: 4 },
+  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  festMetaText: { fontSize: 11, color: '#444', fontWeight: '600', flexShrink: 1 },
   
   festEventFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   festOrgDetailsRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
