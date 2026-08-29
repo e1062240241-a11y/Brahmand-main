@@ -663,7 +663,7 @@ class FirebaseNotificationService:
             
         except Exception as e:
             logger.error(f"Multicast error: {e}")
-            return {"message": f"Error: {str(e)}", "sent": 0}
+            return {"message": "Notification failed", "sent": 0}
     
     @staticmethod
     async def get_user_notifications(
