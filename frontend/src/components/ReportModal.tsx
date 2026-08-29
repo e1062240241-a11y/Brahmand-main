@@ -182,16 +182,21 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 </TouchableOpacity>
               ))}
 
-              <TextInput
-                style={styles.textInput}
-                placeholder="Additional comments (optional)"
-                placeholderTextColor="#999"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-              />
+              <View style={styles.textInputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Additional comments (optional)"
+                  placeholderTextColor="#999"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={200}
+                />
+                <Text style={styles.charCount}>
+                  {description.length}/200
+                </Text>
+              </View>
             </KeyboardAwareScrollView>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -418,6 +423,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  textInputContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
   textInput: {
     borderWidth: 1.5,
     borderColor: '#E8E0D8',
@@ -426,10 +435,15 @@ const styles = StyleSheet.create({
     minHeight: Platform.OS === 'android' ? 70 : 90,
     fontSize: 14,
     color: '#1A1A1A',
-    marginTop: 8,
-    marginBottom: 16,
     textAlignVertical: 'top',
     backgroundColor: '#FCF9F6',
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: 4,
+    marginRight: 4,
   },
   scrollView: {
     flexShrink: 1,
