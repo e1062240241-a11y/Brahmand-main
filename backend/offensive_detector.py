@@ -6,7 +6,7 @@ Supports multilingual (Hindi, English, mix-language)
 
 import re
 import os
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 
 # Try to import detoxify - if not available, use fallback only
 try:
