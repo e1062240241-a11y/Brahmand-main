@@ -260,9 +260,9 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl * 2.5,
   },
   pillContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'transparent',
     borderRadius: 24,
-    padding: SPACING.lg,
+    padding: SPACING.sm,
   },
   settingSection: {
     marginVertical: SPACING.xs,
@@ -313,9 +313,9 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'transparent',
     borderRadius: 14,
-    padding: SPACING.md,
+    paddingVertical: SPACING.sm,
     marginTop: SPACING.sm,
   },
   infoText: {
@@ -334,9 +334,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   legendContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'transparent',
     borderRadius: 16,
-    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
   },
   legendItem: {

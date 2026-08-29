@@ -6,6 +6,7 @@ import {
  StyleSheet, 
  ScrollView, 
  TouchableOpacity, 
+ Pressable,
  RefreshControl,
  Image, 
  TextInput,
@@ -770,27 +771,30 @@ const renderItem = useCallback(({ item }: { item: any }) => {
 
       {/* Category Pills */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
-        <TouchableOpacity 
+        <Pressable 
           style={[styles.catPill, selectedCategory === 'All' && styles.catPillActive]}
+          android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressAll}
         >
           <MaterialCommunityIcons name="home-variant" size={18} color={selectedCategory === 'All' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
           <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'सभी मंदिर' : 'All Temples'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
+        </Pressable>
+        <Pressable 
           style={[styles.catPill, selectedCategory === 'Jyotirlinga' && styles.catPillActive]}
+          android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressJyotirlinga}
         >
           <Text style={{ fontSize: 18, marginRight: 6 }}>🔱</Text>
           <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'ज्योतिर्लिंग' : 'Jyotirlinga'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
+        </Pressable>
+        <Pressable 
           style={[styles.catPill, selectedCategory === 'Sacred' && styles.catPillActive]}
+          android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressSacred}
         >
           <Ionicons name="sparkles-outline" size={16} color={selectedCategory === 'Sacred' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
           <Text style={[styles.catPillText, selectedCategory === 'Sacred' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </View>
   ), [searchQuery, selectedCategory, onPressAll, onPressJyotirlinga, onPressSacred, onPressOpenFilter, onPressGoBack, t]);
@@ -826,7 +830,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
-        estimatedItemSize={127}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         keyExtractor={keyExtractor}
@@ -896,7 +899,7 @@ const styles = StyleSheet.create({
   searchInputField: { flex: 1, fontSize: 14, color: '#333', fontFamily: FONTS.medium },
 
   categoryPillsRow: { marginBottom: 20, backgroundColor: 'transparent', paddingVertical: 10 },
-  catPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, marginRight: 12 },
+  catPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30, marginRight: 12, overflow: 'hidden' },
   catPillActive: { backgroundColor: '#FFF5EB' },
   catPillText: { fontSize: 14, fontFamily: FONTS.bold, color: '#555' },
   catPillTextActive: { color: '#FF6600' },

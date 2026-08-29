@@ -61,8 +61,8 @@ export default function AboutSettingsScreen() {
           <View style={styles.pillContainer}>
             <View style={styles.cardSection}>
               <Text style={styles.cardText}>
-                {isHindi 
-                  ? 'ब्रह्मांड सनातन लोक समुदाय का एक सुंदर मंच है जो भक्तों, मंदिरों और पुजारियों को एक साथ जोड़ता है।' 
+                {isHindi
+                  ? 'ब्रह्मांड सनातन लोक समुदाय का एक सुंदर मंच है जो भक्तों, मंदिरों और पुजारियों को एक साथ जोड़ता है।'
                   : 'Brahmand is a beautiful Sanatan Lok community platform dedicated to connecting devotees, temples, and priests.'}
               </Text>
             </View>
@@ -72,8 +72,8 @@ export default function AboutSettingsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{isHindi ? 'हमारा मिशन' : 'Our Mission'}</Text>
               <Text style={styles.sectionText}>
-                {isHindi 
-                  ? 'सनातन धर्म की समृद्ध संस्कृति, ज्ञान और आध्यात्मिकता को आधुनिक तकनीक के माध्यम से दुनिया भर में फैलाना।' 
+                {isHindi
+                  ? 'सनातन धर्म की समृद्ध संस्कृति, ज्ञान और आध्यात्मिकता को आधुनिक तकनीक के माध्यम से दुनिया भर में फैलाना।'
                   : 'To spread the rich culture, wisdom, and spirituality of Sanatan Dharma globally using modern technology.'}
               </Text>
             </View>
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#000000',
   },
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1F2937',
     marginTop: 8,
+    fontFamily: 'Cinzel',
   },
   subtitle: {
     fontSize: 14,

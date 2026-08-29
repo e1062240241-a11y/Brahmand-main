@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
@@ -42,7 +42,11 @@ interface CommunityRequest {
   created_at: string;
   location: string;
   user_name?: string;
-  user?: { name?: string; photo?: string; is_verified?: boolean };
+  user_photo?: string;
+  photo?: string;
+  user_sl_id?: string;
+  sl_id?: string;
+  user?: { name?: string; photo?: string; user_photo?: string; sl_id?: string; user_sl_id?: string; is_verified?: boolean };
   support_needed?: string;
   user_id?: string;
 }
@@ -57,6 +61,124 @@ const CATEGORIES = [
   { id: 'other', name: 'Others', icon: 'help-circle', color: '#6B7280', bg: '#F9FAFB' },
 ];
 
+const parseUTCDate = (dateString?: string) => {
+  if (!dateString) return new Date(NaN);
+  let ds = String(dateString);
+  if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+    ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
+  }
+  return new Date(ds);
+};
+
+const getTimeAgo = (dateStr: string) => {
+  if (!dateStr) return 'Recently';
+  const createdMs = parseUTCDate(dateStr).getTime();
+  if (isNaN(createdMs)) return 'Recently';
+
+  const diffMs = Math.max(0, Date.now() - createdMs);
+  const mins = Math.floor(diffMs / 60000);
+  const hrs = Math.floor(mins / 60);
+  const days = Math.floor(hrs / 24);
+
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${days}d ago`;
+};
+
+const TimeAgoText: React.FC<{ dateStr: string; style?: any }> = ({ dateStr, style }) => {
+  const [timeAgo, setTimeAgo] = useState(() => getTimeAgo(dateStr));
+
+  useEffect(() => {
+    setTimeAgo(getTimeAgo(dateStr));
+    const interval = setInterval(() => {
+      setTimeAgo(getTimeAgo(dateStr));
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [dateStr]);
+
+  return <Text style={style} numberOfLines={1}>{timeAgo}</Text>;
+};
+
+const getUrgencyBadgeStyle = (level: string) => {
+  const lvl = (level || '').toLowerCase();
+  if (lvl === 'critical' || lvl === 'urgent') {
+    return { bg: '#FEE2E2', text: '#EF4444', border: '#FCA5A5' };
+  }
+  if (lvl === 'high') {
+    return { bg: '#FFEDD5', text: '#F97316', border: '#FDBA74' };
+  }
+  if (lvl === 'medium') {
+    return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A' };
+  }
+  return { bg: '#ECFDF5', text: '#10B981', border: '#6EE7B7' };
+};
+
+const getRequestTheme = (item: CommunityRequest) => {
+  const type = (item.request_type || '').toLowerCase();
+  const title = (item.title || '').toLowerCase();
+  const desc = (item.description || '').toLowerCase();
+
+  if (type === 'blood' || title.includes('blood') || desc.includes('blood')) {
+    return {
+      colors: ['#FFE3E0', '#FFF0EE'],
+      border: 'rgba(239, 68, 68, 0.2)',
+      icon: 'water',
+      iconColor: '#EF4444',
+      label: 'Blood Needed',
+    };
+  }
+  if (type === 'emergency' || type === 'critical' || title.includes('emergency') || desc.includes('emergency')) {
+    return {
+      colors: ['#FFEEDC', '#FFF8F0'],
+      border: 'rgba(249, 115, 22, 0.2)',
+      icon: 'alert-circle',
+      iconColor: '#F97316',
+      label: 'Emergency',
+    };
+  }
+  if (type === 'food' || title.includes('food') || desc.includes('food') || title.includes('grocery')) {
+    return {
+      colors: ['#FFEED0', '#FFF7E6'],
+      border: 'rgba(242, 92, 5, 0.2)',
+      icon: 'basket',
+      iconColor: '#F25C05',
+      label: 'Food / Grocery',
+    };
+  }
+  if (type === 'gau' || type === 'animal' || title.includes('cow') || desc.includes('cow') || desc.includes('animal') || desc.includes('dog')) {
+    return {
+      colors: ['#ECFDF5', '#F0FDF4'],
+      border: 'rgba(16, 185, 129, 0.2)',
+      icon: 'cow',
+      iconColor: '#10B981',
+      label: 'Gau Seva / Animal',
+    };
+  }
+  if (type === 'temple' || title.includes('temple') || desc.includes('temple') || title.includes('volunteer')) {
+    return {
+      colors: ['#FEF3C7', '#FFFBEB'],
+      border: 'rgba(217, 119, 6, 0.2)',
+      icon: 'home',
+      iconColor: '#D97706',
+      label: 'Temple Help',
+    };
+  }
+  return {
+    colors: ['#F3F4F6', '#F9FAFB'],
+    border: 'rgba(107, 114, 128, 0.15)',
+    icon: 'help-circle',
+    iconColor: '#6B7280',
+    label: 'Other Help',
+  };
+};
+
+const sortRequests = (list: CommunityRequest[]) => {
+  return [...list].sort((a, b) => {
+    return parseUTCDate(b.created_at).getTime() - parseUTCDate(a.created_at).getTime();
+  });
+};
+
 export default function ActiveRequestsList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -70,24 +192,6 @@ export default function ActiveRequestsList() {
 
   const params = useLocalSearchParams<{ community_id?: string, requestId?: string }>();
   const [initialRouteHandled, setInitialRouteHandled] = useState(false);
-  const [ticker, setTicker] = useState(0);
-
-  const parseUTCDate = (dateString?: string) => {
-    if (!dateString) return new Date(NaN);
-    let ds = String(dateString);
-    if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
-      ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
-    }
-    return new Date(ds);
-  };
-
-  // Timer to refresh "time ago" labels every 15 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTicker(prev => prev + 1);
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Socket listener & Polling fallback for real-time requests
   useEffect(() => {
@@ -174,13 +278,9 @@ export default function ActiveRequestsList() {
     return () => subscription.remove();
   }, [selectedRequest, params.community_id]);
 
-  const sortRequests = (list: CommunityRequest[]) => {
-    return [...list].sort((a, b) => {
-      return parseUTCDate(b.created_at).getTime() - parseUTCDate(a.created_at).getTime();
-    });
-  };
 
-  const fetchRequests = async (showLoading = true) => {
+
+  const fetchRequests = useCallback(async (showLoading = true) => {
     const cacheKey = params.community_id 
       ? `community_requests_${params.community_id}` 
       : 'community_requests_all';
@@ -241,9 +341,9 @@ export default function ActiveRequestsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.community_id]);
 
-  const handleResolveRequest = async (requestId: string) => {
+  const handleResolveRequest = useCallback(async (requestId: string) => {
     try {
       await resolveCommunityRequest(requestId);
       Alert.alert('Success', 'Request marked as fulfilled successfully!');
@@ -252,85 +352,9 @@ export default function ActiveRequestsList() {
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Unable to fulfill request');
     }
-  };
+  }, []);
 
-  const getRequestTheme = (item: CommunityRequest) => {
-    const type = (item.request_type || '').toLowerCase();
-    const title = (item.title || '').toLowerCase();
-    const desc = (item.description || '').toLowerCase();
-
-    if (type === 'blood' || title.includes('blood') || desc.includes('blood')) {
-      return {
-        colors: ['#FFE3E0', '#FFF0EE'],
-        border: 'rgba(239, 68, 68, 0.2)',
-        icon: 'water',
-        iconColor: '#EF4444',
-        label: 'Blood Needed',
-      };
-    }
-    if (type === 'emergency' || type === 'critical' || title.includes('emergency') || desc.includes('emergency')) {
-      return {
-        colors: ['#FFEEDC', '#FFF8F0'],
-        border: 'rgba(249, 115, 22, 0.2)',
-        icon: 'alert-circle',
-        iconColor: '#F97316',
-        label: 'Emergency',
-      };
-    }
-    if (type === 'food' || title.includes('food') || desc.includes('food') || title.includes('grocery')) {
-      return {
-        colors: ['#FFEED0', '#FFF7E6'],
-        border: 'rgba(242, 92, 5, 0.2)',
-        icon: 'basket',
-        iconColor: '#F25C05',
-        label: 'Food / Grocery',
-      };
-    }
-    if (type === 'gau' || type === 'animal' || title.includes('cow') || desc.includes('cow') || desc.includes('animal') || desc.includes('dog')) {
-      return {
-        colors: ['#ECFDF5', '#F0FDF4'],
-        border: 'rgba(16, 185, 129, 0.2)',
-        icon: 'cow',
-        iconColor: '#10B981',
-        label: 'Gau Seva / Animal',
-      };
-    }
-    if (type === 'temple' || title.includes('temple') || desc.includes('temple') || title.includes('volunteer')) {
-      return {
-        colors: ['#FEF3C7', '#FFFBEB'],
-        border: 'rgba(217, 119, 6, 0.2)',
-        icon: 'home',
-        iconColor: '#D97706',
-        label: 'Temple Help',
-      };
-    }
-    return {
-      colors: ['#F3F4F6', '#F9FAFB'],
-      border: 'rgba(107, 114, 128, 0.15)',
-      icon: 'help-circle',
-      iconColor: '#6B7280',
-      label: 'Other Help',
-    };
-  };
-
-  const getTimeAgo = (dateStr: string) => {
-    try {
-      if (!dateStr) return 'Recently';
-      const parsedDate = parseUTCDate(dateStr);
-      const diff = Date.now() - parsedDate.getTime();
-      const mins = Math.floor(diff / 60000);
-      if (mins < 1) return 'Just now';
-      if (mins < 60) return `${mins}m ago`;
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) return `${hrs}h ago`;
-      const days = Math.floor(hrs / 24);
-      return `${days}d ago`;
-    } catch {
-      return 'Recently';
-    }
-  };
-
-  const handleCall = (number: string) => {
+  const handleCall = useCallback((number: string) => {
     if (!number) return;
     const cleaned = number.replace(/[^\d+]/g, '');
     Alert.alert(
@@ -348,12 +372,21 @@ export default function ActiveRequestsList() {
         }
       ]
     );
-  };
+  }, []);
 
-  const handleWhatsApp = (number: string, title: string, requestId?: string) => {
-    if (!number) return;
-    const formatted = number.replace(/\D/g, ''); // Official WhatsApp format must exclude '+' and other non-digits
-    
+  const handleWhatsApp = useCallback((number: string, title: string, requestId?: string) => {
+    if (!number) {
+      Alert.alert('Error', 'Contact number is missing.');
+      return;
+    }
+    let formatted = number.replace(/\D/g, ''); // strip non-digits
+    formatted = formatted.replace(/^0+/, ''); // strip leading zeroes
+
+    // 10-digit Indian numbers without country code
+    if (formatted.length === 10) {
+      formatted = `91${formatted}`;
+    }
+
     let messageText = `Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`;
     if (requestId) {
       messageText += `\n\nRequest Link: https://brahmand.app/community-request/list?requestId=${requestId}`;
@@ -361,14 +394,14 @@ export default function ActiveRequestsList() {
     
     const text = encodeURIComponent(messageText);
     Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
-      Alert.alert('Error', 'Unable to open WhatsApp');
+      Alert.alert('Error', 'Unable to open WhatsApp. Please verify the contact number is correct.');
     });
-  };
+  }, []);
 
-  const handleShare = async (request: CommunityRequest) => {
+  const handleShare = useCallback(async (request: CommunityRequest) => {
     try {
       // Create a deep link using the app scheme targeting the list page with the request ID
-      const deepLink = `https://brahmand.app/community-request/list?requestId=${request.id}`;
+      const deepLink = `https://brahmand.app/community-request/list?requestId=${encodeURIComponent(request.id)}`;
       const typeLabel = getRequestTheme(request).label.toUpperCase();
       
       await Share.share({
@@ -378,54 +411,54 @@ export default function ActiveRequestsList() {
     } catch (error) {
       console.log('Share error:', error);
     }
-  };
+  }, []);
 
-  const filteredRequests = requests.filter((req) => {
-    const theme = getRequestTheme(req);
-    
-    // Category Filter
-    if (selectedCategory !== 'all') {
-      const type = selectedCategory;
-      if (type === 'blood' && theme.label !== 'Blood Needed') return false;
-      if (type === 'emergency' && theme.label !== 'Emergency') return false;
-      if (type === 'food' && theme.label !== 'Food / Grocery') return false;
-      if (type === 'gau' && theme.label !== 'Gau Seva / Animal') return false;
-      if (type === 'temple' && theme.label !== 'Temple Help') return false;
-      if (type === 'other' && theme.label !== 'Other Help') return false;
-    }
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      const theme = getRequestTheme(req);
+      
+      // Category Filter
+      if (selectedCategory !== 'all') {
+        const type = selectedCategory;
+        if (type === 'blood' && theme.label !== 'Blood Needed') return false;
+        if (type === 'emergency' && theme.label !== 'Emergency') return false;
+        if (type === 'food' && theme.label !== 'Food / Grocery') return false;
+        if (type === 'gau' && theme.label !== 'Gau Seva / Animal') return false;
+        if (type === 'temple' && theme.label !== 'Temple Help') return false;
+        if (type === 'other' && theme.label !== 'Other Help') return false;
+      }
 
-    // Search query Filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchTitle = (req.title || '').toLowerCase().includes(query);
-      const matchDesc = (req.description || '').toLowerCase().includes(query);
-      const matchLoc = (req.location || '').toLowerCase().includes(query);
-      return matchTitle || matchDesc || matchLoc;
-    }
+      // Search query Filter 
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const matchTitle = (req.title || '').toLowerCase().includes(query);
+        const matchDesc = (req.description || '').toLowerCase().includes(query);
+        const matchLoc = (req.location || '').toLowerCase().includes(query);
+        const matchUser = (req.user_name || req.name || '').toLowerCase().includes(query);
+        const matchSlId = (req.user_sl_id || req.sl_id || '').toLowerCase().includes(query);
+        const matchType = (req.request_type || req.type || '').toLowerCase().includes(query);
+        return matchTitle || matchDesc || matchLoc || matchUser || matchSlId || matchType;
+      }
 
-    return true;
-  });
+      return true;
+    });
+  }, [requests, selectedCategory, searchQuery]);
 
-  const getUrgencyBadgeStyle = (level: string) => {
-    const lvl = (level || '').toLowerCase();
-    if (lvl === 'critical' || lvl === 'urgent') {
-      return { bg: '#FEE2E2', text: '#EF4444', border: '#FCA5A5' };
-    }
-    if (lvl === 'high') {
-      return { bg: '#FFEDD5', text: '#F97316', border: '#FDBA74' };
-    }
-    if (lvl === 'medium') {
-      return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A' };
-    }
-    return { bg: '#ECFDF5', text: '#10B981', border: '#6EE7B7' };
-  };
 
-  const renderRequestCard = ({ item }: { item: CommunityRequest }) => {
+
+  const renderRequestCard = useCallback(({ item }: { item: CommunityRequest }) => {
     const theme = getRequestTheme(item);
     const urgency = getUrgencyBadgeStyle(item.urgency_level);
     const isResolved = item.status === 'resolved';
     const ownerName = item.user_name || item.user?.name || 'Requester';
     const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
+
+    const userPhoto = item.user?.photo || item.user?.user_photo || item.user_photo || item.photo;
+
+    const rawSlId = item.user?.sl_id || item.user?.user_sl_id || item.user_sl_id || item.sl_id;
+    const displaySlId = rawSlId
+      ? (String(rawSlId).toLowerCase().startsWith('sl') ? String(rawSlId) : `SL ID: ${rawSlId}`)
+      : (item.user_id ? `SL ID: ${item.user_id.slice(0, 8).toUpperCase()}` : 'SL ID: --');
 
     return (
       <TouchableOpacity
@@ -433,29 +466,38 @@ export default function ActiveRequestsList() {
         activeOpacity={0.9}
         onPress={() => setSelectedRequest(item)}
       >
-        <View style={[styles.requesterHeader, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
-          <View style={{ marginLeft: 10, flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#111' }} numberOfLines={1}>{ownerName}</Text>
-              {item.user?.is_verified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
-              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}>
-                @{ownerName.replace(/\s+/g, '').toLowerCase()}
+        {/* Requester Header Info */}
+        <View style={styles.requesterHeader}>
+          <Avatar name={ownerName} photo={userPhoto} size={44} />
+          <View style={styles.requesterMeta}>
+            <View style={styles.requesterNameRow}>
+              <Text style={styles.requesterName} numberOfLines={1}>
+                {ownerName}
               </Text>
-              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}> · {getTimeAgo(item.created_at)}</Text>
-              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+              {item.user?.is_verified && (
+                <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 3, marginRight: 4 }} />
+              )}
+              <View style={styles.requestTypeBadge}>
+                <Text style={styles.requestTypeBadgeText}>{requestTypeLabel}</Text>
               </View>
+            </View>
+            <View style={styles.requesterSubRow}>
+              <Text style={styles.requesterHandle} numberOfLines={1}>
+                {displaySlId}
+              </Text>
+              <Text style={styles.dotSeparator}>·</Text>
+              <TimeAgoText dateStr={item.created_at} style={styles.requesterTime} />
             </View>
           </View>
         </View>
 
-        <View style={[styles.requestContentCard, { borderColor: isResolved ? '#A7F3D0' : theme.border }, isResolved && { backgroundColor: '#F0FDF4' }]}>
+        <View style={styles.requestContentCard}>
+          {/* Card Category & Urgency */}
           <View style={styles.cardHeader}>
             <View style={[styles.iconWrapper, { backgroundColor: isResolved ? '#10B98115' : theme.iconColor + '15' }]}>
               <MaterialCommunityIcons 
                 name={isResolved ? 'check-circle' : theme.icon as any} 
-                size={22} 
+                size={20} 
                 color={isResolved ? '#10B981' : theme.iconColor} 
               />
             </View>
@@ -475,6 +517,7 @@ export default function ActiveRequestsList() {
             )}
           </View>
 
+          {/* Title & Description */}
           <Text style={[styles.cardTitle, isResolved && { color: '#065F46' }]} numberOfLines={2}>
             {item.title}
           </Text>
@@ -482,25 +525,30 @@ export default function ActiveRequestsList() {
             {item.description}
           </Text>
 
-          <View style={styles.locRow}>
-            <Ionicons name="location" size={14} color="#6B7280" />
-            <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
-          </View>
+          {/* Location Badge */}
+          {!!item.location && (
+            <View style={styles.locRow}>
+              <Ionicons name="location" size={13} color="#F25C05" />
+              <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
+            </View>
+          )}
 
           <View style={styles.divider} />
 
+          {/* Action Buttons Footer */}
           <View style={styles.cardFooter}>
             {isResolved ? (
               <View style={styles.resolvedFooterRow}>
                 <TouchableOpacity 
                   style={[styles.actionBtn, styles.viewBtn]}
                   onPress={() => setSelectedRequest(item)}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="eye" size={14} color="#6366F1" />
+                  <Ionicons name="eye" size={15} color="#6366F1" />
                   <Text style={styles.viewBtnText}>View</Text>
                 </TouchableOpacity>
                 <View style={styles.helpDoneBadge}>
-                  <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
                   <Text style={styles.helpDoneBadgeText}>Help Done ✅</Text>
                 </View>
               </View>
@@ -509,16 +557,18 @@ export default function ActiveRequestsList() {
                 <TouchableOpacity 
                   style={[styles.actionBtn, styles.viewBtn]}
                   onPress={() => setSelectedRequest(item)}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="eye" size={14} color="#6366F1" />
+                  <Ionicons name="eye" size={15} color="#6366F1" />
                   <Text style={styles.viewBtnText}>View</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={[styles.actionBtn, styles.waBtn]}
                   onPress={() => handleWhatsApp(item.contact_number, item.title, item.id)}
+                  activeOpacity={0.85}
                 >
-                  <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
+                  <FontAwesome5 name="whatsapp" size={15} color="#FFF" />
                   <Text style={styles.actionBtnText}>Offer Help</Text>
                 </TouchableOpacity>
 
@@ -526,8 +576,9 @@ export default function ActiveRequestsList() {
                   <TouchableOpacity 
                     style={[styles.actionBtn, styles.fulfillBtn]}
                     onPress={() => handleResolveRequest(item.id)}
+                    activeOpacity={0.85}
                   >
-                    <Ionicons name="checkmark-done" size={14} color="#FFF" />
+                    <Ionicons name="checkmark-done" size={15} color="#FFF" />
                     <Text style={styles.actionBtnText}>Fulfill</Text>
                   </TouchableOpacity>
                 )}
@@ -537,11 +588,15 @@ export default function ActiveRequestsList() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [user, handleWhatsApp, handleResolveRequest]);
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.0913, 0.25]}
+        style={StyleSheet.absoluteFillObject}
+      />
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Sticky Header */}
@@ -572,15 +627,20 @@ export default function ActiveRequestsList() {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#94A3B8" />
+            <Ionicons name="search" size={20} color="#F25C05" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search blood, foods, locations..."
+              placeholder="Search by keyword, location, SL ID (e.g. Blood, Food, Mumbai)..."
               placeholderTextColor="#94A3B8"
               value={searchQuery}
               onChangeText={setSearchQuery}
               clearButtonMode="while-editing"
             />
+            {searchQuery.length > 0 && Platform.OS !== 'ios' && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -598,17 +658,23 @@ export default function ActiveRequestsList() {
                 <TouchableOpacity
                   style={[
                     styles.catChip,
-                    isActive && { backgroundColor: item.color, borderColor: item.color }
+                    isActive && { 
+                      backgroundColor: '#FFECE4', 
+                      borderColor: '#FFC4AF',
+                    }
                   ]}
                   onPress={() => setSelectedCategory(item.id)}
                 >
                   <Ionicons 
                     name={item.icon as any} 
                     size={16} 
-                    color={isActive ? '#FFF' : item.color} 
+                    color={isActive ? '#E05300' : item.color} 
                     style={{ marginRight: 6 }} 
                   />
-                  <Text style={[styles.catChipText, isActive && { color: '#FFF', fontFamily: FONTS.bold }]}>
+                  <Text style={[
+                    styles.catChipText, 
+                    isActive && { color: '#E05300', fontFamily: FONTS.bold, fontWeight: '700' }
+                  ]}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -630,6 +696,10 @@ export default function ActiveRequestsList() {
             renderItem={renderRequestCard}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            windowSize={10}
+            maxToRenderPerBatch={5}
+            removeClippedSubviews={true}
+            initialNumToRender={8}
             refreshControl={
               <RefreshControl
                 refreshing={loading}
@@ -684,7 +754,7 @@ export default function ActiveRequestsList() {
                     <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
                       {getRequestTheme(selectedRequest).label.toUpperCase()}
                     </Text>
-                    <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
+                    <TimeAgoText dateStr={selectedRequest.created_at} style={styles.sheetTime} />
                   </View>
                   <TouchableOpacity 
                     style={styles.sheetCloseBtn}
@@ -717,9 +787,13 @@ export default function ActiveRequestsList() {
                 <Text style={styles.sheetDesc}>{selectedRequest.description}</Text>
 
                 <View style={styles.requesterCard}>
-                  <Ionicons name="person-circle" size={40} color="#E2E8F0" />
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
+                  <Avatar 
+                    name={selectedRequest.user_name || selectedRequest.user?.name || 'Verified Neighbor'} 
+                    photo={selectedRequest.user?.photo || selectedRequest.user?.user_photo || selectedRequest.user_photo || selectedRequest.photo} 
+                    size={42} 
+                  />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || selectedRequest.user?.name || 'Verified Neighbor'}</Text>
                     <Text style={styles.sheetRequesterLabel}>Community Member</Text>
                   </View>
                 </View>
@@ -784,17 +858,16 @@ export default function ActiveRequestsList() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   safeArea: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    backgroundColor: '#FFF',
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: 'transparent',
   },
   backBtn: {
     width: 40,
@@ -802,7 +875,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'transparent',
   },
   addBtn: {
     width: 40,
@@ -810,7 +883,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#FFF5F0',
+    backgroundColor: 'transparent',
   },
   headerTitleText: {
     fontSize: 17,
@@ -820,29 +893,37 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFF',
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: 'transparent',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 20,
     paddingHorizontal: 16,
-    height: 48,
+    height: 46,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
-    color: '#1E293B',
+    marginLeft: 10,
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    color: '#0F172A',
     padding: 0,
   },
   categoryScrollContainer: {
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 12,
+    backgroundColor: 'transparent',
+    paddingTop: 4,
+    paddingBottom: 10,
   },
   categoryContent: {
     paddingHorizontal: 16,
@@ -855,8 +936,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFF',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   catChipText: {
     fontSize: 13,
@@ -864,79 +945,80 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 40,
-    gap: 16,
+    gap: 12,
   },
   requestCard: {
-    marginBottom: 12,
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   requestContentCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 18,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
   },
   cardTypeLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: FONTS.bold,
     fontWeight: '800',
   },
   timeAgo: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 1,
   },
   urgencyBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
   },
   urgencyText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: FONTS.bold,
     fontWeight: '800',
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: FONTS.bold,
     color: '#0F172A',
     fontWeight: '700',
-    lineHeight: 22,
-    marginBottom: 8,
+    lineHeight: 19,
+    marginTop: 2,
+    marginBottom: 4,
   },
   cardDesc: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-    marginBottom: 14,
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 18,
+    marginBottom: 6,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    marginVertical: 8,
   },
   cardFooter: {
     width: '100%',
@@ -944,13 +1026,18 @@ const styles = StyleSheet.create({
   locRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    backgroundColor: 'rgba(241, 245, 249, 0.85)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   locText: {
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: FONTS.medium,
     marginLeft: 4,
-    flex: 1,
   },
   resolvedFooterRow: {
     flexDirection: 'row',
@@ -961,57 +1048,86 @@ const styles = StyleSheet.create({
   activeFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     width: '100%',
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 10,
     gap: 4,
     flex: 1,
+    height: 36,
   },
   requesterHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   requesterMeta: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 8,
+  },
+  requesterNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   requesterName: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONTS.bold,
+    fontWeight: '700',
     color: '#0F172A',
   },
-  requesterRole: {
-    fontSize: 12,
+  requestTypeBadge: {
+    backgroundColor: 'rgba(242, 92, 5, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  requestTypeBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  requesterSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+  requesterHandle: {
+    fontSize: 13,
     color: '#64748B',
-    marginTop: 2,
+    fontFamily: FONTS.regular,
+  },
+  dotSeparator: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    marginHorizontal: 4,
   },
   requesterTime: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
-    marginLeft: 12,
+    fontFamily: FONTS.regular,
   },
   viewBtn: {
     borderWidth: 1.5,
     borderColor: '#6366F1',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
   },
   viewBtnText: {
     color: '#6366F1',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: FONTS.bold,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   waBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#25D366',
   },
   fulfillBtn: {
     backgroundColor: '#F59E0B',
@@ -1020,22 +1136,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#D1FAE5',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    gap: 6,
   },
   helpDoneBadgeText: {
     color: '#065F46',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: FONTS.bold,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   actionBtnText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: FONTS.bold,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   centerContainer: {
     flex: 1,

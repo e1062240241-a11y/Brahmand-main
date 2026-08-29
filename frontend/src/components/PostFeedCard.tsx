@@ -666,20 +666,28 @@ const PostFeedCardComponent = ({
                   ]}
                 >
                   {postMenuType === 'delete' && onEdit && (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={[styles.dropdownItem, styles.dropdownItemBorder]}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.dropdownItem,
+                        styles.dropdownItemBorder,
+                        pressed && { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
+                      ]}
+                      android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', borderless: false }}
                       onPress={() => closeMenu(() => onEdit?.(post))}
                     >
                       <Ionicons name="pencil-outline" size={15} color="#3A3835" />
                       <Text style={styles.dropdownText}>
                         {t('language') === 'hi' ? 'संपादित करें' : 'Edit'}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={[styles.dropdownItem, styles.dropdownItemBorder]}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.dropdownItem,
+                      styles.dropdownItemBorder,
+                      pressed && { backgroundColor: 'rgba(224, 62, 62, 0.08)' },
+                    ]}
+                    android_ripple={{ color: 'rgba(224, 62, 62, 0.12)', borderless: false }}
                     onPress={() => closeMenu(() => onPostMenuPress?.(post))}
                   >
                     <Ionicons
@@ -692,15 +700,18 @@ const PostFeedCardComponent = ({
                         ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post')
                         : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
                     </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.dropdownItem}
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.dropdownItem,
+                      pressed && { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
+                    ]}
+                    android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', borderless: false }}
                     onPress={() => closeMenu()}
                   >
                     <Ionicons name="close-circle-outline" size={15} color="#75716B" />
                     <Text style={styles.dropdownCancelText}>{t('cancel')}</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </Animated.View>
               )}
             </View>
@@ -941,7 +952,7 @@ const PostFeedCardComponent = ({
             accessibilityRole="button"
             accessibilityLabel={t('share')}
           >
-            <Ionicons name="send-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+            <Ionicons name="send-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} style={{ transform: [{ rotate: '-30deg' }, { translateY: -2 }] }} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}

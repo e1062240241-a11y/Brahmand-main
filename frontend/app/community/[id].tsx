@@ -24,7 +24,8 @@ import {View,
   ScrollView,
   TouchableWithoutFeedback,
   Animated,
-  PanResponder
+  PanResponder,
+  Linking
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
@@ -47,6 +48,12 @@ import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
+import { CommentModal } from '../../src/components/community/CommentModal';
+import { CreatePostModal } from '../../src/components/community/CreatePostModal';
+import { AnimatedFullScreenMediaViewer } from '../../src/components/community/AnimatedFullScreenMediaViewer';
+import { AttendeesModal } from '../../src/components/community/AttendeesModal';
+import { CategorySelectorModal } from '../../src/components/community/CategorySelectorModal';
+import { GroupInfoModal } from '../../src/components/community/GroupInfoModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
@@ -592,155 +599,7 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
   );
 };
 
-/* X & Threads Style Animated Fullscreen Media Viewer */
-const AnimatedFullScreenMediaViewer = ({
-  mediaUrl,
-  onClose
-}: {
-  mediaUrl: string | null;
-  onClose: () => void;
-}) => {
-  const [visible, setVisible] = useState(false);
-  const [currentMedia, setCurrentMedia] = useState<string | null>(null);
 
-  const scale = useRef(new Animated.Value(0.75)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const bgOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (mediaUrl) {
-      setCurrentMedia(mediaUrl);
-      setVisible(true);
-      translateY.setValue(0);
-      scale.setValue(0.75);
-      bgOpacity.setValue(0);
-
-      Animated.parallel([
-        Animated.spring(scale, {
-          toValue: 1,
-          tension: 70,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bgOpacity, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else if (visible) {
-      triggerDismiss();
-    }
-  }, [mediaUrl]);
-
-  const triggerDismiss = () => {
-    Animated.parallel([
-      Animated.timing(scale, {
-        toValue: 0.75,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bgOpacity, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setVisible(false);
-      setCurrentMedia(null);
-      onClose();
-    });
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        translateY.setValue(gestureState.dy);
-        const dragDistance = Math.abs(gestureState.dy);
-        const newOpacity = Math.max(0.2, 1 - dragDistance / 400);
-        bgOpacity.setValue(newOpacity);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dy) > 100 || Math.abs(gestureState.vy) > 0.5) {
-          const exitDirection = gestureState.dy > 0 ? 600 : -600;
-          Animated.parallel([
-            Animated.timing(translateY, {
-              toValue: exitDirection,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(bgOpacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            setVisible(false);
-            setCurrentMedia(null);
-            onClose();
-          });
-        } else {
-          Animated.parallel([
-            Animated.spring(translateY, {
-              toValue: 0,
-              tension: 80,
-              friction: 8,
-              useNativeDriver: true,
-            }),
-            Animated.timing(bgOpacity, {
-              toValue: 1,
-              duration: 150,
-              useNativeDriver: true,
-            }),
-          ]).start();
-        }
-      },
-    })
-  ).current;
-
-  if (!visible || !currentMedia) return null;
-
-  return (
-    <Modal visible={visible} transparent={true} animationType="none" onRequestClose={triggerDismiss}>
-      <Animated.View
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.96)',
-          opacity: bgOpacity,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <TouchableOpacity
-          style={{ position: 'absolute', top: 50, right: 20, zIndex: 30, padding: 12 }}
-          onPress={triggerDismiss}
-        >
-          <Ionicons name="close" size={32} color="#FFF" />
-        </TouchableOpacity>
-
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={{
-            width: Dimensions.get('window').width,
-            height: Dimensions.get('window').height * 0.85,
-            justifyContent: 'center',
-            alignItems: 'center',
-            transform: [{ translateY }, { scale }],
-          }}
-        >
-          <CommunityMediaItem
-            media={{ uri: currentMedia }}
-            style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 }}
-            isActive={true}
-          />
-        </Animated.View>
-      </Animated.View>
-    </Modal>
-  );
-};
 
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
@@ -1032,27 +891,76 @@ export default function CommunityDetailScreen() {
 
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [newMessage, setNewMessage] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
+  const [createPostState, setCreatePostState] = useState({
+    visible: false,
+    newMessage: '',
+    selectedImage: null as string | null,
+    selectedMediaType: null as 'image' | 'video' | null,
+    postCategory: '',
+    contactNumber: '',
+    sevaDetails: '',
+    eventLocation: '',
+    eventDate: null as Date | null,
+    showDatePicker: false,
+    showTimePicker: false,
+    showInlineCategories: false,
+  });
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const showCreateModal = createPostState.visible;
+  const setShowCreateModal = (val: boolean | ((prev: boolean) => boolean)) =>
+    setCreatePostState(prev => ({ ...prev, visible: typeof val === 'function' ? val(prev.visible) : val }));
+
+  const newMessage = createPostState.newMessage;
+  const setNewMessage = (val: string | ((prev: string) => string)) =>
+    setCreatePostState(prev => ({ ...prev, newMessage: typeof val === 'function' ? val(prev.newMessage) : val }));
+
+  const selectedImage = createPostState.selectedImage;
+  const setSelectedImage = (val: string | null | ((prev: string | null) => string | null)) =>
+    setCreatePostState(prev => ({ ...prev, selectedImage: typeof val === 'function' ? val(prev.selectedImage) : val }));
+
+  const selectedMediaType = createPostState.selectedMediaType;
+  const setSelectedMediaType = (val: 'image' | 'video' | null | ((prev: 'image' | 'video' | null) => 'image' | 'video' | null)) =>
+    setCreatePostState(prev => ({ ...prev, selectedMediaType: typeof val === 'function' ? val(prev.selectedMediaType) : val }));
+
+  const postCategory = createPostState.postCategory;
+  const setPostCategory = (val: string | ((prev: string) => string)) =>
+    setCreatePostState(prev => ({ ...prev, postCategory: typeof val === 'function' ? val(prev.postCategory) : val }));
+
+  const contactNumber = createPostState.contactNumber;
+  const setContactNumber = (val: string | ((prev: string) => string)) =>
+    setCreatePostState(prev => ({ ...prev, contactNumber: typeof val === 'function' ? val(prev.contactNumber) : val }));
+
+  const sevaDetails = createPostState.sevaDetails;
+  const setSevaDetails = (val: string | ((prev: string) => string)) =>
+    setCreatePostState(prev => ({ ...prev, sevaDetails: typeof val === 'function' ? val(prev.sevaDetails) : val }));
+
+  const eventLocation = createPostState.eventLocation;
+  const setEventLocation = (val: string | ((prev: string) => string)) =>
+    setCreatePostState(prev => ({ ...prev, eventLocation: typeof val === 'function' ? val(prev.eventLocation) : val }));
+
+  const eventDate = createPostState.eventDate;
+  const setEventDate = (val: Date | null | ((prev: Date | null) => Date | null)) =>
+    setCreatePostState(prev => ({ ...prev, eventDate: typeof val === 'function' ? val(prev.eventDate) : val }));
+
+  const showDatePicker = createPostState.showDatePicker;
+  const setShowDatePicker = (val: boolean | ((prev: boolean) => boolean)) =>
+    setCreatePostState(prev => ({ ...prev, showDatePicker: typeof val === 'function' ? val(prev.showDatePicker) : val }));
+
+  const showTimePicker = createPostState.showTimePicker;
+  const setShowTimePicker = (val: boolean | ((prev: boolean) => boolean)) =>
+    setCreatePostState(prev => ({ ...prev, showTimePicker: typeof val === 'function' ? val(prev.showTimePicker) : val }));
+
+  const showInlineCategories = createPostState.showInlineCategories;
+  const setShowInlineCategories = (val: boolean | ((prev: boolean) => boolean)) =>
+    setCreatePostState(prev => ({ ...prev, showInlineCategories: typeof val === 'function' ? val(prev.showInlineCategories) : val }));
+
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
-  const [postCategory, setPostCategory] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [sevaDetails, setSevaDetails] = useState('');
-  const [eventLocation, setEventLocation] = useState('');
-  const [eventDate, setEventDate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState<string | null>(null);
   const [festivalSort, setFestivalSort] = useState<'latest' | 'oldest'>('latest');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-
-  const [showInlineCategories, setShowInlineCategories] = useState(false);
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
@@ -1429,15 +1337,16 @@ export default function CommunityDetailScreen() {
       return {
         id: 'dummy-lost-found-item',
         isRequestItem: true,
-        title: 'Mock Lost & Found: Gold Ring Found near Temple Entrance',
-        description: 'Found a gold ring with initials "S.J." near the main temple steps yesterday evening. Owner can claim by providing verification.',
-        request_type: 'lost_found',
+        title: 'Lost & Found: Gold Ring Found near Temple Entrance',
+        description: 'Found a engraved gold ring with initials "S.J." near the main temple steps yesterday evening during Aarti. Please contact to claim with proof.',
+        request_type: 'LOST & FOUND',
         support_needed: 'Lost & Found Alert',
         urgency_level: 'normal',
-        user_name: 'Aarti Jain (Mock)',
+        user_name: 'Aarti Jain (Temple Sevadar)',
         contact_number: '+919876543210',
         created_at: now,
         status: 'pending',
+        location: 'Main Temple Entrance Steps',
         interested_count: 1
       };
     }
@@ -1466,12 +1375,13 @@ export default function CommunityDetailScreen() {
           isVerified: true,
           verificationLabel: 'Official',
         },
-        content: 'Reconstruction of Inner Sanctum\n\nThe reconstruction of the main Shikhar and Garbhagriha is underway. Daily darshan timings are adjusted to 6 AM - 10 AM and 4 PM - 8 PM.',
+        content: '🛕 Temple Timings & Sanctum Update\n\nDaily Darshan & Aarti timings:\n• Morning Aarti: 6:00 AM - 7:00 AM\n• Evening Aarti: 6:30 PM - 7:30 PM\n\nSpecial Puja arrangements are active for the upcoming festival. All devotees are requested to maintain queue decorum.',
         timestamp: 'Just now',
-        likes: 12,
-        comments: 3,
-        reposts: 2,
+        likes: 24,
+        comments: 5,
+        reposts: 4,
         category: 'Temple Updates',
+        contact_number: '+919876543210',
       };
     }
     if (tabName === 'My Posts') {
@@ -1502,15 +1412,11 @@ export default function CommunityDetailScreen() {
       return uid && blockedUserSet.has(String(uid));
     };
 
-    const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
-    const filteredEventsList = events.filter(item => !isUserBlocked(item));
-    const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
-    const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-    const filteredApiRequests = filteredRequests.filter(item => !isUserBlocked(item));
-    const filteredApiSevaRequests = filteredSevaRequests.filter(item => !isUserBlocked(item));
-    const filteredAllFestivalsList = allFestivals.filter(item => !isUserBlocked(item));
-
     if (activeTab === 'My Posts') {
+      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
+      const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
+
       const itemMap = new Map();
 
       // All chat messages (community posts)
@@ -1564,6 +1470,8 @@ export default function CommunityDetailScreen() {
     }
 
     if (activeTab === 'Requests') {
+      const filteredApiRequests = filteredRequests.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const apiList = filteredApiRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
       const localList = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'requests')
@@ -1590,6 +1498,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Events') {
+      const filteredEventsList = events.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const apiList = filteredEventsList.map((e: any) => {
         let locStr = 'Online';
         if (e.location) {
@@ -1643,6 +1553,7 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Festivals') {
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const userFestivals = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'festivals')
         .map((p: any) => {
@@ -1727,6 +1638,8 @@ export default function CommunityDetailScreen() {
       ];
     }
     if (activeTab === 'Lost & Found') {
+      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const apiList = filteredRequestsList.filter((item: any) => isLostFoundRequest(item));
       const localList = filteredCommunityPostsList
         .filter((p: any) => isLostFoundRequest(p))
@@ -1750,6 +1663,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Temple Updates') {
+      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const formatTemplePost = (p: any) => ({
         ...p,
         id: p.id || `tu-${Math.random()}`,
@@ -1781,6 +1696,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Seva') {
+      const filteredApiSevaRequests = filteredSevaRequests.filter(item => !isUserBlocked(item));
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
       const apiSeva = filteredApiSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
       const localSeva = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'seva')
@@ -1807,6 +1724,9 @@ export default function CommunityDetailScreen() {
       return sortedSeva;
     }
     if (activeTab === 'Feed') {
+      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
+      const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
+      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
       const itemMap = new Map();
 
       // All chat messages (community posts) only show in Feed section
@@ -2830,20 +2750,20 @@ export default function CommunityDetailScreen() {
       Alert.alert('Not Available', 'No contact phone number is available.');
       return;
     }
-    const cleanPhone = phoneStr.replace(/[^0-9+]/g, '');
-    const message = `Jai Jinendra! I saw your post "${title || 'Help Needed'}" on Brahmand. Let me know how I can help.`;
-    const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+    let cleanPhone = phoneStr.replace(/\D/g, '').replace(/^0+/, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+    if (!cleanPhone) {
+      Alert.alert('Invalid Number', 'The contact phone number is invalid.');
+      return;
+    }
 
-    const { Linking } = require('react-native');
-    Linking.canOpenURL(url).then((supported: boolean) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        const webUrl = `https://wa.me/${cleanPhone.replace('+', '')}?text=${encodeURIComponent(message)}`;
-        Linking.openURL(webUrl);
-      }
-    }).catch(() => {
-      Alert.alert('Error', 'Could not open WhatsApp.');
+    const message = `Hare Krishna! I saw your post "${title || 'Help Needed'}" on Brahmand. Let me know how I can help.`;
+    const webUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    Linking.openURL(webUrl).catch(() => {
+      Alert.alert('Error', 'Unable to open WhatsApp. Please verify the contact number is correct.');
     });
   };
 
@@ -3291,23 +3211,23 @@ export default function CommunityDetailScreen() {
     
     return (
       <View style={styles.festEventCard}>
-        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
-          <View style={{ marginLeft: 10, flex: 1 }}>
+        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 6 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={34} />
+          <View style={{ marginLeft: 8, flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={styles.feedPostUserName} numberOfLines={1}>{ownerName}</Text>
-              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
-              <Text style={styles.postHandle} numberOfLines={1}>
+              <Text style={[styles.feedPostUserName, { fontSize: 13 }]} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}>
                 {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
               </Text>
-              <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
-              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
               </View>
             </View>
           </View>
         </View>
-        <View style={[{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
+        <View style={[{ backgroundColor: 'transparent', borderRadius: 14, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : 'rgba(0,0,0,0.06)', padding: 10 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
           <View style={styles.festEventMain}>
             {(item.image || item.image_url || item.media_url) && (
               <CommunityMediaItem
@@ -3329,25 +3249,25 @@ export default function CommunityDetailScreen() {
                     onPress={() => handleOpenMap(item.location)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location" size={14} color="#FF6B00" />
+                    <Ionicons name="location" size={12} color="#FF6B00" />
                     <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
                       {item.location}
                     </Text>
                   </TouchableOpacity>
                 ) : null}
                 <View style={styles.festMetaRow}>
-                  <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
+                  <Ionicons name={iconDetails.name as any} size={12} color={iconDetails.color} />
                   <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
                 </View>
                 <View style={styles.festMetaRow}>
-                  <Ionicons name="time-outline" size={14} color="#FF3B30" />
+                  <Ionicons name="time-outline" size={12} color="#FF3B30" />
                   <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 }} />
+          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 8 }} />
 
           <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
           {phone ? (
@@ -4116,14 +4036,20 @@ export default function CommunityDetailScreen() {
       }
     })();
 
-    setNewMessage('');
-    setSelectedImage(null);
-    setSelectedMediaType(null);
-    setContactNumber('');
-    setSevaDetails('');
-    setEventLocation('');
-    setEventDate(null);
-    setShowCreateModal(false);
+    setCreatePostState(prev => ({
+      ...prev,
+      visible: false,
+      newMessage: '',
+      selectedImage: null,
+      selectedMediaType: null,
+      contactNumber: '',
+      sevaDetails: '',
+      eventLocation: '',
+      eventDate: null,
+      showDatePicker: false,
+      showTimePicker: false,
+      showInlineCategories: false,
+    }));
 
     // No longer switching tabs automatically to keep the user in their current context
     // The post will appear immediately in the Feed and its specific category
@@ -4704,770 +4630,102 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="fade" transparent={false} hardwareAccelerated>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-          >
-            <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); setContactNumber(''); setSevaDetails(''); setEventLocation(''); setEventDate(null); }}>
-                <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
-              </TouchableOpacity>
+      <CreatePostModal
+        visible={showCreateModal}
+        newMessage={newMessage}
+        selectedImage={selectedImage}
+        selectedMediaType={selectedMediaType}
+        postCategory={postCategory}
+        showInlineCategories={showInlineCategories}
+        contactNumber={contactNumber}
+        sevaDetails={sevaDetails}
+        eventLocation={eventLocation}
+        eventDate={eventDate}
+        showDatePicker={showDatePicker}
+        showTimePicker={showTimePicker}
+        isKycVerified={isKycVerified}
+        user={user}
+        keyboardVisible={keyboardVisible}
+        keyboardHeight={keyboardHeight}
+        onClose={() => {
+          setCreatePostState({
+            visible: false,
+            newMessage: '',
+            selectedImage: null,
+            selectedMediaType: null,
+            postCategory: '',
+            contactNumber: '',
+            sevaDetails: '',
+            eventLocation: '',
+            eventDate: null,
+            showDatePicker: false,
+            showTimePicker: false,
+            showInlineCategories: false,
+          });
+        }}
+        onMessageChange={setNewMessage}
+        onPickImage={() => {
+          if (!postCategory) {
+            Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
+            return;
+          }
+          handlePickImage();
+        }}
+        onRemoveImage={() => {
+          setSelectedImage(null);
+          setSelectedMediaType(null);
+        }}
+        onPost={handlePostButtonPress}
+        onInlineCategorySelect={(cat) => {
+          handleInlineCategorySelect(cat);
+          setShowInlineCategories(false);
+        }}
+        onShowInlineCategoriesToggle={() => setShowInlineCategories(!showInlineCategories)}
+        onContactNumberChange={setContactNumber}
+        onSevaDetailsChange={setSevaDetails}
+        onEventLocationChange={setEventLocation}
+        onEventDateChange={setEventDate}
+        onOpenDatePicker={openEventDatePicker}
+        onOpenTimePicker={openEventTimePicker}
+        onShowDatePickerChange={setShowDatePicker}
+        onShowTimePickerChange={setShowTimePicker}
+        t={t}
+        insets={insets}
+        getTranslatedTab={getTranslatedTab}
+        onClearCategory={() => setPostCategory('')}
+        CommunityMediaItem={CommunityMediaItem}
+      />
 
-              <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '700', fontFamily: FONTS.bold }}>Create Post</Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.twitterPostBtn,
-                  (!newMessage.trim() && !selectedImage) && { opacity: 0.5 }
-                ]}
-                onPress={handlePostButtonPress}
-                disabled={!newMessage.trim() && !selectedImage}
-              >
-                <Text style={styles.twitterPostBtnText}>Post</Text>
-              </TouchableOpacity>
-            </View>
-
-            <KeyboardAwareScrollView style={{ flex: 1, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-              <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
-                <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  {!postCategory ? (
-                    <TouchableOpacity
-                      onPress={() => setShowInlineCategories(!showInlineCategories)}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        alignSelf: 'flex-start',
-                        gap: 6,
-                        backgroundColor: '#FF6600',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 16,
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Ionicons name="pricetag-outline" size={14} color="#FFF" />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.bold }}>
-                        {t('language') === 'hi' ? 'श्रेणी चुनें *' : 'Choose Category *'}
-                      </Text>
-                      <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
-                      <Ionicons name="pricetag-outline" size={14} color="#FF6B00" />
-                      <Text style={styles.selectedCategoryText}>
-                        {t('language') === 'hi' ? 'श्रेणी' : 'Category'}: {getTranslatedTab(postCategory)}
-                      </Text>
-                      <TouchableOpacity onPress={() => { setPostCategory(''); }}>
-                        <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {showInlineCategories && (
-                    <View style={{ marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>
-                        {t('language') === 'hi' ? 'श्रेणी का चयन करें' : 'Select Category'}
-                      </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                        {POST_CATEGORIES.map((cat) => {
-                          let iconColor = '#536471';
-                          if (cat === 'Others') iconColor = '#1D9BF0';
-                          else if (cat === 'Seva') iconColor = '#E91E63';
-                          else if (cat === 'Requests') iconColor = '#FF6B00';
-                          else if (cat === 'Events') iconColor = '#00C853';
-                          else if (cat === 'Lost & Found') iconColor = '#9C27B0';
-                          else if (cat === 'Festivals') iconColor = '#FF9800';
-                          else if (cat === 'Temple Updates') iconColor = '#795548';
-
-                          return (
-                            <TouchableOpacity
-                              key={cat}
-                              onPress={() => {
-                                handleInlineCategorySelect(cat);
-                                setShowInlineCategories(false);
-                              }}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                backgroundColor: '#FFF',
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: `${iconColor}30`,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.05,
-                                shadowRadius: 2,
-                                elevation: 1,
-                              }}
-                            >
-                              <View style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 10,
-                                backgroundColor: `${iconColor}15`,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginRight: 6
-                              }}>
-                                <Ionicons
-                                  name={
-                                    cat === 'Others' ? 'chatbubble-ellipses-outline' :
-                                    cat === 'Seva' ? 'heart-outline' :
-                                    cat === 'Requests' ? 'alert-circle-outline' :
-                                    cat === 'Events' ? 'calendar-outline' :
-                                    cat === 'Lost & Found' ? 'search-outline' :
-                                    cat === 'Festivals' ? 'flame-outline' :
-                                    'home-outline'
-                                  }
-                                  size={12}
-                                  color={iconColor}
-                                />
-                              </View>
-                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>
-                                {getTranslatedTab(cat)}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-                  <MentionInput
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                    placeholder={
-                      t('language') === 'hi'
-                        ? (postCategory ? 'क्या चल रहा है?' : 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...')
-                        : (postCategory ? "What's happening?" : "Select a category above to start writing...")
-                    }
-                    placeholderTextColor="#536471"
-                    multiline
-                    editable={!!postCategory}
-                    inputStyle={{
-                      fontSize: 18,
-                      color: '#0F1419',
-                      minHeight: 120,
-                      textAlignVertical: 'top',
-                      paddingTop: 4,
-                      lineHeight: 24,
-                      opacity: postCategory ? 1 : 0.6
-                    }}
-                    autoFocus={!!postCategory}
-                  />
-
-                  {/* Add Photo option directly beneath the input box for better accessibility */}
-                  {!selectedImage ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!postCategory) {
-                          Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
-                          return;
-                        }
-                        handlePickImage();
-                      }}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        alignSelf: 'flex-start',
-                        gap: 6,
-                        backgroundColor: !postCategory ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        marginTop: 10,
-                        borderWidth: 1,
-                        borderColor: !postCategory ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
-                      }}
-                    >
-                      <Ionicons name="images-outline" size={18} color={!postCategory ? "#A0A0A0" : "#FF6600"} />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: !postCategory ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
-                        Add Media
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={{ position: 'relative', marginTop: 10, borderRadius: 12, overflow: 'hidden', width: '100%', height: 250 }}>
-                      <CommunityMediaItem media={selectedImage} style={{ width: '100%', height: '100%' }} isActive={true} />
-                      <TouchableOpacity
-                        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
-                        onPress={() => { setSelectedImage(null); setSelectedMediaType(null); }}
-                      >
-                        <Ionicons name="close" size={16} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {postCategory === 'Events' && (
-                    <View style={{ marginTop: 15, backgroundColor: 'rgba(255,255,255,0.6)', padding: 12, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginBottom: 10 }}>Event Date & Time</Text>
-                      <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity
-                          onPress={openEventDatePicker}
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
-                        >
-                          <Ionicons name="calendar-outline" size={18} color="#FF6600" />
-                          <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? (() => {
-                              const day = String(eventDate.getDate()).padStart(2, '0');
-                              const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-                              return `${day}/${month}/${eventDate.getFullYear()}`;
-                            })() : 'Select Date'}
-                          </Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity
-                          onPress={openEventTimePicker}
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
-                        >
-                          <Ionicons name="time-outline" size={18} color="#FF6600" />
-                          <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? formatTimeIST(eventDate) : 'Select Time'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {showDatePicker && Platform.OS !== 'android' && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="date"
-                          display="default"
-                          onChange={(event, selectedDate) => {
-                            setShowDatePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const currentDate = eventDate || new Date();
-                              selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-                              setEventDate(selectedDate);
-                            }
-                          }}
-                        />
-                      )}
-
-                      {showTimePicker && Platform.OS !== 'android' && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="time"
-                          display="default"
-                          onChange={(event, selectedDate) => {
-                            setShowTimePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const newDate = new Date(eventDate || new Date());
-                              newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-                              setEventDate(newDate);
-                            }
-                          }}
-                        />
-                      )}
-
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginTop: 15, marginBottom: 10 }}>Event Location</Text>
-                      <TextInput
-                        placeholder="e.g. Temple Hall, Sector 4 or Online"
-                        value={eventLocation}
-                        onChangeText={setEventLocation}
-                        placeholderTextColor="#999"
-                        style={{
-                          backgroundColor: '#FFF',
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: '#EEE',
-                          fontSize: 13,
-                          color: '#000'
-                        }}
-                      />
-                    </View>
-                  )}
-
-                  {/* Contact Number for Call & WhatsApp */}
-                  {!!postCategory && (
-                    <View style={{ marginTop: 14, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
-                        <Ionicons name="call-outline" size={16} color="#16A34A" />
-                        <FontAwesome5 name="whatsapp" size={15} color="#059669" />
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
-                          {t('language') === 'hi' ? 'संपर्क / व्हाट्सएप नंबर (वैकल्पिक)' : 'Contact Number (Call & WhatsApp)'}
-                        </Text>
-                      </View>
-                      <TextInput
-                        style={{
-                          backgroundColor: '#FFF',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          fontSize: 14,
-                          color: '#0F1419',
-                          borderWidth: 1,
-                          borderColor: '#E2E8F0',
-                          fontFamily: FONTS.regular,
-                        }}
-                        placeholder={t('language') === 'hi' ? 'फ़ोन नंबर दर्ज करें (उदा. +91 9876543210)' : 'Enter phone number (e.g. +91 9876543210)'}
-                        placeholderTextColor="#94A3B8"
-                        value={contactNumber}
-                        onChangeText={setContactNumber}
-                        keyboardType="phone-pad"
-                        disableFullscreenUI={true}
-                      />
-                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, fontFamily: FONTS.regular }}>
-                        {t('language') === 'hi'
-                          ? 'यह नंबर आपकी पोस्ट पर कॉल और व्हाट्सएप बटन दिखाएगा।'
-                          : 'Adding this will display Call and WhatsApp buttons on your post.'}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Seva Details Input */}
-                  {postCategory === 'Seva' && (
-                    <View style={{ marginTop: 12, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
-                        <Ionicons name="heart-outline" size={16} color="#E91E63" />
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
-                          {t('language') === 'hi' ? 'सेवा विवरण (वैकल्पिक)' : 'Seva Details (Optional)'}
-                        </Text>
-                      </View>
-                      <TextInput
-                        style={{
-                          backgroundColor: '#FFF',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          fontSize: 14,
-                          color: '#0F1419',
-                          borderWidth: 1,
-                          borderColor: '#E2E8F0',
-                          minHeight: 50,
-                          textAlignVertical: 'top',
-                          fontFamily: FONTS.regular,
-                        }}
-                        placeholder={t('language') === 'hi' ? 'आवश्यक सेवा या समय विवरण दर्ज करें...' : 'Enter details of volunteer work needed, timing, etc.'}
-                        placeholderTextColor="#94A3B8"
-                        value={sevaDetails}
-                        onChangeText={setSevaDetails}
-                        multiline
-                        disableFullscreenUI={true}
-                      />
-                    </View>
-                  )}
-                </View>
-              </View>
-
-            </KeyboardAwareScrollView>
-
-            {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingTop: 10,
-              paddingBottom: Platform.OS === 'android' 
-                ? (keyboardVisible ? 10 : Math.max(insets.bottom, 28)) 
-                : (keyboardVisible ? 10 : Math.max(insets.bottom, 14)),
-              borderTopWidth: 1,
-              borderTopColor: 'rgba(244, 163, 34, 0.15)',
-              backgroundColor: '#0C0A1A'
-            }}>
-              <View />
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CosmicCharacterRing text={newMessage} />
-              </View>
-            </View>
-            {Platform.OS === 'android' && keyboardVisible && keyboardHeight > 0 && (
-              <View style={{ height: keyboardHeight }} />
-            )}
-          </KeyboardAvoidingView>
-        </View>
-        </LinearGradient>
-      </Modal>
-
-      {/* Category Selector Bottom Sheet — shown when Post is tapped */}
-      <Modal
+      <CategorySelectorModal
         visible={showCategorySelector}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowCategorySelector(false)}
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
-          }}
-          activeOpacity={1}
-          onPress={() => setShowCategorySelector(false)}
-        >
-          <View
-            style={{
-              backgroundColor: '#FFF',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 12,
-              paddingBottom: Math.max(insets.bottom, 24),
-              shadowColor: '#000',
-              shadowOpacity: 0.15,
-              shadowRadius: 20,
-              shadowOffset: { width: 0, height: -4 },
-              elevation: 12,
-            }}
-            onStartShouldSetResponder={() => true}
-          >
-            {/* Handle bar */}
-            <View style={{ alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD' }} />
-            </View>
+        isKycVerified={isKycVerified}
+        insets={insets}
+        onClose={() => setShowCategorySelector(false)}
+        onSelectCategory={(cat) => handleCategorySelectedAndPost(cat)}
+      />
 
-            <Text style={{
-              fontSize: 17,
-              fontWeight: '700',
-              color: '#0F1419',
-              textAlign: 'center',
-              marginBottom: 16,
-              fontFamily: FONTS.bold,
-            }}>
-              Choose a Category
-            </Text>
-
-            <KeyboardAwareScrollView
-              style={{ maxHeight: 400, paddingHorizontal: 16 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {POST_CATEGORIES.map(cat => {
-                let iconName: any = 'ellipse-outline';
-                let iconColor = '#536471';
-                let desc = '';
-                if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General community discussion'; }
-                else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Seva, donations & volunteer work'; }
-                else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help requests, blood needs, etc.'; }
-                else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Community events & gatherings'; }
-                else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost or found items'; }
-                else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Festival celebrations & updates'; }
-                else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news & renovations'; }
-
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 14,
-                      paddingHorizontal: 12,
-                      borderRadius: 16,
-                      marginBottom: 6,
-                      backgroundColor: '#FAFAFA',
-                      borderWidth: 1,
-                      borderColor: '#F0F0F0',
-                    }}
-                    onPress={() => handleCategorySelectedAndPost(cat)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: `${iconColor}15`,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginRight: 14,
-                    }}>
-                      <Ionicons name={iconName} size={22} color={iconColor} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{
-                          fontSize: 15,
-                          fontWeight: '700',
-                          color: '#0F1419',
-                        }}>
-                          {cat}
-                        </Text>
-                        {cat === 'Requests' && !isKycVerified && (
-                          <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: '#FFF3E0',
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 8,
-                            marginLeft: 8,
-                          }}>
-                            <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
-                            <Text style={{ fontSize: 10, color: '#FF6B00', fontWeight: '700', marginLeft: 3 }}>KYC Required</Text>
-                          </View>
-                        )}
-                      </View>
-                      {desc ? (
-                        <Text style={{
-                          fontSize: 12,
-                          color: '#536471',
-                          marginTop: 2,
-                        }}>
-                          {desc}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
-                  </TouchableOpacity>
-                );
-              })}
-            </KeyboardAwareScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-
-
-      {/* Full Screen X & Threads Style Animated Media Viewer */}
       <AnimatedFullScreenMediaViewer
         mediaUrl={fullScreenMedia}
         onClose={() => setFullScreenMedia(null)}
+        CommunityMediaItem={CommunityMediaItem}
       />
 
-      {/* Comment Modal */}
-      <Modal
-        visible={!!showCommentModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowCommentModal(null)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-          style={styles.modalOverlay}
-        >
-          <ToastContainer />
-          <View style={[styles.commentModalContent, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : (keyboardVisible ? 10 : Math.max(insets.bottom, 20)) }]}>
-            <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>
-                {t('language') === 'hi'
-                  ? `टिप्पणियाँ (${showCommentModal?.comments ?? activeComments.length ?? 0})`
-                  : `Comments (${showCommentModal?.comments ?? activeComments.length ?? 0})`}
-              </Text>
-              <TouchableOpacity onPress={() => setShowCommentModal(null)}>
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            <KeyboardAwareScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {(() => {
-                const filteredComments = activeComments.filter(comment => {
-                  const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
-                  return !uid || !blockedUserSet.has(String(uid));
-                });
-
-                return filteredComments.length > 0 ? (
-                  filteredComments
-                  .map((comment, index, filteredArray) => (
-                    <View key={comment.id} style={{ flexDirection: 'row', marginBottom: 20, position: 'relative' }}>
-                      {/* Thread connector line for replies */}
-                      {index < filteredArray.length - 1 && (
-                      <View style={{ position: 'absolute', left: 16, top: 36, bottom: -20, width: 2, backgroundColor: '#CFD9DE', zIndex: -1 }} />
-                    )}
-                    <View style={{ marginRight: 12 }}>
-                      <Avatar name={comment.userName} photo={comment.avatar} size={32} />
-                    </View>
-                    <View style={{ flex: 1, backgroundColor: '#F7F9F9', padding: 12, borderRadius: 16 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                          <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }} numberOfLines={1}>{comment.userName}</Text>
-                          {comment.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-                        </View>
-                        {comment.userId === user?.id ? (
-                          <TouchableOpacity
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => handleDeleteComment(comment.id)}
-                          >
-                            <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                          </TouchableOpacity>
-                        ) : (
-                          <TouchableOpacity
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => handleCommentMenuPress(comment)}
-                          >
-                            <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                      <Text selectable={true} style={{ fontSize: 14, color: '#536471', marginTop: 4, lineHeight: 18 }}>{comment.text}</Text>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 20 }}>
-                  <Ionicons name="chatbubble-outline" size={40} color="#CCC" />
-                  <Text style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
-                    {t('language') === 'hi'
-                      ? 'अभी तक कोई टिप्पणी नहीं है। टिप्पणी करने वाले पहले व्यक्ति बनें!'
-                      : 'No comments yet. Be the first to comment!'}
-                  </Text>
-                </View>
-              );
-              })()}
-            </KeyboardAwareScrollView>
-
-            <View style={styles.commentInputRow}>
-              <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
-              <MentionInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
-                placeholderTextColor="#888"
-                multiline
-                inputStyle={styles.commentInput}
-              />
-              <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
-                <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>
-                  {t('language') === 'hi' ? 'पोस्ट' : 'Post'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
-            {Platform.OS === 'android' && (
-              <ReportModal
-                visible={reportCommentModalVisible}
-                onClose={() => {
-                  setReportCommentModalVisible(false);
-                  setPendingReportComment(null);
-                }}
-                reporterUid={user?.id || ''}
-                reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-                contentId={String(pendingReportComment?.id || '')}
-                contentType="comment"
-                postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
-                apiFallback={async (reason, description) => {
-                  if (pendingReportComment?.id) {
-                    await reportComment(String(pendingReportComment.id), reason, description || '');
-                  }
-                }}
-                onSuccess={() => {
-                  // Keep reported comment visible
-                  if (pendingReportComment) {
-                    setKeptComments(prev => {
-                      if (prev.some(c => c.id === pendingReportComment.id)) return prev;
-                      return [...prev, pendingReportComment];
-                    });
-                  }
-                }}
-              />
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
       {/* Attendees Modal */}
-      <Modal visible={!!showAttendeesModal} animationType="fade" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalDismiss} activeOpacity={1} onPress={() => setShowAttendeesModal(null)} />
-          <View style={[styles.bottomSheet, { height: '60%' }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#111', marginBottom: 20 }}>Event Attendees</Text>
-
-            {attendeesLoading ? (
-              <CustomLoader size={50} fullScreen={false} />
-            ) : (
-              <FlatList
-                data={attendeesList}
-                keyExtractor={(u) => u.id}
-                renderItem={({ item }) => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
-                    <Avatar name={item.name} photo={item.photo} size={40} />
-                    <View style={{ marginLeft: 12 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#111' }}>{item.name}</Text>
-                      <Text style={{ fontSize: 12, color: '#666' }}>@{item.sl_id}</Text>
-                    </View>
-                  </View>
-                )}
-                ListEmptyComponent={() => (
-                  <View style={{ alignItems: 'center', marginTop: 40 }}>
-                    <Ionicons name="people-outline" size={48} color="#CCC" />
-                    <Text style={{ color: '#888', marginTop: 12 }}>No one has joined yet.</Text>
-                  </View>
-                )}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
+      <AttendeesModal
+        visible={!!showAttendeesModal}
+        attendeesList={attendeesList}
+        attendeesLoading={attendeesLoading}
+        onClose={() => setShowAttendeesModal(null)}
+      />
 
       {/* Group Info Modal */}
-      <Modal visible={showGroupInfoModal} animationType="fade" transparent={true} onRequestClose={() => setShowGroupInfoModal(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }} activeOpacity={1} onPress={() => setShowGroupInfoModal(false)}>
-          <TouchableOpacity activeOpacity={1} style={{ width: '85%', backgroundColor: '#FFF', borderRadius: 20, padding: 20, maxHeight: '80%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#000' }}>Group Info</Text>
-              <TouchableOpacity onPress={() => setShowGroupInfoModal(false)}>
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-            <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 14, color: '#536471', marginBottom: 20, lineHeight: 20 }}>
-                {community?.description || 'Connect with your local community. Share updates, requests, and engage with devotees.'}
-              </Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({getCommunityMemberCount(community)})</Text>
-              
-              <View style={{ gap: 15 }}>
-                {community?.members_details ? (
-                  community.members_details.map((member: any, idx: number) => (
-                    <View key={`member-detail-${idx}`} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Avatar name={member.name} photo={member.photo} size={40} />
-                      <View style={{ marginLeft: 10, flex: 1 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#000' }}>{member.name}</Text>
-                        <Text style={{ 
-                          fontSize: 13, 
-                          color: member.role === 'Owner' || member.role === 'Admin' ? '#FF6B00' : '#888', 
-                          fontWeight: '500' 
-                        }}>
-                          {member.role}
-                        </Text>
-                      </View>
-                    </View>
-                  ))
-                ) : (
-                  <>
-                    {community?.owner_id && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Avatar name={community?.owner_name || (community?.owner_id === user?.id ? (user?.name || '') : 'Community Owner')} size={40} />
-                        <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '600', color: '#000' }}>
-                            {community?.owner_name || (community?.owner_id === user?.id ? user?.name : 'Community Owner')}
-                          </Text>
-                          <Text style={{ fontSize: 13, color: '#FF6B00', fontWeight: '500' }}>Owner</Text>
-                        </View>
-                      </View>
-                    )}
-                    
-                    {(community?.admin_names || []).map((adminName: string, idx: number) => (
-                      <View key={`admin-${idx}`} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Avatar name={adminName} size={40} />
-                        <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '600', color: '#000' }}>{adminName}</Text>
-                          <Text style={{ fontSize: 13, color: '#FF6B00', fontWeight: '500' }}>Admin</Text>
-                        </View>
-                      </View>
-                    ))}
-
-                    {(community?.member_names || []).map((memberName: string, idx: number) => (
-                      <View key={`member-${idx}`} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Avatar name={memberName} size={40} />
-                        <View style={{ marginLeft: 10, flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '600', color: '#000' }}>{memberName}</Text>
-                          <Text style={{ fontSize: 13, color: '#888', fontWeight: '500' }}>Member</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </>
-                )}
-              </View>
-            </KeyboardAwareScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <GroupInfoModal
+        visible={showGroupInfoModal}
+        community={community}
+        user={user}
+        memberCount={getCommunityMemberCount(community)}
+        onClose={() => setShowGroupInfoModal(false)}
+      />
 
 
 
@@ -5893,7 +5151,7 @@ const styles = StyleSheet.create({
   viewAll: { fontSize: 13, color: '#FF3B30', fontWeight: '700' },
 
   eventsList: { paddingLeft: 20, paddingRight: 10 },
-  eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginRight: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F0F0F0' },
+  eventCard: { width: SCREEN_WIDTH * 0.8, backgroundColor: 'transparent', borderRadius: 0, padding: 16, marginRight: 15, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   eventInfoRow: { flexDirection: 'row', alignItems: 'center' },
   eventDateCol: { alignItems: 'center', marginRight: 15 },
   eventDate: { fontSize: 24, fontWeight: '900', color: '#FF3B30' },
@@ -5915,7 +5173,7 @@ const styles = StyleSheet.create({
   verifiedMessagesText: { fontSize: 12, color: '#444', fontWeight: '600' },
   viewAllInline: { fontSize: 12, color: '#FF3B30', fontWeight: '700', marginLeft: 8 },
 
-  discussionCard: { backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 24, padding: 16, marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  discussionCard: { backgroundColor: 'transparent', marginHorizontal: 20, borderRadius: 0, padding: 16, marginBottom: 15, borderWidth: 0, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   postHeader: { flexDirection: 'row', alignItems: 'center' },
   postUserMeta: { flex: 1, marginLeft: 12 },
   postNameRow: { flexDirection: 'row', alignItems: 'center' },
@@ -5965,7 +5223,7 @@ const styles = StyleSheet.create({
   requestIconBg: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   helpBtn: { backgroundColor: '#F25C05', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 12 },
   helpBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  sevaInfoCard: { backgroundColor: '#FFF7ED', borderRadius: 16, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#FDE3CE' },
+  sevaInfoCard: { backgroundColor: 'rgba(255, 247, 237, 0.5)', borderRadius: 12, padding: 10, marginTop: 8, borderWidth: 1, borderColor: 'rgba(253, 227, 206, 0.6)' },
   sevaInfoLabel: { fontSize: 12, fontWeight: '800', color: '#C55D00', marginBottom: 6, textTransform: 'uppercase' },
   sevaInfoText: { fontSize: 14, lineHeight: 20, color: '#4D2F00' },
 
@@ -5985,7 +5243,7 @@ const styles = StyleSheet.create({
   commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, minHeight: 38, maxHeight: 100 },
   postCommentBtn: { color: '#FF3B30', fontWeight: '800', fontSize: 14 },
 
-  postContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
+  postContainer: { backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
   repostHeaderLabel: { flexDirection: 'row', alignItems: 'center', marginLeft: 40, marginBottom: 4, gap: 4 },
   repostHeaderText: { fontSize: 13, color: '#536471', fontWeight: '700' },
   postMainRow: { flexDirection: 'row' },
@@ -6064,27 +5322,23 @@ const styles = StyleSheet.create({
   requestOwnerSubtext: { fontSize: 12, color: '#64748B', marginTop: 2 },
   requestOwnerTime: { fontSize: 12, color: '#64748B' },
   festEventCard: { 
-    marginHorizontal: 20, 
-    backgroundColor: '#FFF', 
-    borderRadius: 24, 
-    padding: 18, 
-    marginBottom: 18, 
-    elevation: 6, 
-    shadowColor: '#FF6B00', 
-    shadowOpacity: 0.12, 
-    shadowRadius: 12, 
-    shadowOffset: { width: 0, height: 6 }, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,107,0,0.15)' 
+    marginHorizontal: 16, 
+    backgroundColor: 'transparent', 
+    borderRadius: 0, 
+    padding: 12, 
+    marginBottom: 12, 
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  festEventMain: { flexDirection: 'row', marginBottom: 12 },
-  festEventImage: { width: 90, height: 90, borderRadius: 16 },
-  festEventInfo: { flex: 1, marginLeft: 16 },
-  festEventTitle: { fontSize: 17, fontWeight: '800', color: '#111', marginBottom: 6 },
-  festEventDesc: { fontSize: 13, color: '#555', lineHeight: 18, marginBottom: 10 },
-  festEventMeta: { gap: 6 },
-  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  festMetaText: { fontSize: 12, color: '#444', fontWeight: '600', flexShrink: 1 },
+  festEventMain: { flexDirection: 'row', marginBottom: 8 },
+  festEventImage: { width: 72, height: 72, borderRadius: 12 },
+  festEventInfo: { flex: 1, marginLeft: 12 },
+  festEventTitle: { fontSize: 15, fontWeight: '700', color: '#111', marginBottom: 4, lineHeight: 20 },
+  festEventDesc: { fontSize: 12, color: '#555', lineHeight: 16, marginBottom: 6 },
+  festEventMeta: { gap: 4 },
+  festMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  festMetaText: { fontSize: 11, color: '#444', fontWeight: '600', flexShrink: 1 },
   
   festEventFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   festOrgDetailsRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },

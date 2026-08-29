@@ -12,7 +12,7 @@ import { RequestFormModal } from '../../src/components/RequestFormModal';
 import SharePostModal from '../../src/components/SharePostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
+import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getCommunities, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { socketService } from '../../src/services/socket';
 import { useAuthStore } from '../../src/store/authStore';
@@ -190,7 +190,10 @@ export default function HomeScreen() {
   };
 
   const topFeaturesIntervalRef = useRef<any>(null);
+  const bannerIntervalRef = useRef<any>(null);
   const clockIntervalRef = useRef<any>(null);
+  const isHoldingTopFeaturesRef = useRef(false);
+  const isHoldingBannerRef = useRef(false);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -274,30 +277,103 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Dynamic rotational ordering for quick access feature cards
-  const [quickAccessRotation, setQuickAccessRotation] = useState(0);
+  // Dynamic rotational & randomized ordering for quick access feature cards
+  const [quickAccessRotation, setQuickAccessRotation] = useState(() => Math.floor(Math.random() * 1000) + 1);
+  useEffect(() => {
+    if (isFocused) {
+      setQuickAccessRotation(Math.floor(Math.random() * 1000) + 1);
+    }
+  }, [isFocused]);
+
   const quickAccessItems = useMemo(() => getDynamicQuickAccess(quickAccessRotation), [quickAccessRotation]);
 
-  // Fluid smooth auto-scroll for quick access feature cards
+  // Fluid smooth auto-scroll for quick access feature cards (gentle speed, pauses on hold/tap)
   const topFeaturesAutoScrollIndex = useRef(0);
   useEffect(() => {
     if (!isFocused) return;
     const CARD_WIDTH = featureSnapInterval || 185;
     const TOTAL_CARDS = quickAccessItems.length;
 
-    topFeaturesIntervalRef.current = setInterval(() => {
-      if (AppState.currentState !== 'active') return;
-      topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
-      topFeaturesScrollRef.current?.scrollTo({
-        x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
-        animated: true,
-      });
-    }, 5500);
+    const startTopFeatures = () => {
+      if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+      topFeaturesIntervalRef.current = setInterval(() => {
+        if (isHoldingTopFeaturesRef.current) return;
+        topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
+        topFeaturesScrollRef.current?.scrollTo({
+          x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
+          animated: true,
+        });
+      }, 9500);
+    };
+
+    const stopTopFeatures = () => {
+      if (topFeaturesIntervalRef.current) {
+        clearInterval(topFeaturesIntervalRef.current);
+        topFeaturesIntervalRef.current = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') {
+      startTopFeatures();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startTopFeatures();
+      } else {
+        stopTopFeatures();
+      }
+    });
 
     return () => {
-      if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+      stopTopFeatures();
+      appStateSub.remove();
     };
   }, [isFocused, quickAccessItems.length, featureSnapInterval]);
+
+  // Smooth subtle auto-scroll for main hero banners (pauses on hold/tap)
+  const bannerAutoScrollIndex = useRef(0);
+  useEffect(() => {
+    if (!isFocused) return;
+    const BANNER_CARD_WIDTH = (screenWidth - 40) + 12;
+    const TOTAL_BANNERS = 3;
+
+    const startBanner = () => {
+      if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
+      bannerIntervalRef.current = setInterval(() => {
+        if (isHoldingBannerRef.current) return;
+        bannerAutoScrollIndex.current = (bannerAutoScrollIndex.current + 1) % TOTAL_BANNERS;
+        bannerScrollRef.current?.scrollTo({
+          x: bannerAutoScrollIndex.current * BANNER_CARD_WIDTH,
+          animated: true,
+        });
+      }, 11000);
+    };
+
+    const stopBanner = () => {
+      if (bannerIntervalRef.current) {
+        clearInterval(bannerIntervalRef.current);
+        bannerIntervalRef.current = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') {
+      startBanner();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startBanner();
+      } else {
+        stopBanner();
+      }
+    });
+
+    return () => {
+      stopBanner();
+      appStateSub.remove();
+    };
+  }, [isFocused, screenWidth]);
 
   useEffect(() => {
     if (user?.id) {
@@ -369,12 +445,26 @@ export default function HomeScreen() {
 
   const fetchLocalCommunities = useCallback(async () => {
     try {
-      const response = await discoverCommunities();
-      const allComms = response.data || [];
-      const userGroupsList = allComms.filter(
-        (item: any) => item.type === 'user_group' || item.type === 'local'
-      );
-      setLocalCommunities(userGroupsList);
+      const [discoverRes, myCommsRes] = await Promise.allSettled([
+        discoverCommunities(),
+        getCommunities()
+      ]);
+
+      if (discoverRes.status === 'fulfilled' && discoverRes.value?.data) {
+        const allComms = discoverRes.value.data || [];
+        const userGroupsList = allComms.filter(
+          (item: any) => item.type === 'user_group' || item.type === 'local'
+        );
+        setLocalCommunities(userGroupsList);
+      }
+
+      if (myCommsRes.status === 'fulfilled' && myCommsRes.value?.data) {
+        const myComms = myCommsRes.value.data || [];
+        if (Array.isArray(myComms) && myComms.length > 0) {
+          setCommunities(myComms);
+          AsyncStorage.setItem('home_communities', JSON.stringify(myComms)).catch(() => {});
+        }
+      }
     } catch (err) {
       console.warn('Failed to fetch local communities for home:', err);
     }
@@ -731,6 +821,7 @@ export default function HomeScreen() {
         task.cancel();
         // Clear all background rotation/clock intervals on tab unfocus
         if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+        if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
         if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
       };
     }, [])
@@ -1605,6 +1696,9 @@ export default function HomeScreen() {
       topFeaturesScrollRef={topFeaturesScrollRef}
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
+      bannerAutoScrollIndex={bannerAutoScrollIndex}
+      isHoldingTopFeaturesRef={isHoldingTopFeaturesRef}
+      isHoldingBannerRef={isHoldingBannerRef}
       isFocused={isFocused}
       kathaStatus={kathaStatus}
       quickAccessItems={quickAccessItems}

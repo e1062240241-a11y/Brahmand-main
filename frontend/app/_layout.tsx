@@ -531,18 +531,7 @@ function useNotificationResponseHandler() {
         return;
       }
 
-      if (data.type === 'post_like') {
-        if (data.post_id) {
-          navigateToPost(String(data.post_id));
-          return;
-        }
-        if (data.actor_user_id) {
-          navigateToProfile(String(data.actor_user_id));
-          return;
-        }
-      }
-
-      if (data.type === 'post_comment') {
+      if (data.type === 'post_like' || data.type === 'post_comment') {
         if (data.post_id) {
           navigateToPost(String(data.post_id));
           return;
@@ -1019,18 +1008,7 @@ export default function RootLayout() {
           return;
         }
 
-        if (type === 'post_like') {
-          if (data.post_id) {
-            navigateOrQueue(`/post/${data.post_id}`);
-            return;
-          }
-          if (data.actor_user_id) {
-            navigateOrQueue(`/profile/${data.actor_user_id}`);
-            return;
-          }
-        }
-
-        if (type === 'post_comment') {
+        if (type === 'post_like' || type === 'post_comment') {
           if (data.post_id) {
             navigateOrQueue(`/post/${data.post_id}`);
             return;
@@ -1267,62 +1245,24 @@ export default function RootLayout() {
               }}
             />
             {/* Modals and Creation Forms - Slide from Bottom */}
-            <Stack.Screen
-              key="community-request/blood"
-              name="community-request/blood"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/food"
-              name="community-request/food"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/gau-seva"
-              name="community-request/gau-seva"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/animal-care"
-              name="community-request/animal-care"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/temple-help"
-              name="community-request/temple-help"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/emergency"
-              name="community-request/emergency"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
-            <Stack.Screen
-              key="community-request/other"
-              name="community-request/other"
-              options={{
-                animation: 'slide_from_bottom',
-                gestureDirection: 'vertical'
-              }}
-            />
+            {[
+              'community-request/blood',
+              'community-request/food',
+              'community-request/gau-seva',
+              'community-request/animal-care',
+              'community-request/temple-help',
+              'community-request/emergency',
+              'community-request/other',
+            ].map((screenName) => (
+              <Stack.Screen
+                key={screenName}
+                name={screenName as any}
+                options={{
+                  animation: 'slide_from_bottom',
+                  gestureDirection: 'vertical',
+                }}
+              />
+            ))}
             <Stack.Screen
               key="sos"
               name="sos"

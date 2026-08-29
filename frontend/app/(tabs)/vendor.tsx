@@ -18,9 +18,12 @@ import {
   Dimensions,
   AppState,
   Modal,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -111,7 +114,7 @@ const LOCAL_TRANSLATIONS = {
     approvedTitle: 'Approved',
     approvedMsg: 'Your business has been registered and your KYC is already verified.',
     goDashboard: 'Go to Dashboard',
-    searchRequests: 'Search requests...',
+    searchRequests: 'Search services...',
     sanataniServicesAround: 'Sanatani Services Around You',
     sanataniBusinessAround: 'Sanatani Business\'s Around You',
     allVendorsKyc: 'All vendors are KYC verified.',
@@ -174,7 +177,7 @@ const LOCAL_TRANSLATIONS = {
     approvedTitle: 'सत्यापित',
     approvedMsg: 'आपका व्यवसाय पंजीकृत कर दिया गया है और आपका केवाईसी पहले से ही सत्यापित है।',
     goDashboard: 'डैशबोर्ड पर जाएं',
-    searchRequests: 'अनुरोध खोजें...',
+    searchRequests: 'सेवाएं खोजें...',
     sanataniServicesAround: 'आपके आसपास सनातनी सेवाएं',
     sanataniBusinessAround: 'आपके आसपास सनातनी व्यवसाय',
     allVendorsKyc: 'सभी विक्रेता केवाईसी सत्यापित हैं।',
@@ -192,6 +195,23 @@ export default function VendorScreen() {
   const { t, language } = useTranslation();
   const onVendorScrollTabBar = useScrollToHideTabBar();
   const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
+
+  const headerTopPadding = insets.top > 0 ? insets.top + 12 : 24;
+  const headerTotalHeight = headerTopPadding + 52 + 12;
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const headerBlurOpacity = scrollY.interpolate({
+    inputRange: [0, 20],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const handleVendorScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y;
+    scrollY.setValue(y);
+    onVendorScrollTabBar(event);
+  }, [onVendorScrollTabBar, scrollY]);
 
   const localT = (key: keyof typeof LOCAL_TRANSLATIONS.en): any => {
     return (LOCAL_TRANSLATIONS[currentLang] as any)[key] || (LOCAL_TRANSLATIONS.en as any)[key] || key;
@@ -737,34 +757,82 @@ export default function VendorScreen() {
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
-      {/* Top Search Bar (Figma Design) */}
+      {/* Top Floating Blur Header */}
       <View
-        style={[styles.figmaSearchContainer, { marginTop: insets.top > 0 ? insets.top + 16 : 28 }]}
+        style={[
+          styles.headerWrapper,
+          {
+            paddingTop: headerTopPadding,
+            paddingBottom: 12,
+          }
+        ]}
       >
-        <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
-        <TextInput
-          ref={searchInputRef}
-          style={styles.figmaSearchInput}
-          placeholder={localT('searchRequests')}
-          placeholderTextColor="#9CA3AF"
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
-        {!!searchTerm && (
-          <TouchableOpacity onPress={() => setSearchTerm('')}>
-            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-        )}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              opacity: headerBlurOpacity,
+              overflow: 'hidden',
+            }
+          ]}
+          pointerEvents="none"
+        >
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 70 : 85}
+            tint="light"
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: 'rgba(255, 238, 229, 0.72)',
+              }
+            ]}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: StyleSheet.hairlineWidth,
+              backgroundColor: 'rgba(255, 141, 87, 0.3)',
+            }}
+          />
+        </Animated.View>
+
+        <View style={styles.figmaSearchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
+          <TextInput
+            ref={searchInputRef}
+            style={styles.figmaSearchInput}
+            placeholder={localT('searchRequests')}
+            placeholderTextColor="#9CA3AF"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+          {!!searchTerm && (
+            <TouchableOpacity onPress={() => setSearchTerm('')}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {!searchTerm ? (
         <ScrollView 
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          onScroll={onVendorScrollTabBar}
+          contentContainerStyle={{ paddingTop: headerTotalHeight + 6, paddingBottom: 100 }}
+          onScroll={handleVendorScroll}
           scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[COLORS.primary]} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh} 
+              colors={[COLORS.primary]}
+              progressViewOffset={headerTotalHeight}
+            />
           }
         >
           {/* Categories Row */}
@@ -1060,14 +1128,15 @@ export default function VendorScreen() {
             data={displayVendors}
             renderItem={renderVendor}
             keyExtractor={(item: any) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
-            onScroll={onVendorScrollTabBar}
+            contentContainerStyle={[styles.listContent, { paddingTop: headerTotalHeight + 6, paddingBottom: 90 }]}
+            onScroll={handleVendorScroll}
             scrollEventThrottle={16}
             refreshControl={
               <RefreshControl 
                 refreshing={refreshing} 
                 onRefresh={handleRefresh}
                 colors={[COLORS.primary]}
+                progressViewOffset={headerTotalHeight}
               />
             }
             ListEmptyComponent={
@@ -1557,19 +1626,25 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
+  headerWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    backgroundColor: 'transparent',
+  },
   figmaSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     marginHorizontal: 24,
-    marginTop: 20,
-    marginBottom: 20,
     borderRadius: 26,
     height: 52,
     paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },

@@ -1,5 +1,4 @@
 import os
-import re
 
 def grep_codebase(pattern):
     print(f"\n--- Checking {pattern} ---")

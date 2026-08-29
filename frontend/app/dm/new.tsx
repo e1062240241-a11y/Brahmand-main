@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, Image} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -191,7 +191,14 @@ export default function NewDMScreen() {
   };
 
   const renderUserItem = (item: any) => (
-    <TouchableOpacity key={item.id} style={styles.userRow} onPress={() => handleSelectUser(item)}>
+    <Pressable
+      key={item.id}
+      style={styles.userRow}
+      delayPressIn={0}
+      unstable_pressDelay={0}
+      android_ripple={{ color: 'rgba(0, 0, 0, 0.12)', foreground: true, borderless: false }}
+      onPress={() => handleSelectUser(item)}
+    >
       <Avatar name={item.name} photo={item.photo} size={42} />
       <View style={styles.userMeta}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -201,7 +208,7 @@ export default function NewDMScreen() {
           )}
         </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 
   return (
@@ -217,9 +224,16 @@ export default function NewDMScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
+            <Pressable
+              delayPressIn={0}
+              unstable_pressDelay={0}
+              onPress={handleBackNavigation}
+              style={styles.backButton}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              android_ripple={{ color: 'rgba(0, 0, 0, 0.16)', foreground: true, borderless: false }}
+            >
               <Ionicons name="chevron-back" size={24} color="#111111" />
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.headerTitle}>New Chat</Text>
           </View>
 
@@ -228,7 +242,13 @@ export default function NewDMScreen() {
             {!foundUser && (
               <>
                 <View style={styles.searchContainer}>
-                  <View style={styles.searchBar}>
+                  <Pressable
+                    style={styles.searchBar}
+                    delayPressIn={0}
+                    unstable_pressDelay={0}
+                    onPress={() => searchInputRef.current?.focus()}
+                    android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', foreground: true, borderless: false }}
+                  >
                     <Ionicons name="search" size={20} color="#777" />
                     <TextInput
                       ref={searchInputRef}
@@ -239,30 +259,42 @@ export default function NewDMScreen() {
                       onChangeText={handleUserSearch}
                     />
                     {userSearchQuery.length > 0 && (
-                      <TouchableOpacity onPress={() => handleUserSearch('')}>
+                      <Pressable
+                        delayPressIn={0}
+                        unstable_pressDelay={0}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        android_ripple={{ color: 'rgba(0, 0, 0, 0.16)', foreground: true, borderless: true, radius: 16 }}
+                        onPress={() => handleUserSearch('')}
+                      >
                         <Ionicons name="close-circle" size={18} color="#777" />
-                      </TouchableOpacity>
+                      </Pressable>
                     )}
-                  </View>
+                  </Pressable>
                 </View>
 
                 {/* Quick Row Actions */}
                 <View style={styles.rowActionsContainer}>
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.actionRow}
+                    delayPressIn={0}
+                    unstable_pressDelay={0}
+                    android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                     onPress={() => router.push('/circle/create')}
                   >
                     <MaterialCommunityIcons name="account-group-outline" size={24} color="#111" />
                     <Text style={styles.actionText}>New Group</Text>
-                  </TouchableOpacity>
+                  </Pressable>
 
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.actionRow}
+                    delayPressIn={0}
+                    unstable_pressDelay={0}
+                    android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                     onPress={() => searchInputRef.current?.focus()}
                   >
                     <MaterialCommunityIcons name="account-outline" size={24} color="#111" />
                     <Text style={styles.actionText}>New Contact</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
 
                 {loadingUsers ? (
@@ -360,8 +392,14 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    left: 16,
-    padding: 4,
+    left: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -384,6 +422,7 @@ const styles = StyleSheet.create({
     height: 46,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
+    overflow: 'hidden',
   },
   searchInput: {
     flex: 1,
@@ -402,6 +441,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
+    overflow: 'hidden',
   },
   actionText: {
     fontSize: 16,
@@ -424,6 +464,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    overflow: 'hidden',
   },
   userMeta: {
     marginLeft: 12,

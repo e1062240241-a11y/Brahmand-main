@@ -321,9 +321,10 @@ else:
     allowed_origins = default_allowed_origins.copy()
 
 # Socket.IO for real-time
+sio_cors = '*' if cors_origins == '*' else (allowed_origins if allowed_origins else '*')
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=allowed_origins,
+    cors_allowed_origins=sio_cors,
     ping_interval=settings.WS_PING_INTERVAL,
     ping_timeout=settings.WS_PING_TIMEOUT
 )
@@ -345,8 +346,6 @@ def get_shared_client_session() -> aiohttp.ClientSession:
 async def get_db() -> FirestoreDB:
     """Get Firestore database wrapper"""
     client = await get_firestore()
-    if not client:
-        raise HTTPException(status_code=503, detail="Database unavailable")
     return FirestoreDB(client)
 
 
@@ -2537,18 +2536,20 @@ async def get_users_batch(
     safe_ids = user_ids[:100]
     
     result = []
-    # Fetching in one batch call is much more efficient than parallel individual calls
-    users = await db.get_documents_batch('users', safe_ids)
+    # ⚡ Bolt Optimization: Replace db.get_documents_batch with asyncio.gather
+    # to avoid threadpool exhaustion and ensure safe hydration
+    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids))
     
     for user in users:
-        result.append({
-            "id": user.get('id'),
-            "name": user.get('name'),
-            "sl_id": user.get('sl_id'),
-            "photo": user.get('photo'),
-            "is_verified": user.get('is_verified', False),
-            "verification_level": user.get('verification_level', 'state')
-        })
+        if user:
+            result.append({
+                "id": user.get('id'),
+                "name": user.get('name'),
+                "sl_id": user.get('sl_id'),
+                "photo": user.get('photo'),
+                "is_verified": user.get('is_verified', False),
+                "verification_level": user.get('verification_level', 'state')
+            })
     return result
 
 
@@ -2713,7 +2714,12 @@ async def get_user_connections(
         }
 
     # 3. Stage 2: Single Batch Profile Hydration (Server-Side)
-    hydrated_users_map = await db.get_documents_batch('users', edge_uids)
+    hydrated_users_list = await db.get_documents_batch('users', edge_uids)
+    hydrated_users_map = {
+        u.get('id', u.get('user_id', '')): u
+        for u in hydrated_users_list
+        if isinstance(u, dict)
+    }
 
     # 4. Filter by q (search query) if provided
     matched_uids = []
@@ -2750,10 +2756,15 @@ async def get_user_connections(
     viewer_follow_map = {}
     if viewer_id:
         viewer_edge_ids = [f"{viewer_id}_{target_uid}" for target_uid in matched_uids]
-        viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        raw_viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        viewer_edge_map = {
+            e.get('id', ''): e
+            for e in raw_viewer_edges
+            if isinstance(e, dict)
+        }
         for target_uid in matched_uids:
             edge_key = f"{viewer_id}_{target_uid}"
-            viewer_follow_map[target_uid] = viewer_edges.get(edge_key) is not None
+            viewer_follow_map[target_uid] = viewer_edge_map.get(edge_key) is not None
 
     # 6. Stage 4: Construct Response with Dual Key Mappings
     items = []
@@ -11004,7 +11015,7 @@ IDENTITY RULES:
 
     try:
         from datetime import datetime, timezone
-        db = await get_firestore()
+        db = await get_db()
         chat_data = await db.get_document('krishna_chats', user_id)
         if chat_data:
             db_messages = chat_data.get("messages", [])
@@ -11173,7 +11184,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         # Save to Firebase Firestore
         try:
             from datetime import datetime, timezone
-            db = await get_firestore()
+            db = await get_db()
             chat_ref = db.collection('krishna_chats').document(user_id)
 
             # Idempotency guard: skip append if the last two messages in Firestore
@@ -11235,7 +11246,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 async def get_chat_history(token_data: dict = Depends(verify_token)):
     """Fetch stored Krishna chat history from Firestore."""
     try:
-        db = await get_firestore()
+        db = await get_db()
         user_id = token_data["user_id"]
         chat_data = await db.get_document('krishna_chats', user_id)
         if chat_data:
@@ -11250,7 +11261,7 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
 async def delete_chat_history(token_data: dict = Depends(verify_token)):
     """Clear/delete Krishna chat history from Firestore."""
     try:
-        db = await get_firestore()
+        db = await get_db()
         user_id = token_data["user_id"]
         await db.delete_document('krishna_chats', user_id)
         return {"status": "success", "message": "Chat history cleared successfully"}

@@ -172,7 +172,7 @@ type ChatMessageItemProps = {
   item: Message;
   index: number;
   userId?: string;
-  renderMessageContent: (message: Message) => React.ReactNode;
+  renderMessageContent: (message: Message, isPressed?: boolean) => React.ReactNode;
   formatChatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
   shouldShowDateSeparator: (index: number, currentDateString: string) => boolean;
@@ -202,22 +202,33 @@ const ChatMessageItem = React.memo(({
         {!isOwnMessage && (
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
-        <View style={[styles.messageBubble, isOwnMessage && styles.ownMessageBubble]}>
-          {!isOwnMessage && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-              <Text style={styles.senderName}>
-                {item.sender_name}
-              </Text>
-              {(item as any).is_verified && (
-                <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
+        <Pressable
+          delayPressIn={0}
+          style={({ pressed }) => [
+            styles.messageBubble,
+            isOwnMessage && styles.ownMessageBubble,
+            pressed && styles.messageBubblePressed,
+          ]}
+        >
+          {({ pressed }) => (
+            <>
+              {!isOwnMessage && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                  <Text style={styles.senderName}>
+                    {item.sender_name}
+                  </Text>
+                  {(item as any).is_verified && (
+                    <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />
+                  )}
+                </View>
               )}
-            </View>
+              {renderMessageContent(item, pressed)}
+              <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
+                {formatTime(item.created_at)}
+              </Text>
+            </>
           )}
-          {renderMessageContent(item)}
-          <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
-            {formatTime(item.created_at)}
-          </Text>
-        </View>
+        </Pressable>
       </View>
     </>
   );
@@ -239,10 +250,20 @@ const ChatMessageItem = React.memo(({
   );
 });
 
-let chatContacts: typeof ContactsType | null = null;
+let chatContacts: any = null;
 const getChatContacts = async () => {
   if (!chatContacts) {
-    chatContacts = await import('expo-contacts');
+    try {
+      const mod = await import('expo-contacts');
+      chatContacts = mod?.default && typeof mod.default.requestPermissionsAsync === 'function' ? mod.default : mod;
+    } catch (e) {
+      try {
+        chatContacts = require('expo-contacts');
+      } catch (err) {
+        console.warn('[Chat] expo-contacts module unavailable:', err);
+        chatContacts = null;
+      }
+    }
   }
   return chatContacts;
 };
@@ -1163,7 +1184,7 @@ const ChatScreen = ({
     }
   };
 
-  const renderMessageContent = useCallback((message: Message) => {
+  const renderMessageContent = useCallback((message: Message, isPressed?: boolean) => {
     const sourceUrl = message.content || message.text || '';
     if (message.message_type === 'image' && sourceUrl) {
       return (
@@ -1214,7 +1235,12 @@ const ChatScreen = ({
       );
     }
     return (
-      <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>
+      <Text
+        style={[
+          styles.messageText,
+          message.sender_id === user?.id && styles.ownMessageText,
+        ]}
+      >
         {message.text || message.content}
       </Text>
     );
@@ -1327,8 +1353,13 @@ const ChatScreen = ({
 
     try {
       const contactsModule = await getChatContacts();
-      const permission = await contactsModule.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
+      const reqFn = contactsModule?.requestPermissionsAsync || contactsModule?.default?.requestPermissionsAsync;
+      if (typeof reqFn !== 'function') {
+        Alert.alert('Contacts unavailable', 'Contacts module is not available on this build. Please rebuild native app.');
+        return false;
+      }
+      const permission = await reqFn();
+      if (permission?.status !== 'granted') {
         Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
         return false;
       }
@@ -1347,13 +1378,19 @@ const ChatScreen = ({
       if (!permissionGranted) return false;
 
       const contactsModule = await getChatContacts();
-      const contactResult = await contactsModule.getContactsAsync({
-        fields: [contactsModule.Fields.PhoneNumbers],
+      const getContactsFn = contactsModule?.getContactsAsync || contactsModule?.default?.getContactsAsync;
+      if (typeof getContactsFn !== 'function') {
+        return false;
+      }
+      const phoneFields = contactsModule?.Fields?.PhoneNumbers || contactsModule?.default?.Fields?.PhoneNumbers || 'phoneNumbers';
+      const sortType = contactsModule?.SortTypes?.FirstName || contactsModule?.default?.SortTypes?.FirstName;
+      const contactResult = await getContactsFn({
+        fields: [phoneFields],
         pageSize: 2000,
-        sort: contactsModule.SortTypes.FirstName,
+        sort: sortType,
       });
 
-      const contactsWithNumbers = (contactResult.data || []).filter((contact: ContactsType.Contact) => contact.phoneNumbers?.length);
+      const contactsWithNumbers = (contactResult?.data || []).filter((contact: any) => contact?.phoneNumbers?.length);
       setPhoneContacts(contactsWithNumbers);
       if (!contactsWithNumbers.length) {
         Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
@@ -2620,6 +2657,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 1,
     elevation: 1,
+  },
+  messageBubblePressed: {
+    backgroundColor: '#E0E0E0',
+    borderColor: '#D0D0D0',
   },
   senderName: {
     fontSize: 11,

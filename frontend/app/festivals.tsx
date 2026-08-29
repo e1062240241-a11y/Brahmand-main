@@ -267,8 +267,6 @@ const FestivalPage = () => {
         <SafeFlashList
           data={festivals}
           renderItem={renderItem}
-          // OPT: Bolt ⚡ - Add estimatedItemSize to prevent continuous measuring during initial render
-          estimatedItemSize={132}
           keyExtractor={(item: any, idx: number) => item.id || item.name || String(idx)}
           ListHeaderComponent={renderHeader}
           drawDistance={400}
