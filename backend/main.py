@@ -321,9 +321,10 @@ else:
     allowed_origins = default_allowed_origins.copy()
 
 # Socket.IO for real-time
+sio_cors = '*' if cors_origins == '*' else (allowed_origins if allowed_origins else '*')
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=allowed_origins,
+    cors_allowed_origins=sio_cors,
     ping_interval=settings.WS_PING_INTERVAL,
     ping_timeout=settings.WS_PING_TIMEOUT
 )
@@ -2713,7 +2714,12 @@ async def get_user_connections(
         }
 
     # 3. Stage 2: Single Batch Profile Hydration (Server-Side)
-    hydrated_users_map = await db.get_documents_batch('users', edge_uids)
+    hydrated_users_list = await db.get_documents_batch('users', edge_uids)
+    hydrated_users_map = {
+        u.get('id', u.get('user_id', '')): u
+        for u in hydrated_users_list
+        if isinstance(u, dict)
+    }
 
     # 4. Filter by q (search query) if provided
     matched_uids = []
@@ -2750,10 +2756,15 @@ async def get_user_connections(
     viewer_follow_map = {}
     if viewer_id:
         viewer_edge_ids = [f"{viewer_id}_{target_uid}" for target_uid in matched_uids]
-        viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        raw_viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        viewer_edge_map = {
+            e.get('id', ''): e
+            for e in raw_viewer_edges
+            if isinstance(e, dict)
+        }
         for target_uid in matched_uids:
             edge_key = f"{viewer_id}_{target_uid}"
-            viewer_follow_map[target_uid] = viewer_edges.get(edge_key) is not None
+            viewer_follow_map[target_uid] = viewer_edge_map.get(edge_key) is not None
 
     # 6. Stage 4: Construct Response with Dual Key Mappings
     items = []

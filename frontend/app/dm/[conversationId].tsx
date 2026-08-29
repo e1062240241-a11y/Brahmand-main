@@ -22,6 +22,7 @@ import {
   Linking,
   AppState,
   TouchableWithoutFeedback,
+  InteractionManager,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useIsFocused } from '@react-navigation/native';
@@ -148,16 +149,30 @@ type Message = Omit<ChatMessage, 'content' | 'text' | 'timestamp'> & {
   status?: 'sending' | 'sent' | 'delivered' | 'read' | string;
 };
 
+// In-memory cache for instant transitions
+const dmMessagesMemoryCache = new Map<string, Message[]>();
+
 // Cache functions
 const getCachedMessages = async (conversationId: string): Promise<Message[]> => {
+  if (dmMessagesMemoryCache.has(conversationId)) {
+    return dmMessagesMemoryCache.get(conversationId) || [];
+  }
   try {
     const cached = await AsyncStorage.getItem(`${DM_MESSAGES_CACHE_KEY}_${conversationId}`);
-    return cached ? JSON.parse(cached) : [];
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        dmMessagesMemoryCache.set(conversationId, parsed);
+        return parsed;
+      }
+    }
+    return [];
   } catch { return []; }
 };
 
 const setCachedMessages = async (conversationId: string, messages: Message[]) => {
   try {
+    dmMessagesMemoryCache.set(conversationId, messages);
     await AsyncStorage.setItem(`${DM_MESSAGES_CACHE_KEY}_${conversationId}`, JSON.stringify(messages));
   } catch { }
 };
@@ -463,7 +478,12 @@ const DirectMessageScreen = () => {
   const windowDimensions = useWindowDimensions();
   const windowHeight = windowDimensions.height; // ponytail: quick fix for missing windowHeight variable
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (conversationId && dmMessagesMemoryCache.has(conversationId)) {
+      return dmMessagesMemoryCache.get(conversationId) || [];
+    }
+    return [];
+  });
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -494,14 +514,21 @@ const DirectMessageScreen = () => {
 
   const [conversation, setConversation] = useState<Conversation | null>(() => {
     if (userId && userName) {
+      let decodedName = userName;
+      try { decodedName = decodeURIComponent(userName); } catch (e) {}
+      let decodedPhoto = userPhoto;
+      try { decodedPhoto = userPhoto ? decodeURIComponent(userPhoto) : undefined; } catch (e) {}
+      let decodedSL = userSL;
+      try { decodedSL = userSL ? decodeURIComponent(userSL) : ''; } catch (e) {}
+
       return {
         conversation_id: conversationId || 'new',
         chat_id: conversationId || 'new',
         user: {
           id: userId,
-          name: userName,
-          sl_id: userSL || '',
-          photo: userPhoto ? decodeURIComponent(userPhoto) : undefined,
+          name: decodedName,
+          sl_id: decodedSL,
+          photo: decodedPhoto,
           is_verified: false,
         },
         request_status: 'approved',
@@ -516,7 +543,12 @@ const DirectMessageScreen = () => {
     updated_at?: string;
   } | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (conversationId && dmMessagesMemoryCache.has(conversationId) && (dmMessagesMemoryCache.get(conversationId)?.length || 0) > 0) {
+      return false;
+    }
+    return true;
+  });
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<{
@@ -735,7 +767,12 @@ const DirectMessageScreen = () => {
   }, [conversation?.user?.id, userId, user?.id, addBlock, removeBlock]);
 
   useEffect(() => {
-    checkBlockStatus();
+    const task = InteractionManager.runAfterInteractions(() => {
+      checkBlockStatus();
+    });
+    return () => {
+      task.cancel();
+    };
   }, [conversation?.user?.id, userId, checkBlockStatus]);
 
   // Reset hasMarkedRead and mark read when screen is focused
@@ -1161,28 +1198,31 @@ const DirectMessageScreen = () => {
 
   useEffect(() => {
     const loadScreenData = async () => {
-      const promises: Promise<any>[] = [
+      await Promise.allSettled([
         fetchConversation(),
         fetchMessagesViaAPI(true)
-      ];
-      const recipientId = userId || conversation?.user?.id;
-      if (recipientId) {
-        promises.push(fetchUserPresence(recipientId));
-      }
-      await Promise.allSettled(promises);
+      ]);
     };
 
     loadScreenData();
 
-    // Trigger WatermelonDB sync in background immediately on screen mount
-    if (Platform.OS !== 'web') {
-      try {
-        const { SyncManager } = require('../../src/database/syncManager');
-        SyncManager.requestSync();
-      } catch (e) {
-        console.warn('[DM] Failed to require SyncManager:', e);
+    // Trigger secondary background tasks after screen transition animation finishes
+    const interactionTask = InteractionManager.runAfterInteractions(() => {
+      const recipientId = userId || conversation?.user?.id;
+      if (recipientId) {
+        fetchUserPresence(recipientId);
       }
-    }
+
+      // Trigger WatermelonDB sync in background
+      if (Platform.OS !== 'web') {
+        try {
+          const { SyncManager } = require('../../src/database/syncManager');
+          SyncManager.requestSync();
+        } catch (e) {
+          console.warn('[DM] Failed to require SyncManager:', e);
+        }
+      }
+    });
 
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
@@ -1294,6 +1334,7 @@ const DirectMessageScreen = () => {
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
+      interactionTask.cancel();
       socketService.offEvent('dm_request_updated', handleRequestUpdated);
       socketService.offEvent('connect', handleSocketConnect);
       socketService.offEvent('disconnect', handleSocketDisconnect);

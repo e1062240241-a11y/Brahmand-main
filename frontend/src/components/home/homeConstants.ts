@@ -47,8 +47,14 @@ export const baseQuickAccess = [
     { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
 
-export const getDynamicQuickAccess = (_offset: number = 0) => {
-    return baseQuickAccess;
+export const getDynamicQuickAccess = (seed: number = 0) => {
+    const items = [...baseQuickAccess];
+    // Deterministic shuffle with seed
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = (Math.abs(Math.sin(seed * 997 + i * 31)) * 10000 | 0) % (i + 1);
+        [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
 };
 
 export const formatFestivalDate = (dateStr: string) => {

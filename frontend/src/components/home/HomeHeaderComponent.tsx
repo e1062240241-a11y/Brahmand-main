@@ -249,6 +249,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesAutoScrollIndex,
     bannerScrollRef,
     bannerAutoScrollIndex,
+    isHoldingTopFeaturesRef,
+    isHoldingBannerRef,
     isFocused,
     kathaStatus,
     quickAccessItems,
@@ -302,6 +304,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesAutoScrollIndex: any;
     bannerScrollRef: any;
     bannerAutoScrollIndex?: React.MutableRefObject<number>;
+    isHoldingTopFeaturesRef?: React.MutableRefObject<boolean>;
+    isHoldingBannerRef?: React.MutableRefObject<boolean>;
     isFocused?: boolean;
     kathaStatus?: any;
     quickAccessItems?: any[];
@@ -611,6 +615,28 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 decelerationRate="fast"
                                 contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                                 style={{ width: '100%' }}
+                                onTouchStart={() => {
+                                    if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = true;
+                                }}
+                                onTouchEnd={() => {
+                                    if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = false;
+                                }}
+                                onTouchCancel={() => {
+                                    if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = false;
+                                }}
+                                onScrollBeginDrag={() => {
+                                    if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = true;
+                                }}
+                                onScrollEndDrag={() => {
+                                    setTimeout(() => {
+                                        if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = false;
+                                    }, 1200);
+                                }}
+                                onMomentumScrollEnd={() => {
+                                    setTimeout(() => {
+                                        if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = false;
+                                    }, 1200);
+                                }}
                                 onScroll={(e) => {
                                     const x = e.nativeEvent.contentOffset.x;
                                     const idx = Math.round(x / featureSnapInterval);
@@ -670,6 +696,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 12 }
                                             ]}
                                             activeOpacity={0.9}
+                                            onPressIn={() => {
+                                                if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = true;
+                                            }}
+                                            onPressOut={() => {
+                                                if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = false;
+                                            }}
                                             onPress={() => {
                                                 if (item.label === 'Panchang') router.push('/panchang');
                                                 else if (item.label === 'My Krishn') router.push('/my-krishna');
@@ -764,6 +796,23 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             decelerationRate="fast"
                             snapToInterval={screenWidth - 40 + 12}
                             contentContainerStyle={{ gap: 12, paddingRight: 20 }}
+                            onTouchStart={() => {
+                                if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                            }}
+                            onTouchEnd={() => {
+                                if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                            }}
+                            onTouchCancel={() => {
+                                if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                            }}
+                            onScrollBeginDrag={() => {
+                                if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                            }}
+                            onScrollEndDrag={() => {
+                                setTimeout(() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                }, 1500);
+                            }}
                             onScroll={(e) => {
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
@@ -776,6 +825,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }
                             }}
                             onMomentumScrollEnd={(e) => {
+                                setTimeout(() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
                                 const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
@@ -873,8 +925,17 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 const isLive = Boolean(kathaStatus?.is_live || eventStatus === 'live');
 
                                 return (
-                                    <View
+                                    <Pressable
                                         style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
+                                        onPressIn={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                        }}
+                                        onPressOut={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                        }}
+                                        onPress={() => {
+                                            router.push('/library/katha');
+                                        }}
                                     >
                                         <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                                             {/* Local WebP Fallback (always rendered underneath video) */}
@@ -1207,11 +1268,22 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 </View>
                                             </View>
                                         </View>
-                                    </View>
+                                    </Pressable>
                                 );
                             })()}
 
-                            <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+                            <Pressable
+                                style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}
+                                onPressIn={() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                }}
+                                onPressOut={() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                }}
+                                onPress={() => {
+                                    handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
+                                }}
+                            >
                                 <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                                     <LinearGradient
                                         colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
@@ -1322,6 +1394,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     }
                                                 ]}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
                                                 onPress={() => {
                                                     try {
                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1346,6 +1424,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     transform: [{ scale: pressed ? 0.92 : 1 }],
                                                 })}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
                                                 onPress={() => {
                                                     try {
                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1362,9 +1446,20 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         </View>
                                     </LinearGradient>
                                 </ImageBackground>
-                            </View>
+                            </Pressable>
 
-                            <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+                            <Pressable
+                                style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}
+                                onPressIn={() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                }}
+                                onPressOut={() => {
+                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                }}
+                                onPress={() => {
+                                    handleLiveJaapNavigation('shiva', 'Om Namah Shivay');
+                                }}
+                            >
                                 <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                                     <LinearGradient
                                         colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
@@ -1389,7 +1484,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                             textShadowOffset: { width: 0, height: 1 },
                                                             textShadowRadius: 6,
                                                         }
-                                                    ]}>Om Namah Shivay</Text>
+                                                    ]}>Mahamrityunjaya Mantra</Text>
                                                 </View>
 
                                                 <Text style={[styles.featuredDevotees, {
@@ -1407,8 +1502,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     {shivaStatus.isActive
                                                         ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
                                                         : (t('language') === 'hi'
-                                                            ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
-                                                            : '2300+ devotees already completed jaap')}
+                                                            ? '1800+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                                            : '1800+ devotees already completed jaap')}
                                                 </Text>
 
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
@@ -1471,6 +1566,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     }
                                                 ]}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
                                                 onPress={() => {
                                                     try {
                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1495,6 +1596,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     transform: [{ scale: pressed ? 0.92 : 1 }],
                                                 })}
                                                 android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
                                                 onPress={() => {
                                                     try {
                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1511,7 +1618,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         </View>
                                     </LinearGradient>
                                 </ImageBackground>
-                            </View>
+                            </Pressable>
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
                             {[0, 1, 2].map((idx) => (

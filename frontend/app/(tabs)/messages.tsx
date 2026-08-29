@@ -64,30 +64,8 @@ const USER_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let initialCommunityFetchDone = false;
 let initialChatFetchDone = false;
 
-// Subtle Press-In Depth animation helper component for chats with ripple
+// Responsive row component for chats with instant tap feedback
 const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.98, // Subtle inward depth scale
-      damping: 20,
-      mass: 0.6,
-      stiffness: 320,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      damping: 20,
-      mass: 0.6,
-      stiffness: 320,
-      useNativeDriver: true,
-    }).start();
-  };
-
   const handleLongPress = () => {
     if (Platform.OS !== 'web') {
       try {
@@ -98,21 +76,18 @@ const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }], overflow: 'hidden' }}>
-      <Pressable
-        style={style}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
-        onLongPress={handleLongPress}
-        delayLongPress={280}
-      >
-        {children}
-      </Pressable>
-    </Animated.View>
+    <TouchableOpacity
+      activeOpacity={0.65}
+      style={style}
+      onPress={onPress}
+      onLongPress={onLongPress ? handleLongPress : undefined}
+      delayLongPress={500}
+    >
+      {children}
+    </TouchableOpacity>
   );
 };
+
 
 // Cache helpers
 const getCachedData = async (key: string) => {
@@ -1588,6 +1563,8 @@ function MessagesScreen({
         contentContainerStyle={styles.mainContentContainer}
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
+        keyboardShouldPersistTaps="handled"
+        delaysContentTouches={false}
         refreshControl={<InstagramRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
         onScroll={(event) => {
           onMessagesScrollTabBar(event);
