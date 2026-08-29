@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from config.firebase_config import get_firestore
+import asyncio
 from config.firestore_db import FirestoreDB
 from utils.helpers import moderate_content
 from google.cloud import firestore
@@ -437,8 +438,11 @@ class FirebaseMessagingService:
         """Send direct message"""
         db = await FirebaseMessagingService.get_db()
         
-        sender = await db.get_document('users', sender_id)
-        recipient = await db.get_user_by_sl_id(recipient_sl_id)
+        # ⚡ Bolt Optimization: Batch fetch sender and recipient concurrently
+        sender, recipient = await asyncio.gather(
+            db.get_document('users', sender_id),
+            db.get_user_by_sl_id(recipient_sl_id)
+        )
         
         if not recipient:
             raise ValueError("User not found")
