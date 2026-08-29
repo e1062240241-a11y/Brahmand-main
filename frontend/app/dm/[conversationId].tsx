@@ -408,7 +408,6 @@ const DMMessageItem = React.memo(({
           maxWidth: '78%'
         }}>
           <Pressable
-            delayPressIn={0}
             style={({ pressed }) => [
               styles.messageBubble,
               isOwnMessage && styles.ownMessageBubble,
@@ -2119,8 +2118,6 @@ const DirectMessageScreen = () => {
 
               <Pressable
                 style={styles.modalItem}
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                 onPress={() => closeChatOptions(handleToggleMute)}
                 disabled={muteLoading}
@@ -2132,8 +2129,6 @@ const DirectMessageScreen = () => {
 
               <Pressable
                 style={styles.modalItem}
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                 onPress={() => closeChatOptions(handleClearChat)}
               >
@@ -2144,8 +2139,6 @@ const DirectMessageScreen = () => {
 
               <Pressable
                 style={styles.modalItem}
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                 onPress={() => closeChatOptions(handleToggleBlock)}
               >
@@ -2156,8 +2149,6 @@ const DirectMessageScreen = () => {
 
               <Pressable
                 style={styles.modalItem}
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                 onPress={() => closeChatOptions(handleReportUser)}
               >

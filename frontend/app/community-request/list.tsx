@@ -428,7 +428,7 @@ export default function ActiveRequestsList() {
         if (type === 'other' && theme.label !== 'Other Help') return false;
       }
 
-      // Search query Filter
+      // Search query Filter 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const matchTitle = (req.title || '').toLowerCase().includes(query);

@@ -101,8 +101,6 @@ const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
     <Animated.View style={{ transform: [{ scale: scaleAnim }], overflow: 'hidden' }}>
       <Pressable
         style={style}
-        delayPressIn={0}
-        unstable_pressDelay={0}
         android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -1745,8 +1743,6 @@ function MessagesScreen({
             >
               <Pressable
                 style={styles.searchPressableArea}
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 onPress={() => searchInputRef.current?.focus()}
                 android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', foreground: true, borderless: false }}
               >
@@ -1765,8 +1761,6 @@ function MessagesScreen({
               </Pressable>
 
               <Pressable
-                delayPressIn={0}
-                unstable_pressDelay={0}
                 onPress={() => {
                   Keyboard.dismiss();
                   router.push('/dm/new');

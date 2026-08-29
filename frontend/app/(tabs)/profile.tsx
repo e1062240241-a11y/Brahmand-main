@@ -1788,7 +1788,6 @@ export default function ProfileScreen() {
                 ref={postListRef}
                 data={posts}
                 initialScrollIndex={Math.max(0, posts.findIndex((p: any) => p && p.id === selectedPost?.id))}
-                estimatedItemSize={480}
                 contentContainerStyle={{
                   paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
                 }}
@@ -1929,7 +1928,6 @@ export default function ProfileScreen() {
                       <SafeFlashList
                         data={parentComments}
                         keyExtractor={(item: any, index: number) => item && item.id ? String(item.id) : `comment-idx-${index}`}
-                        estimatedItemSize={100}
                         renderItem={({ item }: { item: any }) => {
                           const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                           const replies = repliesMap[item.id] || [];

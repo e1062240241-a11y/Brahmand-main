@@ -772,8 +772,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
       {/* Category Pills */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
         <Pressable 
-          delayPressIn={0}
-          unstable_pressDelay={0}
           style={[styles.catPill, selectedCategory === 'All' && styles.catPillActive]}
           android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressAll}
@@ -782,8 +780,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
           <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'सभी मंदिर' : 'All Temples'}</Text>
         </Pressable>
         <Pressable 
-          delayPressIn={0}
-          unstable_pressDelay={0}
           style={[styles.catPill, selectedCategory === 'Jyotirlinga' && styles.catPillActive]}
           android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressJyotirlinga}
@@ -792,8 +788,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
           <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'ज्योतिर्लिंग' : 'Jyotirlinga'}</Text>
         </Pressable>
         <Pressable 
-          delayPressIn={0}
-          unstable_pressDelay={0}
           style={[styles.catPill, selectedCategory === 'Sacred' && styles.catPillActive]}
           android_ripple={{ color: 'rgba(255, 102, 0, 0.18)', foreground: true, borderless: false }}
           onPress={onPressSacred}
@@ -836,7 +830,6 @@ const renderItem = useCallback(({ item }: { item: any }) => {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
-        estimatedItemSize={127}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         keyExtractor={keyExtractor}
