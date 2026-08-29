@@ -1,12 +1,16 @@
 // accessibility: placeholder
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, BackHandler } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SPACING } from '../../src/constants/theme';
 import { useTranslation } from '../../src/utils/i18n';
+import api from '../../src/services/api';
+
+const GUIDELINES_CACHE_KEY = '@community_guidelines_cache';
 
 const GUIDELINES = [
   {
@@ -55,6 +59,10 @@ export default function GuidelinesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
 
+  // State to hold guidelines data (starts with local GUIDELINES as fallback)
+  const [guidelines, setGuidelines] = useState(GUIDELINES);
+  const [loading, setLoading] = useState(true);
+
   const handleBack = useCallback(() => {
     if (router.canGoBack()) {
       router.back();
@@ -71,6 +79,33 @@ export default function GuidelinesScreen() {
     const subscription = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => subscription.remove();
   }, [handleBack]);
+
+  // Load cached guidelines first, then fetch fresh ones from backend
+  const fetchGuidelines = useCallback(async () => {
+    try {
+      // 1. Read saved cache from phone storage (fast!)
+      const cachedData = await AsyncStorage.getItem(GUIDELINES_CACHE_KEY);
+      if (cachedData) {
+        setGuidelines(JSON.parse(cachedData));
+      }
+
+      // 2. Fetch fresh guidelines from backend
+      const response = await api.get('/community/guidelines');
+      if (response.data && Array.isArray(response.data)) {
+        setGuidelines(response.data);
+        // 3. Save fresh guidelines to phone storage for next time
+        await AsyncStorage.setItem(GUIDELINES_CACHE_KEY, JSON.stringify(response.data));
+      }
+    } catch (error) {
+      console.log('[Guidelines] Using cached or default fallback guidelines');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGuidelines();
+  }, [fetchGuidelines]);
 
   const getGuidelineTranslation = (index: number) => {
     const hiData = [
@@ -107,11 +142,11 @@ export default function GuidelinesScreen() {
         description: 'दूसरों की गोपनीयता का सम्मान करें। सहमति के बिना अन्य सदस्यों की व्यक्तिगत जानकारी साझा न करें।',
       },
     ];
-    
+
     if (t('language') === 'hi') {
-      return hiData[index] || GUIDELINES[index];
+      return hiData[index] || guidelines[index] || GUIDELINES[index];
     }
-    return GUIDELINES[index];
+    return guidelines[index] || GUIDELINES[index];
   };
 
   return (
@@ -140,8 +175,8 @@ export default function GuidelinesScreen() {
                 {t('language') === 'hi' ? 'ब्रह्मांड में आपका स्वागत है' : 'Welcome to Brahmand'}
               </Text>
               <Text style={styles.introText}>
-                {t('language') === 'hi' 
-                  ? 'ये नियम हमें सभी भक्तों के लिए एक सम्मानजनक और सकारात्मक समुदाय बनाए रखने में मदद करते हैं। ब्रह्मांड का उपयोग करके, आप इन नियमों का पालन करने के लिए सहमत हैं।' 
+                {t('language') === 'hi'
+                  ? 'ये नियम हमें सभी भक्तों के लिए एक सम्मानजनक और सकारात्मक समुदाय बनाए रखने में मदद करते हैं। ब्रह्मांड का उपयोग करके, आप इन नियमों का पालन करने के लिए सहमत हैं।'
                   : 'These guidelines help us maintain a respectful and positive community for all devotees. By using Brahmand, you agree to follow these guidelines.'}
               </Text>
             </View>
@@ -150,7 +185,7 @@ export default function GuidelinesScreen() {
 
             {/* Guidelines List */}
             <View style={styles.guidelinesList}>
-              {GUIDELINES.map((guideline, index) => {
+              {guidelines.map((guideline, index) => {
                 const translated = getGuidelineTranslation(index);
                 return (
                   <React.Fragment key={index}>
@@ -163,7 +198,7 @@ export default function GuidelinesScreen() {
                         <Text style={styles.guidelineDescription}>{translated.description}</Text>
                       </View>
                     </View>
-                    {index < GUIDELINES.length - 1 && <View style={styles.itemDivider} />}
+                    {index < guidelines.length - 1 && <View style={styles.itemDivider} />}
                   </React.Fragment>
                 );
               })}
@@ -175,8 +210,8 @@ export default function GuidelinesScreen() {
             <View style={styles.footerBox}>
               <Ionicons name="information-circle" size={20} color="#EAB308" />
               <Text style={styles.footerText}>
-                {t('language') === 'hi' 
-                  ? 'इन नियमों के उल्लंघन के परिणामस्वरूप सामग्री को हटाया जा सकता है, खाता निलंबित किया जा सकता है, या स्थायी प्रतिबंध लगाया जा सकता है। यदि आप ऐसी सामग्री देखते हैं जो इन नियमों का उल्लंघन करती है, तो कृपया इसकी रिपोर्ट करें।' 
+                {t('language') === 'hi'
+                  ? 'इन नियमों के उल्लंघन के परिणामस्वरूप सामग्री को हटाया जा सकता है, खाता निलंबित किया जा सकता है, या स्थायी प्रतिबंध लगाया जा सकता है। यदि आप ऐसी सामग्री देखते हैं जो इन नियमों का उल्लंघन करती है, तो कृपया इसकी रिपोर्ट करें।'
                   : 'Violation of these guidelines may result in content removal, account suspension, or permanent ban. If you see content that violates these guidelines, please report it.'}
               </Text>
             </View>

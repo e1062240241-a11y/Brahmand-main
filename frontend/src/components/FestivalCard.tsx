@@ -1,6 +1,7 @@
 import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import ViewShot from 'react-native-view-shot';
+import { FONTS } from '../constants/theme';
 
 interface FestivalCardProps {
   festivalName: string;
@@ -69,14 +70,18 @@ export const FestivalCard = forwardRef<FestivalCardRef, FestivalCardProps>(
 
             {/* Download Link Section - Clean & Minimal */}
             <View style={styles.downloadSection}>
-              <Text style={styles.downloadLabel}>Download Brahmand App</Text>
+              <Text style={styles.downloadLabel}>
+                Download <Text style={styles.cinzelText}>Brahmand</Text> App
+              </Text>
               <Text style={styles.downloadLink}>play.google.com/store/apps/details?id=com.brahmand.app</Text>
             </View>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Made with ❤️ on Brahmand</Text>
+            <Text style={styles.footerText}>
+              Made with ❤️ on <Text style={styles.cinzelFooterText}>Brahmand</Text>
+            </Text>
           </View>
         </View>
       </ViewShot>
@@ -112,6 +117,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   festivalTitle: {
+    fontFamily: FONTS.brandTitle,
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFD700',
@@ -164,6 +170,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  cinzelText: {
+    fontFamily: FONTS.brandTitle,
+    fontWeight: '900',
+    color: '#1A1A1A',
+  },
+  cinzelFooterText: {
+    fontFamily: FONTS.brandTitle,
+    fontWeight: '900',
+    color: '#FFD700',
+  },
   downloadLink: {
     fontSize: 11,
     color: '#0066CC',
@@ -186,3 +202,5 @@ const styles = StyleSheet.create({
 });
 
 FestivalCard.displayName = 'FestivalCard';
+
+export default FestivalCard;

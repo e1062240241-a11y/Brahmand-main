@@ -84,9 +84,16 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
               const finalIcon = option.icon || defaultIcon;
 
               return (
-                <TouchableOpacity
+                <Pressable
                   key={idx}
-                  style={styles.optionRow}
+                  style={({ pressed }) => [
+                    styles.optionRow,
+                    pressed && { backgroundColor: isDestructive ? 'rgba(229, 57, 53, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
+                  ]}
+                  android_ripple={{
+                    color: isDestructive ? 'rgba(229, 57, 53, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                    borderless: false,
+                  }}
                   onPress={() => {
                     onClose();
                     // Small delay to let close animation start
@@ -102,7 +109,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                     {option.label}
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color="#BBB" />
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </View>

@@ -8,6 +8,7 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
+  Pressable,
   Modal,
   Platform,
   ActivityIndicator,
@@ -169,10 +170,20 @@ const getDMImageManipulator = async () => {
   return dmImageManipulator;
 };
 
-let dmContacts: typeof ContactsType | null = null;
+let dmContacts: any = null;
 const getDMContacts = async () => {
   if (!dmContacts) {
-    dmContacts = await import('expo-contacts');
+    try {
+      const mod = await import('expo-contacts');
+      dmContacts = mod?.default && typeof mod.default.requestPermissionsAsync === 'function' ? mod.default : mod;
+    } catch (e) {
+      try {
+        dmContacts = require('expo-contacts');
+      } catch (err) {
+        console.warn('[DM] expo-contacts module unavailable:', err);
+        dmContacts = null;
+      }
+    }
   }
   return dmContacts;
 };
@@ -322,7 +333,7 @@ type DMMessageItemProps = {
   item: Message;
   index: number;
   userId?: string;
-  renderMessageContent: (message: Message) => React.ReactNode;
+  renderMessageContent: (message: Message, isPressed?: boolean) => React.ReactNode;
   formatChatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
   showDateSeparator: boolean;
@@ -396,16 +407,18 @@ const DMMessageItem = React.memo(({
           flexShrink: 1,
           maxWidth: '78%'
         }}>
-          <View
-            style={[
+          <Pressable
+            delayPressIn={0}
+            style={({ pressed }) => [
               styles.messageBubble,
               isOwnMessage && styles.ownMessageBubble,
               isSharedPost && styles.sharedPostMessageBubble,
               isMediaMessage && styles.mediaMessageBubble,
+              pressed && !isSharedPost && !isMediaMessage && styles.messageBubblePressed,
             ]}
           >
-            {renderMessageContent(item)}
-          </View>
+            {({ pressed }) => renderMessageContent(item, pressed)}
+          </Pressable>
           {!isSharedPost && (
             <View style={[styles.messageFooter, isOwnMessage && styles.ownMessageFooter]}>
               <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
@@ -516,7 +529,6 @@ const DirectMessageScreen = () => {
   const [fullScreenMedia, setFullScreenMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [isRealtime, setIsRealtime] = useState(false);
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [muteLoading, setMuteLoading] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
@@ -595,8 +607,49 @@ const DirectMessageScreen = () => {
     }
   }, [router]);
 
-  const openChatOptions = () => setShowOptions(true);
-  const closeChatOptions = () => setShowOptions(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const optionsSheetAnim = useRef(new Animated.Value(350)).current;
+  const optionsBackdropAnim = useRef(new Animated.Value(0)).current;
+
+  const openChatOptions = useCallback(() => {
+    setShowOptions(true);
+    optionsSheetAnim.setValue(350);
+    optionsBackdropAnim.setValue(0);
+    Animated.parallel([
+      Animated.spring(optionsSheetAnim, {
+        toValue: 0,
+        damping: 24,
+        mass: 0.8,
+        stiffness: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(optionsBackdropAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [optionsSheetAnim, optionsBackdropAnim]);
+
+  const closeChatOptions = useCallback((callback?: () => void) => {
+    Animated.parallel([
+      Animated.timing(optionsSheetAnim, {
+        toValue: 350,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(optionsBackdropAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowOptions(false);
+      if (typeof callback === 'function') {
+        callback();
+      }
+    });
+  }, [optionsSheetAnim, optionsBackdropAnim]);
 
   const executeClearChat = async () => {
     if (!conversationId) return;
@@ -1400,8 +1453,13 @@ const DirectMessageScreen = () => {
 
     try {
       const contactsModule = await getDMContacts();
-      const permission = await contactsModule.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
+      const reqFn = contactsModule?.requestPermissionsAsync || contactsModule?.default?.requestPermissionsAsync;
+      if (typeof reqFn !== 'function') {
+        Alert.alert('Contacts unavailable', 'Contacts module is not available on this build. Please rebuild native app.');
+        return false;
+      }
+      const permission = await reqFn();
+      if (permission?.status !== 'granted') {
         Alert.alert('Permission required', 'Please allow contacts access to share phone contacts.');
         return false;
       }
@@ -1420,13 +1478,19 @@ const DirectMessageScreen = () => {
       if (!permissionGranted) return false;
 
       const contactsModule = await getDMContacts();
-      const contactResult = await contactsModule.getContactsAsync({
-        fields: [contactsModule.Fields.PhoneNumbers],
+      const getContactsFn = contactsModule?.getContactsAsync || contactsModule?.default?.getContactsAsync;
+      if (typeof getContactsFn !== 'function') {
+        return false;
+      }
+      const phoneFields = contactsModule?.Fields?.PhoneNumbers || contactsModule?.default?.Fields?.PhoneNumbers || 'phoneNumbers';
+      const sortType = contactsModule?.SortTypes?.FirstName || contactsModule?.default?.SortTypes?.FirstName;
+      const contactResult = await getContactsFn({
+        fields: [phoneFields],
         pageSize: 2000,
-        sort: contactsModule.SortTypes.FirstName,
+        sort: sortType,
       });
 
-      const contactsWithNumbers = (contactResult.data || []).filter((contact: ContactsType.Contact) => contact.phoneNumbers?.length);
+      const contactsWithNumbers = (contactResult?.data || []).filter((contact: any) => contact?.phoneNumbers?.length);
       setPhoneContacts(contactsWithNumbers);
       if (!contactsWithNumbers.length) {
         Alert.alert('No contacts found', 'No contacts with phone numbers were found on this device.');
@@ -1783,7 +1847,7 @@ const DirectMessageScreen = () => {
     return encodeURI(uri.trim());
   };
 
-  const renderMessageContent = useCallback((message: any) => {
+  const renderMessageContent = useCallback((message: any, isPressed?: boolean) => {
     const rawContent = message.content ?? message.text ?? '';
     const sourceUrl = typeof rawContent === 'string' ? rawContent.trim() : '';
     const safeSourceUrl = getSafeUri(sourceUrl);
@@ -1909,8 +1973,17 @@ const DirectMessageScreen = () => {
         ? message.content
         : JSON.stringify(message.content || {});
 
-    return <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>{fallbackText}</Text>;
-  }, [router]);
+    return (
+      <Text
+        style={[
+          styles.messageText,
+          message.sender_id === user?.id && styles.ownMessageText,
+        ]}
+      >
+        {fallbackText}
+      </Text>
+    );
+  }, [router, user?.id]);
 
   const isSameDay = (dateA: Date, dateB: Date) =>
     dateA.getFullYear() === dateB.getFullYear() &&
@@ -2012,33 +2085,87 @@ const DirectMessageScreen = () => {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Modal visible={showOptions} transparent animationType="fade" onRequestClose={closeChatOptions}>
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, SPACING.md) + 24 : Math.max(insets.bottom, SPACING.md) }]}>
-              <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
+        <Modal
+          visible={showOptions}
+          transparent
+          statusBarTranslucent={true}
+          animationType="none"
+          onRequestClose={() => closeChatOptions()}
+        >
+          <View style={styles.modalOverlay}>
+            <Animated.View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                  opacity: optionsBackdropAnim,
+                },
+              ]}
+            >
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => closeChatOptions()} />
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.modalContent,
+                {
+                  transform: [{ translateY: optionsSheetAnim }],
+                  paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, SPACING.md) + 24 : Math.max(insets.bottom, SPACING.md),
+                },
+              ]}
+            >
+              {/* Grab Handle */}
+              <View style={styles.modalHandleBar} />
+
+              <Pressable
+                style={styles.modalItem}
+                delayPressIn={0}
+                unstable_pressDelay={0}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
+                onPress={() => closeChatOptions(handleToggleMute)}
+                disabled={muteLoading}
+              >
                 <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{muteLoading ? dmT('pleaseWait') : isMuted ? dmT('unmuteChat') : dmT('muteChat')}</Text>
-              </TouchableOpacity>
+              </Pressable>
               <View style={styles.modalDivider} />
 
-              <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
+              <Pressable
+                style={styles.modalItem}
+                delayPressIn={0}
+                unstable_pressDelay={0}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
+                onPress={() => closeChatOptions(handleClearChat)}
+              >
                 <Ionicons name="trash-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{dmT('clearChat')}</Text>
-              </TouchableOpacity>
+              </Pressable>
               <View style={styles.modalDivider} />
 
-              <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
+              <Pressable
+                style={styles.modalItem}
+                delayPressIn={0}
+                unstable_pressDelay={0}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
+                onPress={() => closeChatOptions(handleToggleBlock)}
+              >
                 <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{isBlockedByMe ? dmT('unblockUser') : dmT('blockUser')}</Text>
-              </TouchableOpacity>
+              </Pressable>
               <View style={styles.modalDivider} />
 
-              <TouchableOpacity style={styles.modalItem} onPress={handleReportUser}>
+              <Pressable
+                style={styles.modalItem}
+                delayPressIn={0}
+                unstable_pressDelay={0}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
+                onPress={() => closeChatOptions(handleReportUser)}
+              >
                 <Ionicons name="warning-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{dmT('reportUser')}</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+              </Pressable>
+            </Animated.View>
+          </View>
         </Modal>
 
         <Modal visible={!!fullScreenMedia} transparent animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
@@ -2581,7 +2708,15 @@ const styles = StyleSheet.create({
   realtimeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,0,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, marginRight: 6 },
   realtimeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6B00', marginRight: 4 },
   realtimeText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' },
+  modalHandleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0E0E0',
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
   modalContent: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 32,
@@ -2643,6 +2778,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginRight: 8,
     marginLeft: 0
+  },
+  messageBubblePressed: {
+    backgroundColor: '#E0E0E0',
   },
   sharedPostMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, borderWidth: 0, marginLeft: 0, width: '100%', maxWidth: 340, alignSelf: 'flex-start' },
   mediaMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0, shadowColor: 'transparent', shadowRadius: 0, shadowOffset: { width: 0, height: 0 } },

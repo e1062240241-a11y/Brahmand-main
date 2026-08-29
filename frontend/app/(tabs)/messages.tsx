@@ -64,15 +64,16 @@ const USER_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 let initialCommunityFetchDone = false;
 let initialChatFetchDone = false;
 
-// 3D Press-In Depth animation helper component for chats
+// Subtle Press-In Depth animation helper component for chats with ripple
 const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.94, // Inward depth scale on Z-axis
-      friction: 6,
-      tension: 350,
+      toValue: 0.98, // Subtle inward depth scale
+      damping: 20,
+      mass: 0.6,
+      stiffness: 320,
       useNativeDriver: true,
     }).start();
   };
@@ -80,8 +81,9 @@ const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      friction: 5,
-      tension: 300,
+      damping: 20,
+      mass: 0.6,
+      stiffness: 320,
       useNativeDriver: true,
     }).start();
   };
@@ -96,9 +98,12 @@ const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
   };
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], overflow: 'hidden' }}>
       <Pressable
         style={style}
+        delayPressIn={0}
+        unstable_pressDelay={0}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={onPress}
@@ -260,6 +265,7 @@ function MessagesScreen({
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
   const segmentAnim = useRef(new Animated.Value(0)).current;
 
   const handleTabSwitch = (tab: 'Community' | 'Private Chat') => {
@@ -1723,38 +1729,54 @@ function MessagesScreen({
         ) : (
           <View style={styles.privateChatContent}>
             {/* Search Bar */}
-            <View style={[
-              styles.searchBarContainer,
-              isSearchFocused && {
-                borderColor: '#0088CC',
-                borderWidth: 1.5,
-                shadowColor: '#0088CC',
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                elevation: 5,
-                backgroundColor: '#FAFCFF',
-              }
-            ]}>
-              <Ionicons name="search" size={20} color={isSearchFocused ? '#0088CC' : '#8E8E93'} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={t('findPeopleGroups')}
-                placeholderTextColor="#8E8E93"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
+            <View
+              style={[
+                styles.searchBarContainer,
+                isSearchFocused && {
+                  borderColor: '#0088CC',
+                  borderWidth: 1.5,
+                  shadowColor: '#0088CC',
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 5,
+                  backgroundColor: '#FAFCFF',
+                }
+              ]}
+            >
+              <Pressable
+                style={styles.searchPressableArea}
+                delayPressIn={0}
+                unstable_pressDelay={0}
+                onPress={() => searchInputRef.current?.focus()}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', foreground: true, borderless: false }}
+              >
+                <Ionicons name="search" size={20} color={isSearchFocused ? '#0088CC' : '#8E8E93'} style={styles.searchIcon} />
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder={t('findPeopleGroups')}
+                  placeholderTextColor="#8E8E93"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                  autoCapitalize="none"
+                />
+              </Pressable>
+
+              <Pressable
+                delayPressIn={0}
+                unstable_pressDelay={0}
                 onPress={() => {
                   Keyboard.dismiss();
                   router.push('/dm/new');
                 }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                android_ripple={{ color: 'rgba(0, 0, 0, 0.16)', foreground: true, borderless: false }}
                 style={styles.composeButton}
               >
-                <Ionicons name="create-outline" size={20} color="#000000" />
-              </TouchableOpacity>
+                <Ionicons name="create-outline" size={22} color="#000000" />
+              </Pressable>
             </View>
 
             {/* Group Chats Section */}
@@ -2703,7 +2725,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 16,
-    paddingHorizontal: 16,
     height: 48,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.08)',
@@ -2712,6 +2733,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+    paddingRight: 6,
+  },
+  searchPressableArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: '100%',
+    paddingLeft: 16,
+    paddingRight: 8,
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
+    overflow: 'hidden',
   },
   searchIcon: {
     marginRight: 8,
@@ -2722,11 +2755,15 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     color: '#000000',
     paddingVertical: 8,
+    height: '100%',
   },
   composeButton: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   chatSection: {
     marginBottom: 20,

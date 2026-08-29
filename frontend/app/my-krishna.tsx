@@ -1,5 +1,5 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {View,
   Text,
   StyleSheet,
@@ -34,6 +34,42 @@ interface Message {
   content: string;
   timestamp: Date;
 }
+
+// ─── Shubh Vichar (Daily Spiritual Thoughts) ───────────────────────────────
+
+const SHUBH_VICHAR_LIST = [
+  'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।',
+  'शांति भीतर से आती है, बाहर न खोजें।',
+  'जो हुआ अच्छा हुआ, जो हो रहा है अच्छा हो रहा है।',
+  'मन ही मनुष्य का मित्र है और मन ही शत्रु।',
+  'विश्वास में ही ईश्वर का निवास है।',
+  'समत्वं योग उच्यते — समता ही योग है।',
+  'सत्य, अहिंसा और प्रेम ही धर्म का सार है।',
+  'परिवर्तन ही संसार का नियम है।',
+  'योगः कर्मसु कौशलम् — कर्म में कुशलता ही योग है।',
+  'चित्त शांत रखो, सब मार्ग स्वतः स्पष्ट होंगे।',
+  'क्रोध से भ्रम पैदा होता है, भ्रम से बुद्धि नष्ट होती है।',
+  'सदा प्रसन्न रहें, यही सबसे बड़ी भक्ति है।',
+  'अहिंसा परमो धर्मः — धर्म का मूल दया है।',
+  'ईश्वर हर हृदय में वास करते हैं।',
+  'धीरता और संयम ही मनुष्य के सच्चे आभूषण हैं।',
+  'भक्ति से ही मुक्ति का मार्ग प्रशस्त होता है।',
+];
+
+const getISTDateDetails = () => {
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const istDate = new Date(utcMs + 5.5 * 3600000);
+  const year = istDate.getFullYear();
+  const hours = istDate.getHours();
+  
+  const startOfYear = new Date(year, 0, 0);
+  const diff = istDate.getTime() - startOfYear.getTime();
+  const oneDay = 1000 * 60 * 60 * 24;
+  const dayOfYear = Math.floor(diff / oneDay);
+  
+  return { istDate, hours, dayOfYear };
+};
 
 // ─── Suggested prompts ───────────────────────────────────────────────────────
 
@@ -134,12 +170,55 @@ export default function MyKrishnaChat() {
   const { user } = useAuthStore();
   const displayName = user?.name?.trim() ? user.name.trim() : 'Partha';
 
+  // ─── IST Deterministic Shubh Vichar & Time-of-Day Greeting ─────────────────
+
+  const { shubhVichar, timeOfDayGreeting, gradientColors } = useMemo(() => {
+    const { hours, dayOfYear } = getISTDateDetails();
+    
+    // 1. Shubh Vichar index changes deterministically at midnight IST
+    const index = Math.abs(dayOfYear) % SHUBH_VICHAR_LIST.length;
+    const thought = SHUBH_VICHAR_LIST[index];
+
+    // 2. Time-of-day buckets in IST
+    let greeting = '';
+    let subtitle = '';
+    let colors: [string, string, string] = ['#FF8D57', '#EA9B76', '#FFEEE5'];
+
+    if (hours >= 5 && hours < 12) {
+      // Prabhat (Morning): 05:00 - 11:59
+      greeting = `Shubh Prabhat, ${displayName}! ☀️`;
+      subtitle = 'Mann ko shaant aur nikharne wala vichar share karein.';
+      colors = ['#FF9E6C', '#FFC3A0', '#FFF5EE'];
+    } else if (hours >= 12 && hours < 17) {
+      // Dopahar (Afternoon): 12:00 - 16:59
+      greeting = `Shubh Dopahar, ${displayName}! ☀️`;
+      subtitle = 'Karm hi sachhi bhakti hai.';
+      colors = ['#FF8D57', '#EA9B76', '#FFEEE5'];
+    } else if (hours >= 17 && hours < 22) {
+      // Sandhya (Evening): 17:00 - 21:59
+      greeting = `Shubh Sandhya, ${displayName}! 🪔`;
+      subtitle = 'Mann ko shaant karein.';
+      colors = ['#F07B42', '#D88A6E', '#FDEEE6'];
+    } else {
+      // Ratri (Night): 22:00 - 04:59
+      greeting = `Shubh Ratri, ${displayName}! 🌙`;
+      subtitle = 'Din bhar ke vicharo ko Krishna ko samarpit karein.';
+      colors = ['#D96B36', '#B2765E', '#F7E8E0'];
+    }
+
+    return {
+      shubhVichar: thought,
+      timeOfDayGreeting: { greeting, subtitle },
+      gradientColors: colors,
+    };
+  }, [displayName]);
+
   const defaultWelcomeMessage = useCallback((): Message => ({
     id: 'welcome',
     role: 'assistant',
-    content: `Jai Shri Krishna, ${displayName}! 🙏\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\nAaj mann mein kya chal raha hai?`,
+    content: `${timeOfDayGreeting.greeting}\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\n${timeOfDayGreeting.subtitle} Aaj mann mein kya chal raha hai?`,
     timestamp: new Date(),
-  }), [displayName]);
+  }), [timeOfDayGreeting]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -362,7 +441,7 @@ export default function MyKrishnaChat() {
       style={{ flex: 1 }}
     >
       <LinearGradient
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        colors={gradientColors}
         locations={[0, 0.1058, 0.2212]}
         style={styles.container}
       >
@@ -389,7 +468,12 @@ export default function MyKrishnaChat() {
                 source={require('../assets/images/my_krishna_avatar.webp')}
                 style={styles.headerAvatarImage}
               />
-              <Text style={styles.headerTitle}>My Krishn</Text>
+              <View style={styles.headerTitleColumn}>
+                <Text style={styles.headerTitle}>My Krishn</Text>
+                <Animated.Text style={[styles.shubhVicharText, { opacity: fadeAnim }]} numberOfLines={1}>
+                  ✨ {shubhVichar}
+                </Animated.Text>
+              </View>
             </View>
           </View>
 
@@ -547,11 +631,21 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  headerTitleColumn: {
+    justifyContent: 'center',
+    maxWidth: Dimensions.get('window').width - 160,
+  },
   headerTitle: {
     color: '#000000',
     fontSize: 16,
     fontFamily: FONTS.bold,
     fontWeight: '700',
+  },
+  shubhVicharText: {
+    color: 'rgba(0, 0, 0, 0.60)',
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    marginTop: 1,
   },
 
   // Loader

@@ -47,33 +47,8 @@ export const baseQuickAccess = [
     { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
 ];
 
-export const getDynamicQuickAccess = (offset: number = 0) => {
-    const hour = new Date().getHours();
-    let priorityOrder: string[] = [];
-
-    if (hour >= 4 && hour < 12) {
-        // Morning showcase: Panchang, My Krishn, Festival, Kundli, Library, Passport, SOS
-        priorityOrder = ['Panchang', 'My Krishn', 'Festival', 'Kundli', 'Brahmand Library', 'Brahmand Passport', 'SOS'];
-    } else if (hour >= 12 && hour < 17) {
-        // Afternoon showcase: Kundli, Brahmand Passport, Panchang, My Krishn, Festival, Brahmand Library, SOS
-        priorityOrder = ['Kundli', 'Brahmand Passport', 'Panchang', 'My Krishn', 'Festival', 'Brahmand Library', 'SOS'];
-    } else {
-        // Evening / Night showcase: Brahmand Library, My Krishn, Festival, Panchang, Kundli, Brahmand Passport, SOS
-        priorityOrder = ['Brahmand Library', 'My Krishn', 'Festival', 'Panchang', 'Kundli', 'Brahmand Passport', 'SOS'];
-    }
-
-    const sorted = [...baseQuickAccess].sort((a, b) => {
-        const idxA = priorityOrder.indexOf(a.label);
-        const idxB = priorityOrder.indexOf(b.label);
-        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-    });
-
-    if (offset > 0) {
-        const shift = offset % sorted.length;
-        return [...sorted.slice(shift), ...sorted.slice(0, shift)];
-    }
-
-    return sorted;
+export const getDynamicQuickAccess = (_offset: number = 0) => {
+    return baseQuickAccess;
 };
 
 export const formatFestivalDate = (dateStr: string) => {

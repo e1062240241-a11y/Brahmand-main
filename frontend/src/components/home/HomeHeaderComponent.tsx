@@ -59,6 +59,8 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             return;
         }
 
+        let intervalId: any = null;
+
         const updateTimer = () => {
             const now = new Date();
             const diffMs = targetLiveTime.getTime() - now.getTime();
@@ -80,9 +82,36 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             }
         };
 
-        updateTimer();
-        const intervalId = setInterval(updateTimer, 1000);
-        return () => clearInterval(intervalId);
+        const startTimer = () => {
+            updateTimer();
+            if (!intervalId) {
+                intervalId = setInterval(updateTimer, 1000);
+            }
+        };
+
+        const stopTimer = () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        };
+
+        if (AppState.currentState === 'active') {
+            startTimer();
+        }
+
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                startTimer();
+            } else {
+                stopTimer();
+            }
+        });
+
+        return () => {
+            stopTimer();
+            subscription.remove();
+        };
     }, [eventStatus, isLive, targetLiveTime]);
 
     // Live Pulse Animation Loop
@@ -219,6 +248,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesScrollRef,
     topFeaturesAutoScrollIndex,
     bannerScrollRef,
+    bannerAutoScrollIndex,
     isFocused,
     kathaStatus,
     quickAccessItems,
@@ -271,6 +301,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     topFeaturesScrollRef: any;
     topFeaturesAutoScrollIndex: any;
     bannerScrollRef: any;
+    bannerAutoScrollIndex?: React.MutableRefObject<number>;
     isFocused?: boolean;
     kathaStatus?: any;
     quickAccessItems?: any[];
@@ -284,6 +315,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
         player.muted = true;
+        try {
+            player.pause();
+        } catch (_e) { }
     });
 
     React.useEffect(() => {
@@ -311,7 +345,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
         const updatePlayback = (appState: string = AppState.currentState) => {
             const isAppActive = appState === 'active';
-            if (activeFocused && isAppActive && !videoError) {
+            const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === 0;
+            if (shouldPlay) {
                 try {
                     achPlayer.play();
                 } catch (err) {
@@ -338,7 +373,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 achPlayer.pause();
             } catch (_e) { }
         };
-    }, [achPlayer, isFocused, videoError]);
+    }, [achPlayer, isFocused, videoError, activeBannerIndex]);
     return (
         <View style={{ paddingTop: 4 }}>
 
@@ -731,8 +766,25 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             contentContainerStyle={{ gap: 12, paddingRight: 20 }}
                             onScroll={(e) => {
                                 const x = e.nativeEvent.contentOffset.x;
-                                const idx = Math.round(x / (screenWidth - 40));
-                                setActiveBannerIndex(idx);
+                                const itemWidth = screenWidth - 40 + 12;
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                if (idx !== activeBannerIndex) {
+                                    setActiveBannerIndex(idx);
+                                }
+                                if (bannerAutoScrollIndex) {
+                                    bannerAutoScrollIndex.current = idx;
+                                }
+                            }}
+                            onMomentumScrollEnd={(e) => {
+                                const x = e.nativeEvent.contentOffset.x;
+                                const itemWidth = screenWidth - 40 + 12;
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                if (idx !== activeBannerIndex) {
+                                    setActiveBannerIndex(idx);
+                                }
+                                if (bannerAutoScrollIndex) {
+                                    bannerAutoScrollIndex.current = idx;
+                                }
                             }}
                             scrollEventThrottle={16}
                         >
@@ -1461,6 +1513,19 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 </ImageBackground>
                             </View>
                         </ScrollView>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
+                            {[0, 1, 2].map((idx) => (
+                                <View
+                                    key={idx}
+                                    style={{
+                                        width: activeBannerIndex === idx ? 16 : 6,
+                                        height: 5,
+                                        borderRadius: 3,
+                                        backgroundColor: activeBannerIndex === idx ? '#FFD700' : 'rgba(255, 255, 255, 0.35)',
+                                    }}
+                                />
+                            ))}
+                        </View>
                     </View>
                 </View>
 

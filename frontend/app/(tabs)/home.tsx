@@ -190,6 +190,7 @@ export default function HomeScreen() {
   };
 
   const topFeaturesIntervalRef = useRef<any>(null);
+  const bannerIntervalRef = useRef<any>(null);
   const clockIntervalRef = useRef<any>(null);
 
   useEffect(() => {
@@ -285,19 +286,84 @@ export default function HomeScreen() {
     const CARD_WIDTH = featureSnapInterval || 185;
     const TOTAL_CARDS = quickAccessItems.length;
 
-    topFeaturesIntervalRef.current = setInterval(() => {
-      if (AppState.currentState !== 'active') return;
-      topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
-      topFeaturesScrollRef.current?.scrollTo({
-        x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
-        animated: true,
-      });
-    }, 5500);
+    const startTopFeatures = () => {
+      if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+      topFeaturesIntervalRef.current = setInterval(() => {
+        topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
+        topFeaturesScrollRef.current?.scrollTo({
+          x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
+          animated: true,
+        });
+      }, 5500);
+    };
+
+    const stopTopFeatures = () => {
+      if (topFeaturesIntervalRef.current) {
+        clearInterval(topFeaturesIntervalRef.current);
+        topFeaturesIntervalRef.current = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') {
+      startTopFeatures();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startTopFeatures();
+      } else {
+        stopTopFeatures();
+      }
+    });
 
     return () => {
-      if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+      stopTopFeatures();
+      appStateSub.remove();
     };
   }, [isFocused, quickAccessItems.length, featureSnapInterval]);
+
+  // Smooth lightweight auto-scroll for main hero banners (3 banners)
+  const bannerAutoScrollIndex = useRef(0);
+  useEffect(() => {
+    if (!isFocused) return;
+    const BANNER_CARD_WIDTH = (screenWidth - 40) + 12;
+    const TOTAL_BANNERS = 3;
+
+    const startBanner = () => {
+      if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
+      bannerIntervalRef.current = setInterval(() => {
+        bannerAutoScrollIndex.current = (bannerAutoScrollIndex.current + 1) % TOTAL_BANNERS;
+        bannerScrollRef.current?.scrollTo({
+          x: bannerAutoScrollIndex.current * BANNER_CARD_WIDTH,
+          animated: true,
+        });
+      }, 6000);
+    };
+
+    const stopBanner = () => {
+      if (bannerIntervalRef.current) {
+        clearInterval(bannerIntervalRef.current);
+        bannerIntervalRef.current = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') {
+      startBanner();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startBanner();
+      } else {
+        stopBanner();
+      }
+    });
+
+    return () => {
+      stopBanner();
+      appStateSub.remove();
+    };
+  }, [isFocused, screenWidth]);
 
   useEffect(() => {
     if (user?.id) {
@@ -731,6 +797,7 @@ export default function HomeScreen() {
         task.cancel();
         // Clear all background rotation/clock intervals on tab unfocus
         if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
+        if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
         if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
       };
     }, [])
@@ -1605,6 +1672,7 @@ export default function HomeScreen() {
       topFeaturesScrollRef={topFeaturesScrollRef}
       topFeaturesAutoScrollIndex={topFeaturesAutoScrollIndex}
       bannerScrollRef={bannerScrollRef}
+      bannerAutoScrollIndex={bannerAutoScrollIndex}
       isFocused={isFocused}
       kathaStatus={kathaStatus}
       quickAccessItems={quickAccessItems}

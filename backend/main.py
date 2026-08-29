@@ -317,8 +317,6 @@ def get_shared_client_session() -> aiohttp.ClientSession:
 async def get_db() -> FirestoreDB:
     """Get Firestore database wrapper"""
     client = await get_firestore()
-    if not client:
-        raise HTTPException(status_code=503, detail="Database unavailable")
     return FirestoreDB(client)
 
 
@@ -11012,7 +11010,7 @@ IDENTITY RULES:
 
     try:
         from datetime import datetime, timezone
-        db = await get_firestore()
+        db = await get_db()
         chat_data = await db.get_document('krishna_chats', user_id)
         if chat_data:
             db_messages = chat_data.get("messages", [])
@@ -11181,7 +11179,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         # Save to Firebase Firestore
         try:
             from datetime import datetime, timezone
-            db = await get_firestore()
+            db = await get_db()
             chat_ref = db.collection('krishna_chats').document(user_id)
 
             # Idempotency guard: skip append if the last two messages in Firestore
@@ -11243,7 +11241,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 async def get_chat_history(token_data: dict = Depends(verify_token)):
     """Fetch stored Krishna chat history from Firestore."""
     try:
-        db = await get_firestore()
+        db = await get_db()
         user_id = token_data["user_id"]
         chat_data = await db.get_document('krishna_chats', user_id)
         if chat_data:
@@ -11258,7 +11256,7 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
 async def delete_chat_history(token_data: dict = Depends(verify_token)):
     """Clear/delete Krishna chat history from Firestore."""
     try:
-        db = await get_firestore()
+        db = await get_db()
         user_id = token_data["user_id"]
         await db.delete_document('krishna_chats', user_id)
         return {"status": "success", "message": "Chat history cleared successfully"}

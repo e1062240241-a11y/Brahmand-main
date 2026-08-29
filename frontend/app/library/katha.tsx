@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,10 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from '../../src/components/SafeVideoView';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useIsFocused } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '../../src/services/api';
 
@@ -37,7 +40,11 @@ try {
   ScreenOrientation = require('expo-screen-orientation');
 } catch (_e) {}
 
-// API_URL from src/services/api automatically resolves 10.0.2.2 for Android Emulator, LAN IP for devices, and localhost for Web/iOS
+let RNShareModule: any = null;
+try {
+  RNShareModule = require('react-native-share');
+} catch (_e) {}
+
 const API_BASE_URL = (API_URL || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.webp');
 
@@ -69,6 +76,46 @@ interface KathaStatus {
   active_duration?: string;
 }
 
+// Deterministic IST Date Normalization across Hermes/V8/JSC
+const getISTDateObject = (dateInput?: Date | string | number) => {
+  const date = dateInput ? new Date(dateInput) : new Date();
+  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
+  const istMs = utcMs + 5.5 * 3600000;
+  const istDate = new Date(istMs);
+
+  const year = istDate.getFullYear();
+  const month = istDate.getMonth() + 1;
+  const day = istDate.getDate();
+  const isoString = `${year}-${month < 10 ? '0' : ''}${month}-${day < 10 ? '0' : ''}${day}`;
+  return { year, month, day, isoString };
+};
+
+const getTodayISTISO = (): string => getISTDateObject().isoString;
+
+const formatTime = (secs: number): string => {
+  if (!secs || isNaN(secs) || secs < 0) return '00:00';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) {
+    return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+};
+
+const KNOWN_EP_DURATIONS: Record<string, string> = {
+  saavan_katha_ep1: '14:12',
+  saavan_katha_ep2: '12:33',
+  saavan_katha_ep3: '14:47',
+  saavan_katha_ep4: '15:55',
+  saavan_katha_ep5: '15:30',
+  saavan_katha_ep6: '07:45',
+  saavan_katha_ep7: '06:01',
+  saavan_katha_ep8: '10:01',
+  saavan_katha_ep9: '06:50',
+  saavan_katha_ep10: '07:39',
+};
+
 export default function KathaPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -81,7 +128,6 @@ export default function KathaPage() {
   const [episodes, setEpisodes] = useState<KathaEpisode[]>([]);
   const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const [hasSyncedLive, setHasSyncedLive] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'LATEST' | 'PART1' | 'PART2'>('ALL');
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
@@ -92,32 +138,39 @@ export default function KathaPage() {
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
 
-  const formatEpisodeDate = (ep: KathaEpisode): string => {
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const getEpisodeISO = useCallback((ep: KathaEpisode): string => {
+    if (!ep) return '';
     const rawDate = ep.date;
-    if (rawDate && rawDate.length > 5 && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate !== '2026-08-13') {
+    if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
       return rawDate;
     }
     const epNum = ep.episode_number || 1;
-    const baseDate = new Date(2026, 7, 13); // 7 is August
+    const baseDate = new Date(2026, 7, 13); // 13 Aug 2026
     baseDate.setDate(baseDate.getDate() + (epNum - 1));
-    return baseDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+    return getISTDateObject(baseDate).isoString;
+  }, []);
 
-  const getTodayISTString = (): string => {
-    return new Date().toLocaleDateString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  const formatEpisodeDate = useCallback((ep: KathaEpisode): string => {
+    const iso = getEpisodeISO(ep);
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthName = months[parseInt(m, 10) - 1] || 'Aug';
+    return `${d} ${monthName} ${y}`;
+  }, [getEpisodeISO]);
 
-  const isEpisodeToday = (ep: KathaEpisode): boolean => {
+  const isEpisodeToday = useCallback((ep: KathaEpisode): boolean => {
     if (!ep) return false;
-    const formattedEpDate = formatEpisodeDate(ep);
-    const todayStr = getTodayISTString();
-    return formattedEpDate === todayStr;
-  };
+    return getEpisodeISO(ep) === getTodayISTISO();
+  }, [getEpisodeISO]);
 
   const maxEpisodeNumber = useMemo(() => {
     if (!episodes || episodes.length === 0) return 0;
@@ -136,25 +189,9 @@ export default function KathaPage() {
       list = episodes.filter(e => (e.episode_number || 0) > 10);
     }
     return list.sort((a, b) => (b.episode_number || 0) - (a.episode_number || 0));
-  }, [episodes, activeFilter, maxEpisodeNumber]);
+  }, [episodes, activeFilter, isEpisodeToday, maxEpisodeNumber]);
 
-  const handleShareKatha = async () => {
-    try {
-      const activeThumbnail = activeEpisode?.thumbnail_url || 'https://pub-f55a153205ef4aefbe1a704a29ecabfa.r2.dev/shravan_katha_banner.jpg';
-      const shareTitle = isUserSelectedOldEpisode && activeEpisode?.title ? activeEpisode.title : 'श्रावण कथा — ब्रह्मांड ऐप';
-      const shareMessage = `🔱 *ब्रह्मांड (Brahmand) — श्रावण कथा* 🚩\n\n${shareTitle}\n\nपरम पूज्य आचार्य शमिक पाठक जी की दिव्य वाणी में प्रतिदिन प्रातः 8:00 AM पर लाइव कथा का आनंद लें।\n\n📱 कथा देखने एवं ऐप डाउनलोड हेतु:\nhttps://brahmand.app/download`;
-
-      await Share.share({
-        message: shareMessage,
-        url: activeThumbnail,
-        title: shareTitle,
-      });
-    } catch (error) {
-      console.warn('Error sharing katha:', error);
-    }
-  };
-
-  // Custom Hotstar Minimalist Player States
+  // Video & Controls State
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
@@ -168,16 +205,60 @@ export default function KathaPage() {
   const [userSelectedEpisode, setUserSelectedEpisode] = useState<KathaEpisode | null>(null);
   const [epDurations, setEpDurations] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      AsyncStorage.getItem('KATHA_EP_DURATIONS').then((val: string | null) => {
-        if (val) {
-          try { setEpDurations(JSON.parse(val)); } catch (_e) {}
-        }
-      }).catch(() => {});
-    } catch (_e) {}
+  // Debounced AsyncStorage persistence for epDurations
+  const pendingDurationsRef = useRef<Record<string, string>>({});
+  const debounceStorageTimer = useRef<any>(null);
+
+  const persistDurationsDebounced = useCallback((durations: Record<string, string>) => {
+    pendingDurationsRef.current = durations;
+    if (debounceStorageTimer.current) clearTimeout(debounceStorageTimer.current);
+    debounceStorageTimer.current = setTimeout(async () => {
+      try {
+        await AsyncStorage.setItem('KATHA_EP_DURATIONS', JSON.stringify(pendingDurationsRef.current));
+      } catch (_e) {}
+    }, 1500);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('KATHA_EP_DURATIONS')
+      .then((val: string | null) => {
+        if (active && val) {
+          try {
+            const parsed = JSON.parse(val);
+            setEpDurations(parsed);
+            pendingDurationsRef.current = parsed;
+          } catch (_e) {}
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+      if (debounceStorageTimer.current) clearTimeout(debounceStorageTimer.current);
+    };
+  }, []);
+
+  // Physical Screen Orientation Lock replacing 90-deg transform hack
+  useEffect(() => {
+    const handleOrientationChange = async () => {
+      try {
+        if (ScreenOrientation && typeof ScreenOrientation.lockAsync === 'function') {
+          if (isLandscape) {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+          } else {
+            await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+          }
+        }
+      } catch (_e) {}
+    };
+    handleOrientationChange();
+    return () => {
+      if (ScreenOrientation && typeof ScreenOrientation.lockAsync === 'function') {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      }
+    };
+  }, [isLandscape]);
+
   const isUserSelectedOldEpisode = !!userSelectedEpisode;
   const activeVideoUrl = isUserSelectedOldEpisode
     ? (userSelectedEpisode?.video_url || '')
@@ -215,27 +296,23 @@ export default function KathaPage() {
       try {
         if (!isPlayerValid(player)) return;
 
-        // Auto-play
         player.play();
         setIsPlaying(true);
 
-        // Calculate live broadcast offset using real-time device clock vs broadcast start time
-        if (status.is_live && !isUserSelectedOldEpisode) {
-          if (status.current_broadcast_start_time) {
-            const realTimeNowMs = Date.now();
-            const startTimeMs = new Date(status.current_broadcast_start_time).getTime();
-            const offsetSeconds = Math.max(0, (realTimeNowMs - startTimeMs) / 1000);
+        if (status.is_live && !isUserSelectedOldEpisode && status.current_broadcast_start_time) {
+          const realTimeNowMs = Date.now();
+          const startTimeMs = new Date(status.current_broadcast_start_time).getTime();
+          const offsetSeconds = Math.max(0, (realTimeNowMs - startTimeMs) / 1000);
 
-            if (offsetSeconds > 0) {
-              const currentPos = typeof player.currentTime === 'number' ? player.currentTime : 0;
-              if (Math.abs(currentPos - offsetSeconds) > 1.5) {
+          if (offsetSeconds > 0) {
+            const currentPos = typeof player.currentTime === 'number' ? player.currentTime : 0;
+            if (Math.abs(currentPos - offsetSeconds) > 1.5) {
+              try {
+                player.currentTime = offsetSeconds;
+              } catch (_e) {
                 try {
-                  player.currentTime = offsetSeconds;
-                } catch (_e) {
-                  try {
-                    if (typeof player.seekTo === 'function') player.seekTo(offsetSeconds);
-                  } catch (_e2) {}
-                }
+                  if (typeof player.seekTo === 'function') player.seekTo(offsetSeconds);
+                } catch (_e2) {}
               }
             }
           }
@@ -247,13 +324,13 @@ export default function KathaPage() {
     const interval = setInterval(() => {
       attempts++;
       syncAndPlay();
-      if (attempts >= 6) clearInterval(interval);
+      if (attempts >= 5) clearInterval(interval);
     }, 600);
 
     return () => clearInterval(interval);
-  }, [player, activeVideoUrl, status.is_live, status.server_time_ist, status.current_broadcast_start_time, isUserSelectedOldEpisode]);
+  }, [player, activeVideoUrl, status.is_live, status.current_broadcast_start_time, isUserSelectedOldEpisode]);
 
-  // Track playback time and duration every 500ms
+  // Track playback time & duration cleanly
   useEffect(() => {
     if (!isPlayerValid(player)) return;
 
@@ -271,10 +348,7 @@ export default function KathaPage() {
               setEpDurations(prev => {
                 if (prev[activeId] === formatted) return prev;
                 const next = { ...prev, [activeId]: formatted };
-                try {
-                  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-                  AsyncStorage.setItem('KATHA_EP_DURATIONS', JSON.stringify(next));
-                } catch (_e) {}
+                persistDurationsDebounced(next);
                 return next;
               });
             }
@@ -284,9 +358,9 @@ export default function KathaPage() {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [player, userSelectedEpisode?.id, activeEpisode?.id]);
+  }, [player, userSelectedEpisode?.id, activeEpisode?.id, persistDurationsDebounced]);
 
-  // Zero-Heat Thermal & Background Management: Instantly pause video when screen loses focus or app goes to background
+  // Zero-Heat Thermal & Background Cleanup
   useEffect(() => {
     const handlePause = () => {
       if (isPlayerValid(player)) {
@@ -312,23 +386,22 @@ export default function KathaPage() {
     };
   }, [isFocused, player]);
 
-  // Auto-hide custom Hotstar controls after 3.5 seconds
-  const resetControlsTimer = () => {
+  const resetControlsTimer = useCallback(() => {
     setShowControls(true);
     if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
     hideControlsTimer.current = setTimeout(() => {
       setShowControls(false);
     }, 3500);
-  };
+  }, []);
 
   useEffect(() => {
     resetControlsTimer();
     return () => {
       if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
     };
-  }, [activeVideoUrl]);
+  }, [activeVideoUrl, resetControlsTimer]);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     resetControlsTimer();
     Animated.sequence([
       Animated.timing(playScale, {
@@ -354,56 +427,32 @@ export default function KathaPage() {
         setIsPlaying(true);
       }
     } catch (_e) {}
-  };
+  }, [player, isPlaying, playScale, resetControlsTimer]);
 
-  const toggleShowHideControls = () => {
+  const toggleShowHideControls = useCallback(() => {
     if (showControls) {
       setShowControls(false);
       if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
     } else {
       resetControlsTimer();
     }
-  };
+  }, [showControls, resetControlsTimer]);
 
-  const toggleRotation = () => {
+  const toggleRotation = useCallback(() => {
     resetControlsTimer();
     setIsLandscape(prev => !prev);
-  };
+  }, [resetControlsTimer]);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     resetControlsTimer();
     if (!isPlayerValid(player)) return;
     try {
       player.muted = !isMuted;
       setIsMuted(!isMuted);
     } catch (_e) {}
-  };
+  }, [player, isMuted, resetControlsTimer]);
 
-  const formatTime = (secs: number): string => {
-    if (!secs || isNaN(secs) || secs < 0) return '00:00';
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    const s = Math.floor(secs % 60);
-    if (h > 0) {
-      return `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-    }
-    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  const KNOWN_EP_DURATIONS: Record<string, string> = {
-    saavan_katha_ep1: '14:12',
-    saavan_katha_ep2: '12:33',
-    saavan_katha_ep3: '14:47',
-    saavan_katha_ep4: '15:55',
-    saavan_katha_ep5: '15:30',
-    saavan_katha_ep6: '07:45',
-    saavan_katha_ep7: '06:01',
-    saavan_katha_ep8: '10:01',
-    saavan_katha_ep9: '06:50',
-    saavan_katha_ep10: '07:39',
-  };
-
-  const formatDurationString = (dur: any, epId?: string, isSelectedEp?: boolean): string => {
+  const formatDurationString = useCallback((dur: any, epId?: string, isSelectedEp?: boolean): string => {
     if (isSelectedEp && duration > 0) {
       return formatTime(duration);
     }
@@ -418,11 +467,10 @@ export default function KathaPage() {
     const s = String(dur).trim();
     if (s.startsWith('00:')) return s.slice(3);
     return s;
-  };
+  }, [duration, epDurations]);
 
-  const handleSeek = (e: any) => {
+  const handleSeek = useCallback((e: any) => {
     resetControlsTimer();
-    // Strictly block seeking during live broadcast
     if (status.is_live && !isUserSelectedOldEpisode) return;
     if (!isPlayerValid(player) || duration <= 0 || seekBarWidth <= 0) return;
     const clickX = e.nativeEvent.locationX;
@@ -438,17 +486,14 @@ export default function KathaPage() {
       }
       setCurrentTime(targetSeconds);
     } catch (_e) {}
-  };
+  }, [player, duration, seekBarWidth, status.is_live, isUserSelectedOldEpisode, resetControlsTimer]);
 
-  const fetchKathaData = async () => {
-    // console.log('[KathaPage] API_BASE_URL =', API_BASE_URL);
-    // console.log('[KathaPage] Fetching:', `${API_BASE_URL}/api/katha/episodes`);
+  const fetchKathaData = useCallback(async () => {
     try {
-      // 1. Fetch status
       const statusRes = await fetch(`${API_BASE_URL}/api/katha/status`);
-      if (statusRes.ok) {
+      if (statusRes.ok && isMountedRef.current) {
         const statusJson = await statusRes.json();
-        if (statusJson.status === 'success') {
+        if (statusJson.status === 'success' && isMountedRef.current) {
           setStatus({
             is_live: statusJson.is_live,
             mode: statusJson.mode,
@@ -461,70 +506,142 @@ export default function KathaPage() {
             active_video_url: statusJson.active_video_url || statusJson.prefetched_video_url,
           });
           if (statusJson.prefetched_video_url) {
-            try {
-              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-              AsyncStorage.setItem('PREFETCHED_KATHA_URL', statusJson.prefetched_video_url);
-            } catch (_e) {}
+            AsyncStorage.setItem('PREFETCHED_KATHA_URL', statusJson.prefetched_video_url).catch(() => {});
           }
         }
       }
 
-      // 2. Fetch episodes
-      // console.log('[KathaPage] Fetching episodes from:', `${API_BASE_URL}/api/katha/episodes`);
       const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
-      // console.log('[KathaPage] Episodes response status:', epRes.status);
-      if (epRes.ok) {
+      if (epRes.ok && isMountedRef.current) {
         const epJson = await epRes.json();
-        // console.log('[KathaPage] Episodes received:', JSON.stringify(epJson.episodes?.map((e: any) => ({ id: e.id, title: e.title, video_url: e.video_url }))));
-        if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
+        if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0 && isMountedRef.current) {
           setEpisodes(epJson.episodes);
-
-          // Select today's episode if available, else latest released episode
           const todayEp = epJson.episodes.find((e: KathaEpisode) => isEpisodeToday(e));
           const latestEp = todayEp || epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
             return (prev.episode_number || 0) > (current.episode_number || 0) ? prev : current;
           });
           setActiveEpisode(latestEp);
-          // console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
-        } else {
-          console.warn('[KathaPage] API returned empty episodes');
+        } else if (isMountedRef.current) {
           setEpisodes([]);
           setActiveEpisode(null);
         }
-      } else {
-        console.warn('[KathaPage] Episode fetch failed with status:', epRes.status);
+      } else if (isMountedRef.current) {
         setEpisodes([]);
         setActiveEpisode(null);
       }
     } catch (err) {
-      console.warn('[KathaPage] Error fetching data:', err);
-      setEpisodes([]);
-      setActiveEpisode(null);
+      if (isMountedRef.current) {
+        console.warn('[KathaPage] Error fetching data:', err);
+        setEpisodes([]);
+        setActiveEpisode(null);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [isEpisodeToday]);
 
-  // Fetch status and episodes when screen is focused
   useEffect(() => {
     if (!isFocused) return;
     fetchKathaData();
-  }, [isFocused]);
+  }, [isFocused, fetchKathaData]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchKathaData();
-  };
+  }, [fetchKathaData]);
 
-  const handleSelectEpisode = (ep: KathaEpisode) => {
+  const handleSelectEpisode = useCallback((ep: KathaEpisode) => {
     setUserSelectedEpisode(ep);
     setActiveEpisode(ep);
     setIsPlaying(true);
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollTo({ y: 0, animated: true });
     }
-  };
+  }, []);
+
+  const handleShareKatha = useCallback(async () => {
+    try {
+      const shareTitle = isUserSelectedOldEpisode && activeEpisode?.title ? activeEpisode.title : 'श्रावण कथा — ब्रह्मांड ऐप';
+      const activeThumbnail = activeEpisode?.thumbnail_url || 'https://pub-f55a153205ef4aefbe1a704a29ecabfa.r2.dev/shravan_katha_banner.jpg';
+      const shareMessage = `🔱 *श्रावण का पावन पर्व, अब आपके मोबाइल पर!* 🔱\n\n${shareTitle}\n\nसुनिए *परम पूज्य आचार्य शमिक पाठक जी* की दिव्य वाणी में *श्रावण कथा*, प्रतिदिन प्रातः 8:00 AM।\n\n🕉️ ज्ञान, भक्ति और शांति का अनूठा संगम।\n\n📲 *अभी देखें और ऐप डाउनलोड करें:*\n🔗 https://brahmand.app/download\n\n🚩 *ब्रह्मांड (Brahmand) ऐप* 🚩`;
+
+      let sharedWithImage = false;
+
+      if (activeThumbnail) {
+        try {
+          const isSharingAvailable = await Sharing.isAvailableAsync();
+          const ext = activeThumbnail.includes('.png') ? 'png' : 'jpg';
+          const dir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
+
+          const cleanName = (shareTitle || 'Shravan_Shiv_Katha')
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .trim()
+            .replace(/\s+/g, '_') || 'Shravan_Shiv_Katha';
+          const localFileUri = `${dir}${cleanName}.${ext}`;
+
+          const downloadRes = await FileSystem.downloadAsync(activeThumbnail, localFileUri);
+          if (downloadRes.status === 200) {
+            try {
+              const ShareNative = RNShareModule?.default || RNShareModule;
+              if (ShareNative && typeof ShareNative.open === 'function') {
+                const shareOptions: any = {
+                  title: shareTitle,
+                  subject: shareTitle,
+                  message: shareMessage,
+                  url: downloadRes.uri,
+                  type: ext === 'png' ? 'image/png' : 'image/jpeg',
+                  filename: shareTitle,
+                  failOnCancel: false,
+                };
+
+                await ShareNative.open(shareOptions);
+                sharedWithImage = true;
+              }
+            } catch (rnShareErr: any) {
+              const errStr = String(rnShareErr?.message || rnShareErr || '').toLowerCase();
+              if (errStr.includes('cancel') || errStr.includes('dismiss')) {
+                return;
+              }
+            }
+
+            if (!sharedWithImage && isSharingAvailable) {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: ext === 'png' ? 'image/png' : 'image/jpeg',
+                dialogTitle: shareTitle,
+                UTI: ext === 'png' ? 'public.png' : 'public.jpeg',
+              });
+              sharedWithImage = true;
+            }
+          }
+        } catch (imageErr) {
+          console.warn('Image download/share fallback to standard RN Share:', imageErr);
+        }
+      }
+
+      if (!sharedWithImage) {
+        await Share.share(
+          Platform.OS === 'ios'
+            ? {
+                message: shareMessage,
+                url: 'https://brahmand.app/download',
+                title: shareTitle,
+              }
+            : {
+                message: shareMessage,
+                title: shareTitle,
+              }
+        );
+      }
+    } catch (error: any) {
+      const errStr = String(error?.message || error || '').toLowerCase();
+      if (!errStr.includes('cancel') && !errStr.includes('dismiss')) {
+        console.warn('Error sharing katha:', error);
+      }
+    }
+  }, [isUserSelectedOldEpisode, activeEpisode]);
 
   const renderPlayerContent = (isModal: boolean) => {
     const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
@@ -547,10 +664,8 @@ export default function KathaPage() {
           <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
         )}
 
-        {/* Hotstar Minimalist Control Overlay (No Seeking Bar, Clean Transparent Look) */}
         {showControls && (status.is_live || isUserSelectedOldEpisode) && (
           <Pressable style={styles.hotstarOverlay} onPress={toggleShowHideControls}>
-            {/* Top Badge Info & Landscape Back Button */}
             <View style={styles.hotstarTopRow} pointerEvents="box-none">
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 {isModal && (
@@ -558,7 +673,6 @@ export default function KathaPage() {
                     <Ionicons name="arrow-back" size={22} color="#FFF" />
                   </TouchableOpacity>
                 )}
-                {/* Top Left Day Katha Video Clean Text with Red Vertical Line */}
                 <View style={{ width: 3.5, height: 16, backgroundColor: '#FF0000', borderRadius: 2, marginRight: 6 }} />
                 <Text style={styles.topLeftKathaTitle}>
                   {activeEpisode ? `DAY ${activeEpisode.episode_number} • KATHA VIDEO` : 'KATHA VIDEO'}
@@ -582,7 +696,6 @@ export default function KathaPage() {
                   </View>
                 )}
 
-                {/* Close Player button when off-air and viewing old episode */}
                 {!status.is_live && isUserSelectedOldEpisode && !isModal && (
                   <TouchableOpacity
                     style={{
@@ -602,7 +715,6 @@ export default function KathaPage() {
               </View>
             </View>
 
-            {/* Center Big Play/Pause Button (No Circle, Thicker Icon, Smooth Scale Animation) */}
             <Pressable
               onPress={togglePlayPause}
               style={{ alignSelf: 'center', padding: 20 }}
@@ -622,9 +734,7 @@ export default function KathaPage() {
               </Animated.View>
             </Pressable>
 
-            {/* Bottom Control Bar */}
             <View style={styles.hotstarBottomBar} pointerEvents="box-none">
-              {/* Live Broadcast Elapsed Timer Display (Non-Seekable) */}
               {status.is_live && !isUserSelectedOldEpisode && (
                 <View style={styles.liveTimerContainer} pointerEvents="none">
                   <View style={styles.liveDotSmall} />
@@ -632,7 +742,6 @@ export default function KathaPage() {
                 </View>
               )}
 
-              {/* Seek Bar & Progress Display for Recorded Library Episodes */}
               {isUserSelectedOldEpisode && duration > 0 && (
                 <View style={styles.seekBarContainer} pointerEvents="auto">
                   <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
@@ -675,7 +784,6 @@ export default function KathaPage() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Video Rotate / Fullscreen Button on Right Bottom */}
                 <TouchableOpacity
                   style={styles.bottomControlBtn}
                   onPress={toggleRotation}
@@ -694,6 +802,14 @@ export default function KathaPage() {
     );
   };
 
+  const handleScroll = useMemo(
+    () => Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+      { useNativeDriver: true }
+    ),
+    [scrollY]
+  );
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -703,27 +819,17 @@ export default function KathaPage() {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Fullscreen 90-Degree Landscape Modal */}
+      {/* Fullscreen Native Landscape Modal */}
       <Modal
         visible={isLandscape}
-        animationType="none"
+        animationType="fade"
         transparent={false}
         statusBarTranslucent
         onRequestClose={() => setIsLandscape(false)}
       >
-        <View style={styles.landscapeModalContainer}>
+        <View style={styles.landscapeModalNativeContainer}>
           <StatusBar hidden={isLandscape} />
-          <View
-            style={{
-              width: windowHeight,
-              height: windowWidth,
-              transform: [{ rotate: '90deg' }],
-              backgroundColor: '#000000',
-              overflow: 'hidden',
-            }}
-          >
-            {renderPlayerContent(true)}
-          </View>
+          {renderPlayerContent(true)}
         </View>
       </Modal>
 
@@ -743,16 +849,12 @@ export default function KathaPage() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {/* Main Player & Hotstar Custom Minimalist Controls (Only shown when Live or Episode Selected) */}
         {(status.is_live || isUserSelectedOldEpisode) && (
           <>
             <Animated.View style={[
@@ -778,7 +880,6 @@ export default function KathaPage() {
             ]}>
               <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
                 {renderPlayerContent(false)}
-                {/* Scroll-driven Black Overlay Mask */}
                 <Animated.View
                   pointerEvents="none"
                   style={[
@@ -796,7 +897,6 @@ export default function KathaPage() {
               </View>
             </Animated.View>
 
-            {/* Active Details / Banner Info */}
             <View style={styles.activeDetails}>
               {status.is_live && isUserSelectedOldEpisode && (
                 <TouchableOpacity
@@ -828,7 +928,6 @@ export default function KathaPage() {
                 {isUserSelectedOldEpisode ? 'कथा अध्याय' : status.banner_message}
               </Text>
 
-              {/* Back to All Episodes Button when off-air and watching selected video */}
               {!status.is_live && isUserSelectedOldEpisode && (
                 <TouchableOpacity
                   style={styles.backToEpisodesBtn}
@@ -843,7 +942,6 @@ export default function KathaPage() {
           </>
         )}
 
-        {/* Episode Library Section (Shown when no episode is playing or when Live) */}
         {(!isUserSelectedOldEpisode || status.is_live) && (
           <View style={styles.librarySection}>
             <View style={styles.sectionHeader}>
@@ -851,7 +949,6 @@ export default function KathaPage() {
               <Text style={styles.sectionTitle}>Shravan Katha Episodes</Text>
             </View>
 
-            {/* Quick Filter Bar */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -918,7 +1015,6 @@ export default function KathaPage() {
                           onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                         />
 
-                        {/* TODAY Video Badge Overlay */}
                         {isToday && (
                           <View style={styles.newBadgePill}>
                             <View style={styles.newBadgeDot} />
@@ -988,9 +1084,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 244, 235, 0.90)', // Glassmorphism translucent warm amber tint
+    backgroundColor: 'rgba(255, 244, 235, 0.90)',
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 107, 0, 0.25)', // Subtle warm amber glass border
+    borderColor: 'rgba(255, 107, 0, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#FF6B00',
@@ -1017,10 +1113,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 27,
     fontWeight: '800',
-    color: '#2A1508', // Rich Sacred Dark Amber
+    color: '#2A1508',
     fontFamily: Platform.OS === 'ios' ? 'Devanagari Sangam MN' : 'serif',
     letterSpacing: 0.4,
-    textShadowColor: 'rgba(255, 107, 0, 0.25)', // Elegant 3D Warm Glow Shadow
+    textShadowColor: 'rgba(255, 107, 0, 0.25)',
     textShadowOffset: { width: 1, height: 1.5 },
     textShadowRadius: 2.5,
   },
@@ -1040,24 +1136,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
-  },
-  offAirContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#111',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  offAirTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  offAirSub: {
-    color: '#CCC',
-    fontSize: 14,
-    marginTop: 5,
   },
   videoPlayer: {
     width: '100%',
@@ -1125,32 +1203,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     marginRight: 6,
   },
-  centerPlayBtn: {
-    alignSelf: 'center',
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: 'rgba(255,107,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  fullscreenPlayerContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    backgroundColor: '#000',
-  },
   fullscreenPlayerWrapper: {
     width: '100%',
     height: '100%',
@@ -1159,11 +1211,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  landscapeModalContainer: {
+  landscapeModalNativeContainer: {
     flex: 1,
     backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   hotstarBottomBar: {
     backgroundColor: 'transparent',
@@ -1232,29 +1284,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  liveStreamLabelWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,0,0,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,0,0,0.4)',
-  },
-  smallRedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FF0000',
-    marginRight: 6,
-  },
-  liveStreamLabelText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   activeDetails: {
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -1282,46 +1311,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 18,
     flexWrap: 'wrap',
-  },
-  shareBannerBtn: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFF8F2',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 0, 0.3)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    shadowColor: '#FF6B00',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  shareBannerText: {
-    flex: 1,
-    marginLeft: 10,
-    marginRight: 8,
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#3D2418',
-  },
-  descriptionBox: {
-    marginTop: 10,
-  },
-  descriptionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FF6B00',
-    marginBottom: 4,
-  },
-  descriptionText: {
-    fontSize: 13,
-    color: '#4A3B32',
-    lineHeight: 20,
-    fontWeight: '400',
   },
   backToEpisodesBtn: {
     flexDirection: 'row',
@@ -1369,11 +1358,11 @@ const styles = StyleSheet.create({
   },
   episodeBoxCard: {
     width: '48%',
-    backgroundColor: '#FFFFF0', // Light Yellow tint
+    backgroundColor: '#FFFFF0',
     borderRadius: 16,
     padding: 9,
     borderWidth: 1.2,
-    borderColor: 'rgba(255,107,0,0.2)', // Light neutral/subtle border by default
+    borderColor: 'rgba(255,107,0,0.2)',
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -1381,7 +1370,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   episodeCardSelected: {
-    borderColor: '#7B2CBF', // Vibrant Purple border on selected card
+    borderColor: '#7B2CBF',
     backgroundColor: '#FFFDEB',
     borderWidth: 2.2,
     elevation: 4,
@@ -1423,11 +1412,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
-  },
-  episodeMeta: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
   },
   epHeaderRow: {
     flexDirection: 'row',
