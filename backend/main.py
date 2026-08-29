@@ -2537,18 +2537,20 @@ async def get_users_batch(
     safe_ids = user_ids[:100]
     
     result = []
-    # Fetching in one batch call is much more efficient than parallel individual calls
-    users = await db.get_documents_batch('users', safe_ids)
+    # ⚡ Bolt Optimization: Replace db.get_documents_batch with asyncio.gather
+    # to avoid threadpool exhaustion and ensure safe hydration
+    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids))
     
     for user in users:
-        result.append({
-            "id": user.get('id'),
-            "name": user.get('name'),
-            "sl_id": user.get('sl_id'),
-            "photo": user.get('photo'),
-            "is_verified": user.get('is_verified', False),
-            "verification_level": user.get('verification_level', 'state')
-        })
+        if user:
+            result.append({
+                "id": user.get('id'),
+                "name": user.get('name'),
+                "sl_id": user.get('sl_id'),
+                "photo": user.get('photo'),
+                "is_verified": user.get('is_verified', False),
+                "verification_level": user.get('verification_level', 'state')
+            })
     return result
 
 
