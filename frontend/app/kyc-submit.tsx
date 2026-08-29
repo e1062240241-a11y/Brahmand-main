@@ -458,7 +458,7 @@ export default function KycSubmitScreen() {
               keyboardShouldPersistTaps="handled"
             >
               <Image 
-                source={require('../assets/images/verification_header_illustration.webp')} 
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/verification_header_illustration.webp' }} 
                 style={styles.illustrationHeaderImage}
               />
 

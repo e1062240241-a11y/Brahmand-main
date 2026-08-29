@@ -82,7 +82,7 @@ export default function PassportCoverScreen() {
         >
           <View style={styles.cardContainer}>
             <Image 
-              source={require('../../assets/images/pass.webp')}
+              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/pass.webp' }}
               style={styles.passportImage}
               contentFit="contain"
             />

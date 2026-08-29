@@ -46,7 +46,7 @@ export default function ContinueReadingPage() {
 
   const getBookCover = (bookId: string) => {
     // We can add actual cover images based on book ID later
-    return require('../../assets/images/featured_book_6.webp');
+    return { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_6.webp' };
   };
 
   const getBookTitle = (bookId: string) => {

@@ -147,7 +147,7 @@ function TypingDots() {
   return (
     <View style={styles.typingRow}>
       <Image
-        source={require('../assets/images/my_krishna_avatar.webp')}
+        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
         style={styles.assistantAvatarImage}
       />
       <View style={styles.typingBubble}>
@@ -419,7 +419,7 @@ export default function MyKrishnaChat() {
         >
           {!isUser && (
             <Image
-              source={require('../assets/images/my_krishna_avatar.webp')}
+              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
               style={styles.assistantAvatarImage}
             />
           )}
@@ -465,7 +465,7 @@ export default function MyKrishnaChat() {
 
             <View style={styles.headerCenter}>
               <Image
-                source={require('../assets/images/my_krishna_avatar.webp')}
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
                 style={styles.headerAvatarImage}
               />
               <View style={styles.headerTitleColumn}>

@@ -21,7 +21,7 @@ function BloodDropIcon() {
 function LotusIcon() {
     return (
         <Image
-            source={require('../../../assets/images/sai_flower_lotus_icon.webp')}
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/sai_flower_lotus_icon.webp' }}
             style={styles.saiLotusIcon}
             resizeMode="contain"
             accessibilityLabel="Lotus flower"
@@ -32,7 +32,7 @@ function LotusIcon() {
 function TempleIcon() {
     return (
         <Image
-            source={require('../../../assets/images/home_temple_icon.webp')}
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/home_temple_icon.webp' }}
             style={styles.actionCardIcon}
             resizeMode="contain"
             accessibilityLabel="Temple"
@@ -43,7 +43,7 @@ function TempleIcon() {
 function ShopIcon() {
     return (
         <Image
-            source={require('../../../assets/images/home_shop_icon.webp')}
+            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/home_shop_icon.webp' }}
             style={styles.actionCardIcon}
             resizeMode="contain"
             accessibilityLabel="Shop"

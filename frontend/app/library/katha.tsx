@@ -46,7 +46,7 @@ try {
 } catch (_e) {}
 
 const API_BASE_URL = (API_URL || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.webp');
+const shamikPathakCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' };
 
 interface KathaEpisode {
   id: string;

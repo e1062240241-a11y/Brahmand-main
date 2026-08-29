@@ -138,7 +138,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Create Help Request</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Close help request form">
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>

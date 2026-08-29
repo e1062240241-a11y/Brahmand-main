@@ -130,7 +130,7 @@ from utils.helpers import (
     generate_sl_id
 )
 from utils.cache import cache_manager
-from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS, normalize_location
+from utils.helpers import generate_circle_code, normalize_location
 from offensive_detector import is_offensive, is_text_safe
 from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 
@@ -292,10 +292,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# =================== CORS CONFIGURATION ===================
+
+cors_origins = os.getenv('CORS_ORIGINS', '*')
+default_allowed_origins = [
+    "https://brahmand.app",
+    "https://www.brahmand.app",
+    "http://brahmand.app",
+    "http://www.brahmand.app",
+    "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
+    "http://0.0.0.0:8001",
+    "http://127.0.0.1:8001",
+    "http://localhost:8001",
+    "http://0.0.0.0:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://0.0.0.0:8081",
+    "http://localhost:8081",
+]
+allowed_origins = []
+allow_origin_regex = None
+if cors_origins == '*':
+    allowed_origins = default_allowed_origins.copy()
+elif cors_origins:
+    configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+    allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
+else:
+    allowed_origins = default_allowed_origins.copy()
+
 # Socket.IO for real-time
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins='*',
+    cors_allowed_origins=allowed_origins,
     ping_interval=settings.WS_PING_INTERVAL,
     ping_timeout=settings.WS_PING_TIMEOUT
 )
@@ -1154,42 +1182,11 @@ async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, pho
 
 # =================== MIDDLEWARE ===================
 
-cors_origins = os.getenv('CORS_ORIGINS', '*')
-default_allowed_origins = [
-    "https://brahmand.app",
-    "https://www.brahmand.app",
-    "http://brahmand.app",
-    "http://www.brahmand.app",
-    "https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app",
-    "http://0.0.0.0:8001",
-    "http://127.0.0.1:8001",
-    "http://localhost:8001",
-    "http://0.0.0.0:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "http://0.0.0.0:8081",
-    "http://localhost:8081",
-]
-allowed_origins = []
-allow_origin_regex = r"^https?://.*$"
-if cors_origins == '*':
-    # When using wildcard, we must be careful with allow_credentials=True.
-    # We use a broad regex instead of "*" in allow_origins.
-    allowed_origins = []
-    allow_origin_regex = r"^https?://.*$"
-elif cors_origins:
-    configured_origins = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
-    allowed_origins = list(dict.fromkeys(configured_origins + default_allowed_origins))
-    # Still keep the regex for localhost/loca.lt/run.app support
-    allow_origin_regex = r"^https?://.*$"
-else:
-    allowed_origins = default_allowed_origins.copy()
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=allowed_origins,
-    allow_origin_regex=allow_origin_regex,
     allow_methods=['*'],
     allow_headers=['*'],
     expose_headers=['*'],
@@ -1201,12 +1198,7 @@ def _is_origin_allowed(origin: str) -> bool:
         return True
     if allowed_origins and ("*" in allowed_origins or origin in allowed_origins):
         return True
-    if allow_origin_regex:
-        try:
-            return re.match(allow_origin_regex, origin) is not None
-        except re.error:
-            return True
-    return True
+    return False
 
 
 def _apply_cors_headers(response: Response, origin: str, request: Optional[Request] = None) -> Response:
@@ -2543,18 +2535,20 @@ async def get_users_batch(
     safe_ids = user_ids[:100]
     
     result = []
-    # Fetching in one batch call is much more efficient than parallel individual calls
-    users = await db.get_documents_batch('users', safe_ids)
+    # ⚡ Bolt Optimization: Replace db.get_documents_batch with asyncio.gather
+    # to avoid threadpool exhaustion and ensure safe hydration
+    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids))
     
     for user in users:
-        result.append({
-            "id": user.get('id'),
-            "name": user.get('name'),
-            "sl_id": user.get('sl_id'),
-            "photo": user.get('photo'),
-            "is_verified": user.get('is_verified', False),
-            "verification_level": user.get('verification_level', 'state')
-        })
+        if user:
+            result.append({
+                "id": user.get('id'),
+                "name": user.get('name'),
+                "sl_id": user.get('sl_id'),
+                "photo": user.get('photo'),
+                "is_verified": user.get('is_verified', False),
+                "verification_level": user.get('verification_level', 'state')
+            })
     return result
 
 

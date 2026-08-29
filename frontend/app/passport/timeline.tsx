@@ -567,7 +567,7 @@ function PassportTimelineScreen({
 
             <View style={styles.illustrationWrapper}>
               <Image 
-                source={require('../../assets/images/certificate_fixed.webp')}
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/certificate_fixed.webp' }}
                 style={{ width: 120, height: 120 }}
                 contentFit="contain"
               />

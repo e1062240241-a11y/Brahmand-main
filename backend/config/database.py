@@ -3,7 +3,6 @@ import logging
 import os
 import time
 from typing import Optional, List
-from google.cloud import firestore
 import firebase_admin
 from firebase_admin import credentials, firestore as admin_firestore
 

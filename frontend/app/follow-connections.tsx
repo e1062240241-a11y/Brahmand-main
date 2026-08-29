@@ -380,8 +380,9 @@ export default function FollowConnectionsScreen() {
             <FlashList<ConnectionUser>
               data={items}
               renderItem={renderUserCard}
+              // OPT: Bolt ⚡ - Add estimatedItemSize to prevent continuous measuring during initial render
+              estimatedItemSize={74}
               keyExtractor={(item) => item.id || item.user_id}
-              estimatedItemSize={70}
               contentContainerStyle={styles.listContent}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}

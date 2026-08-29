@@ -7,18 +7,18 @@ import { Image as ExpoImage } from 'expo-image';
 const { width } = Dimensions.get('window');
 
 const ZODIAC_DATA = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: require('../../assets/images/tab-bar/rashi/Aries.webp') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: require('../../assets/images/tab-bar/rashi/Taurus.webp') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: require('../../assets/images/tab-bar/rashi/gemini.webp') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: require('../../assets/images/tab-bar/rashi/cancer.webp') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', image: require('../../assets/images/tab-bar/rashi/Leo.webp') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: require('../../assets/images/tab-bar/rashi/Virgo.webp') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', image: require('../../assets/images/tab-bar/rashi/Libra.webp') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: require('../../assets/images/tab-bar/rashi/Scorpio.webp') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: require('../../assets/images/tab-bar/rashi/sagittarius.webp') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: require('../../assets/images/tab-bar/rashi/Capricorn.webp') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: require('../../assets/images/tab-bar/rashi/Aquarius.webp') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: require('../../assets/images/tab-bar/rashi/Pisces.webp') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Aries.webp' } },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Taurus.webp' } },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/gemini.webp' } },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/cancer.webp' } },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Leo.webp' } },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Virgo.webp' } },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Libra.webp' } },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Scorpio.webp' } },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/sagittarius.webp' } },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Capricorn.webp' } },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Aquarius.webp' } },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/Pisces.webp' } },
 ];
 
 export default function HomeJyotishSection() {

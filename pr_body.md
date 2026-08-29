@@ -1,9 +1,41 @@
-🚨 Severity: MEDIUM
+## What
+- Removed unused `import re` from `backend/check_refs.py`.
+- Removed unused `List` and `Optional` imports from `typing` in `backend/offensive_detector.py`.
 
-💡 Vulnerability: Information Exposure (CWE-209). Exception strings outputted via `subprocess.CalledProcessError` could inadvertently be caught down the line, although they are currently caught and wrapped securely, passing `exc` into unhandled `RuntimeError` strings provides an unnecessary vector of exposure if error handling configurations are changed or unhandled by higher wrappers.
+## Why
+These module-level standard library and typing imports were flagged as unused by `pyflakes`. They were remnants of previous iterations or boilerplate and serve no purpose in the current logic.
 
-🎯 Impact: Passing internal errors containing `ffprobe` or `ffmpeg` commands could potentially leak the server's directory layout, underlying tool constraints, or underlying dependencies/infrastructure paths.
+## Verification
+- Grepped the codebase and confirmed they are standard Python imports with no dynamic usage or side-effects.
+- Verified using `pyflakes backend/check_refs.py backend/offensive_detector.py` that the warnings are resolved.
+- Verified using `python -m py_compile backend/check_refs.py backend/offensive_detector.py` that no syntax errors were introduced.
 
-🔧 Fix: Replaced `RuntimeError(f"Failed to execute ffprobe binary: {exc}")` and `RuntimeError(f"Failed to execute ffmpeg binary: {exc}")` with constant, generic strings `RuntimeError("Failed to execute ffprobe binary")` and `RuntimeError("Failed to execute ffmpeg binary")` inside `backend/routes/video_upload_routes.py`. The raw strings are still securely logged internally via `logger.warning`.
+## Impact
+- 2 files cleaned.
+- 1 unused `import re` line removed.
+- 2 unused types removed from a `typing` import.
+## 💡 What
+Replaced the `db.get_documents_batch` call in `backend/main.py` (`get_users_batch` endpoint) with concurrent, independent `db.get_document` calls via `asyncio.gather`.
 
-✅ Verification: Check `backend/routes/video_upload_routes.py` lines 137 and 229, verifying that `f"... {exc}"` formatting has been removed from `RuntimeError` constructors. Code verified via `python -m py_compile backend/routes/video_upload_routes.py`.
+## 🎯 Why
+The custom `FirestoreDB.get_documents_batch` implementation internally divides requests and batches them to fit API limits but can inadvertently cause threadpool exhaustion issues when called rapidly on large datasets. Standard concurrent `asyncio.gather` with `db.get_document` executes natively async (especially inside the wrapper) which maps exactly what the backend expects, improving concurrency without locking. Additionally, `db.get_documents_batch` injects an 'id' attribute into the payload dictionary which can cause inconsistency if the implementation differs. Individual fetches maintain predictable and reliable parsing format for each hydrated entity.
+
+## 📊 Impact
+* Eliminates the risk of threadpool exhaustion due to batch blocking limits on massive concurrent queries.
+* Resolves batch data mapping compatibility regressions across firestore client versions.
+* Speeds up resolution by operating in fully asynchronous individual streams rather than sequential chunk blocks.
+
+## 🔬 Measurement
+Run `python -m py_compile backend/main.py` to check for regressions. Code was safely checked for None values before attribute parsing (`if user:`).
+## What
+Added a visual character count indicator to the "Additional comments" text input in the Report Modal.
+
+## Why
+The input had a hard limit (`maxLength={200}`) but no visual indication of this limit for the user. Adding the character count improves usability by providing immediate feedback on how many characters are left.
+
+## Before/After
+**Before:** The text input accepted up to 200 characters but provided no feedback on length.
+**After:** A subtle `0/200` character count appears below the text input, updating as the user types.
+
+## Accessibility
+Improves predictability and cognitive accessibility by clearly communicating input constraints to the user before they hit the limit unexpectedly.

@@ -383,7 +383,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     id: 'd1',
     user: {
       name: 'Sadhvi Ritambhara',
-      photo: require('../../assets/images/avatar_sadhvi.webp'),
+      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_sadhvi.webp',
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
       handle: '@sadhviritambharaji',
@@ -396,13 +396,13 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     reposts: 16,
     shares: 0,
     liked: false,
-    image: require('../../assets/images/hanuman_gathering.webp'),
+    image: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_gathering.webp',
   },
   {
     id: 'd2',
     user: {
       name: 'Swami Avimukta',
-      photo: require('../../assets/images/avatar_swami.webp'),
+      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_swami.webp',
       isVerified: true,
       verificationLabel: 'Bharat Verified',
       handle: '@swamiavimukt',
@@ -419,7 +419,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     id: 'd3',
     user: {
       name: 'Dr. Chinmay Pandya',
-      photo: require('../../assets/images/avatar_drchinmay.webp'),
+      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_drchinmay.webp',
       isVerified: true,
       verificationLabel: 'Maharashtra Verified',
       handle: '@drchinmaypandya',

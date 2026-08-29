@@ -25,7 +25,7 @@ import { api } from '../src/services/api';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Local Image References matching the app assets
-const heroArtworkBg = require('../assets/images/shravan_hero_bg.webp');
+const heroArtworkBg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shravan_hero_bg.webp' };
 
 // ================= CUSTOM SVG ICONS (0 DEPENDENCY & 0 QUESTION MARKS) =================
 
@@ -79,7 +79,7 @@ const NamasteIcon = ({ size = 16, color = '#8A5A2B' }) => (
   </Svg>
 );
 
-const shivlingImg = require('../assets/images/shivling.webp');
+const shivlingImg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shivling.webp' };
 
 // High quality sharp Shivling Artwork for Section 3
 const ShivlingArtwork = () => (

@@ -5,11 +5,11 @@ export const PAGE_PADDING = 16;
 export const CARD_RADIUS = 18;
 
 export const HOME_CARD_TEXTURES = {
-    rose: require('../../../assets/images/home_card_bg_rose.webp'),
-    peach: require('../../../assets/images/home_card_bg_peach.webp'),
-    mint: require('../../../assets/images/home_card_bg_mint.webp'),
-    cyan: require('../../../assets/images/home_card_bg_mint.webp'),
-    lavender: require('../../../assets/images/home_card_bg_lavender.webp'),
+    rose: { uri: 'https://brahmandfeed23.b-cdn.net/assets/home_card_bg_rose.webp' },
+    peach: { uri: 'https://brahmandfeed23.b-cdn.net/assets/home_card_bg_peach.webp' },
+    mint: { uri: 'https://brahmandfeed23.b-cdn.net/assets/home_card_bg_mint.webp' },
+    cyan: { uri: 'https://brahmandfeed23.b-cdn.net/assets/home_card_bg_mint.webp' },
+    lavender: { uri: 'https://brahmandfeed23.b-cdn.net/assets/home_card_bg_lavender.webp' },
 } as const;
 
 export type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -23,11 +23,11 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
 };
 
 export const shivaImage = { uri: 'https://brahmandfeed23.b-cdn.net/temples/SomnathTemple.webp' };
-export const communityPhoneImage = require('../../../assets/images/community_phone.webp');
-export const kundliChartImage = require('../../../assets/images/kundli_chart.webp');
-export const astrologerMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Astrologer.webp');
-export const salonMockImg = require('../../../assets/images/tab-bar/rashi/vendor/salon.webp');
-export const electricianMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Electrician.webp');
+export const communityPhoneImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/community_phone.webp' };
+export const kundliChartImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/kundli_chart.webp' };
+export const astrologerMockImg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' };
+export const salonMockImg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' };
+export const electricianMockImg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' };
 
 export const ACTION_CARD_WIDTH = 120;
 export const ACTION_CARD_HEIGHT = 180;

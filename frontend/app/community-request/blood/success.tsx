@@ -76,7 +76,7 @@ export default function CommunityRequestBloodSuccessPage() {
             {/* Illustration */}
             <View style={styles.illustrationContainer}>
               <Image 
-                source={require('../../../assets/images/verification_thank_you_illustration.webp')} 
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/verification_thank_you_illustration.webp' }} 
                 style={styles.illustration}
                 resizeMode="cover"
               />

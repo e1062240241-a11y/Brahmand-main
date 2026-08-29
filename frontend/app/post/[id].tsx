@@ -56,6 +56,7 @@ const PostScreen = () => {
   const [initialPostLoaded, setInitialPostLoaded] = useState(false);
   // Global pool of all posts loaded this session — used for recycling when all posts are seen
   const allSessionPostsRef = useRef<any[]>([]);
+  const allSessionIdsRef = useRef<Set<string>>(new Set());
   const seenPostIdsRef = useRef<Set<string>>(new Set());
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
@@ -162,17 +163,22 @@ const PostScreen = () => {
       }
 
       // Add clean items to the global session pool
+      // OPT: Use O(1) Set lookup instead of O(N^2) array iteration
       for (const p of cleanItems) {
         const idStr = String(p.id);
-        if (!allSessionPostsRef.current.find((x: any) => String(x.id) === idStr)) {
+        if (!allSessionIdsRef.current.has(idStr)) {
           allSessionPostsRef.current.push(p);
+          allSessionIdsRef.current.add(idStr);
         }
       }
 
       if (append) {
         setFeedPosts(prev => {
-          const existing = new Set(prev.map(p => String(p.id)));
-          const newItems = cleanItems.filter(p => !existing.has(String(p.id)));
+          const existing = new Set<string>();
+          for (let i = 0; i < prev.length; i++) {
+            if (prev[i]?.id) existing.add(String(prev[i].id));
+          }
+          const newItems = cleanItems.filter(p => p?.id && !existing.has(String(p.id)));
 
           if (newItems.length === 0) {
             // All returned posts already visible — recycle from session pool (shuffled)

@@ -853,13 +853,13 @@ export default function VendorScreen() {
               >
                 {/* Manual crop offset for landscape Astrologer image */}
                 <Image 
-                  source={require('../../assets/images/tab-bar/rashi/vendor/Astrologer.webp')} 
+                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' }} 
                   style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
                   resizeMode="cover" 
                 />
                 <View style={styles.figmaServiceBadge}>
                   <Image 
-                    source={require('../../assets/images/tab-bar/rashi/vendor/siren.webp')} 
+                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' }} 
                     style={{ width: 12, height: 12, marginRight: 2 }} 
                     resizeMode="contain"
                   />
@@ -877,10 +877,10 @@ export default function VendorScreen() {
               <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {/* Electrician */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/lightning.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -895,10 +895,10 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Panditji */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -913,10 +913,10 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Carpenter */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/carpener.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                   />
@@ -931,10 +931,10 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Plumber */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/plumber.webp')} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp' }} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -967,7 +967,7 @@ export default function VendorScreen() {
           {/* Colorful Background Container for the Business Section */}
           <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
             <Image 
-              source={require('../../assets/images/tab-bar/rashi/vendor/background.webp')} 
+              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }} 
               style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
               resizeMode="cover" 
             />
@@ -989,10 +989,10 @@ export default function VendorScreen() {
             <View style={styles.figmaBusinessGrid}>
               <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.webp')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/general_store.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1006,10 +1006,10 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.webp')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/cow.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1025,10 +1025,10 @@ export default function VendorScreen() {
               </View>
               <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/salon.webp')} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' }} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/salon_icon.webp')} 
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' }} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
