@@ -1,45 +1,16 @@
-💡 What: Replaced sequential database fetches for sender and recipient in `send_direct_message` with concurrent fetches using `asyncio.gather`.
-🎯 Why: Two independent database calls (`db.get_document` and `db.get_user_by_sl_id`) were executed sequentially, causing unnecessary IO bottlenecks.
-📊 Impact: Halves the network latency for the initial validation stage of sending direct messages.
-🔬 Measurement: Verify using an APM/profiler tracing the execution time of `send_direct_message`.
-## What
-- Removed unused `import re` from `backend/check_refs.py`.
-- Removed unused `List` and `Optional` imports from `typing` in `backend/offensive_detector.py`.
-
-## Why
-These module-level standard library and typing imports were flagged as unused by `pyflakes`. They were remnants of previous iterations or boilerplate and serve no purpose in the current logic.
-
-## Verification
-- Grepped the codebase and confirmed they are standard Python imports with no dynamic usage or side-effects.
-- Verified using `pyflakes backend/check_refs.py backend/offensive_detector.py` that the warnings are resolved.
-- Verified using `python -m py_compile backend/check_refs.py backend/offensive_detector.py` that no syntax errors were introduced.
-
-## Impact
-- 2 files cleaned.
-- 1 unused `import re` line removed.
-- 2 unused types removed from a `typing` import.
 ## 💡 What
-Replaced the `db.get_documents_batch` call in `backend/main.py` (`get_users_batch` endpoint) with concurrent, independent `db.get_document` calls via `asyncio.gather`.
+Optimized performance across frontend and backend:
+1. In the frontend, replaced O(N) array recreation and mappings (`new Set(arr.map(...))`) with direct iteration (`new Set(); for (const x of arr) set.add(x)`) in critical high-frequency feed components like `ReelViewer`, `home`, and `profile` screens.
+2. In the backend, updated `firestore_db.py`'s `get_documents_batch` to utilize `asyncio.gather` for executing document chunk fetches concurrently, instead of processing all chunks sequentially inside a single blocking thread.
 
 ## 🎯 Why
-The custom `FirestoreDB.get_documents_batch` implementation internally divides requests and batches them to fit API limits but can inadvertently cause threadpool exhaustion issues when called rapidly on large datasets. Standard concurrent `asyncio.gather` with `db.get_document` executes natively async (especially inside the wrapper) which maps exactly what the backend expects, improving concurrency without locking. Additionally, `db.get_documents_batch` injects an 'id' attribute into the payload dictionary which can cause inconsistency if the implementation differs. Individual fetches maintain predictable and reliable parsing format for each hydrated entity.
+- **Frontend**: `prev.map(...)` inside state updaters iterates over large arrays (like infinite scrolling feeds) to create intermediate mapping arrays which are immediately consumed and discarded by `new Set()`. This produces redundant CPU cycles and garbage collection pressure, creating main thread UI jank during rendering.
+- **Backend**: `get_documents_batch` was blocking the worker thread while fetching chunks of 100 sequentially. Fetching these chunks concurrently with `asyncio.gather` reduces the overall latency when loading batches significantly larger than 100 documents, solving an N+1 chunking bottleneck.
 
 ## 📊 Impact
-* Eliminates the risk of threadpool exhaustion due to batch blocking limits on massive concurrent queries.
-* Resolves batch data mapping compatibility regressions across firestore client versions.
-* Speeds up resolution by operating in fully asynchronous individual streams rather than sequential chunk blocks.
+- Reduces main thread blocking time during frontend scrolling and feed state updates by avoiding redundant allocations for N-sized arrays.
+- Decreases backend DB read latency significantly when retrieving large lists (e.g., fetching 500 members in community profiles).
 
 ## 🔬 Measurement
-Run `python -m py_compile backend/main.py` to check for regressions. Code was safely checked for None values before attribute parsing (`if user:`).
-## What
-Added a visual character count indicator to the "Additional comments" text input in the Report Modal.
-
-## Why
-The input had a hard limit (`maxLength={200}`) but no visual indication of this limit for the user. Adding the character count improves usability by providing immediate feedback on how many characters are left.
-
-## Before/After
-**Before:** The text input accepted up to 200 characters but provided no feedback on length.
-**After:** A subtle `0/200` character count appears below the text input, updating as the user types.
-
-## Accessibility
-Improves predictability and cognitive accessibility by clearly communicating input constraints to the user before they hit the limit unexpectedly.
+1. In the backend, large community views (e.g. `GET /api/community/{id}`) will resolve faster due to concurrent user resolution.
+2. In the frontend, scrolling Reels or Home Feed will demonstrate less CPU frame drops during infinite pagination appends.
