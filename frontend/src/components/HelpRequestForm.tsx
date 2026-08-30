@@ -166,14 +166,19 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
 
             {/* Title */}
             <Text style={styles.label}>Title *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Short description of your need"
-              placeholderTextColor={COLORS.textLight}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                style={styles.input}
+                placeholder="Short description of your need"
+                placeholderTextColor={COLORS.textLight}
+                value={title}
+                onChangeText={setTitle}
+                maxLength={100}
+              />
+              <Text style={{ textAlign: 'right', fontSize: 12, color: COLORS.textLight, marginTop: 4, marginRight: 4 }}>
+                {title.length}/100
+              </Text>
+            </View>
 
             {/* Description */}
             <Text style={styles.label}>Description *</Text>
