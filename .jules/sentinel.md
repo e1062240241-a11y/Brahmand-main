@@ -1,5 +1,4 @@
-## 2025-02-27 - Restrict Overly Permissive WebSocket CORS
-
-**Vulnerability:** The Socket.IO server in `backend/main.py` was initialized with `cors_allowed_origins='*'`, potentially exposing real-time WebSocket endpoints to malicious cross-origin requests.
-**Learning:** While HTTP endpoints were protected by FastAPI's `CORSMiddleware`, the Socket.IO instance was configured independently at initialization, bypassing the restrictive allowed origin checks.
-**Prevention:** Always ensure WebSocket frameworks share the same dynamic CORS policy configuration object (`allowed_origins`) as the main HTTP application to prevent inconsistent access controls.
+## 2025-03-09 - Socket.IO CORS Configuration Nuance
+**Vulnerability:** Explicit wildcard CORS configuration for socketio was broken when trying to remove an overly permissive fallback `(allowed_origins if allowed_origins else '*')`.
+**Learning:** `python-socketio` requires the explicit string `'*'` to function as a wildcard matcher for CORS. Passing `['*']` as a list fails because it performs an exact string match against the origin header.
+**Prevention:** When configuring `cors_allowed_origins` for `socketio.AsyncServer`, always preserve the explicit `'*'` wildcard string if `CORS_ORIGINS=*` is configured, rather than relying solely on the parsed `allowed_origins` list which might incorrectly represent it as `['*']`.

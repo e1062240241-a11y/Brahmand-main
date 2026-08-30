@@ -269,7 +269,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     loadingHashtags: boolean;
     searchResults: any[];
     loadingUsers: boolean;
-    followingIds: string[];
+    followingSet: Set<string>;
     handleFollowUser: (id: string) => void;
     saveRecentSearch: (item: any) => void;
     recentSearches: any[];
@@ -313,8 +313,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     const router = useRouter();
     const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
-
-    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
@@ -531,7 +529,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     ) : searchResults.length > 0 ? (
                                         <>
                                             {searchResults.map((item) => {
-                                                const isFollowing = memoizedFollowingSet.has(item.id);
+                                                const isFollowing = followingSet.has(item.id);
                                                 return (
                                                     <View key={item.id} style={styles.userResultItem}>
                                                         <TouchableOpacity
@@ -1341,8 +1339,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     }]}>
                                                         {hanumanStatus.isActive
                                                             ? (t('language') === 'hi'
-                                                                ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
-                                                                : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
+                                                                // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
+                                                                // Lever: Reframing + Proximity to Completion
+                                                                // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
+                                                                // UI: Text-only change, zero layout/visual additions.
+                                                                ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
+                                                                : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
                                                             : (hanumanStatus.nextSessionStart
                                                                 ? (t('language') === 'hi'
                                                                     ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`

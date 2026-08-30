@@ -733,7 +733,7 @@ export default function NotificationsScreen() {
                 <Ionicons name="notifications-off-outline" size={50} color="#8E8E93" />
               </View>
               <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
-              <Text style={styles.emptyText}>{t('whenPeopleFollow')}</Text>
+              <Text style={styles.emptyText}>{t('noNotificationsSub')}</Text>
             </View>
           ) : (
             <View style={{ backgroundColor: 'transparent' }}>
