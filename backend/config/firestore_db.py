@@ -1134,7 +1134,7 @@ class FirestoreDB:
                 chunk = missing_ids[i:i + chunk_size]
                 tasks.append(_fetch_chunk(chunk))
 
-            chunk_results = await asyncio.gather(*tasks, return_exceptions=True)
+            chunk_results = await asyncio.gather(*tasks)
             fresh_docs = []
             for res in chunk_results:
                 if isinstance(res, list):

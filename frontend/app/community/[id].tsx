@@ -2128,7 +2128,8 @@ export default function CommunityDetailScreen() {
         const serverPosts = [
           ...formattedMsgs
         ];
-        const serverIds = new Set(serverPosts.map((p: any) => String(p.id)));
+        const serverIds = new Set();
+        for (const p of serverPosts) serverIds.add(String(p.id));
         const prevPosts = currentCache?.communityPosts || [];
 
         console.log('[iOS Community] prevPosts IDs:', prevPosts.map(p => p.id));
@@ -2173,7 +2174,8 @@ export default function CommunityDetailScreen() {
           return isLocal;
         });
 
-        const seenIds = new Set(localPosts.map((p: any) => String(p.id)));
+        const seenIds = new Set();
+        for (const p of localPosts) seenIds.add(String(p.id));
 
         // Filter fresh server posts — exclude any that were locally deleted or are already local
         const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
@@ -2205,7 +2207,8 @@ export default function CommunityDetailScreen() {
       } else {
         // ORIGINAL reconciliation logic for Android/Web
         setCommunityPosts((prev: any[]) => {
-          const serverIds = new Set(formattedMsgs.map((p: any) => p.id));
+          const serverIds = new Set();
+          for (const p of formattedMsgs) serverIds.add(p.id);
           const serverPosts = [...formattedMsgs];
 
           // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
@@ -2237,7 +2240,8 @@ export default function CommunityDetailScreen() {
 
             return true;
           });
-          const seenIds = new Set(localPosts.map((p: any) => p.id));
+          const seenIds = new Set();
+          for (const p of localPosts) seenIds.add(p.id);
 
           // Filter fresh server posts — exclude any that were locally deleted
           const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));

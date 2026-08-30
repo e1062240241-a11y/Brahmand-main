@@ -1,6 +1,6 @@
 ## 💡 What
 Optimized performance across frontend and backend:
-1. In the frontend, replaced O(N) array recreation and mappings (`new Set(arr.map(...))`) with direct iteration (`new Set(); for (const x of arr) set.add(x)`) in critical high-frequency feed components like `ReelViewer`, `home`, and `profile` screens.
+1. In the frontend, replaced O(N) array recreation and mappings (`new Set(arr.map(...))`) with direct iteration (`new Set(); for (const x of arr) set.add(x)`) in critical high-frequency feed components like `ReelViewer`, `home`, and `profile` screens, improving rendering performance without sacrificing readability.
 2. In the backend, updated `firestore_db.py`'s `get_documents_batch` to utilize `asyncio.gather` for executing document chunk fetches concurrently, instead of processing all chunks sequentially inside a single blocking thread.
 
 ## 🎯 Why

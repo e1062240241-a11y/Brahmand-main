@@ -815,7 +815,8 @@ const ChatScreen = ({
     setLoadingAvailableUsers(true);
     try {
       const response = await getAllUsers();
-      const memberIds = new Set((circleInfo?.members || []).map((member: any) => member?.user_id));
+      const memberIds = new Set();
+      for (const member of (circleInfo?.members || [])) memberIds.add(member?.user_id);
       const users = (response.data || [])
         .filter((userItem: any) => userItem.id && userItem.id !== user?.id && !memberIds.has(userItem.id));
       setAvailableUsers(users);

@@ -147,7 +147,8 @@ export default function FollowConnectionsScreen() {
         const data = res.data || {};
         const newItems: ConnectionUser[] = Array.isArray(data.items) ? data.items : [];
         setItems((prev) => {
-          const existingIds = new Set(prev.map((i) => i.id || i.user_id));
+          const existingIds = new Set();
+          for (const i of prev) existingIds.add(i.id || i.user_id);
           const uniqueNew = newItems.filter((i) => !existingIds.has(i.id || i.user_id));
           return [...prev, ...uniqueNew];
         });

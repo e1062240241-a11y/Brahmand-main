@@ -380,7 +380,8 @@ export default function AstrologyScreen() {
             isAddOption: false,
           }));
 
-          const existingNames = new Set(); for (const a of apiSuggestions) existingNames.add(a.display_name.toLowerCase());
+          const existingNames = new Set();
+          for (const a of apiSuggestions) existingNames.add(a.display_name.toLowerCase());
           const remainingLocal = localFiltered.filter(l => !existingNames.has(l.display_name.toLowerCase()));
           const combined = [...apiSuggestions, ...remainingLocal].slice(0, 8);
 
