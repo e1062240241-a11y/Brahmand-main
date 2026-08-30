@@ -309,7 +309,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
     loadingHashtags: boolean;
     searchResults: any[];
     loadingUsers: boolean;
-    followingIds: string[];
+    followingSet: Set<string>;
     onFollowUser: (id: string) => void;
     recentSearches: any[];
     onClearRecentSearches: () => void;
@@ -319,7 +319,6 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
     onProfileLongPress: () => void;
 }) {
     const router = useRouter();
-    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
 
     return (
         <>
@@ -442,7 +441,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                             ) : searchResults.length > 0 ? (
                                 <>
                                     {searchResults.map((item) => {
-                                        const isFollowing = memoizedFollowingSet.has(item.id);
+                                        const isFollowing = followingSet.has(item.id);
                                         return (
                                         <View key={item.id} style={styles.userResultItem}>
                                             <TouchableOpacity

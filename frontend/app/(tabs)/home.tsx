@@ -628,6 +628,10 @@ export default function HomeScreen() {
   const [followingIds, setFollowingIds] = useState<string[]>(
     Array.isArray((user as any)?.following) ? (user as any).following : []
   );
+  // OPT: Maintain a parallel Set for O(1) following membership lookups in child components
+  const followingSetRef = useRef<Set<string>>(
+    new Set(Array.isArray((user as any)?.following) ? (user as any).following : [])
+  );
   const [communityRequests, setCommunityRequests] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [localCommunities, setLocalCommunities] = useState<any[]>([]);
@@ -832,7 +836,9 @@ export default function HomeScreen() {
   }, [user?.bio]);
 
   useEffect(() => {
-    setFollowingIds(Array.isArray((user as any)?.following) ? (user as any).following : []);
+    const arr = Array.isArray((user as any)?.following) ? (user as any).following : [];
+    setFollowingIds(arr);
+    followingSetRef.current = new Set(arr);
   }, [user]);
 
   useEffect(() => {
@@ -947,10 +953,16 @@ export default function HomeScreen() {
   };
 
   const handleFollowUser = useCallback(async (userId: string) => {
-    const isFollowing = followingIds.includes(userId);
+    const isFollowing = followingSetRef.current.has(userId);
     const nextIds = isFollowing
       ? followingIds.filter((id) => id !== userId)
       : [...followingIds, userId];
+
+    if (isFollowing) {
+      followingSetRef.current.delete(userId);
+    } else {
+      followingSetRef.current.add(userId);
+    }
 
     setFollowingIds(nextIds);
     updateUser({ following: nextIds } as any);
@@ -1662,7 +1674,7 @@ export default function HomeScreen() {
       loadingHashtags={loadingHashtags}
       searchResults={searchResults}
       loadingUsers={loadingUsers}
-      followingIds={followingIds}
+      followingSet={followingSetRef.current}
       handleFollowUser={handleFollowUser}
       saveRecentSearch={saveRecentSearch}
       recentSearches={recentSearches}
@@ -1727,7 +1739,7 @@ export default function HomeScreen() {
     loadingHashtags,
     searchResults,
     loadingUsers,
-    followingIds,
+    followingIds, // Track followingIds to trigger re-renders
     handleFollowUser,
     recentSearches,
     handleNotificationPress,

@@ -269,7 +269,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     loadingHashtags: boolean;
     searchResults: any[];
     loadingUsers: boolean;
-    followingIds: string[];
+    followingSet: Set<string>;
     handleFollowUser: (id: string) => void;
     saveRecentSearch: (item: any) => void;
     recentSearches: any[];
@@ -313,8 +313,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     const router = useRouter();
     const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
-
-    const memoizedFollowingSet = React.useMemo(() => new Set(followingIds), [followingIds]);
 
     const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
@@ -531,7 +529,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     ) : searchResults.length > 0 ? (
                                         <>
                                             {searchResults.map((item) => {
-                                                const isFollowing = memoizedFollowingSet.has(item.id);
+                                                const isFollowing = followingSet.has(item.id);
                                                 return (
                                                     <View key={item.id} style={styles.userResultItem}>
                                                         <TouchableOpacity
