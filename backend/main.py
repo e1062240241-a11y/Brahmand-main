@@ -16271,7 +16271,7 @@ async def handle_send_dm_socket(sid, data):
         return {'status': 'success', 'message': response_msg}
     except Exception as e:
         logger.error(f"Socket send_dm error: {e}")
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': 'An internal server error occurred'}
 # =================== JAAP INVITE NOTIFICATION ===================
 
 # In-memory cooldown: { user_id: last_invite_time }
