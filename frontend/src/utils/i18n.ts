@@ -305,6 +305,7 @@ export const translations = {
     // Notifications
     notificationsTitle: 'Notifications',
     noNotifications: 'No notifications yet',
+    noNotificationsSub: "You're all caught up! ✨ Explore community posts or start a Jaap session.",
     markAllRead: 'Mark all read',
 
     // Common
@@ -597,6 +598,7 @@ export const translations = {
     // Notifications
     notificationsTitle: 'सूचनाएं',
     noNotifications: 'अभी कोई सूचना नहीं',
+    noNotificationsSub: 'आपकी सब सूचनाएं देखी जा चुकी हैं! ✨ समुदाय पोस्ट देखें या जाप सत्र शुरू करें।',
     markAllRead: 'सभी पढ़े हुए चिह्नित करें',
 
     // Common
