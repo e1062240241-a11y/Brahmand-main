@@ -321,7 +321,7 @@ else:
     allowed_origins = default_allowed_origins.copy()
 
 # Socket.IO for real-time
-sio_cors = '*' if cors_origins == '*' else (allowed_origins if allowed_origins else '*')
+sio_cors = '*' if cors_origins == '*' else allowed_origins
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=sio_cors,
