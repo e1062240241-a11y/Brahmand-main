@@ -1183,8 +1183,12 @@ const JaapBanners = React.memo(function JaapBanners({
                                         }]}>
                                             {hanumanStatus.isActive
                                                 ? (t('language') === 'hi'
-                                                    ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
-                                                    : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
+                                                                // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
+                                                                // Lever: Reframing + Proximity to Completion
+                                                                // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
+                                                                // UI: Text-only change, zero layout/visual additions.
+                                                                ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
+                                                                : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
                                                 : (hanumanStatus.nextSessionStart
                                                     ? (t('language') === 'hi'
                                                         ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
