@@ -9,3 +9,7 @@
 ## 2024-11-21 - Parallelizing Independent Variables with asyncio.gather
 **Learning:** When using `asyncio.gather()` to fetch multiple pieces of data (e.g. sender and recipient documents) that do not depend on each other, you can significantly reduce IO latency. However, be extremely careful not to defer variable assignment if those variables are captured by inner functions executing concurrently within the gather, as this can cause NameErrors.
 **Action:** When identifying N+1 database queries, safely parallelize them using `asyncio.gather` for independent variables, but strictly verify closure scopes to ensure data dependencies are not broken.
+
+## 2023-11-28 - Optimize N+1
+**Learning:** In the frontend, O(N) recreations of `new Set(prev.map(...))` inside state updates caused potential CPU bottlenecks in lists. In the backend, `db.get_documents_batch` was processing chunks in a single blocking synchronous loop (`get_all`), leading to slower fetch times for large batches.
+**Action:** Changed array `map` mapping inside `new Set()` loops in frontend to loop directly via `new Set(); for (const x of arr) set.add(x)` eliminating unnecessary intermediary allocations. Changed `get_documents_batch` in `firestore_db.py` to use `asyncio.gather` for fetching parallel chunks.

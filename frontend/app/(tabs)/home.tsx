@@ -1119,7 +1119,8 @@ export default function HomeScreen() {
           setPostComments(prev => {
             const serverComments = response.data;
             const optimistic = prev.filter(c => c.is_optimistic);
-            const serverIds = new Set(serverComments.map((c: any) => c.id));
+            const serverIds = new Set();
+            for (const c of serverComments) serverIds.add(c.id);
             const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
             // Keep already-loaded older comments (beyond first page) that aren't in the refreshed top page
             const keptOlder = prev.filter(c => !c.is_optimistic && !serverIds.has(c.id));
@@ -1199,7 +1200,8 @@ export default function HomeScreen() {
         if (Array.isArray(freshResponse.data)) {
           setPostComments(prev => {
             const fresh = freshResponse.data;
-            const freshIds = new Set(fresh.map((c: any) => c.id));
+            const freshIds = new Set();
+            for (const c of fresh) freshIds.add(c.id);
             const optimistic = prev.filter(c => c.is_optimistic && !freshIds.has(c.id));
             const keptOlder = prev.filter(c => !c.is_optimistic && !freshIds.has(c.id));
             return [...optimistic, ...fresh, ...keptOlder];
@@ -1228,7 +1230,8 @@ export default function HomeScreen() {
       if (batch.length === 0) {
         setCommentsHasMore(false);
       } else {
-        const existingIds = new Set(postComments.map((c: any) => c.id));
+        const existingIds = new Set();
+        for (const c of postComments) existingIds.add(c.id);
         const newOnes = batch.filter((c: any) => !existingIds.has(c.id));
         setPostComments(prev => [...prev, ...newOnes]);
         setCommentsHasMore(batch.length === COMMENTS_PAGE_SIZE);

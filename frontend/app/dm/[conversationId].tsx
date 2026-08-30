@@ -1144,7 +1144,8 @@ const DirectMessageScreen = () => {
       }));
 
 
-      const existingIds = new Set(messages.map(m => m.id));
+      const existingIds = new Set();
+      for (const m of messages) existingIds.add(m.id);
       const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
 
       if (hasNewMessages || apiMessages.length !== messages.length) {
@@ -1170,7 +1171,8 @@ const DirectMessageScreen = () => {
 
         setMessages(prev => {
           const sending = prev.filter(m => m.status === 'sending');
-          const apiIds = new Set(decryptedMessages.map(m => m.id));
+          const apiIds = new Set();
+          for (const m of decryptedMessages) apiIds.add(m.id);
           const stillSending = sending.filter(m => !apiIds.has(m.id));
           return deduplicateMessages([...decryptedMessages, ...stillSending]);
         });
