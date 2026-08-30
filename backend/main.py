@@ -4008,19 +4008,26 @@ async def get_my_posts(
     safe_limit = max(1, min(limit, 50))
 
     try:
-        # Fetch posts belonging to the target user
+        # Architectural fix: Limit the candidate document fetch at the DB level
+        # with created_at DESC ordering to (offset + safe_limit + 1) instead of fetching ALL historical posts.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request
+        # when power users accumulate hundreds/thousands of posts.
+        fetch_limit = offset + safe_limit + 1
         my_posts = await db.query_documents(
             'posts',
-            filters=[('user_id', '==', target_user_id)]
+            filters=[('user_id', '==', target_user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
         )
 
-        # Sort in memory by created_at DESC (avoiding Firestore composite index requirement)
+        # Secondary fallback sort in memory by created_at DESC
         my_posts.sort(
             key=lambda x: str(x.get('created_at') or ''),
             reverse=True
         )
 
-        # De-duplicate posts by media_path and caption to maintain absolute integrity and avoid duplicates
+        # De-duplicate posts by media_path and caption
         deduplicated_posts = _deduplicate_posts(my_posts)
 
         # Strict validation check on the backend to avoid any leak
@@ -4033,16 +4040,15 @@ async def get_my_posts(
                 raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
             validated_posts.append(post)
 
-        # Sort and slice for offset/limit pagination
-        total_count = len(validated_posts)
+        # Slice for offset/limit pagination
         paginated_posts = validated_posts[offset : offset + safe_limit]
 
-        # Has reached the end?
-        has_reached_end = (offset + len(paginated_posts)) >= total_count
+        # Determine has_reached_end accurately based on candidate set length
+        has_reached_end = len(validated_posts) <= (offset + safe_limit)
 
         return {
             "posts": paginated_posts,
-            "total": total_count,
+            "total": len(validated_posts),
             "has_reached_end": has_reached_end,
             "offset": offset,
             "limit": safe_limit
