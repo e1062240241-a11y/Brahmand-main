@@ -1,45 +1,15 @@
-💡 What: Replaced sequential database fetches for sender and recipient in `send_direct_message` with concurrent fetches using `asyncio.gather`.
-🎯 Why: Two independent database calls (`db.get_document` and `db.get_user_by_sl_id`) were executed sequentially, causing unnecessary IO bottlenecks.
-📊 Impact: Halves the network latency for the initial validation stage of sending direct messages.
-🔬 Measurement: Verify using an APM/profiler tracing the execution time of `send_direct_message`.
 ## What
-- Removed unused `import re` from `backend/check_refs.py`.
-- Removed unused `List` and `Optional` imports from `typing` in `backend/offensive_detector.py`.
+Removed orphaned legacy MongoDB services: `auth_service.py`, `messaging_service.py`, and `user_service.py` from `backend/services/`. Cleaned up `backend/services/__init__.py` to remove the dead exports for `AuthService` and `MessagingService`.
 
 ## Why
-These module-level standard library and typing imports were flagged as unused by `pyflakes`. They were remnants of previous iterations or boilerplate and serve no purpose in the current logic.
+These files were remnants of an older architecture that used MongoDB (`get_database()`, `ObjectId`). The application has completely migrated to Firestore (`firebase_auth_service.py`, `firebase_messaging_service.py`, `firebase_user_service.py`), and these legacy files were completely unreferenced throughout the entire codebase.
 
 ## Verification
-- Grepped the codebase and confirmed they are standard Python imports with no dynamic usage or side-effects.
-- Verified using `pyflakes backend/check_refs.py backend/offensive_detector.py` that the warnings are resolved.
-- Verified using `python -m py_compile backend/check_refs.py backend/offensive_detector.py` that no syntax errors were introduced.
+- Ran comprehensive recursive `grep` searches for the filenames, module paths (`services.auth_service`), and class names (`AuthService`, `MessagingService`) to verify zero external callers.
+- Updated `__init__.py` and ran `python -m py_compile backend/services/__init__.py` to ensure syntax validity.
+- Ran `pyflakes .` in the `backend/` directory to ensure no broken imports or new regressions were introduced by the removals.
 
 ## Impact
-- 2 files cleaned.
-- 1 unused `import re` line removed.
-- 2 unused types removed from a `typing` import.
-## 💡 What
-Replaced the `db.get_documents_batch` call in `backend/main.py` (`get_users_batch` endpoint) with concurrent, independent `db.get_document` calls via `asyncio.gather`.
-
-## 🎯 Why
-The custom `FirestoreDB.get_documents_batch` implementation internally divides requests and batches them to fit API limits but can inadvertently cause threadpool exhaustion issues when called rapidly on large datasets. Standard concurrent `asyncio.gather` with `db.get_document` executes natively async (especially inside the wrapper) which maps exactly what the backend expects, improving concurrency without locking. Additionally, `db.get_documents_batch` injects an 'id' attribute into the payload dictionary which can cause inconsistency if the implementation differs. Individual fetches maintain predictable and reliable parsing format for each hydrated entity.
-
-## 📊 Impact
-* Eliminates the risk of threadpool exhaustion due to batch blocking limits on massive concurrent queries.
-* Resolves batch data mapping compatibility regressions across firestore client versions.
-* Speeds up resolution by operating in fully asynchronous individual streams rather than sequential chunk blocks.
-
-## 🔬 Measurement
-Run `python -m py_compile backend/main.py` to check for regressions. Code was safely checked for None values before attribute parsing (`if user:`).
-## What
-Added a visual character count indicator to the "Additional comments" text input in the Report Modal.
-
-## Why
-The input had a hard limit (`maxLength={200}`) but no visual indication of this limit for the user. Adding the character count improves usability by providing immediate feedback on how many characters are left.
-
-## Before/After
-**Before:** The text input accepted up to 200 characters but provided no feedback on length.
-**After:** A subtle `0/200` character count appears below the text input, updating as the user types.
-
-## Accessibility
-Improves predictability and cognitive accessibility by clearly communicating input constraints to the user before they hit the limit unexpectedly.
+- Deleted 3 dead legacy files.
+- Cleaned up 1 module index.
+- Reduced tech debt and confusion around dual service implementations.
