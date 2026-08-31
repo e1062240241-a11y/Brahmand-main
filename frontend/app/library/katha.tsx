@@ -18,6 +18,7 @@ import {
   Animated,
   Share,
 } from 'react-native';
+import { shareContent } from '../../src/utils/shareFestivalCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -622,18 +623,11 @@ export default function KathaPage() {
       }
 
       if (!sharedWithImage) {
-        await Share.share(
-          Platform.OS === 'ios'
-            ? {
-                message: shareMessage,
-                url: 'https://brahmand.app/download',
-                title: shareTitle,
-              }
-            : {
-                message: shareMessage,
-                title: shareTitle,
-              }
-        );
+        await shareContent({
+          title: shareTitle,
+          message: shareMessage,
+          url: 'https://brahmand.app/download',
+        });
       }
     } catch (error: any) {
       const errStr = String(error?.message || error || '').toLowerCase();

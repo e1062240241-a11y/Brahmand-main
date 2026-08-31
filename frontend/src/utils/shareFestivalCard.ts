@@ -202,7 +202,6 @@ const executeUniversalFallback = async (
       message: shareMessage,
       url: fileUrl || PLAY_STORE_URL,
       title: greetingHeader,
-      subject: greetingHeader,
     });
     return true;
   } catch (rnApiErr: unknown) {
@@ -440,5 +439,38 @@ export const shareFestivalCard = async (
       return shareWeb(uri, payload);
     default:
       return shareAndroid(uri, payload);
+  }
+};
+
+/**
+ * Universal text/link/image content sharing helper.
+ * Silently handles user cancellation without raising errors/alerts.
+ */
+export const shareContent = async (options: {
+  title?: string;
+  message: string;
+  url?: string;
+  imageUri?: string;
+}): Promise<boolean> => {
+  const { title = 'Brahmand', message, url, imageUri } = options;
+
+  if (imageUri) {
+    return shareFestivalCard(imageUri, title, message);
+  }
+
+  const payload: SharePayload = {
+    cleanTitle: title.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Brahmand',
+    greetingHeader: title,
+    shareMessage: message,
+  };
+
+  try {
+    return await executeUniversalFallback(url || null, payload);
+  } catch (err: unknown) {
+    if (isUserCancellation(err)) {
+      return false;
+    }
+    logShare('warn', 'shareContent execution error:', getErrorMessage(err));
+    return false;
   }
 };

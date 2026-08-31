@@ -1,6 +1,7 @@
 import templeDataDump from '../../src/constants/templeDataDump.json';
 import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
 import { resolveTempleFestivals } from '../../src/data/templeFestivalResolver';
+import { shareContent } from '../../src/utils/shareFestivalCard';
 import { SPECIAL_TEMPLE_DATA } from '../../src/data/templeStaticData';
 import { FALLBACK_TEMPLE_BY_ID } from '../../src/data/templeFallbackData';
 import { getYoutubeVideoId, getYoutubeAppUrl, getYoutubeEmbedUrl } from '../../src/utils/youtubeUtils';
@@ -338,14 +339,11 @@ export default function TempleDetailScreen() {
       const deityText = temple?.deity
         ? `A serene abode of *${temple.deity}*, welcoming pilgrims for divine darshan and blessings. 🏔️✨`
         : `A revered sacred shrine welcoming pilgrims for divine darshan and blessings. 🏔️✨`;
-
+      const displayName = temple?.name || 'Temple';
       const shareMessage = [
-        `🛕 *Have you discovered this sacred gem in ${city}?* 🙏`,
+        `🛕 *${displayName}*`,
         ``,
-        `*${displayName}*`,
-        `📍 ${locationStr || 'Bharat'}`,
-        ``,
-        deityText,
+        temple?.overview || temple?.description || `Explore ${displayName} on Brahmand.`,
         ``,
         `And this is just *one of the thousands of sacred places waiting to be discovered on Brahmand.*`,
         ``,
@@ -354,12 +352,14 @@ export default function TempleDetailScreen() {
         `🪔 *Discover Bharat. Discover the Divine. Discover Brahmand.*`,
         ``,
         `Download Brahmand & begin your spiritual journey:`,
-        `https://play.google.com/store/apps/details?id=com.brahmand.app`,
       ].join('\n');
 
-      await Share.share({
-        message: shareMessage,
+      const shareUrl = `https://brahmand.app/temple/${temple?.slug || temple?.id || resolvedTempleId}`;
+
+      await shareContent({
         title: displayName,
+        message: shareMessage,
+        url: shareUrl,
       });
     } catch (error) {
       console.error('Error sharing temple:', error);
@@ -367,7 +367,6 @@ export default function TempleDetailScreen() {
   };
 
   // All hook declarations proceed unconditionally above early returns to strictly honor React Rules of Hooks
-
 
 
 

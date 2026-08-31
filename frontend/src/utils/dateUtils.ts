@@ -100,3 +100,58 @@ export const formatReelDate = (dateInput: string | Date | number | null | undefi
   }
 };
 
+export const parseUTCDate = (dateString?: string): Date => {
+  if (!dateString) return new Date(NaN);
+  let ds = String(dateString);
+  if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
+    ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
+  }
+  return new Date(ds);
+};
+
+export const getUnixTimestamp = (item: any): number => {
+  if (!item) return 0;
+  if (item.created_at) {
+    const d = parseUTCDate(item.created_at);
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  if (item.timestamp) {
+    const tsStr = String(item.timestamp).toLowerCase();
+    const now = Date.now();
+    if (tsStr.includes('just now') || tsStr.includes('now')) {
+      return now;
+    }
+    const match = tsStr.match(/^(\d+)\s*(m|h|d)\s*ago/);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      const unit = match[2];
+      if (unit === 'm') return now - val * 60 * 1000;
+      if (unit === 'h') return now - val * 60 * 60 * 1000;
+      if (unit === 'd') return now - val * 24 * 60 * 60 * 1000;
+    }
+
+    const d = parseUTCDate(item.timestamp);
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  if (item.start_time) {
+    const d = parseUTCDate(item.start_time);
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  return 0;
+};
+
+export const getTimeAgo = (dateString?: string): string => {
+  if (!dateString) return 'Just now';
+  const date = parseUTCDate(dateString);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  return `${Math.floor(diffInSeconds / 86400)}d ago`;
+};
+
+

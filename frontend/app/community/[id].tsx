@@ -1,4 +1,4 @@
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
+import { formatDateIST, formatTimeIST, formatDateTimeIST, parseUTCDate, getUnixTimestamp, getTimeAgo } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {View,
   Text,
@@ -34,7 +34,37 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import { decryptGroupMessage, getKeys, decryptSymmetricKey, generateSymmetricKey, encryptSymmetricKeyForUser } from '../../src/utils/cryptoUtil';
-import { getCommunity, getCommunityKey, addCommunityKey, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent, reportComment } from '../../src/services/api';
+import {
+  getCommunity,
+  getCommunityKey,
+  addCommunityKey,
+  sendCommunityMessage,
+  deleteCommunityMessage,
+  resolveCommunityRequest,
+  deleteCommunityRequest,
+  sendDirectMessage,
+  getUserProfile,
+  parseApiError,
+  getKYCStatus,
+  toggleRequestInterest,
+  getUsersBatch,
+  reportContent,
+  reportComment,
+  getCommunities,
+  attendEvent,
+  deletePost,
+  togglePostLike,
+  toggleCommunityMessageLike,
+  uploadChatMedia,
+  reverseGeocode,
+  getPostComments,
+  getCommunityMessageComments,
+  addPostComment,
+  addCommunityMessageComment,
+  deleteComment as deleteCommentApi,
+  api as axiosInstance,
+} from '../../src/services/api';
+import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
@@ -43,6 +73,7 @@ import { useChatStore, hydrateCommunityScreenCaches } from '../../src/store/chat
 import { socketService } from '../../src/services/socket';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
+import { useCreatePostState } from '../../src/hooks/useCreatePostState';
 
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
@@ -71,98 +102,28 @@ import { useGlobalMute } from '../../src/contexts/MuteContext';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
 
+import {
+  ensureCategoriesLoaded,
+  saveLocalPost,
+  iosUserCreatedPostIds,
+} from '../../src/services/localPostCache';
+import { COMMUNITY_TABS, POST_CATEGORIES } from '../../src/constants/community';
+import { getCommunityMemberCount, isSevaRequest, isSevaPost, isLostFoundRequest, isTempleUpdateRequest } from '../../src/utils/communityUtils';
+import { splitTextIntoTweets } from '../../src/utils/textUtils';
+import { useCommunityData } from '../../src/hooks/useCommunityData';
+import { useCommunitySocket } from '../../src/hooks/useCommunitySocket';
+import { useCommunityTabData } from '../../src/hooks/useCommunityTabData';
+import { CommunityListItem } from '../../src/components/community/CommunityListItem';
+import { CommunityMediaItem } from '../../src/components/community/CommunityMediaItem';
+import { CommunityPost, CommunityRequest, FestivalEvent, DiscussionPost } from '../../src/types/community';
+
+
+
+
+
+
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-interface User {
-  id: string;
-  name: string;
-  sl_id: string;
-  photo?: string;
-}
-
-// Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
-const localPostCategories = new Map<string, string>();
-// module-level cache for iOS to track posts created in this session
-const iosUserCreatedPostIds = new Set<string>();
-
-
-// Persists across full reloads via localStorage (web) / AsyncStorage (native)
-const POST_CACHE_KEY = 'brahmand_local_posts';
-let isCategoriesLoaded = false;
-let categoryLoadingPromise: Promise<void> | null = null;
-
-function ensureCategoriesLoaded(): Promise<void> {
-  if (isCategoriesLoaded) return Promise.resolve();
-  if (categoryLoadingPromise) return categoryLoadingPromise;
-
-  if (Platform.OS === 'web') {
-    isCategoriesLoaded = true;
-    return Promise.resolve();
-  }
-
-  categoryLoadingPromise = new Promise((resolve) => {
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      AsyncStorage.getItem(POST_CACHE_KEY).then((raw: string | null) => {
-        if (raw) {
-          const map: Record<string, string> = JSON.parse(raw);
-          Object.entries(map).forEach(([content, category]) => {
-            localPostCategories.set(content.trim(), category);
-          });
-        }
-        isCategoriesLoaded = true;
-        resolve();
-      }).catch((err: any) => {
-        console.warn('[CommunityScreen] Failed to load local categories:', err);
-        isCategoriesLoaded = true;
-        resolve();
-      });
-    } catch (e) {
-      console.warn('[CommunityScreen] AsyncStorage error:', e);
-      isCategoriesLoaded = true;
-      resolve();
-    }
-  });
-
-  return categoryLoadingPromise;
-}
-
-function saveLocalPost(content: string, category: string) {
-  const key = content.trim();
-  localPostCategories.set(key, category);
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(POST_CACHE_KEY);
-      const map: Record<string, string> = raw ? JSON.parse(raw) : {};
-      map[key] = category;
-      localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
-    } else {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      AsyncStorage.getItem(POST_CACHE_KEY).then((raw: string | null) => {
-        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
-        map[key] = category;
-        AsyncStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
-      }).catch((e: any) => console.warn('[saveLocalPost] AsyncStorage error:', e));
-    }
-  } catch { }
-}
-
-function getLocalCategory(content: string): string | undefined {
-  if (!content) return undefined;
-  const key = content.trim();
-  const fromMap = localPostCategories.get(key);
-  if (fromMap) return fromMap;
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(POST_CACHE_KEY);
-      if (raw) {
-        const map: Record<string, string> = JSON.parse(raw);
-        return map[key];
-      }
-    }
-  } catch { }
-  return undefined;
-}
 
 const CosmicCharacterRing = ({ textLength, text }: { textLength?: number; text?: string }) => {
   const size = 64;
@@ -297,307 +258,8 @@ const CosmicCharacterRing = ({ textLength, text }: { textLength?: number; text?:
   );
 };
 
-function splitTextIntoTweets(text: string, limit = 250): string[] {
-  const words = text.split(' ');
-  const chunks: string[] = [];
-  let currentChunk = '';
-
-  for (const word of words) {
-    if ((currentChunk + ' ' + word).trim().length <= limit) {
-      currentChunk = (currentChunk + ' ' + word).trim();
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
-      }
-      currentChunk = word;
-    }
-  }
-  if (currentChunk) {
-    chunks.push(currentChunk);
-  }
-  return chunks;
-}
-
-const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
-const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
-
-const getCommunityMemberCount = (community?: any) => {
-  if (!community) return 0;
-  let raw = 0;
-  if (Array.isArray(community.members)) raw = community.members.length;
-  else if (Array.isArray(community.members_details)) raw = community.members_details.length;
-  else if (typeof community.members_count === 'number' && community.members_count > 0) raw = community.members_count;
-  else if (typeof community.member_count === 'number' && community.member_count > 0) raw = community.member_count;
-  else if (typeof community.memberCount === 'number' && community.memberCount > 0) raw = community.memberCount;
-  if (raw <= 0) raw = 1;
-  return raw * 11;
-};
-
-const MOCK_FESTIVALS = [
-  { id: '1', name: 'Diwali', events: 12, color: '#FFF5F0', date: '2026-11-01' },
-  { id: '2', name: 'Navratri', events: 18, color: '#FFF9EB', date: '2026-10-12' },
-  { id: '3', name: 'Janmashtami', events: 10, color: '#F0F9FF', date: '2026-09-04' },
-  { id: '4', name: 'Ganesh Chaturthi', events: 8, color: '#FFF0F5', date: '2026-09-15' },
-  { id: '5', name: 'Makar Sankranti', events: 6, color: '#F0FFF4', date: '2026-01-14' },
-  { id: '6', name: 'Holi', events: 15, color: '#FFF0FA', date: '2026-03-23' },
-  { id: '7', name: 'Dussehra', events: 9, color: '#FFFBEB', date: '2026-10-22' },
-  { id: '8', name: 'Maha Shivaratri', events: 11, color: '#F5F0FF', date: '2026-02-15' },
-  { id: '9', name: 'Ram Navami', events: 7, color: '#FFF0F0', date: '2026-04-16' },
-  { id: '10', name: 'Raksha Bandhan', events: 5, color: '#F0FFF5', date: '2026-08-28' },
-];
 
 
-interface DiscussionPost {
-  id: string;
-  threadParentId?: string;
-  user: {
-    name: string;
-    photo?: any;
-    isVerified: boolean;
-    verificationLabel: string;
-    handle?: string;
-    isFeatured?: boolean;
-  };
-  content: string;
-  timestamp: string;
-  likes: number;
-  comments: number;
-  shares: number;
-  reposts: number;
-  liked?: boolean;
-  isRepost?: boolean;
-  repostedBy?: string;
-  image?: string;
-  hideBadge?: boolean;
-  sender_id?: string;
-  sevaDetails?: string;
-  isStateAnnouncement?: boolean;
-  isNationalAnnouncement?: boolean;
-  isCommunityMsg?: boolean;
-  communityId?: string;
-  subgroupType?: string;
-}
-
-const MOCK_DISCUSSION: DiscussionPost[] = [
-  {
-    id: 'd1',
-    user: {
-      name: 'Sadhvi Ritambhara',
-      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_sadhvi.webp',
-      isVerified: true,
-      verificationLabel: 'Maharashtra Verified',
-      handle: '@sadhviritambharaji',
-      isFeatured: true,
-    },
-    content: "This Sunday, join the statewide Hanuman Chalisa Path across Maharashtra. Let's come together for Dharma, Devotion & Desh.",
-    timestamp: '2h ago',
-    likes: 128,
-    comments: 24,
-    reposts: 16,
-    shares: 0,
-    liked: false,
-    image: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_gathering.webp',
-  },
-  {
-    id: 'd2',
-    user: {
-      name: 'Swami Avimukta',
-      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_swami.webp',
-      isVerified: true,
-      verificationLabel: 'Bharat Verified',
-      handle: '@swamiavimukt',
-    },
-    content: "Dharma is not just prayer, it's action. Join our community service initiative this weekend to help those in need.",
-    timestamp: '4h ago',
-    likes: 89,
-    comments: 18,
-    reposts: 12,
-    shares: 0,
-    liked: false,
-  },
-  {
-    id: 'd3',
-    user: {
-      name: 'Dr. Chinmay Pandya',
-      photo: 'https://brahmandfeed23.b-cdn.net/assets/avatar_drchinmay.webp',
-      isVerified: true,
-      verificationLabel: 'Maharashtra Verified',
-      handle: '@drchinmaypandya',
-    },
-    content: "Youth are the strength of our Bharat. Join the movement. Build values, build the future.",
-    timestamp: '6h ago',
-    likes: 89,
-    comments: 18,
-    reposts: 12,
-    shares: 0,
-    liked: false,
-  }
-];
-
-let ExpoVideoModule: any = null;
-try {
-  ExpoVideoModule = require('expo-video');
-} catch (error) {}
-
-const CommunityNativeVideoPlayer = React.memo(({
-  mediaUrl,
-  isMuted,
-  style,
-  onPress,
-  shouldPlay,
-  toggleMute,
-}: {
-  mediaUrl: string;
-  isMuted: boolean;
-  style: any;
-  onPress?: () => void;
-  shouldPlay: boolean;
-  toggleMute: () => void;
-}) => {
-  const player = useSafeVideoPlayer(mediaUrl, (p: any) => {
-    if (p) {
-      p.loop = true;
-      p.muted = isMuted;
-    }
-  });
-
-  useEffect(() => {
-    if (isPlayerValid(player)) {
-      try {
-        player.muted = isMuted;
-      } catch (e) {}
-    }
-  }, [isMuted, player]);
-
-  useEffect(() => {
-    if (isPlayerValid(player)) {
-      try {
-        if (shouldPlay) {
-          player.play();
-        } else {
-          player.pause();
-        }
-      } catch (e) {}
-    }
-  }, [shouldPlay, player]);
-
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (isPlayerValid(player)) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
-
-  const fallback = <View style={[style, { backgroundColor: '#000' }]} />;
-
-  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
-    return fallback;
-  }
-
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
-
-  return (
-    <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { position: 'relative', overflow: 'hidden', backgroundColor: '#000' }]}>
-      <SafeVideoView
-        key={mediaUrl}
-        player={player}
-        ExpoVideoModule={ExpoVideoModule}
-        style={{ width: '100%', height: '100%' }}
-        contentFit="contain"
-        nativeControls={false}
-        fallback={fallback}
-      />
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          bottom: 8,
-          right: 8,
-          zIndex: 10,
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}
-        onPress={(e) => {
-          e.stopPropagation();
-          toggleMute();
-        }}
-        activeOpacity={0.8}
-      >
-        <Ionicons
-          name={isMuted ? 'volume-mute' : 'volume-medium'}
-          size={18}
-          color="#FFF"
-        />
-      </TouchableOpacity>
-    </Wrapper>
-  );
-});
-CommunityNativeVideoPlayer.displayName = 'CommunityNativeVideoPlayer';
-
-const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
-  const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
-  const isVideo = (
-    (typeof media === 'object' && media !== null && (
-      String(media.type || media.media_type || media.mediaType || '').toLowerCase().startsWith('video')
-    )) || (
-      typeof mediaUrl === 'string' && (
-        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
-        mediaUrl.toLowerCase().startsWith('video') || 
-        mediaUrl.toLowerCase().includes('/video/') || 
-        mediaUrl.toLowerCase().includes('_video_') ||
-        ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
-         !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
-      )
-    )
-  );
-  const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
-  const isFocused = useIsFocused();
-  const shouldPlay = isFocused && isActive;
-
-  if (isVideo) {
-    if (shouldPlay) {
-      return (
-        <CommunityNativeVideoPlayer
-          mediaUrl={mediaUrl}
-          isMuted={isMuted}
-          style={style}
-          onPress={onPress}
-          shouldPlay={shouldPlay}
-          toggleMute={toggleMute}
-        />
-      );
-    } else {
-      const Wrapper = onPress ? TouchableOpacity : View;
-      const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
-      return (
-        <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
-          <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.6)" />
-        </Wrapper>
-      );
-    }
-  }
-
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
-
-  return (
-    <Wrapper {...wrapperProps}>
-      <Image
-        source={typeof media === 'string' ? { uri: media } : media}
-        style={style}
-        resizeMode="cover"
-      />
-    </Wrapper>
-  );
-};
 
 
 
@@ -619,8 +281,7 @@ export default function CommunityDetailScreen() {
   const listRef = useRef<FlatList>(null);
   const stateCommunityIdRef = useRef<string | null>(null);
   const countryCommunityIdRef = useRef<string | null>(null);
-  const joinedSocketRoomsRef = useRef<Set<string>>(new Set());
-  const socketListenerIdRef = useRef<string | null>(null);
+
 
   const { t } = useTranslation();
 
@@ -660,26 +321,12 @@ export default function CommunityDetailScreen() {
   };
 
   const cacheKey = `community_screen_${id}`;
-
-  const [community, setCommunity] = useState<any>(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.community || null;
-  });
   const [activeTab, setActiveTab] = useState('Feed');
-  const [isLocked, setIsLocked] = useState(false);
-  const [lockReason, setLockReason] = useState('');
 
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [activeTab]);
-  const [requests, setRequests] = useState<any[]>(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.requests || [];
-  });
-  const [events, setEvents] = useState<any[]>(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.events || [];
-  });
+
   const [discussionPosts, setDiscussionPosts] = useState<DiscussionPost[]>([]);
 
   const [activeVideoKey, setActiveVideoKey] = useState<string | null>(null);
@@ -721,10 +368,10 @@ export default function CommunityDetailScreen() {
   // interest state: requestId -> { count, userInterested }
   const [interestMap, setInterestMap] = useState<Record<string, { count: number; userInterested: boolean }>>({});
 
-  const handleToggleInterest = async (item: any) => {
+  const handleToggleInterest = useCallback(async (item: CommunityRequest) => {
     const id = item.id;
     if (!id || String(id).startsWith('dummy')) return;
-    const prev = interestMap[id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
+    const prev = interestMap[id] ?? { count: (item as any).interested_count || 0, userInterested: ((item as any).interested_by || []).includes(user?.id) };
     const next = { count: prev.userInterested ? prev.count - 1 : prev.count + 1, userInterested: !prev.userInterested };
     setInterestMap(m => ({ ...m, [id]: next }));
     try {
@@ -732,23 +379,56 @@ export default function CommunityDetailScreen() {
     } catch {
       setInterestMap(m => ({ ...m, [id]: prev }));
     }
-  };
+  }, [user?.id, interestMap]);
 
-  const [communityPosts, setCommunityPosts] = useState<any[]>(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.communityPosts || [];
-  });
-  const [allFestivals, setAllFestivals] = useState<any[]>(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return cachedData?.allFestivals || [];
-  });
-  const [loading, setLoading] = useState(() => {
-    const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-    return !cachedData;
-  });
-  const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
   const [rsvpStates, setRsvpStates] = useState<Record<string, 'yes' | 'no'>>({});
+
+  const handleOnNewSocketMessage = useCallback((formattedPost: any) => {
+    setCommunityPosts((prev) => {
+      if (prev.some((p) => String(p.id) === String(formattedPost.id))) return prev;
+      const next = [formattedPost, ...prev];
+      const cur = useChatStore.getState().communityScreenCaches[cacheKey];
+      if (cur) {
+        useChatStore.getState().setCommunityScreenCache(cacheKey, {
+          ...cur,
+          communityPosts: next,
+          lastFetched: Date.now(),
+        });
+      }
+      return next;
+    });
+  }, [cacheKey]);
+
+  const { ensureSocketRooms } = useCommunitySocket(
+    id as string,
+    cacheKey,
+    stateCommunityIdRef,
+    countryCommunityIdRef,
+    handleOnNewSocketMessage
+  );
+
+  const {
+    community, setCommunity,
+    requests, setRequests,
+    events, setEvents,
+    communityPosts, setCommunityPosts,
+    allFestivals, setAllFestivals,
+    loading, setLoading,
+    refreshing, setRefreshing,
+    hasMorePosts, setHasMorePosts,
+    loadingMore, setLoadingMore,
+    isLocked, setIsLocked,
+    lockReason, setLockReason,
+    fetchCommunity, handleLoadMore, onRefresh
+  } = useCommunityData(
+    id as string,
+    cacheKey,
+    user,
+    stateCommunityIdRef,
+    countryCommunityIdRef,
+    ensureSocketRooms
+  );
   // ⚡ Performance & Thermal optimization: Auto-polling disabled to prevent CPU spinning & re-renders.
   // Updates occur via WebSockets or on pull-to-refresh.
 
@@ -779,180 +459,36 @@ export default function CommunityDetailScreen() {
     };
   }, [cacheKey]);
 
-  const handleSocketMessage = useCallback((message: any) => {
-    if (!message || !message.id) return;
-    const msgCommunityId = message.community_id;
-    const subgroup = message.subgroup_type;
-    if (!msgCommunityId || (subgroup !== 'city' && subgroup !== 'state' && subgroup !== 'national')) return;
-    if (msgCommunityId !== id && msgCommunityId !== stateCommunityIdRef.current && msgCommunityId !== countryCommunityIdRef.current) return;
 
-    const currentUserId = useAuthStore.getState().user?.id;
-    if (message.sender_id && currentUserId && String(message.sender_id) === String(currentUserId)) return;
-
-    const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
-    const deletedIds = new Set(currentCache?.deletedPostIds || []);
-    if (deletedIds.has(String(message.id))) return;
-
-    const formattedPost = {
-      id: message.id,
-      user: {
-        name: message.sender_name || 'Anonymous',
-        photo: message.sender_photo,
-        isVerified: message.is_verified || false,
-        verificationLabel: message.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-      },
-      content: message.content,
-      image: message.media_url || message.mediaUrl || message.image,
-      timestamp: message.created_at || 'Just now',
-      raw_timestamp: message.created_at,
-      likes: message.likes_count || 0,
-      comments: message.comments_count || 0,
-      shares: 0,
-      reposts: 0,
-      hideBadge: false,
-      liked: (message.liked_by || []).includes(currentUserId),
-      category: message.category || 'Feed',
-      sender_id: message.sender_id,
-      isCommunityMsg: true,
-      subgroupType: subgroup,
-      communityId: msgCommunityId,
-      isStateAnnouncement: subgroup === 'state',
-      isNationalAnnouncement: subgroup === 'national',
-      contact: message.contact,
-      sevaDetails: message.seva_details,
-      location: message.location,
-      start_time: message.start_time,
-    };
-
-    setCommunityPosts((prev) => {
-      if (prev.some((p) => String(p.id) === String(message.id))) return prev;
-      const next = [formattedPost, ...prev];
-      const cur = useChatStore.getState().communityScreenCaches[cacheKey];
-      if (cur) {
-        useChatStore.getState().setCommunityScreenCache(cacheKey, {
-          ...cur,
-          communityPosts: next,
-          lastFetched: Date.now(),
-        });
-      }
-      return next;
-    });
-  }, [id, cacheKey]);
-
-  const ensureSocketRooms = useCallback((primarySubgroup?: string) => {
-    if (Platform.OS === 'web') return;
-    let targetCommId = id as string;
-    if (primarySubgroup === 'state' && stateCommunityIdRef.current) {
-      targetCommId = stateCommunityIdRef.current;
-    } else if ((primarySubgroup === 'national' || primarySubgroup === 'country') && countryCommunityIdRef.current) {
-      targetCommId = countryCommunityIdRef.current;
-    }
-
-    const activeSubgroupRoom = primarySubgroup ? `community_${targetCommId}_${primarySubgroup}` : `community_${targetCommId}_city`;
-
-    // Leave any socket rooms that are no longer the active room
-    joinedSocketRoomsRef.current.forEach((room) => {
-      if (room !== activeSubgroupRoom) {
-        socketService.leaveRoom(room);
-        joinedSocketRoomsRef.current.delete(room);
-      }
-    });
-
-    if (!joinedSocketRoomsRef.current.has(activeSubgroupRoom)) {
-      joinedSocketRoomsRef.current.add(activeSubgroupRoom);
-      socketService.joinRoom(activeSubgroupRoom).catch(() => {});
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    let mounted = true;
-    socketService
-      .connect()
-      .then(() => {
-        if (!mounted) return;
-        const listenerId = `community_screen_${id}_${Date.now()}`;
-        socketListenerIdRef.current = listenerId;
-        socketService.onMessage(listenerId, handleSocketMessage);
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-      if (socketListenerIdRef.current) {
-        socketService.offMessage(socketListenerIdRef.current);
-        socketListenerIdRef.current = null;
-      }
-      joinedSocketRoomsRef.current.forEach((room) => {
-        socketService.leaveRoom(room);
-      });
-      joinedSocketRoomsRef.current.clear();
-    };
-  }, [id]);
-
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [createPostState, setCreatePostState] = useState({
-    visible: false,
-    newMessage: '',
-    selectedImage: null as string | null,
-    selectedMediaType: null as 'image' | 'video' | null,
-    postCategory: '',
-    contactNumber: '',
-    sevaDetails: '',
-    eventLocation: '',
-    eventDate: null as Date | null,
-    showDatePicker: false,
-    showTimePicker: false,
-    showInlineCategories: false,
-  });
-
-  const showCreateModal = createPostState.visible;
-  const setShowCreateModal = (val: boolean | ((prev: boolean) => boolean)) =>
-    setCreatePostState(prev => ({ ...prev, visible: typeof val === 'function' ? val(prev.visible) : val }));
-
-  const newMessage = createPostState.newMessage;
-  const setNewMessage = (val: string | ((prev: string) => string)) =>
-    setCreatePostState(prev => ({ ...prev, newMessage: typeof val === 'function' ? val(prev.newMessage) : val }));
-
-  const selectedImage = createPostState.selectedImage;
-  const setSelectedImage = (val: string | null | ((prev: string | null) => string | null)) =>
-    setCreatePostState(prev => ({ ...prev, selectedImage: typeof val === 'function' ? val(prev.selectedImage) : val }));
-
-  const selectedMediaType = createPostState.selectedMediaType;
-  const setSelectedMediaType = (val: 'image' | 'video' | null | ((prev: 'image' | 'video' | null) => 'image' | 'video' | null)) =>
-    setCreatePostState(prev => ({ ...prev, selectedMediaType: typeof val === 'function' ? val(prev.selectedMediaType) : val }));
-
-  const postCategory = createPostState.postCategory;
-  const setPostCategory = (val: string | ((prev: string) => string)) =>
-    setCreatePostState(prev => ({ ...prev, postCategory: typeof val === 'function' ? val(prev.postCategory) : val }));
-
-  const contactNumber = createPostState.contactNumber;
-  const setContactNumber = (val: string | ((prev: string) => string)) =>
-    setCreatePostState(prev => ({ ...prev, contactNumber: typeof val === 'function' ? val(prev.contactNumber) : val }));
-
-  const sevaDetails = createPostState.sevaDetails;
-  const setSevaDetails = (val: string | ((prev: string) => string)) =>
-    setCreatePostState(prev => ({ ...prev, sevaDetails: typeof val === 'function' ? val(prev.sevaDetails) : val }));
-
-  const eventLocation = createPostState.eventLocation;
-  const setEventLocation = (val: string | ((prev: string) => string)) =>
-    setCreatePostState(prev => ({ ...prev, eventLocation: typeof val === 'function' ? val(prev.eventLocation) : val }));
-
-  const eventDate = createPostState.eventDate;
-  const setEventDate = (val: Date | null | ((prev: Date | null) => Date | null)) =>
-    setCreatePostState(prev => ({ ...prev, eventDate: typeof val === 'function' ? val(prev.eventDate) : val }));
-
-  const showDatePicker = createPostState.showDatePicker;
-  const setShowDatePicker = (val: boolean | ((prev: boolean) => boolean)) =>
-    setCreatePostState(prev => ({ ...prev, showDatePicker: typeof val === 'function' ? val(prev.showDatePicker) : val }));
-
-  const showTimePicker = createPostState.showTimePicker;
-  const setShowTimePicker = (val: boolean | ((prev: boolean) => boolean)) =>
-    setCreatePostState(prev => ({ ...prev, showTimePicker: typeof val === 'function' ? val(prev.showTimePicker) : val }));
-
-  const showInlineCategories = createPostState.showInlineCategories;
-  const setShowInlineCategories = (val: boolean | ((prev: boolean) => boolean)) =>
-    setCreatePostState(prev => ({ ...prev, showInlineCategories: typeof val === 'function' ? val(prev.showInlineCategories) : val }));
+  const {
+    createPostState,
+    setCreatePostState,
+    resetCreatePostState,
+    showCreateModal,
+    setShowCreateModal,
+    newMessage,
+    setNewMessage,
+    selectedImage,
+    setSelectedImage,
+    selectedMediaType,
+    setSelectedMediaType,
+    postCategory,
+    setPostCategory,
+    contactNumber,
+    setContactNumber,
+    sevaDetails,
+    setSevaDetails,
+    eventLocation,
+    setEventLocation,
+    eventDate,
+    setEventDate,
+    showDatePicker,
+    setShowDatePicker,
+    showTimePicker,
+    setShowTimePicker,
+    showInlineCategories,
+    setShowInlineCategories,
+  } = useCreatePostState();
 
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
@@ -979,7 +515,7 @@ export default function CommunityDetailScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState<any | null>(null);
-  const [attendeesList, setAttendeesList] = useState<User[]>([]);
+  const [attendeesList, setAttendeesList] = useState<any[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
   // Apple Guideline 1.2 - community post report state
   const [reportCommunityPostModalVisible, setReportCommunityPostModalVisible] = useState(false);
@@ -988,7 +524,6 @@ export default function CommunityDetailScreen() {
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [keptComments, setKeptComments] = useState<any[]>([]);
-  const [commentModalToRestore, setCommentModalToRestore] = useState<any | null>(null);
 
   const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
   const [blockConfirmData, setBlockConfirmData] = useState<{
@@ -1073,11 +608,7 @@ export default function CommunityDetailScreen() {
         async (buttonIndex) => {
           if (buttonIndex === 1) {
             setPendingReportComment(comment);
-            setCommentModalToRestore(showCommentModal);
-            setShowCommentModal(null);
-            setTimeout(() => {
-              setReportCommentModalVisible(true);
-            }, 300);
+            setReportCommentModalVisible(true);
           } else if (buttonIndex === 2) {
             await handleToggleBlockUser(targetUserId, comment.userName || 'User');
           }
@@ -1091,15 +622,7 @@ export default function CommunityDetailScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Report Comment', onPress: () => {
             setPendingReportComment(comment);
-            if (Platform.OS === 'android') {
-              setReportCommentModalVisible(true);
-            } else {
-              setCommentModalToRestore(showCommentModal);
-              setShowCommentModal(null);
-              setTimeout(() => {
-                setReportCommentModalVisible(true);
-              }, 300);
-            }
+            setReportCommentModalVisible(true);
           }},
           {
             text: blockLabel,
@@ -1111,6 +634,29 @@ export default function CommunityDetailScreen() {
       );
     }
   }, [blockedUserSet, handleToggleBlockUser, showCommentModal]);
+
+  const handlePickImage = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow access to your media library to attach photos or videos.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedImage(asset.uri);
+        setSelectedMediaType(asset.type === 'video' ? 'video' : 'image');
+      }
+    } catch (error) {
+      console.warn('Image picker error:', error);
+    }
+  }, []);
+
 
   const openEventDatePicker = useCallback(() => {
     if (Platform.OS === 'android') {
@@ -1190,28 +736,7 @@ export default function CommunityDetailScreen() {
     return ['Feed'];
   }, [community?.type]);
 
-  const isSevaRequest = (item: any) => {
-    if (!item) return false;
-    const type = (item.request_type || '').toLowerCase();
-    const title = (item.title || '').toLowerCase();
-    const description = (item.description || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase();
 
-    if (type === 'temple' || type === 'gau' || type === 'animal') {
-      return true;
-    }
-    if (type === 'help' && (title.includes('temple') || description.includes('temple') || title.includes('seva') || description.includes('seva') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation') || title.includes('bhandara') || description.includes('bhandara') || support.includes('temple') || support.includes('seva') || support.includes('donate') || support.includes('donation'))) {
-      return true;
-    }
-    if (title.includes('seva') || description.includes('seva') || title.includes('temple') || description.includes('temple') || title.includes('donate') || description.includes('donate') || title.includes('donation') || description.includes('donation')) {
-      return true;
-    }
-    return false;
-  };
-
-  const isSevaPost = (item: any) => {
-    return ((item.category || '').toLowerCase() === 'seva') || isSevaRequest(item);
-  };
 
   const filteredRequests = useMemo(() => {
     return requests.filter((item: any) => !isSevaRequest(item));
@@ -1229,658 +754,22 @@ export default function CommunityDetailScreen() {
     return [...activeList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
   }, [requests, activeTab, filteredRequests, filteredSevaRequests]);
 
-  const parseUTCDate = (dateString?: string) => {
-    if (!dateString) return new Date(NaN);
-    let ds = String(dateString);
-    if (!ds.includes('Z') && !ds.includes('+') && !ds.match(/-\d\d:\d\d$/)) {
-      ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
-    }
-    return new Date(ds);
-  };
 
-  const getUnixTimestamp = (item: any) => {
-    if (item.created_at) {
-      const d = parseUTCDate(item.created_at);
-      if (!Number.isNaN(d.getTime())) return d.getTime();
-    }
-    if (item.timestamp) {
-      const tsStr = String(item.timestamp).toLowerCase();
-      const now = Date.now();
-      if (tsStr.includes('just now') || tsStr.includes('now')) {
-        return now;
-      }
-      const match = tsStr.match(/^(\d+)\s*(m|h|d)\s*ago/);
-      if (match) {
-        const val = parseInt(match[1], 10);
-        const unit = match[2];
-        if (unit === 'm') return now - val * 60 * 1000;
-        if (unit === 'h') return now - val * 60 * 60 * 1000;
-        if (unit === 'd') return now - val * 24 * 60 * 60 * 1000;
-      }
 
-      const d = parseUTCDate(item.timestamp);
-      if (!Number.isNaN(d.getTime())) return d.getTime();
-    }
-    if (item.start_time) {
-      const d = parseUTCDate(item.start_time);
-      if (!Number.isNaN(d.getTime())) return d.getTime();
-    }
-    return 0;
-  };
 
-  const isLostFoundRequest = (item: any) => {
-    if (!item) return false;
-    const type = (item.request_type || '').toLowerCase();
-    const title = (item.title || '').toLowerCase();
-    const description = (item.description || item.content || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase().trim();
-    const cat = (item.category || '').toLowerCase().trim();
 
-    // Check category field first (most reliable - covers community posts created with 'Lost & Found' category)
-    if (cat === 'lost & found' || cat === 'lost_found' || cat === 'lost' || cat === 'found') return true;
-    // Check request_type field (for API community requests)
-    if (type === 'lost_found' || type === 'lost' || type === 'found') return true;
-    // Keyword fallback for legacy items
-    return title.includes('lost') || description.includes('lost') || support.includes('lost') ||
-      title.includes('found') || description.includes('found') || support.includes('found');
-  };
-
-  const isTempleUpdateRequest = (item: any) => {
-    if (!item) return false;
-    const type = (item.request_type || '').toLowerCase();
-    const title = (item.title || '').toLowerCase();
-    const description = (item.description || item.content || '').toLowerCase();
-    const support = (item.support_needed || '').toLowerCase().trim();
-    const cat = (item.category || '').toLowerCase().trim();
-
-    // Check category field first (most reliable - covers community posts created with 'Temple Updates' category)
-    if (cat === 'temple updates' || cat === 'temple_update' || cat === 'temple update') return true;
-    // Check request_type field (for API community requests)
-    if (type === 'temple_update') return true;
-    // Keyword fallback for legacy items
-    return (title.includes('temple') || description.includes('temple') || support.includes('temple')) &&
-      (title.includes('update') || description.includes('update') || title.includes('renovation') || description.includes('renovation'));
-  };
-
-  const createDummyItem = (tabName: string) => {
-    const now = new Date().toISOString();
-    if (tabName === 'Requests') {
-      return {
-        id: 'dummy-request-item',
-        isRequestItem: true,
-        title: 'Mock Help Request: Blood Donation Needed',
-        description: 'B+ blood needed urgently at City General Hospital for an elderly patient. Please contact Rahul if you can donate.',
-        request_type: 'blood',
-        support_needed: 'Blood Donation',
-        urgency_level: 'critical',
-        user_name: 'Rahul Sharma (Mock)',
-        contact_number: '+919876543210',
-        created_at: now,
-        status: 'pending',
-        interested_count: 3
-      };
-    }
-    if (tabName === 'Events') {
-      return {
-        id: 'dummy-event-item',
-        title: 'Mock Event: Community Meetup & Bhajan Sandhya',
-        location: 'Community Hall, Sector 4',
-        start_time: now,
-        attendee_count: 24,
-        contact_number: '+919876543210',
-        created_at: now,
-        status: 'pending',
-        image_url: 'https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=500'
-      };
-    }
-    if (tabName === 'Lost & Found') {
-      return {
-        id: 'dummy-lost-found-item',
-        isRequestItem: true,
-        title: 'Lost & Found: Gold Ring Found near Temple Entrance',
-        description: 'Found a engraved gold ring with initials "S.J." near the main temple steps yesterday evening during Aarti. Please contact to claim with proof.',
-        request_type: 'LOST & FOUND',
-        support_needed: 'Lost & Found Alert',
-        urgency_level: 'normal',
-        user_name: 'Aarti Jain (Temple Sevadar)',
-        contact_number: '+919876543210',
-        created_at: now,
-        status: 'pending',
-        location: 'Main Temple Entrance Steps',
-        interested_count: 1
-      };
-    }
-    if (tabName === 'Seva') {
-      return {
-        id: 'dummy-seva-item',
-        isRequestItem: true,
-        isSevaPost: true,
-        user_name: 'Gau Seva Samiti (Mock)',
-        user: { name: 'Gau Seva Samiti (Mock)', isVerified: true },
-        content: 'Mock Seva: Volunteers Needed for Sunday Goshala Cleaning & Feeding Drive',
-        description: 'Join us this Sunday morning from 8 AM to 11 AM at the local Goshala. Breakfast and refreshments will be provided.',
-        created_at: now,
-        status: 'pending',
-        sevaDetails: 'Bring comfortable clothes. Tools will be provided.',
-        liked: false
-      };
-    }
-    if (tabName === 'Temple Updates') {
-      return {
-        id: 'dummy-temple-update-item',
-        isCommunityMsg: true,
-        user: {
-          name: 'Temple Trustee Board',
-          photo: null,
-          isVerified: true,
-          verificationLabel: 'Official',
-        },
-        content: '🛕 Temple Timings & Sanctum Update\n\nDaily Darshan & Aarti timings:\n• Morning Aarti: 6:00 AM - 7:00 AM\n• Evening Aarti: 6:30 PM - 7:30 PM\n\nSpecial Puja arrangements are active for the upcoming festival. All devotees are requested to maintain queue decorum.',
-        timestamp: 'Just now',
-        likes: 24,
-        comments: 5,
-        reposts: 4,
-        category: 'Temple Updates',
-        contact_number: '+919876543210',
-      };
-    }
-    if (tabName === 'My Posts') {
-      return {
-        id: 'dummy-my-posts-item',
-        isCommunityMsg: true,
-        user: {
-          name: 'Brahmand Bot',
-          photo: null,
-          isVerified: true,
-          verificationLabel: 'System',
-        },
-        content: "You haven't shared any posts in this community yet. Create a post using the floating action button to see it here!",
-        timestamp: 'Just now',
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: true,
-      };
-    }
-    return null;
-  };
-
-  const combinedData = useMemo(() => {
-    const isUserBlocked = (item: any) => {
-      const uid = item?.user_id || item?.creator_id || item?.creator?.id || item?.sender_id || item?.user?.id;
-      return uid && blockedUserSet.has(String(uid));
-    };
-
-    if (activeTab === 'My Posts') {
-      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
-      const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-
-      const itemMap = new Map();
-
-      // All chat messages (community posts)
-      filteredCommunityPostsList.forEach(p => {
-        const cleanPost = { ...p };
-        if (cleanPost.id && !String(cleanPost.id).startsWith('post-')) {
-          delete cleanPost.threadParentId;
-        }
-        itemMap.set(p.id, cleanPost);
-      });
-
-      // Discussion posts
-      filteredDiscussionPostsList.forEach(p => {
-        if (!itemMap.has(p.id)) {
-          itemMap.set(p.id, p);
-        }
-      });
-
-      // Include Community Requests
-      filteredRequestsList.forEach(req => {
-        if (!itemMap.has(req.id)) {
-          itemMap.set(req.id, {
-            ...req,
-            type: 'request_item',
-            isRequestInFeed: true,
-          });
-        }
-      });
-
-      const allItems = Array.from(itemMap.values());
-
-      // Filter only user's own posts/requests
-      const userOwnItems = allItems.filter(item => {
-        return (
-          (item.sender_id && user?.id && String(item.sender_id) === String(user?.id)) ||
-          (item.user_id && user?.id && String(item.user_id) === String(user?.id)) ||
-          String(item.id).startsWith('post-') ||
-          String(item.id).startsWith('repost-')
-        );
-      });
-
-      // Sort posts descending (newest first)
-      userOwnItems.sort((a, b) => {
-        const timeA = getUnixTimestamp(a);
-        const timeB = getUnixTimestamp(b);
-        if (timeA !== timeB) return timeB - timeA;
-        return String(b.id).localeCompare(String(a.id));
-      });
-
-      return userOwnItems;
-    }
-
-    if (activeTab === 'Requests') {
-      const filteredApiRequests = filteredRequests.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const apiList = filteredApiRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
-      const localList = filteredCommunityPostsList
-        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'requests')
-        .map((p: any) => ({ 
-          ...p, 
-          type: 'request_item', 
-          isRequestItem: true, 
-          isRequestInFeed: false,
-          title: p.title || 'Community Request',
-          description: p.description || p.content || '',
-          user_name: p.user_name || p.user?.name || 'Devotee',
-          created_at: p.created_at || p.timestamp || new Date().toISOString(),
-          urgency_level: p.urgency_level || 'normal',
-          request_type: p.request_type || 'help',
-          image: p.image || p.image_url || p.media_url,
-          image_url: p.image_url || p.image || p.media_url
-        }));
-
-      const reqMap = new Map();
-      apiList.forEach(r => reqMap.set(r.id, r));
-      localList.forEach(r => reqMap.set(r.id, r));
-
-      const list = Array.from(reqMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list;
-    }
-    if (activeTab === 'Events') {
-      const filteredEventsList = events.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const apiList = filteredEventsList.map((e: any) => {
-        let locStr = 'Online';
-        if (e.location) {
-          if (typeof e.location === 'object') {
-            locStr = e.location.display_name || e.location.address || e.location.name || e.location.city || e.location.area || 'Online';
-          } else {
-            locStr = String(e.location);
-          }
-        }
-        
-        let startTime = e.start_time;
-        if (!startTime && e.date) {
-          startTime = e.time ? `${e.date}T${e.time}` : e.date;
-        }
-        if (!startTime) {
-          startTime = e.created_at || new Date().toISOString();
-        }
-
-        return {
-          ...e,
-          isEventItem: true,
-          title: e.name || e.title || 'Community Event',
-          description: e.description || '',
-          start_time: startTime,
-          location: locStr,
-          user_name: e.organizer_name || e.user_name || e.user?.name || 'Organizer',
-          image: e.image || e.image_url || e.media_url,
-          image_url: e.image_url || e.image || e.media_url
-        };
-      });
-
-      const localList = filteredCommunityPostsList
-        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'events')
-        .map((p: any) => ({ 
-          ...p, 
-          isEventItem: true,
-          title: p.title || 'Community Event',
-          description: p.description || p.content || '',
-          user_name: p.user_name || p.user?.name || 'Devotee',
-          start_time: p.start_time || p.timestamp || new Date().toISOString(),
-          location: p.location || 'Online',
-          image: p.image || p.image_url || p.media_url,
-          image_url: p.image_url || p.image || p.media_url
-        }));
-
-      const evtMap = new Map();
-      apiList.forEach(e => evtMap.set(e.id, e));
-      localList.forEach(e => evtMap.set(e.id, e));
-
-      const list = Array.from(evtMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list;
-    }
-    if (activeTab === 'Festivals') {
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const userFestivals = filteredCommunityPostsList
-        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'festivals')
-        .map((p: any) => {
-          let eventImage = p.image || p.image_url || p.media_url;
-          let resolvedImage = typeof eventImage === 'string' ? { uri: eventImage } : eventImage;
-          const diffInSeconds = p.timestamp ? Math.floor((new Date().getTime() - parseUTCDate(p.timestamp).getTime()) / 1000) : 0;
-          let timeAgoStr = 'Just now';
-          if (diffInSeconds >= 86400) timeAgoStr = `${Math.floor(diffInSeconds / 86400)}d ago`;
-          else if (diffInSeconds >= 3600) timeAgoStr = `${Math.floor(diffInSeconds / 3600)}h ago`;
-          else if (diffInSeconds >= 60) timeAgoStr = `${Math.floor(diffInSeconds / 60)}m ago`;
-
-          return {
-            id: p.id,
-            title: p.title || null,
-            description: p.description || p.content || 'Join our community celebration!',
-            location: p.location || p.sevaDetails || undefined,
-            time: p.time || (p.timestamp ? (() => {
-              const d = parseUTCDate(p.timestamp);
-              if (isNaN(d.getTime())) return 'Today';
-              const day = String(d.getDate()).padStart(2, '0');
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              return `${day}/${month}/${d.getFullYear()}`;
-            })() : 'Today'),
-            image: resolvedImage,
-            organizer: {
-              name: p.user?.name || 'Devotee',
-              photo: p.user?.photo || null,
-              isVerified: p.user?.isVerified || p.user?.is_verified || p.is_verified || false
-            },
-            timeAgo: timeAgoStr,
-            type: 'festival_event',
-            isReal: true,
-            timestamp: p.timestamp || p.created_at,
-            festival_name: p.festival_name || p.festival || null
-          };
-        });
-
-      let eventList = [
-        ...userFestivals
-      ];
-
-      if (selectedFestival) {
-        const targetFestival = allFestivals.find(f => f.name === selectedFestival);
-        let targetDateStr = '';
-        if (targetFestival && targetFestival.date) {
-          try {
-            const d = parseUTCDate(targetFestival.date);
-            if (!isNaN(d.getTime())) {
-              const day = String(d.getDate()).padStart(2, '0');
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              targetDateStr = `${day}/${month}/${d.getFullYear()}`;
-            }
-          } catch (err) {
-            console.warn('Failed to parse target festival date', err);
-          }
-        }
-
-        eventList = eventList.filter(e => {
-          if (targetDateStr && e.time && e.time.includes(targetDateStr)) {
-            return true;
-          }
-          const title = (e.title || '').toLowerCase();
-          const desc = (e.description || '').toLowerCase();
-          const festName = (e.festival_name || '').toLowerCase();
-          const name = selectedFestival.toLowerCase();
-          return title.includes(name) || desc.includes(name) || festName.includes(name) || festName === name;
-        });
-      }
-
-      eventList.sort((a, b) => {
-        const timeA = getUnixTimestamp(a);
-        const timeB = getUnixTimestamp(b);
-        return festivalSort === 'latest' ? timeB - timeA : timeA - timeB;
-      });
-
-      return [
-        { id: 'fest-header-main', type: 'festivals_header' },
-        { id: 'fest-list-horizontal', type: 'festivals_list' },
-        { id: 'fest-events-header-sub', type: 'festival_events_header' },
-        ...eventList,
-        { id: 'fest-banner-footer', type: 'festival_banner' }
-      ];
-    }
-    if (activeTab === 'Lost & Found') {
-      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const apiList = filteredRequestsList.filter((item: any) => isLostFoundRequest(item));
-      const localList = filteredCommunityPostsList
-        .filter((p: any) => isLostFoundRequest(p))
-        .map((p: any) => ({ 
-          ...p, 
-          isRequestItem: true,
-          title: p.title || 'Lost & Found',
-          description: p.description || p.content || '',
-          user_name: p.user_name || p.user?.name || 'Devotee',
-          created_at: p.created_at || p.timestamp || new Date().toISOString(),
-          request_type: 'lost_found',
-          image: p.image || p.image_url || p.media_url,
-          image_url: p.image_url || p.image || p.media_url
-        }));
-
-      const lfMap = new Map();
-      apiList.forEach(r => lfMap.set(r.id, r));
-      localList.forEach(r => lfMap.set(r.id, r));
-
-      const list = Array.from(lfMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list;
-    }
-    if (activeTab === 'Temple Updates') {
-      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const formatTemplePost = (p: any) => ({
-        ...p,
-        id: p.id || `tu-${Math.random()}`,
-        isCommunityMsg: true,
-        user: p.user || {
-          name: p.user_name || p.creator_name || 'Temple Trustee Board',
-          photo: p.user_photo || p.photo || null,
-          isVerified: true,
-          verificationLabel: 'Official',
-        },
-        content: p.content || (p.title ? (p.description ? `${p.title}\n\n${p.description}` : p.title) : p.description || 'Temple Update'),
-        timestamp: p.timestamp || p.created_at || new Date().toISOString(),
-        category: 'Temple Updates',
-        contact_number: p.contact_number || p.contact || p.user_phone || p.user?.phone || p.user?.phone_number || p.user?.contact_number || p.user?.contact || p.phone || '',
-        likes: p.likes || p.likes_count || 0,
-        comments: p.comments || p.comments_count || 0,
-        reposts: p.reposts || 0,
-        image: p.image || p.image_url || p.media_url,
-      });
-
-      const apiList = filteredRequestsList.filter((item: any) => isTempleUpdateRequest(item)).map(formatTemplePost);
-      const localList = filteredCommunityPostsList.filter((p: any) => isTempleUpdateRequest(p)).map(formatTemplePost);
-
-      const tuMap = new Map();
-      apiList.forEach(r => tuMap.set(r.id, r));
-      localList.forEach(r => tuMap.set(r.id, r));
-
-      let list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      return list;
-    }
-    if (activeTab === 'Seva') {
-      const filteredApiSevaRequests = filteredSevaRequests.filter(item => !isUserBlocked(item));
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const apiSeva = filteredApiSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
-      const localSeva = filteredCommunityPostsList
-        .filter((p: any) => (p.category || '').toLowerCase().trim() === 'seva')
-        .map((p: any) => ({ 
-          ...p, 
-          isSevaPost: true, 
-          isRequestItem: true,
-          title: p.title || 'Seva Request',
-          description: p.description || p.content || '',
-          user_name: p.user_name || p.user?.name || 'Devotee',
-          created_at: p.created_at || p.timestamp || new Date().toISOString(),
-          request_type: 'seva',
-          image: p.image || p.image_url || p.media_url,
-          image_url: p.image_url || p.image || p.media_url
-        }));
-
-      const sevaMap = new Map();
-      apiSeva.forEach(s => sevaMap.set(s.id, s));
-      localSeva.forEach(s => sevaMap.set(s.id, s));
-
-      const mergedSeva = Array.from(sevaMap.values());
-      const sortedSeva = mergedSeva.sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-
-      return sortedSeva;
-    }
-    if (activeTab === 'Feed') {
-      const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
-      const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
-      const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
-      const itemMap = new Map();
-
-      // All chat messages (community posts) only show in Feed section
-      filteredCommunityPostsList.forEach(p => {
-        // Clear any old/stale threadParentId from raw API messages to recompute cleanly
-        const cleanPost = { ...p };
-        if (cleanPost.id && !String(cleanPost.id).startsWith('post-')) {
-          delete cleanPost.threadParentId;
-        }
-        itemMap.set(p.id, cleanPost);
-      });
-
-      // Discussion posts are always chat posts in Feed
-      filteredDiscussionPostsList.forEach(p => {
-        if (!itemMap.has(p.id)) {
-          itemMap.set(p.id, p);
-        }
-      });
-
-      // Include Community Requests in Feed
-      filteredRequestsList.forEach(req => {
-        if (!itemMap.has(req.id)) {
-          itemMap.set(req.id, {
-            ...req,
-            type: 'request_item',
-            isRequestInFeed: true,
-          });
-        }
-      });
-
-      const allItems = Array.from(itemMap.values());
-
-      // Step 1: Sort ascending by ID (or fallback) to chronological order to find consecutive thread messages
-      allItems.sort((a, b) => {
-        const aIsLocal = String(a.id).startsWith('post-');
-        const bIsLocal = String(b.id).startsWith('post-');
-        if (aIsLocal && !bIsLocal) return 1; // local posts (newest) go to the end of chronological order
-        if (!aIsLocal && bIsLocal) return -1;
-        if (aIsLocal && bIsLocal) {
-          return String(a.id).localeCompare(String(b.id));
-        }
-
-        const aNum = parseInt(a.id, 10);
-        const bNum = parseInt(b.id, 10);
-        const aIsNumeric = !isNaN(aNum) && /^\d+$/.test(String(a.id));
-        const bIsNumeric = !isNaN(bNum) && /^\d+$/.test(String(b.id));
-
-        if (aIsNumeric && bIsNumeric) {
-          return aNum - bNum;
-        }
-        if (aIsNumeric && !bIsNumeric) return 1;
-        if (!aIsNumeric && bIsNumeric) return -1;
-
-        return String(a.id).localeCompare(String(b.id));
-      });
-
-      // Step 2: Reconstruct threadParentId for consecutive non-local messages from same sender within 1 minute
-      for (let i = 0; i < allItems.length; i++) {
-        const current = allItems[i];
-        if (String(current.id).startsWith('post-')) continue; // Skip local posts (already have parent thread IDs)
-
-        let j = i + 1;
-        while (j < allItems.length) {
-          const next = allItems[j];
-          if (String(next.id).startsWith('post-')) break; // Stop at local posts
-
-          const isSameSender = (next.sender_id && current.sender_id && String(next.sender_id) === String(current.sender_id)) ||
-            (next.user?.name && current.user?.name && next.user.name === current.user.name);
-
-          if (isSameSender) {
-            const timeA = new Date(current.timestamp).getTime();
-            const timeB = new Date(next.timestamp).getTime();
-            const timeDiff = Math.abs(timeA - timeB);
-            const isSameRelativeTime = current.timestamp && next.timestamp && current.timestamp === next.timestamp;
-
-            if ((!isNaN(timeDiff) && timeDiff < 60000) || isSameRelativeTime) {
-              next.threadParentId = current.threadParentId || current.id;
-              j++;
-              continue;
-            }
-          }
-          break;
-        }
-        i = j - 1;
-      }
-
-      // Step 3: Separate parents and children
-      const parents: any[] = [];
-      const childrenMap = new Map<string, any[]>();
-
-      allItems.forEach(item => {
-        if (item.threadParentId) {
-          const list = childrenMap.get(item.threadParentId) || [];
-          list.push(item);
-          childrenMap.set(item.threadParentId, list);
-        } else {
-          parents.push(item);
-        }
-      });
-
-      // Step 4: Sort parent posts descending (newest first), pinning only recent announcements (last 24 hours) at the very top
-      const sortCutoffMs = Date.now() - 24 * 60 * 60 * 1000;
-      const isRecentAnn = (post: any) => {
-        const isAnn = post.isNationalAnnouncement || post.isStateAnnouncement;
-        if (!isAnn) return false;
-        const ts = post.timestamp || post.created_at;
-        if (!ts || ts === 'Just now') return true;
-        try {
-          const tMs = parseUTCDate(ts).getTime();
-          return !isNaN(tMs) && tMs >= sortCutoffMs;
-        } catch {
-          return true;
-        }
-      };
-
-      parents.sort((a, b) => {
-        const aIsRecentAnn = isRecentAnn(a);
-        const bIsRecentAnn = isRecentAnn(b);
-
-        if (aIsRecentAnn && !bIsRecentAnn) return -1;
-        if (!aIsRecentAnn && bIsRecentAnn) return 1;
-
-        if (aIsRecentAnn && bIsRecentAnn) {
-          // Both are recent announcements: national first, then state
-          if (a.isNationalAnnouncement && !b.isNationalAnnouncement) return -1;
-          if (!a.isNationalAnnouncement && b.isNationalAnnouncement) return 1;
-        }
-
-        const timeA = getUnixTimestamp(a);
-        const timeB = getUnixTimestamp(b);
-        if (timeA !== timeB) return timeB - timeA;
-
-        return String(b.id).localeCompare(String(a.id));
-      });
-
-      // Step 5: Interleave children immediately after their parents
-      const sortedResult: any[] = [];
-      parents.forEach(parent => {
-        sortedResult.push(parent);
-        const children = childrenMap.get(parent.id);
-        if (children) {
-          // Sort children ascending by ID to display chronological thread replies
-          children.sort((a, b) => {
-            return String(a.id).localeCompare(String(b.id));
-          });
-          sortedResult.push(...children);
-        }
-      });
-
-      return sortedResult;
-    }
-
-    return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserSet, festivalSort, selectedFestival, allFestivals]);
+  const combinedData = useCommunityTabData(
+    activeTab,
+    requests,
+    events,
+    discussionPosts,
+    communityPosts,
+    user?.id,
+    blockedUserSet,
+    festivalSort,
+    selectedFestival,
+    allFestivals
+  );
 
   // ⚡ Android: Build an O(1) index map so renderDiscussionItem does not need findIndex (O(n)) per render
   const combinedDataIndexMap = useMemo(() => {
@@ -1920,442 +809,7 @@ export default function CommunityDetailScreen() {
     }
   }, [loading, postId, communityPosts, combinedData]);
 
-  const fetchCommunity = async (force = false) => {
-    try {
-      if (Platform.OS === 'android' || Platform.OS === 'ios') {
-        await ensureCategoriesLoaded();
-      }
-      const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 120000) {
-        console.log('[Community] Using fresh cache, skipping fetchCommunity');
-        setCommunity(cachedData.community);
-        setRequests(cachedData.requests || []);
-        setEvents(cachedData.events || []);
-        setAllFestivals(cachedData.allFestivals || []);
-        setCommunityPosts(cachedData.communityPosts || []);
-        setLoading(false);
-        return;
-      }
-      if (!cachedData) {
-        setCommunity(null);
-        setRequests([]);
-        setEvents([]);
-        setCommunityPosts([]);
-        setLoading(true);
-      }
-      setHasMorePosts(true);
-      let nextCommunity: any = { type: 'city', name: 'Community' };
-      try {
-        const response = await getCommunity(id as string);
-        nextCommunity = response.data;
-      } catch (err) {
-        if (id === 'food_pune') {
-          nextCommunity = {
-            id: 'food_pune',
-            name: 'Pune Food Sharing Group',
-            type: 'city',
-            members_count: 0,
-            description: 'A community group for sharing food in Pune.'
-          };
-        } else if (id === 'mumbai-fallback' || id === 'city_default') {
-          nextCommunity = {
-            id: id,
-            name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
-            type: 'city',
-            members_count: 0,
-            description: 'My Community Group'
-          };
-        } else if (id === 'maharashtra-fallback') {
-          nextCommunity = {
-            id: id,
-            name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
-            type: 'state',
-            members_count: 0,
-            description: 'Maharashtra State Community Group'
-          };
-        } else if (id === 'bharat-fallback') {
-          nextCommunity = {
-            id: id,
-            name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
-            type: 'country',
-            members_count: 0,
-            description: 'Bharat National Community Group'
-          };
-        } else {
-          throw err;
-        }
-      }
-      setCommunity(nextCommunity);
-      
-      const currentSubgroup = nextCommunity.type === 'state'
-        ? 'state'
-        : (nextCommunity.type === 'country' || nextCommunity.type === 'national' ? 'national' : 'city');
 
-      let stateCommunityId: string | null = null;
-      let countryCommunityId: string | null = null;
-
-      const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList, getCommunities } = require('../../src/services/api');
-
-      if (nextCommunity.type === 'city') {
-        // ⚡ Android: Reuse cached community IDs from refs to skip blocking sequential API call
-        if (Platform.OS === 'android' && stateCommunityIdRef.current) {
-          stateCommunityId = stateCommunityIdRef.current;
-          countryCommunityId = countryCommunityIdRef.current;
-        } else {
-          try {
-            const allJoinedRes = await getCommunities().catch(() => ({ data: [] }));
-            const joinedList = allJoinedRes.data || [];
-
-            const stateCommunity = joinedList.find((c: any) => c.type === 'state');
-            const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
-
-            if (stateCommunity) {
-              stateCommunityId = stateCommunity.id;
-              stateCommunityIdRef.current = stateCommunity.id;
-            }
-            if (countryCommunity) {
-              countryCommunityId = countryCommunity.id;
-              countryCommunityIdRef.current = countryCommunity.id;
-            }
-          } catch (e) {
-            console.warn('[Community] Failed to fetch joined communities:', e);
-          }
-        }
-      }
-
-      ensureSocketRooms(currentSubgroup);
-
-      // Resolve proper target community ID for state/national subgroups
-      let targetFetchCommId = id as string;
-      if (currentSubgroup === 'state' && stateCommunityId) {
-        targetFetchCommId = stateCommunityId;
-      } else if (currentSubgroup === 'national' && countryCommunityId) {
-        targetFetchCommId = countryCommunityId;
-      }
-
-      // ⚡ 1. Lazy-Loading Active Tab Strategy: Fetch ONLY active subgroup messages instead of 3 parallel calls
-      const promises: Promise<any>[] = [
-        getCommunityRequests({ community_id: targetFetchCommId }).catch(() => ({ data: [] })),
-        getEvents().catch(() => ({ data: [] })),
-        getCommunityMessages(targetFetchCommId, currentSubgroup, 15).catch(() => ({ data: [] })),
-        getFestivalList().catch(() => ({ data: [] }))
-      ];
-
-      const isLocalCommunity = nextCommunity.type === 'city';
-      if (isLocalCommunity) {
-        promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
-      }
-
-      const results = await Promise.all(promises);
-      const reqResponse = results[0];
-      const eventResponse = results[1];
-      const msgResponse = results[2];
-      const festResponse = results[3];
-      const globalReqResponse = isLocalCommunity ? results[4] : null;
-
-      // Handle Verification Guard Gate Locked Payload ({ locked: true })
-      if (msgResponse && msgResponse.data && msgResponse.data.locked) {
-        setIsLocked(true);
-        setLockReason(msgResponse.data.reason || 'Verification required to access discussions.');
-      } else {
-        setIsLocked(false);
-        setLockReason('');
-      }
-
-      const rawMsgData = msgResponse?.data?.messages || (Array.isArray(msgResponse?.data) ? msgResponse.data : []);
-
-      console.log('[Community] Requests fetched:', reqResponse.data?.length);
-      let nextRequests = reqResponse.data || [];
-      if (globalReqResponse && globalReqResponse.data) {
-        const combined = [...nextRequests, ...globalReqResponse.data];
-        nextRequests = combined.filter((v: any, i: number, a: any[]) => a.findIndex((t: any) => t.id === v.id) === i);
-      }
-      const nextEvents = eventResponse.data || [];
-      setRequests(nextRequests);
-      setEvents(nextEvents);
-
-      let nextFestivals = allFestivals;
-      if (festResponse.data && festResponse.data.length > 0) {
-        nextFestivals = festResponse.data.map((f: any) => ({
-          ...f,
-          icon: 'flower-outline',
-          color: '#F0F9FF',
-          iconColor: '#00A3FF'
-        }));
-        setAllFestivals(nextFestivals);
-      }
-
-      // Map API messages to Twitter format
-      const formattedMsgs = rawMsgData.map((msg: any) => ({
-        id: msg.id || Math.random().toString(),
-        user: {
-          name: msg.sender_name || 'Anonymous',
-          photo: msg.sender_photo,
-          isVerified: msg.is_verified || false,
-          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-        },
-        content: msg.content,
-        image: msg.media_url || msg.mediaUrl || msg.image,
-        timestamp: msg.created_at || 'Just now',
-        raw_timestamp: msg.created_at,
-        likes: msg.likes_count || 0,
-        comments: msg.comments_count || 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: false,
-        liked: (msg.liked_by || []).includes(user?.id),
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
-        sender_id: msg.sender_id, // Map sender ID to check for delete ownership
-        isCommunityMsg: true,
-        subgroupType: currentSubgroup,
-        communityId: id as string,
-        contact: msg.contact,
-        sevaDetails: msg.seva_details,
-        location: msg.location,
-        start_time: msg.start_time,
-      }));
-
-      // Retrieve list of locally deleted post IDs to filter them from fresh server data
-      const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
-      const deletedIds = new Set<string>(currentCache?.deletedPostIds || []);
-
-      let finalPosts: any[] = [];
-      if (Platform.OS === 'ios') {
-        const currentUser = useAuthStore.getState().user;
-        const currentUserIdStr = currentUser?.id ? String(currentUser.id) : null;
-        const currentUserName = currentUser?.name || null;
-
-        const serverPosts = [
-          ...formattedMsgs
-        ];
-        const serverIds = new Set(serverPosts.map((p: any) => String(p.id)));
-        const prevPosts = currentCache?.communityPosts || [];
-
-        console.log('[iOS Community] prevPosts IDs:', prevPosts.map(p => p.id));
-        console.log('[iOS Community] serverPosts IDs:', serverPosts.map(p => p.id));
-
-        const localPosts = prevPosts.filter((p: any) => {
-          const pIdStr = String(p.id);
-          const isDeleted = deletedIds.has(pIdStr);
-          if (isDeleted) return false;
-
-          // If the post is already in the server response by ID, don't keep local version
-          if (serverIds.has(pIdStr)) {
-            console.log(`[iOS Community] Discarding local post ${pIdStr} because server has it by ID`);
-            return false;
-          }
-
-          // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
-          if (pIdStr.startsWith('post-')) {
-            const hasServerMatch = serverPosts.some((sp: any) => {
-              const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
-              const senderMatches = (sp.sender_id && currentUserIdStr && String(sp.sender_id) === currentUserIdStr) ||
-                (sp.user_id && currentUserIdStr && String(sp.user_id) === currentUserIdStr) ||
-                (sp.user?.name && currentUserName && sp.user.name === currentUserName);
-              return contentMatches && senderMatches;
-            });
-            if (hasServerMatch) {
-              console.log(`[iOS Community] Discarding local post ${pIdStr} because server has it by content match`);
-              return false;
-            }
-          }
-
-          const isLocal = pIdStr.startsWith('post-') || 
-            p.isUniversal || 
-            iosUserCreatedPostIds.has(pIdStr) ||
-            (p.sender_id && currentUserIdStr && String(p.sender_id) === currentUserIdStr) ||
-            (p.user_id && currentUserIdStr && String(p.user_id) === currentUserIdStr);
-
-          if (isLocal) {
-            console.log(`[iOS Community] Keeping local post ${pIdStr} (isUniversal: ${p.isUniversal}, createdInSession: ${iosUserCreatedPostIds.has(pIdStr)})`);
-          }
-
-          return isLocal;
-        });
-
-        const seenIds = new Set(localPosts.map((p: any) => String(p.id)));
-
-        // Filter fresh server posts — exclude any that were locally deleted or are already local
-        const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
-
-        const getPostTimeMs = (p: any) => {
-          const ts = p.timestamp || p.created_at;
-          if (!ts || ts === 'Just now') return Date.now();
-          const parsed = parseUTCDate(ts).getTime();
-          return Number.isNaN(parsed) ? Date.now() : parsed;
-        };
-
-        finalPosts = [
-          ...localPosts,
-          ...uniqueServerMsgs
-        ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
-        console.log('[iOS Community] finalPosts IDs:', finalPosts.map(p => p.id));
-
-        setCommunityPosts(finalPosts);
-
-        useChatStore.getState().setCommunityScreenCache(cacheKey, {
-          community: nextCommunity,
-          requests: nextRequests,
-          events: nextEvents,
-          allFestivals: nextFestivals,
-          communityPosts: finalPosts,
-          lastFetched: Date.now()
-        });
-      } else {
-        // ORIGINAL reconciliation logic for Android/Web
-        setCommunityPosts((prev: any[]) => {
-          const serverIds = new Set(formattedMsgs.map((p: any) => p.id));
-          const serverPosts = [...formattedMsgs];
-
-          // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
-          const localPosts = prev.filter((p: any) => {
-            const isDeleted = deletedIds.has(String(p.id));
-            if (isDeleted) return false;
-
-            const isLocal = String(p.id).startsWith('post-') || 
-              p.isUniversal || 
-              (p.sender_id && user?.id && String(p.sender_id) === String(user?.id)) ||
-              (p.user_id && user?.id && String(p.user_id) === String(user?.id));
-
-            if (!isLocal) return false;
-
-            // If the post is already in the server response by ID, don't keep local version
-            if (serverIds.has(p.id)) return false;
-
-            // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
-            if (String(p.id).startsWith('post-')) {
-              const hasServerMatch = serverPosts.some((sp: any) => {
-                const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
-                const senderMatches = (sp.sender_id && user?.id && String(sp.sender_id) === String(user?.id)) ||
-                  (sp.user_id && user?.id && String(sp.user_id) === String(user?.id)) ||
-                  (sp.user?.name && user?.name && sp.user.name === user.name);
-                return contentMatches && senderMatches;
-              });
-              if (hasServerMatch) return false;
-            }
-
-            return true;
-          });
-          const seenIds = new Set(localPosts.map((p: any) => p.id));
-
-          // Filter fresh server posts — exclude any that were locally deleted
-          const uniqueServerMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-
-          const getPostTimeMs = (p: any) => {
-            const ts = p.timestamp || p.created_at;
-            if (!ts || ts === 'Just now') return Date.now();
-            const parsed = parseUTCDate(ts).getTime();
-            return Number.isNaN(parsed) ? Date.now() : parsed;
-          };
-
-          finalPosts = [
-            ...localPosts,
-            ...uniqueServerMsgs
-          ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
-
-          // CRITICAL FIX: The cache must be updated with the newly computed array.
-          // Doing this outside setCommunityPosts was caching an empty array due to async React state!
-          useChatStore.getState().setCommunityScreenCache(cacheKey, {
-            community: nextCommunity,
-            requests: nextRequests,
-            events: nextEvents,
-            allFestivals: nextFestivals,
-            communityPosts: finalPosts,
-            lastFetched: Date.now()
-          });
-
-          return finalPosts;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching community data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLoadMore = async () => {
-    if (loadingMore || !hasMorePosts) return;
-    setLoadingMore(true);
-    try {
-      const { getCommunityMessages } = require('../../src/services/api');
-      const currentSubgroup = community?.type === 'state'
-        ? 'state'
-        : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
-      const cityPosts = communityPosts.filter((p: any) => !p.isStateAnnouncement && !p.isNationalAnnouncement && !String(p.id).startsWith('post-'));
-      if (cityPosts.length === 0) {
-        setHasMorePosts(false);
-        setLoadingMore(false);
-        return;
-      }
-
-      const oldestPost = cityPosts[cityPosts.length - 1];
-      let beforeTimestamp = oldestPost.raw_timestamp || oldestPost.timestamp;
-      // In case it's "Just now" or similar, we might have issues, but let's assume raw timestamp exists or try to use current time.
-      if (beforeTimestamp === 'Just now' || beforeTimestamp === 'now') {
-        beforeTimestamp = new Date().toISOString();
-      }
-
-      const msgResponse = await getCommunityMessages(id as string, currentSubgroup, 25, beforeTimestamp);
-      const newMsgs = (msgResponse.data || []).map((msg: any) => ({
-        id: msg.id || Math.random().toString(),
-        user: {
-          name: msg.sender_name || 'Anonymous',
-          photo: msg.sender_photo,
-          isVerified: msg.is_verified || false,
-          verificationLabel: msg.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
-        },
-        content: msg.content,
-        image: msg.media_url || msg.mediaUrl || msg.image,
-        timestamp: msg.created_at || 'Just now',
-        raw_timestamp: msg.created_at, // keep original for pagination
-        likes: msg.likes_count || 0,
-        comments: msg.comments_count || 0,
-        shares: 0,
-        reposts: 0,
-        hideBadge: false,
-        liked: (msg.liked_by || []).includes(user?.id),
-        category: getLocalCategory(msg.content) || msg.category || 'Feed',
-        sender_id: msg.sender_id, // Map sender ID to check for delete ownership
-        isCommunityMsg: true,
-        subgroupType: currentSubgroup,
-        communityId: id as string,
-        contact: msg.contact,
-        sevaDetails: msg.seva_details,
-        location: msg.location,
-      }));
-
-      if (newMsgs.length > 0) {
-        setCommunityPosts(prev => {
-          const updatedPosts = [...prev, ...newMsgs];
-
-          // Update cache with the newly paginated posts so they persist when returning
-          const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
-          if (currentCache) {
-            useChatStore.getState().setCommunityScreenCache(cacheKey, {
-              ...currentCache,
-              communityPosts: updatedPosts,
-              lastFetched: Date.now()
-            });
-          }
-
-          return updatedPosts;
-        });
-      } else {
-        setHasMorePosts(false);
-      }
-    } catch (error) {
-      console.error('Error loading more posts:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchCommunity(true).then(() => setRefreshing(false));
-  }, []);
 
   const renderHeader = () => (
     <LinearGradient
@@ -2458,242 +912,7 @@ export default function CommunityDetailScreen() {
     return getTimeAgo(ts);
   };
 
-  const renderDiscussionItem = ({ item }: { item: DiscussionPost }) => {
-    // ⚡ Android: Use O(1) map lookup instead of O(n) findIndex to prevent slow rendering on large lists
-    const index = Platform.OS === 'android'
-      ? (combinedDataIndexMap.get(String(item.id)) ?? -1)
-      : combinedData.findIndex(p => p.id === item.id);
-    const nextItem = index !== -1 && index < combinedData.length - 1 ? combinedData[index + 1] : null;
-
-    const hasNextThreadConnection = nextItem && (
-      nextItem.threadParentId === item.id ||
-      (item.threadParentId && nextItem.threadParentId === item.threadParentId)
-    );
-    const hasPrevThreadConnection = item.threadParentId !== undefined;
-
-    const isFulfilled = (item as any).status === 'fulfilled' || (item as any).status === 'resolved' || (item as any).status === 'done';
-    const isEventPost = (item as any).category === 'Events';
-
-    const shouldTruncate = item.content.length > 300;
-    const displayText = shouldTruncate
-      ? item.content.slice(0, 300) + '...'
-      : item.content;
-
-    const userObj = item.user || {};
-    const userName = userObj.name || (item as any).author_name || (item as any).username || (item as any).user_name || 'Sacred Devotee';
-    const userPhoto = userObj.photo || (item as any).author_photo || (item as any).user_avatar || (item as any).avatar || '';
-    const userHandle = userObj.handle ? userObj.handle : `@${userName.replace(/\s+/g, '').toLowerCase()}`;
-    const isVerified = Boolean(userObj.isVerified || (item as any).is_verified);
-    const isFeatured = Boolean(userObj.isFeatured || (item as any).is_featured);
-
-    return (
-      <View style={[
-        styles.postContainer,
-        hasNextThreadConnection && { paddingBottom: 0, borderBottomWidth: 0 },
-        hasPrevThreadConnection && { paddingTop: 0 }
-      ]}>
-        {item.isRepost && (
-          <View style={styles.repostHeaderLabel}>
-            <Ionicons name="repeat" size={14} color="#536471" />
-            <Text style={styles.repostHeaderText}>{item.repostedBy || 'Someone'} reposted</Text>
-          </View>
-        )}
-
-        <View style={styles.postMainRow}>
-          <View style={[styles.postLeftCol, { width: 48, alignItems: 'center' }]}>
-            {hasPrevThreadConnection ? (
-              // Child thread post: no avatar, just a continuous vertical line running from top to bottom
-              <View style={{ position: 'absolute', left: 24, top: 0, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
-            ) : (
-              // Parent thread post: show avatar, and draw a line down if there are replies
-              <>
-                <Avatar name={userName} photo={userPhoto} size={48} />
-                {hasNextThreadConnection && (
-                  <View style={{ position: 'absolute', left: 24, top: 48, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
-                )}
-              </>
-            )}
-          </View>
-
-          <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 24 }]}>
-            <View style={styles.postHeaderRow}>
-              <View style={styles.postNameContainer}>
-                <Text style={styles.feedPostUserName} numberOfLines={1}>{userName}</Text>
-                {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 2 }} />}
-                <Text style={styles.postHandle} numberOfLines={1}>
-                  {` ${userHandle}`}
-                </Text>
-                <Text style={styles.postHandle} numberOfLines={1}> · {formatRelativeTime(item.timestamp)}</Text>
-                {isFeatured && (
-                  <View style={styles.featuredBadgeContainer}>
-                    <Text style={styles.featuredBadgeText}>Featured</Text>
-                  </View>
-                )}
-                {(item as any).category && (item as any).category !== 'Feed' && (item as any).category !== 'Others' && (
-                  <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                    <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{(item as any).category.toUpperCase()}</Text>
-                  </View>
-                )}
-              </View>
-              {(item.sender_id === user?.id || userObj.name === user?.name || userName === user?.name || String(item.id).startsWith('d')) ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {((item as any).isRequestInFeed || ['requests', 'seva', 'lost & found', 'temple updates'].includes((item as any).category?.toLowerCase()) || (item as any).request_type) && !isFulfilled && (
-                    <TouchableOpacity
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      onPress={() => handleResolveRequest(item)}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={20} color="#059669" />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    onPress={() => handleDeletePost(item.id)}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                // Non-owner: show Report button (Apple Guideline 1.2)
-                <TouchableOpacity
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  onPress={() => {
-                    setPendingReportCommunityPost(item);
-                    setReportCommunityPostModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="flag-outline" size={16} color="#888" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => handleOpenCommentModal(item)}
-              activeOpacity={0.8}
-            >
-              <Text selectable={true} style={styles.postContentText}>{displayText}</Text>
-            </TouchableOpacity>
-
-            {isEventPost && (item as any).start_time && (
-              <View style={[styles.sevaInfoCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                <Text style={[styles.sevaInfoLabel, { color: '#166534' }]}>Event Date & Time</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="calendar-outline" size={16} color="#166534" />
-                  <Text style={[styles.sevaInfoText, { color: '#166534' }]}>
-                    {formatDateTimeIST(new Date((item as any).start_time))}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {item.sevaDetails ? (
-              <View style={styles.sevaInfoCard}>
-                <Text style={styles.sevaInfoLabel}>Seva</Text>
-                <Text style={styles.sevaInfoText}>{item.sevaDetails}</Text>
-              </View>
-            ) : null}
-
-            {(item as any).location ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 3 }}>
-                <Ionicons name="location-outline" size={12} color="#888" />
-                <Text style={{ fontSize: 12, color: '#888' }} numberOfLines={1}>{(item as any).location}</Text>
-              </View>
-            ) : null}
-
-            {item.image && (
-              <CommunityMediaItem
-                media={item.image}
-                style={styles.postMediaImage}
-                isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-                onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : ((item.image as any)?.uri || ''))}
-              />
-            )}
-
-            {(() => {
-              const explicitPhone = (item as any).contact_number || 
-                (item as any).contact || 
-                (item as any).user_phone || 
-                (item as any).phone;
-
-              const itemCat = String((item as any).category || '').toLowerCase();
-              const isRequestType = (item as any).isRequestInFeed || 
-                ['requests', 'seva', 'lost & found', 'temple updates'].includes(itemCat) || 
-                (item as any).request_type;
-
-              // Only show Call & WhatsApp buttons if an explicit contact number was set on the post or if it's a request/help category
-              const posterPhone = explicitPhone || (isRequestType ? (
-                (item as any).user?.phone || 
-                (item as any).user?.phone_number || 
-                (item as any).user?.contact_number || 
-                (item as any).user?.contact || 
-                (user?.id && (user.id === (item as any).sender_id || user.id === (item as any).user_id || user.id === (item as any).user?.id) ? ((user as any)?.phone || (user as any)?.phone_number) : '')
-              ) : '');
-
-              const isTempleUpdate = (item as any).category === 'Temple Updates';
-
-              if (!posterPhone) return null;
-
-              return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 4, gap: 10 }}>
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DCFCE7', gap: 6 }}
-                    onPress={() => handleCallPress(posterPhone)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="call" size={14} color="#16A34A" />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#15803D' }}>{isTempleUpdate ? 'Call Temple' : 'Call'}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#D1FAE5', gap: 6 }}
-                    onPress={() => handleWhatsAppPress(posterPhone, (item as any).title || (item as any).content)}
-                    activeOpacity={0.7}
-                  >
-                    <FontAwesome5 name="whatsapp" size={14} color="#059669" />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857' }}>WhatsApp</Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })()}
-
-            <View style={styles.postActionRow}>
-              <TouchableOpacity
-                style={styles.postActionBtn}
-                onPress={() => handleOpenCommentModal(item)}
-              >
-                <Ionicons name="chatbubble-outline" size={18} color="#536471" />
-                <Text style={styles.postActionCount}>{item.comments > 0 ? item.comments : ''}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.postActionBtn}
-                onPress={() => handleRepost(item.id)}
-              >
-                <Ionicons name="repeat" size={20} color={item.isRepost ? "#00BA7C" : "#536471"} />
-                <Text style={[styles.postActionCount, item.isRepost && { color: "#00BA7C" }]}>{item.reposts > 0 ? item.reposts : ''}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.postActionBtn}
-                onPress={() => handleLike(item.id)}
-              >
-                <Ionicons name={item.liked ? "heart" : "heart-outline"} size={19} color={item.liked ? "#F91880" : "#536471"} />
-                <Text style={[styles.postActionCount, item.liked && { color: "#F91880" }]}>{item.likes > 0 ? item.likes : ''}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.postActionBtn}
-                onPress={() => handleShare(item.id)}
-              >
-                <Ionicons name="share-outline" size={18} color="#536471" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const handleCallPress = (phone: any) => {
+  const handleCallPress = useCallback((phone: any) => {
     const phoneStr = typeof phone === 'string' ? phone : '';
     if (!phoneStr) {
       Alert.alert('Not Available', 'No contact phone number is available.');
@@ -2702,7 +921,6 @@ export default function CommunityDetailScreen() {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`Call ${phoneStr}?`);
       if (confirmed) {
-        const { Linking } = require('react-native');
         Linking.openURL(`tel:${phoneStr}`);
       }
       return;
@@ -2715,15 +933,14 @@ export default function CommunityDetailScreen() {
         {
           text: 'Call',
           onPress: () => {
-            const { Linking } = require('react-native');
             Linking.openURL(`tel:${phoneStr}`);
           }
         }
       ]
     );
-  };
+  }, []);
 
-  const handleOpenMap = (location: string) => {
+  const handleOpenMap = useCallback((location: string) => {
     if (!location || location === 'Online' || location === 'Local') return;
     const query = encodeURIComponent(location.trim());
     const nativeUrl = Platform.OS === 'ios' 
@@ -2731,8 +948,6 @@ export default function CommunityDetailScreen() {
       : `geo:0,0?q=${query}`;
     const webUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
-    const { Linking } = require('react-native');
-    // Try opening native map app directly first
     Linking.openURL(nativeUrl)
       .catch((err: any) => {
         console.warn('Could not open native map, trying browser fallback:', err);
@@ -2742,9 +957,9 @@ export default function CommunityDetailScreen() {
         console.error('Failed to open web maps fallback:', webErr);
         Alert.alert('Error', 'Unable to open maps application.');
       });
-  };
+  }, []);
 
-  const handleWhatsAppPress = (phone: any, title: string) => {
+  const handleWhatsAppPress = useCallback((phone: any, title: string) => {
     const phoneStr = typeof phone === 'string' ? phone : '';
     if (!phoneStr) {
       Alert.alert('Not Available', 'No contact phone number is available.');
@@ -2765,113 +980,14 @@ export default function CommunityDetailScreen() {
     Linking.openURL(webUrl).catch(() => {
       Alert.alert('Error', 'Unable to open WhatsApp. Please verify the contact number is correct.');
     });
-  };
+  }, []);
 
-  const renderSevaItem = ({ item }: { item: any }) => {
-    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
-    const phone = item.contact || item.contact_number || item.user_phone;
-    return (
-      <View style={styles.festEventCard}>
-        <View style={styles.festEventMain}>
-          {(item.image || item.image_url || item.media_url) && (
-            <CommunityMediaItem
-              media={item.image || item.image_url || item.media_url}
-              style={styles.festEventImage}
-              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-              onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
-            />
-          )}
-          <View style={styles.festEventInfo}>
-            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Seva'}</Text>
-            {item.description || item.content ? (
-              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description || item.content}</Text>
-            ) : null}
-            {item.sevaDetails ? (
-              <View style={[styles.sevaInfoCard, { marginTop: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 }]}>
-                <Text style={[styles.sevaInfoLabel, { fontSize: 10, marginBottom: 2 }]}>Seva Details</Text>
-                <Text style={[styles.sevaInfoText, { fontSize: 13, lineHeight: 18 }]}>{item.sevaDetails}</Text>
-              </View>
-            ) : null}
-            <View style={styles.festEventMeta}>
-              <View style={styles.festMetaRow}>
-                <Ionicons name="heart" size={14} color="#E91E63" />
-                <Text style={styles.festMetaText} numberOfLines={1}>Seva</Text>
-              </View>
-              <View style={styles.festMetaRow}>
-                <Ionicons name="time-outline" size={14} color="#FF3B30" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
-          <View style={styles.festOrgDetailsRow}>
-            <Avatar name={item.user?.name || item.user_name || 'User'} size={32} photo={item.user?.photo} />
-            <View style={{ marginLeft: 8, flex: 1 }}>
-              <View style={styles.festOrgNameRow}>
-                <Text style={styles.festOrgName} numberOfLines={1}>{item.user?.name || item.user_name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-              </View>
-              <Text style={styles.festOrgLabel}>Volunteer • {item.location || 'Local'}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
-          {phone ? (
-            <>
-              {/* Call button */}
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-                onPress={() => handleCallPress(phone)}
-              >
-                <Ionicons name="call" size={18} color="#16A34A" />
-              </TouchableOpacity>
-
-              {/* WhatsApp button */}
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-                onPress={() => handleWhatsAppPress(phone, item.title || item.content || item.description)}
-              >
-                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-              </TouchableOpacity>
-            </>
-          ) : null}
-
-          {/* Fulfill / Help Button */}
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
-            {item.user_id === user?.id || item.sender_id === user?.id ? (
-              !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
-                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
-                </TouchableOpacity>
-              )
-            ) : null}
-
-            {isFulfilled ? (
-              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Share button */}
-          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
-            <Ionicons name="share-social-outline" size={18} color="#888" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const handleAttendPress = async (eventId: string, wantsToAttend: boolean, eventItem?: any) => {
+  const handleAttendPress = useCallback(async (eventId: string, wantsToAttend: boolean, eventItem?: any) => {
     setRsvpStates(prev => ({
       ...prev,
       [eventId]: wantsToAttend ? 'yes' : 'no'
     }));
 
-    // Schedule a 5-min reminder when user marks as attending
     if (wantsToAttend && eventItem?.start_time) {
       const title = eventItem.title || eventItem.content || 'Community Event';
       scheduleEventReminderNotification(title, eventItem.start_time, id as string)
@@ -2880,20 +996,18 @@ export default function CommunityDetailScreen() {
 
     try {
       if (typeof eventId === 'string' && !eventId.startsWith('post-') && !eventId.startsWith('dummy-')) {
-        const { attendEvent } = require('../../src/services/api');
         if (wantsToAttend) {
           await attendEvent(eventId);
         } else {
-          const { api: axiosInstance } = require('../../src/services/api');
           await axiosInstance.post(`/events/${eventId}/cancel-attendance`);
         }
       }
     } catch (err) {
       console.warn('Failed to update event attendance on backend:', err);
     }
-  };
+  }, [id]);
 
-  const handleViewAttendees = async (item: any) => {
+  const handleViewAttendees = useCallback(async (item: any) => {
     setShowAttendeesModal(item);
     setAttendeesLoading(true);
     setAttendeesList([]);
@@ -2908,165 +1022,10 @@ export default function CommunityDetailScreen() {
     } finally {
       setAttendeesLoading(false);
     }
-  };
+  }, []);
 
-  const renderEventItem = ({ item }: { item: any }) => {
-    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
-    const phone = item.contact_number || item.contact || item.user_phone;
-    const isCreator = item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id;
 
-    const userIsAttendee = Array.isArray(item.attendees) && item.attendees.includes(user?.id);
-    const rsvp = rsvpStates[item.id] || (userIsAttendee ? 'yes' : undefined);
-    
-    let displayGoingCount = item.attendee_count || 0;
-    if (rsvpStates[item.id] === 'yes' && !userIsAttendee) {
-      displayGoingCount += 1;
-    } else if (rsvpStates[item.id] === 'no' && userIsAttendee) {
-      displayGoingCount = Math.max(0, displayGoingCount - 1);
-    }
 
-    return (
-      <View style={styles.festEventCard}>
-        <View style={styles.festEventMain}>
-          {(item.image_url || item.image || item.media_url) && (
-            <CommunityMediaItem
-              media={item.image_url || item.image || item.media_url}
-              style={styles.festEventImage}
-              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-              onPress={() => setFullScreenMedia(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri)}
-            />
-          )}
-          <View style={styles.festEventInfo}>
-            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || 'Event'}</Text>
-            {item.description ? (
-              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
-            ) : null}
-            <View style={styles.festEventMeta}>
-              <View style={styles.festMetaRow}>
-                <Ionicons name="calendar-outline" size={14} color="#FF6B00" />
-                <Text style={styles.festMetaText} numberOfLines={1}>
-                  {(() => {
-                    const formatted = formatDateTimeIST(item.start_time);
-                    if (!formatted) return 'Date not set';
-                    return formatted.replace(' ', ', ');
-                  })()}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.festMetaRow}
-                onPress={() => handleOpenMap(item.location || 'Online')}
-                disabled={!item.location || item.location === 'Online'}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' ? "#FF6B00" : "#FF3B30"} />
-                <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location || 'Online'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.festMetaRow}
-                onPress={() => isCreator ? handleViewAttendees(item) : null}
-                disabled={!isCreator}
-              >
-                <Ionicons name="people" size={14} color="#00C853" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{displayGoingCount} Going</Text>
-                {isCreator && displayGoingCount > 0 && <Ionicons name="chevron-forward" size={12} color="#00C853" />}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
-          <View style={styles.festOrgDetailsRow}>
-            <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
-            <View style={{ marginLeft: 8, flex: 1 }}>
-              <View style={styles.festOrgNameRow}>
-                <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-              </View>
-              <Text style={styles.festOrgLabel}>Organizer • {getTimeAgo(item.start_time || item.created_at || item.timestamp)}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
-          {phone ? (
-            <>
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-                onPress={() => handleCallPress(phone)}
-              >
-                <Ionicons name="call" size={18} color="#16A34A" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-                onPress={() => handleWhatsAppPress(phone, item.title)}
-              >
-                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-              </TouchableOpacity>
-            </>
-          ) : null}
-
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
-            {item.user_id === user?.id || item.sender_id === user?.id ? (
-              !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
-                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
-                </TouchableOpacity>
-              )
-            ) : null}
-
-            {isFulfilled ? (
-              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
-            <Ionicons name="share-social-outline" size={18} color="#888" />
-          </TouchableOpacity>
-        </View>
-
-        {!(item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id) && (
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 12,
-            paddingTop: 12,
-            borderTopWidth: 1,
-            borderTopColor: '#F0F0F0',
-          }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
-                Want to attend?
-              </Text>
-              {rsvp === 'yes' && (
-                <Text style={{ fontSize: 11, color: '#1D9BF0', marginTop: 2, fontFamily: FONTS.regular }}>
-                  Your response has been shared with organizer.
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity
-              onPress={() => handleAttendPress(item.id, rsvp !== 'yes', item)}
-              style={{
-                backgroundColor: rsvp === 'yes' ? '#1D9BF0' : '#FFFFFF',
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: '#1D9BF0',
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: rsvp === 'yes' ? '#FFFFFF' : '#1D9BF0', fontSize: 13, fontWeight: '700' }}>
-                I will attend
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
   const renderFestivalItem = ({ item, index }: { item: any; index: number }) => {
     const festImg = getFestivalImage(item);
     
@@ -3165,7 +1124,7 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const renderFestivalEvent = ({ item }: { item: any }) => (
+  const renderFestivalEvent = ({ item }: { item: FestivalEvent }) => (
     <FestivalEventCardItem 
       item={item} 
       handleOpenMap={handleOpenMap} 
@@ -3202,164 +1161,12 @@ export default function CommunityDetailScreen() {
     return { name: 'help-circle', color: '#00796B', bg: '#E0F2F1' };
   };
 
-  const renderRequestItem = ({ item }: { item: any }) => {
-    const iconDetails = getRequestIconDetails(item);
-    const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
-    const phone = item.contact_number || item.contact || item.user_phone;
-    const ownerName = item.user_name || item.user?.name || 'Requester';
-    const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
-    
-    return (
-      <View style={styles.festEventCard}>
-        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 6 }]}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={34} />
-          <View style={{ marginLeft: 8, flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-              <Text style={[styles.feedPostUserName, { fontSize: 13 }]} numberOfLines={1}>{ownerName}</Text>
-              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />}
-              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}>
-                {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
-              </Text>
-              <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
-              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-        <View style={[{ backgroundColor: 'transparent', borderRadius: 14, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : 'rgba(0,0,0,0.06)', padding: 10 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
-          <View style={styles.festEventMain}>
-            {(item.image || item.image_url || item.media_url) && (
-              <CommunityMediaItem
-                media={item.image || item.image_url || item.media_url}
-                style={styles.festEventImage}
-                isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-                onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
-              />
-            )}
-            <View style={styles.festEventInfo}>
-              <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
-              {item.description ? (
-                <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
-              ) : null}
-              <View style={styles.festEventMeta}>
-                {item.location ? (
-                  <TouchableOpacity 
-                    style={styles.festMetaRow}
-                    onPress={() => handleOpenMap(item.location)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="location" size={12} color="#FF6B00" />
-                    <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
-                      {item.location}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                <View style={styles.festMetaRow}>
-                  <Ionicons name={iconDetails.name as any} size={12} color={iconDetails.color} />
-                  <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
-                </View>
-                <View style={styles.festMetaRow}>
-                  <Ionicons name="time-outline" size={12} color="#FF3B30" />
-                  <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 8 }} />
-
-          <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
-          {phone ? (
-            <>
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-                onPress={() => handleCallPress(phone)}
-              >
-                <Ionicons name="call" size={18} color="#16A34A" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-                onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
-              >
-                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-              </TouchableOpacity>
-            </>
-          ) : null}
-
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
-            {item.user_id === user?.id || item.sender_id === user?.id ? (
-              !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => handleResolveRequest(item)}>
-                  <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
-                </TouchableOpacity>
-              )
-            ) : !isFulfilled ? (
-              (() => {
-                const isLostFound = isLostFoundRequest(item);
-                const isTemple = isTempleUpdateRequest(item);
-                if (!isLostFound && !isTemple) return null;
-                const interest = interestMap[item.id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
-                return (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 12, color: '#666', flex: 1 }}>
-                      {isLostFound ? 'Did you find this?' : 'Will you attend?'}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleToggleInterest(item)}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: interest.userInterested ? '#D1FAE5' : '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: interest.userInterested ? '#059669' : '#BBF7D0' }}
-                    >
-                      <Ionicons name="checkmark" size={16} color={interest.userInterested ? '#059669' : '#34D399'} />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: interest.userInterested ? '#059669' : '#34D399' }}>
-                        {interest.count > 0 ? `${interest.count} ${isLostFound ? 'found' : 'going'}` : isLostFound ? 'Found' : 'Going'}
-                      </Text>
-                    </TouchableOpacity>
-                    {isTemple && !interest.userInterested && (
-                      <TouchableOpacity
-                        style={{ backgroundColor: '#FEF2F2', padding: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FECACA' }}
-                        onPress={() => {}}
-                      >
-                        <Ionicons name="close" size={16} color="#EF4444" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })()
-            ) : null}
-
-            {isFulfilled ? (
-              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
-            <Ionicons name="share-social-outline" size={18} color="#888" />
-          </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
 
-  const getTimeAgo = (dateString?: string) => {
-    if (!dateString) return 'Just now';
-    const date = parseUTCDate(dateString);
-    if (Number.isNaN(date.getTime())) return 'Just now';
 
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 0) return 'Just now';
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  };
 
-  const handleResolveRequest = (item: any) => {
+  const handleResolveRequest = useCallback((item: any) => {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to mark this request as fulfilled?');
       if (confirmed) {
@@ -3380,25 +1187,23 @@ export default function CommunityDetailScreen() {
         }
       ]
     );
-  };
+  }, []);
 
   const executeResolve = async (item: any) => {
     try {
       if (item.request_type) {
         await resolveCommunityRequest(item.id);
       } else {
-        const { deletePost } = require('../../src/services/api');
         await deletePost(item.id);
       }
       Alert.alert('Success', 'Request marked as fulfilled successfully!');
       fetchCommunity(true); // Reload requests list!
     } catch (error: any) {
-      const { parseApiError } = require('../../src/services/api');
       Alert.alert('Error', parseApiError(error));
     }
   };
 
-  const handleShareRequest = async (item: any) => {
+  const handleShareRequest = useCallback(async (item: any) => {
     try {
       const deepLink = `https://brahmand.app/community-request/list?requestId=${item.id}`;
       const typeLabel = (item.request_type || 'Help').toUpperCase();
@@ -3410,7 +1215,8 @@ export default function CommunityDetailScreen() {
     } catch (error) {
       console.log('Share error:', error);
     }
-  };
+  }, []);
+
 
   const handleOfferHelp = async (item: any) => {
     let targetSlId = item.user_sl_id;
@@ -3507,7 +1313,6 @@ export default function CommunityDetailScreen() {
       options.push({
         text: `Call: ${contactNum}`,
         onPress: () => {
-          const { Linking } = require('react-native');
           Linking.openURL(`tel:${contactNum}`);
         }
       });
@@ -3515,7 +1320,6 @@ export default function CommunityDetailScreen() {
       options.push({
         text: `Call: ${targetPhone}`,
         onPress: () => {
-          const { Linking } = require('react-native');
           Linking.openURL(`tel:${targetPhone}`);
         }
       });
@@ -3547,61 +1351,27 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const handleSearch = () => {
-    Alert.alert('Search', 'Search feature coming soon to community feed!');
-  };
-
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: false,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets?.length) {
-      setSelectedImage(result.assets[0].uri);
-      setSelectedMediaType(result.assets[0].type === 'video' ? 'video' : 'image');
-    }
-  };
-
-  const handlePaste = async () => {
-    try {
-      const text = await Clipboard.getStringAsync();
-      if (text) {
-        setNewMessage(prev => prev + text);
-      } else {
-        Alert.alert('Clipboard Empty', 'There is no text in your clipboard to paste.');
-      }
-    } catch (error) {
-      console.warn('Clipboard read error:', error);
-      Alert.alert('Paste Error', 'Failed to read from clipboard.');
-    }
-  };
-
-  const handleLike = (postId: string) => {
+  const handleLike = useCallback((postId: string) => {
     if (Platform.OS === 'android') {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     }
-    // Check in discussionPosts
     setDiscussionPosts(prev => prev.map(post => {
       if (post.id === postId) {
         const isLiked = post.liked;
         return {
           ...post,
           liked: !isLiked,
-          likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
+          likes: isLiked ? Math.max(0, (post.likes || 0) - 1) : (post.likes || 0) + 1
         };
       }
       return post;
     }));
 
-    // Find the post first to resolve community and subgroup properties correctly
     const matchedPost = communityPosts.find(p => p.id === postId);
     const isCommunityMsg = matchedPost ? !!matchedPost.isCommunityMsg : false;
     const targetSubgroup = matchedPost?.subgroupType || 'city';
     const targetCommunityId = matchedPost?.communityId || (id as string);
 
-    // Also check in communityPosts
     setCommunityPosts(prev => {
       const updated = prev.map(post => {
         if (post.id === postId) {
@@ -3621,7 +1391,6 @@ export default function CommunityDetailScreen() {
     if (!postId.startsWith('post-')) {
       (async () => {
         try {
-          const { togglePostLike, toggleCommunityMessageLike } = require('../../src/services/api');
           if (isCommunityMsg) {
             await toggleCommunityMessageLike(targetCommunityId, targetSubgroup, postId);
           } else {
@@ -3632,23 +1401,20 @@ export default function CommunityDetailScreen() {
         }
       })();
     }
-  };
+  }, [communityPosts, discussionPosts, id, cacheKey]);
 
-  const handleRepost = (postId: string) => {
+  const handleRepost = useCallback((postId: string) => {
     const targetId = String(postId);
     const postToRepost = communityPosts.find(p => String(p.id) === targetId) || discussionPosts.find(p => String(p.id) === targetId);
     if (!postToRepost) return;
 
-    // Determine the actual original post ID if target is already a repost card
     const realOriginalId = String(postToRepost.originalPostId || postToRepost.id);
 
-    // Check if user has already reposted this post
     const existingRepostIndex = communityPosts.findIndex(
       p => p.isRepost && (String(p.originalPostId) === realOriginalId || String(p.id) === targetId) && p.repostedBy === (user?.name || 'You')
     );
 
     if (existingRepostIndex !== -1) {
-      // Remove the existing repost card and decrement counter on original post
       setCommunityPosts(prev =>
         prev
           .filter((_, idx) => idx !== existingRepostIndex)
@@ -3665,7 +1431,6 @@ export default function CommunityDetailScreen() {
       );
       Alert.alert('Repost Removed', 'Repost has been removed from feed.');
     } else {
-      // Create a new repost card to insert at top of feed
       const newRepostCard = {
         ...postToRepost,
         id: `repost-${Date.now()}`,
@@ -3692,9 +1457,9 @@ export default function CommunityDetailScreen() {
 
       Alert.alert('Success', 'Post reposted successfully!');
     }
-  };
+  }, [communityPosts, discussionPosts, user?.name]);
 
-  const handleDeletePost = (postId: string) => {
+  const handleDeletePost = useCallback((postId: string) => {
     const postToDelete = discussionPosts.find(p => p.id === postId) || communityPosts.find(p => p.id === postId);
     if (postToDelete) {
       const isOwn = postToDelete.sender_id === user?.id || postToDelete.user?.name === user?.name;
@@ -3718,7 +1483,6 @@ export default function CommunityDetailScreen() {
         setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
         setCommunityPosts(prev => {
           const updated = prev.filter(post => post.id !== postId);
-          // Save deleted ID so it is excluded even after re-fetch from server
           const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
           const newDeletedIds = [...new Set([...currentDeleted, postId])];
           useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
@@ -3729,7 +1493,6 @@ export default function CommunityDetailScreen() {
           if (isCommunityMsg) {
             deleteCommunityMessage(communityId, subgroupType, postId).catch((e: any) => console.log('API delete community msg err:', e));
           } else {
-            const { deletePost } = require('../../src/services/api');
             deletePost(postId).catch((e: any) => console.log('API delete err:', e));
           }
         } catch (error) {
@@ -3756,7 +1519,6 @@ export default function CommunityDetailScreen() {
             setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
             setCommunityPosts(prev => {
               const updated = prev.filter(post => post.id !== postId);
-              // Save deleted ID so it is excluded even after re-fetch from server
               const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
               const newDeletedIds = [...new Set([...currentDeleted, postId])];
               useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
@@ -3767,7 +1529,6 @@ export default function CommunityDetailScreen() {
               if (isCommunityMsg) {
                 await deleteCommunityMessage(communityId, subgroupType, postId);
               } else {
-                const { deletePost } = require('../../src/services/api');
                 await deletePost(postId);
               }
             } catch (error) {
@@ -3779,7 +1540,7 @@ export default function CommunityDetailScreen() {
         }
       ]
     );
-  };
+  }, [discussionPosts, communityPosts, user?.id, user?.name, community?.type, id, cacheKey]);
 
   const handleInlineCategorySelect = (category: string) => {
     setShowInlineCategories(false);
@@ -3828,10 +1589,9 @@ export default function CommunityDetailScreen() {
 
 
 
-  const executeCreatePost = async (categoryOverride?: string) => {
-    if (!newMessage.trim() && !selectedImage) return;
+  const validatePostRequirements = (categoryOverride?: string): boolean => {
+    if (!newMessage.trim() && !selectedImage) return false;
 
-    // Check verification requirement for State and National groups
     const isRestrictedGroup = community?.type && ['state', 'country', 'national'].includes(community.type);
     if (isRestrictedGroup && !isKycVerified) {
       Alert.alert(
@@ -3842,25 +1602,151 @@ export default function CommunityDetailScreen() {
           { text: 'Verify Now', onPress: () => router.push('/kyc') }
         ]
       );
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const uploadMediaIfNeeded = async (localImage?: string | null, mediaType?: string): Promise<string | undefined | null> => {
+    if (!localImage) return undefined;
+    try {
+      const isVideoFile = mediaType === 'video' || (typeof localImage === 'string' && (
+        localImage.toLowerCase().endsWith('.mp4') ||
+        localImage.toLowerCase().endsWith('.mov') ||
+        localImage.toLowerCase().endsWith('.m4v') ||
+        localImage.toLowerCase().endsWith('.webm') ||
+        localImage.toLowerCase().includes('/video/') ||
+        localImage.toLowerCase().includes('video=true')
+      ));
+      const fileExtension = isVideoFile ? (localImage.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
+      const fileMime = isVideoFile ? (localImage.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
+
+      const uploadRes = await uploadChatMedia({
+        uri: localImage,
+        name: `community_post_${Date.now()}.${fileExtension}`,
+        type: fileMime
+      });
+      const uploadedUrl = (uploadRes?.data as any)?.media_url || (uploadRes?.data as any)?.mediaUrl || (uploadRes?.data as any)?.url || (uploadRes as any)?.url || (uploadRes as any)?.mediaUrl;
+
+      if (!uploadedUrl) {
+        Alert.alert('Upload Failed', 'Could not upload the image. Please try again.');
+        return null;
+      }
+      console.log('[Community] Media uploaded successfully:', uploadedUrl);
+      return uploadedUrl;
+    } catch (error) {
+      console.error('[Community] Media upload failed:', error);
+      Alert.alert('Upload Failed', 'Could not upload the image. Please try again.');
+      return null;
+    }
+  };
+
+  const sendPostChunks = async (
+    textChunks: string[],
+    finalCategory: string,
+    uploadedUrl: string | undefined,
+    postLocation: string | undefined,
+    newPosts: any[]
+  ) => {
+    const currentSubgroup = community?.type === 'state'
+      ? 'state'
+      : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
+
+    for (let i = 0; i < textChunks.length; i++) {
+      const chunk = textChunks[i];
+      if (chunk.trim() || (i === 0 && uploadedUrl)) {
+        try {
+          const res = await sendCommunityMessage(
+            id as string,
+            currentSubgroup,
+            chunk,
+            'text',
+            finalCategory,
+            i === 0 ? uploadedUrl : undefined,
+            i === 0 ? (contactNumber || undefined) : undefined,
+            i === 0 ? (sevaDetails || undefined) : undefined,
+            i === 0 ? (postLocation || undefined) : undefined,
+            i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
+            cachedSymmetricKey
+          );
+          console.log(`[Community] Real thread chunk ${i + 1} sent`);
+
+          const realId = res?.data?.id || (res as any)?.id;
+          if (realId) {
+            if (Platform.OS === 'ios') {
+              iosUserCreatedPostIds.add(String(realId));
+            }
+            setCommunityPosts(prev => {
+              const updated = prev.map(p => p.id === newPosts[i].id ? { 
+                ...p, 
+                id: realId,
+                image: i === 0 && uploadedUrl ? uploadedUrl : p.image
+              } : p);
+              useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+              return updated;
+            });
+          }
+        } catch (error) {
+          console.error('Failed to send real message chunk:', error);
+          const errMsg = parseApiError(error);
+          if (errMsg.includes('Only verified members can post') || errMsg.includes('verified members')) {
+            Alert.alert(
+              'Verification Required',
+              'Only verified members can post in State and National community groups. Please verify your profile to post.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Verify Now', onPress: () => router.push('/kyc') }
+              ]
+            );
+          } else {
+            Alert.alert('Post Failed', errMsg);
+          }
+          if (Platform.OS === 'ios') {
+            iosUserCreatedPostIds.delete(String(newPosts[i].id));
+          }
+          setCommunityPosts(prev => {
+            const updated = prev.filter(p => p.id !== newPosts[i].id);
+            if (Platform.OS === 'ios') {
+              useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+            }
+            return updated;
+          });
+          break;
+        }
+      }
+    }
+  };
+
+  const handlePostSuccess = (finalCategory: string, textChunks: string[]) => {
+    resetCreatePostState();
+
+    if (finalCategory === 'Events' && eventDate) {
+      scheduleEventReminderNotification(
+        newMessage.trim() || 'Community Event',
+        eventDate.toISOString(),
+        id as string
+      ).catch(e => console.warn('[Community] Failed to schedule event reminder on create:', e));
+    }
+
+    Alert.alert('Success', textChunks.length > 1 ? 'Your thread has been shared with the community!' : 'Your post has been shared with the community!');
+  };
+
+  const executeCreatePost = async (categoryOverride?: string) => {
+    if (!validatePostRequirements(categoryOverride)) return;
 
     if (Platform.OS === 'android') {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     }
 
-    // Use activeTab as default category (but map 'Others' or empty to 'Feed')
     const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
 
     let postLocation: string | undefined = undefined;
     if (finalCategory === 'Lost & Found') {
       try {
-        const { ensureForegroundPermission, getCurrentPosition } = require('../../src/services/location');
         const hasPermission = await ensureForegroundPermission();
         if (hasPermission) {
           const pos = await getCurrentPosition({ accuracy: 3 });
           if (pos && pos.coords) {
-            const { reverseGeocode } = require('../../src/services/api');
             const geocodeRes = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
             const addressData = geocodeRes?.data;
             if (addressData) {
@@ -3877,9 +1763,14 @@ export default function CommunityDetailScreen() {
       postLocation = eventLocation || undefined;
     }
 
-    // Split text into chunks of max 250 characters
-    const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
+    const uploadedUrlResult = await uploadMediaIfNeeded(selectedImage, selectedMediaType || undefined);
+    if (selectedImage && uploadedUrlResult === null) {
+      // Abort post creation on media upload failure
+      return;
+    }
+    const uploadedUrl = uploadedUrlResult || undefined;
 
+    const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
     if (textChunks.length === 0 && selectedImage) {
       textChunks.push(' ');
     }
@@ -3896,7 +1787,7 @@ export default function CommunityDetailScreen() {
         verificationLabel: (user as any)?.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
       },
       content: chunk,
-      image: index === 0 ? (selectedImage || undefined) : undefined, // Image only on parent
+      image: index === 0 ? (uploadedUrl || selectedImage || undefined) : undefined,
       timestamp: new Date().toISOString(),
       likes: 0,
       comments: 0,
@@ -3908,8 +1799,8 @@ export default function CommunityDetailScreen() {
       sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
       start_time: index === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
       location: index === 0 ? (postLocation || undefined) : undefined,
-      isUniversal: true, // Flag to show in general Feed
-      sender_id: user?.id, // Track ownership of local posts
+      isUniversal: true,
+      sender_id: user?.id,
       isCommunityMsg: true,
       subgroupType: community?.type === 'state' ? 'state' : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city'),
       communityId: id as string,
@@ -3926,146 +1817,17 @@ export default function CommunityDetailScreen() {
       return updated;
     });
 
-    // Save category so it survives refetch even if API doesn't return it
     textChunks.forEach(chunk => {
       if (chunk.trim()) {
         saveLocalPost(chunk.trim(), finalCategory);
       }
     });
 
-    // Attempt real API send if text or image is present
-    (async () => {
-      let uploadedUrl: string | undefined = undefined;
-      const localImageToUpload = selectedImage;
-      if (localImageToUpload) {
-        try {
-          const { uploadChatMedia } = require('../../src/services/api');
-          const isVideoFile = selectedMediaType === 'video' || (typeof localImageToUpload === 'string' && (
-            localImageToUpload.toLowerCase().endsWith('.mp4') || 
-            localImageToUpload.toLowerCase().endsWith('.mov') || 
-            localImageToUpload.toLowerCase().endsWith('.m4v') || 
-            localImageToUpload.toLowerCase().endsWith('.webm') ||
-            localImageToUpload.toLowerCase().includes('/video/') ||
-            localImageToUpload.toLowerCase().includes('video=true')
-          ));
-          const fileExtension = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
-          const fileMime = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
-
-          const uploadRes = await uploadChatMedia({
-            uri: localImageToUpload,
-            name: `community_post_${Date.now()}.${fileExtension}`,
-            type: fileMime
-          });
-          uploadedUrl = uploadRes?.data?.media_url || uploadRes?.data?.mediaUrl || uploadRes?.data?.url || uploadRes?.url || uploadRes?.mediaUrl;
-          console.log('[Community] Media uploaded successfully:', uploadedUrl);
-        } catch (error) {
-          console.error('[Community] Media upload failed:', error);
-        }
-      }
-
-      const currentSubgroup = community?.type === 'state'
-        ? 'state'
-        : (community?.type === 'country' || community?.type === 'national' ? 'national' : 'city');
-
-      for (let i = 0; i < textChunks.length; i++) {
-        const chunk = textChunks[i];
-        if (chunk.trim() || (i === 0 && uploadedUrl)) {
-          try {
-            const res = await sendCommunityMessage(
-              id as string,
-              currentSubgroup,
-              chunk,
-              'text',
-              finalCategory,
-              i === 0 ? uploadedUrl : undefined,
-              i === 0 ? (contactNumber || undefined) : undefined,
-              i === 0 ? (sevaDetails || undefined) : undefined,
-              i === 0 ? (postLocation || undefined) : undefined,
-              i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
-              cachedSymmetricKey
-            );
-            console.log(`[Community] Real thread chunk ${i + 1} sent`);
-
-            // Deduplicate by updating the optimistic post with the real server ID and URL
-            const realId = res?.data?.id || (res as any)?.id;
-            if (realId) {
-              if (Platform.OS === 'ios') {
-                iosUserCreatedPostIds.add(String(realId));
-              }
-              setCommunityPosts(prev => {
-                const updated = prev.map(p => p.id === newPosts[i].id ? { 
-                  ...p, 
-                  id: realId,
-                  image: i === 0 && uploadedUrl ? uploadedUrl : p.image
-                } : p);
-                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-                return updated;
-              });
-            }
-          } catch (error) {
-            console.error('Failed to send real message chunk:', error);
-            const errMsg = parseApiError(error);
-            if (errMsg.includes('Only verified members can post') || errMsg.includes('verified members')) {
-              Alert.alert(
-                'Verification Required',
-                'Only verified members can post in State and National community groups. Please verify your profile to post.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Verify Now', onPress: () => router.push('/kyc') }
-                ]
-              );
-            } else {
-              Alert.alert('Post Failed', errMsg);
-            }
-            // Remove the optimistic post on failure
-            if (Platform.OS === 'ios') {
-              newPosts.forEach(np => {
-                iosUserCreatedPostIds.delete(String(np.id));
-              });
-            }
-            setCommunityPosts(prev => {
-              const updated = prev.filter(p => !newPosts.some(np => np.id === p.id));
-              if (Platform.OS === 'ios') {
-                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
-              }
-              return updated;
-            });
-            break;
-          }
-        }
-      }
-    })();
-
-    setCreatePostState(prev => ({
-      ...prev,
-      visible: false,
-      newMessage: '',
-      selectedImage: null,
-      selectedMediaType: null,
-      contactNumber: '',
-      sevaDetails: '',
-      eventLocation: '',
-      eventDate: null,
-      showDatePicker: false,
-      showTimePicker: false,
-      showInlineCategories: false,
-    }));
-
-    // No longer switching tabs automatically to keep the user in their current context
-    // The post will appear immediately in the Feed and its specific category
-    // For Events with a date set, schedule a 5-min reminder for the creator
-    if (finalCategory === 'Events' && eventDate) {
-      scheduleEventReminderNotification(
-        newMessage.trim() || 'Community Event',
-        eventDate.toISOString(),
-        id as string
-      ).catch(e => console.warn('[Community] Failed to schedule event reminder on create:', e));
-    }
-
-    Alert.alert('Success', textChunks.length > 1 ? 'Your thread has been shared with the community!' : 'Your post has been shared with the community!');
+    await sendPostChunks(textChunks, finalCategory, uploadedUrl, postLocation, newPosts);
+    handlePostSuccess(finalCategory, textChunks);
   };
 
-  const handleShare = async (postId: string) => {
+  const handleShare = useCallback(async (postId: string) => {
     try {
       const appLink = `https://brahmand.app/community/${id}?postId=${postId}`;
 
@@ -4089,14 +1851,13 @@ export default function CommunityDetailScreen() {
     } catch (error) {
       console.error('Error sharing post:', error);
     }
-  };
+  }, [id]);
 
-  const handleOpenCommentModal = async (post: any) => {
+  const handleOpenCommentModal = useCallback(async (post: any) => {
     setActiveComments([]);
     setShowCommentModal(post);
     setCommentText('');
     try {
-      const { getPostComments, getCommunityMessageComments } = require('../../src/services/api');
       let response;
       let commentsData;
       if (post.isCommunityMsg) {
@@ -4132,7 +1893,17 @@ export default function CommunityDetailScreen() {
     } catch (error) {
       console.warn('Failed to load comments:', error);
     }
-  };
+  }, [id, keptComments]);
+
+  const handleReport = useCallback((item: any) => {
+    setPendingReportCommunityPost(item);
+    setReportCommunityPostModalVisible(true);
+  }, []);
+
+  const handleFullScreenMedia = useCallback((uri: string) => {
+    setFullScreenMedia(uri);
+  }, []);
+
 
   const handleAddComment = async () => {
     if (!commentText.trim() || !showCommentModal) return;
@@ -4151,8 +1922,26 @@ export default function CommunityDetailScreen() {
     setActiveComments(prev => [optimisticComment, ...prev]);
     setCommentText('');
 
+    // Update comment count on communityPosts, discussionPosts, and showCommentModal
+    setCommunityPosts(prev => {
+      const updated = prev.map(post => {
+        if (post.id === targetPostId) {
+          return { ...post, comments: (post.comments || 0) + 1 };
+        }
+        return post;
+      });
+      useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+      return updated;
+    });
+    setDiscussionPosts(prev => prev.map(post => {
+      if (post.id === targetPostId) {
+        return { ...post, comments: (post.comments || 0) + 1 };
+      }
+      return post;
+    }));
+    setShowCommentModal(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : null);
+
     try {
-      const { addPostComment, addCommunityMessageComment } = require('../../src/services/api');
       let response;
       if (showCommentModal.isCommunityMsg) {
         response = await addCommunityMessageComment(showCommentModal.communityId || id, showCommentModal.subgroupType || 'city', targetPostId, textToSend);
@@ -4160,7 +1949,6 @@ export default function CommunityDetailScreen() {
         response = await addPostComment(targetPostId, textToSend);
       }
 
-      // Replace optimistic comment with server-returned comment (has real id, userId etc.)
       const serverComment = showCommentModal.isCommunityMsg
         ? response.data?.data?.[0]
         : response.data?.comment;
@@ -4176,43 +1964,39 @@ export default function CommunityDetailScreen() {
           } : c
         ));
       }
-
-      // Update comment count on communityPosts and cache
+    } catch (error) {
+      console.error('Failed to post comment:', error);
+      // Rollback comment and comment count on error
+      setActiveComments(prev => prev.filter(c => c.id !== tempId));
       setCommunityPosts(prev => {
         const updated = prev.map(post => {
           if (post.id === targetPostId) {
-            return { ...post, comments: (post.comments || 0) + 1 };
+            return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
           }
           return post;
         });
         useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
         return updated;
       });
-
-      // Update discussionPosts
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === targetPostId) {
-          return { ...post, comments: (post.comments || 0) + 1 };
+          return { ...post, comments: Math.max(0, (post.comments || 0) - 1) };
         }
         return post;
       }));
-      setShowCommentModal(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : null);
-    } catch (error) {
-      console.error('Failed to post comment:', error);
-      // Rollback comment on error
-      setActiveComments(prev => prev.filter(c => c.id !== tempId));
+      setShowCommentModal(prev => prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : null);
       Alert.alert('Error', 'Failed to add comment. Please try again.');
     }
   };
 
-  const handleDeleteComment = (commentId: string) => {
+  const handleDeleteComment = async (commentId: string) => {
     const commentToDelete = activeComments.find(c => c.id === commentId);
     if (!commentToDelete) return;
 
-    // Delete comment immediately from the state without confirmation popups
-    setActiveComments(prev => prev.filter(c => c.id !== commentId));
-
     const targetPostId = showCommentModal?.id;
+
+    // Optimistically remove comment and decrement comment count
+    setActiveComments(prev => prev.filter(c => c.id !== commentId));
     if (targetPostId) {
       setCommunityPosts(prev => {
         const updated = prev.map(post => {
@@ -4234,10 +2018,31 @@ export default function CommunityDetailScreen() {
     }
 
     try {
-      const { deleteComment: deleteCommentApi } = require('../../src/services/api');
-      deleteCommentApi(commentId).catch((e: any) => console.log('API delete comment err:', e));
+      await deleteCommentApi(commentId);
     } catch (error) {
       console.log('[Community] Comment delete API error:', error);
+      // Rollback comment and comment count on error
+      setActiveComments(prev => [commentToDelete, ...prev]);
+      if (targetPostId) {
+        setCommunityPosts(prev => {
+          const updated = prev.map(post => {
+            if (post.id === targetPostId) {
+              return { ...post, comments: (post.comments || 0) + 1 };
+            }
+            return post;
+          });
+          useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+          return updated;
+        });
+        setDiscussionPosts(prev => prev.map(post => {
+          if (post.id === targetPostId) {
+            return { ...post, comments: (post.comments || 0) + 1 };
+          }
+          return post;
+        }));
+        setShowCommentModal(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : null);
+      }
+      Alert.alert('Error', 'Failed to delete comment. Please try again.');
     }
   };
 
@@ -4271,6 +2076,59 @@ export default function CommunityDetailScreen() {
     );
   }
 
+  const listHandlers = useMemo(
+    () => ({
+      onLike: handleLike,
+      onRepost: handleRepost,
+      onShare: handleShare,
+      onComment: handleOpenCommentModal,
+      onDelete: handleDeletePost,
+      onReport: handleReport,
+      onFullScreenMedia: handleFullScreenMedia,
+      onOpenMap: handleOpenMap,
+      onCall: handleCallPress,
+      onWhatsApp: handleWhatsAppPress,
+      onResolve: handleResolveRequest,
+      onToggleInterest: handleToggleInterest,
+      onAttend: handleAttendPress,
+      onViewAttendees: handleViewAttendees,
+      onNavigateKyc: () => router.push('/kyc'),
+      setShowFilterDropdown,
+      setShowSortDropdown,
+      setSelectedFestival,
+      setFestivalSort,
+      setPostCategory,
+      setShowCreateModal,
+      renderFestivalItem,
+      renderFestivalEvent,
+    }),
+    [
+      handleLike,
+      handleRepost,
+      handleShare,
+      handleOpenCommentModal,
+      handleDeletePost,
+      handleReport,
+      handleFullScreenMedia,
+      handleOpenMap,
+      handleCallPress,
+      handleWhatsAppPress,
+      handleResolveRequest,
+      handleToggleInterest,
+      handleAttendPress,
+      handleViewAttendees,
+      router,
+      setShowFilterDropdown,
+      setShowSortDropdown,
+      setSelectedFestival,
+      setFestivalSort,
+      setPostCategory,
+      setShowCreateModal,
+      renderFestivalItem,
+      renderFestivalEvent,
+    ]
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -4284,258 +2142,37 @@ export default function CommunityDetailScreen() {
         extraData={{ festivalSort, selectedFestival, showSortDropdown, showFilterDropdown }}
         keyExtractor={(item, index) => {
           if (item.id) return String(item.id);
-          return `${item.type || 'item'}-${index}`;
+          return `${item.type || 'item'}-${item.timestamp || Date.now()}-${index}`;
         }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        initialNumToRender={3}
-        maxToRenderPerBatch={3}
-        windowSize={3}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={7}
         removeClippedSubviews={Platform.OS !== 'web'}
         updateCellsBatchingPeriod={100}
         scrollEventThrottle={32}
-        renderItem={({ item }) => {
-          if (item.type === 'festivals_header') {
-            return (
-              <View style={[styles.sectionHeader, { marginBottom: 10, zIndex: 3000, elevation: 10 }]}>
-                <View style={styles.sectionTitleRow}>
-                  <Ionicons name="calendar" size={24} color="#0EA5E9" style={{ marginRight: 10 }} />
-                  <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Festivals</Text>
-                </View>
-                <View style={{ position: 'relative', zIndex: 3001 }}>
-                  <TouchableOpacity 
-                    style={styles.filterDropdown} 
-                    onPress={() => {
-                      setShowFilterDropdown(prev => !prev);
-                      setShowSortDropdown(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.filterText} numberOfLines={1}>{selectedFestival || 'All Festivals'}</Text>
-                    <Ionicons name={showFilterDropdown ? "chevron-up" : "chevron-down"} size={16} color="#444" />
-                  </TouchableOpacity>
-
-                  {showFilterDropdown && (
-                    <View style={styles.inlineDropdownMenu}>
-                      <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
-                        {[
-                          { label: 'All Festivals', value: null },
-                          ...allFestivals.map(f => ({ label: f.name, value: f.name })),
-                        ]
-                          .filter((opt, index, self) => opt.label && self.findIndex(t => t.value === opt.value) === index)
-                          .map((opt, idx) => {
-                            const isSelected = selectedFestival === opt.value;
-                            return (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[
-                                  styles.inlineDropdownItem,
-                                  isSelected && styles.inlineDropdownItemActive
-                                ]}
-                                onPress={() => {
-                                  setSelectedFestival(opt.value);
-                                  setShowFilterDropdown(false);
-                                }}
-                              >
-                                <Text 
-                                  style={[
-                                    styles.inlineDropdownText,
-                                    isSelected && styles.inlineDropdownTextActive
-                                  ]}
-                                  numberOfLines={1}
-                                >
-                                  {opt.label}
-                                </Text>
-                                {isSelected && (
-                                  <Ionicons name="checkmark" size={16} color="#FF6B00" />
-                                )}
-                              </TouchableOpacity>
-                            );
-                          })}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          }
-          if (item.type === 'festivals_list') {
-            const festivalsToDisplay = selectedFestival
-              ? allFestivals.filter(f => (f.name || '').toLowerCase().trim() === selectedFestival.toLowerCase().trim())
-              : allFestivals;
-
-            return (
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={festivalsToDisplay}
-                keyExtractor={(f, i) => f.id ? String(f.id) : `fest-${i}`}
-                renderItem={renderFestivalItem}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
-              />
-            );
-          }
-          if (item.type === 'festival_events_header') {
-            return (
-              <View style={[styles.sectionHeader, { zIndex: 2000, elevation: 8 }]}>
-                <Text style={[styles.sectionTitle, { fontSize: 18 }]}>Upcoming Festival Events</Text>
-                <View style={{ position: 'relative', zIndex: 2001 }}>
-                  <TouchableOpacity 
-                    style={styles.filterDropdown} 
-                    onPress={() => {
-                      setShowSortDropdown(prev => !prev);
-                      setShowFilterDropdown(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.filterText}>{festivalSort === 'latest' ? 'Latest First' : 'Oldest First'}</Text>
-                    <Ionicons name={showSortDropdown ? "chevron-up" : "chevron-down"} size={16} color="#444" />
-                  </TouchableOpacity>
-
-                  {showSortDropdown && (
-                    <View style={styles.inlineDropdownMenu}>
-                      {[
-                        { label: 'Latest First', value: 'latest' },
-                        { label: 'Oldest First', value: 'oldest' },
-                      ].map((opt, idx) => {
-                        const isSelected = festivalSort === opt.value;
-                        return (
-                          <TouchableOpacity
-                            key={idx}
-                            style={[
-                              styles.inlineDropdownItem,
-                              isSelected && styles.inlineDropdownItemActive
-                            ]}
-                            onPress={() => {
-                              setFestivalSort(opt.value as any);
-                              setShowSortDropdown(false);
-                            }}
-                          >
-                            <Text 
-                              style={[
-                                styles.inlineDropdownText,
-                                isSelected && styles.inlineDropdownTextActive
-                              ]}
-                            >
-                              {opt.label}
-                            </Text>
-                            {isSelected && (
-                              <Ionicons name="checkmark" size={16} color="#FF6B00" />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          }
-          if (item.type === 'festival_event') {
-            return renderFestivalEvent({ item });
-          }
-          if (item.type === 'festival_banner') {
-            return (
-              <View style={styles.festBanner}>
-                <View style={styles.festBannerLeft}>
-                  <Ionicons name="sparkles-outline" size={28} color="#FF6B00" />
-                  <View style={{ marginLeft: 12, flex: 1 }}>
-                    <Text style={styles.festBannerTitle}>Share the Joy of Festivals!</Text>
-                    <Text style={styles.festBannerSub}>Create a festival post and invite others to be a part of the celebration.</Text>
-                  </View>
-                </View>
-                <TouchableOpacity style={styles.createFestBtn} onPress={() => { setPostCategory('Festivals'); setShowCreateModal(true); }}>
-                  <Text style={styles.createFestBtnText}>Create Festival Post</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }
-          if (item.type === 'header') {
-            return (
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                  <Ionicons name={item.icon || "chatbubbles-outline"} size={20} color="#FF3B30" style={{ marginRight: 8 }} />
-                  <Text style={styles.sectionTitle}>{item.title}</Text>
-                </View>
-              </View>
-            );
-          }
-          if (activeTab === 'Seva') {
-            return renderSevaItem({ item });
-          }
-          if (activeTab === 'Temple Updates') {
-            return renderDiscussionItem({ item });
-          }
-          if (activeTab === 'Lost & Found') {
-            return renderRequestItem({ item });
-          }
-          if (item.isRequestItem || item.type === 'request_item') {
-            return renderRequestItem({ item });
-          }
-          if (activeTab === 'Requests') {
-            return renderRequestItem({ item });
-          }
-          if (activeTab === 'Events') {
-            return renderEventItem({ item });
-          }
-
-          if (isLocked) {
-            return (
-              <View style={{
-                margin: 20,
-                padding: 24,
-                backgroundColor: '#FFF7ED',
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: '#FFEDD5',
-                alignItems: 'center',
-                shadowColor: '#EA580C',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.08,
-                shadowRadius: 10,
-                elevation: 3
-              }}>
-                <View style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: '#FFEDD5',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginBottom: 12
-                }}>
-                  <Ionicons name="lock-closed" size={28} color="#EA580C" />
-                </View>
-                <Text style={{ fontSize: 17, fontWeight: '800', color: '#9A3412', textAlign: 'center', marginBottom: 6, fontFamily: FONTS.bold }}>
-                  Group Discussions Locked
-                </Text>
-                <Text style={{ fontSize: 13, color: '#C2410C', textAlign: 'center', lineHeight: 20, marginBottom: 16, fontFamily: FONTS.regular }}>
-                  {lockReason || 'Personality Verification required to access State and National community discussions.'}
-                </Text>
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: '#EA580C',
-                    paddingHorizontal: 20,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
-                  onPress={() => router.push('/kyc')}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="shield-checkmark" size={16} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700', fontFamily: FONTS.bold }}>
-                    Verify Profile to Unlock
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }
-
-          return renderDiscussionItem({ item });
-        }}
+        renderItem={({ item }) => (
+          <CommunityListItem
+            item={item}
+            activeTab={activeTab}
+            isLocked={isLocked}
+            lockReason={lockReason}
+            user={user}
+            activeVideoKey={activeVideoKey}
+            interestMap={interestMap}
+            rsvpStates={rsvpStates}
+            styles={styles}
+            handlers={listHandlers}
+            combinedDataIndexMap={combinedDataIndexMap}
+            combinedData={combinedData}
+            allFestivals={allFestivals}
+            selectedFestival={selectedFestival}
+            showFilterDropdown={showFilterDropdown}
+            showSortDropdown={showSortDropdown}
+            festivalSort={festivalSort}
+          />
+        )}
         onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}
         onEndReachedThreshold={0.5}
         ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <CustomLoader size={40} fullScreen={false} /> : null}
@@ -4648,20 +2285,7 @@ export default function CommunityDetailScreen() {
         keyboardVisible={keyboardVisible}
         keyboardHeight={keyboardHeight}
         onClose={() => {
-          setCreatePostState({
-            visible: false,
-            newMessage: '',
-            selectedImage: null,
-            selectedMediaType: null,
-            postCategory: '',
-            contactNumber: '',
-            sevaDetails: '',
-            eventLocation: '',
-            eventDate: null,
-            showDatePicker: false,
-            showTimePicker: false,
-            showInlineCategories: false,
-          });
+          resetCreatePostState();
         }}
         onMessageChange={setNewMessage}
         onPickImage={() => {
@@ -4766,25 +2390,22 @@ export default function CommunityDetailScreen() {
           onClose={() => {
             setReportCommentModalVisible(false);
             setPendingReportComment(null);
-            if (commentModalToRestore) {
-              setTimeout(() => {
-                setShowCommentModal(commentModalToRestore);
-                setCommentModalToRestore(null);
-              }, 300);
-            }
           }}
           reporterUid={user?.id || ''}
           reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
           contentId={String(pendingReportComment?.id || '')}
           contentType="comment"
-          postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
+          postId={pendingReportComment?.post_id || showCommentModal?.id || ''}
           apiFallback={async (reason, description) => {
             if (pendingReportComment?.id) {
               await reportComment(String(pendingReportComment.id), reason, description || '');
             }
           }}
           onSuccess={() => {
-            // Keep reported comment visible
+            if (pendingReportComment?.id) {
+              const targetId = pendingReportComment.id;
+              setActiveComments(prev => prev.filter(comment => comment.id !== targetId));
+            }
           }}
         />
       )}
