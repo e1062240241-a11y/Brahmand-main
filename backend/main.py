@@ -4017,13 +4017,24 @@ async def get_my_posts(
         # This prevents O(N) Firestore reads and O(N) memory allocation per request
         # when power users accumulate hundreds/thousands of posts.
         fetch_limit = offset + safe_limit + 1
-        my_posts = await db.query_documents(
-            'posts',
-            filters=[('user_id', '==', target_user_id)],
-            order_by='created_at',
-            order_direction='DESCENDING',
-            limit=fetch_limit
-        )
+        try:
+            my_posts = await db.query_documents(
+                'posts',
+                filters=[('user_id', '==', target_user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(f"Firestore composite index missing for posts user_id + created_at, falling back to un-ordered query: {query_err}")
+                my_posts = await db.query_documents(
+                    'posts',
+                    filters=[('user_id', '==', target_user_id)],
+                    limit=fetch_limit * 3
+                )
+            else:
+                raise query_err
 
         # Secondary fallback sort in memory by created_at DESC
         my_posts.sort(
