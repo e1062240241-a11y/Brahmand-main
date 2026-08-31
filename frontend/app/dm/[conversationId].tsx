@@ -245,7 +245,7 @@ const DMNativeVideoPlayer = React.memo(({
       if (isPlayerValid(player)) {
         try {
           player.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, [player]);
@@ -515,11 +515,11 @@ const DirectMessageScreen = () => {
   const [conversation, setConversation] = useState<Conversation | null>(() => {
     if (userId && userName) {
       let decodedName = userName;
-      try { decodedName = decodeURIComponent(userName); } catch (e) {}
+      try { decodedName = decodeURIComponent(userName); } catch (e) { }
       let decodedPhoto = userPhoto;
-      try { decodedPhoto = userPhoto ? decodeURIComponent(userPhoto) : undefined; } catch (e) {}
+      try { decodedPhoto = userPhoto ? decodeURIComponent(userPhoto) : undefined; } catch (e) { }
       let decodedSL = userSL;
-      try { decodedSL = userSL ? decodeURIComponent(userSL) : ''; } catch (e) {}
+      try { decodedSL = userSL ? decodeURIComponent(userSL) : ''; } catch (e) { }
 
       return {
         conversation_id: conversationId || 'new',
@@ -580,7 +580,7 @@ const DirectMessageScreen = () => {
   try {
     const tabBar = useTabBar();
     hideTabBar = tabBar.hideTabBar;
-  } catch (_e) {}
+  } catch (_e) { }
 
   useEffect(() => {
     hideTabBar?.();
@@ -630,7 +630,7 @@ const DirectMessageScreen = () => {
   const handleBackNavigation = useCallback(() => {
     try {
       Keyboard.dismiss();
-    } catch (e) {}
+    } catch (e) { }
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -691,7 +691,7 @@ const DirectMessageScreen = () => {
       closeChatOptions();
     } catch (error: any) {
       console.error('[Chat] Clear chat failed:', error);
-    Alert.alert('Error', dmT('errorClear'));
+      Alert.alert('Error', dmT('errorClear'));
     }
   };
 
@@ -1151,22 +1151,22 @@ const DirectMessageScreen = () => {
       if (hasNewMessages || apiMessages.length !== messages.length) {
         // Decrypt messages in parallel
         const decryptedMessages = await Promise.all(apiMessages.map(async (msg: any) => {
-           // We only decrypt if it's text. Images/videos also could be encrypted, depending on requirement.
-           // You specified content (text/media URL) is encrypted.
-           // However sender public key needs to be fetched, but conversation.user contains recipient public key.
-           // Wait, sender public key is in conversation.user if it was sent by them.
-           // If sent by us, we use conversation.user.public_key as recipient to open? No, we open with sender public key.
-           // If we sent it, we can't read it unless we stored it encrypted with OUR public key too.
-           // Actually, TweetNaCl box is symmetric in decryption: we just need the OTHER party's public key
-           // regardless of who sent it.
-           try {
-             const otherPubKey = (conversation?.user as any)?.public_key || (conversation?.user as any)?.publicKey;
-             if (otherPubKey && msg.content && msg.content.length > 30) {
-                 const decrypted = await decryptMessage(msg.content, otherPubKey);
-                 return { ...msg, text: decrypted, content: decrypted };
-             }
-           } catch(e) {}
-           return msg;
+          // We only decrypt if it's text. Images/videos also could be encrypted, depending on requirement.
+          // You specified content (text/media URL) is encrypted.
+          // However sender public key needs to be fetched, but conversation.user contains recipient public key.
+          // Wait, sender public key is in conversation.user if it was sent by them.
+          // If sent by us, we use conversation.user.public_key as recipient to open? No, we open with sender public key.
+          // If we sent it, we can't read it unless we stored it encrypted with OUR public key too.
+          // Actually, TweetNaCl box is symmetric in decryption: we just need the OTHER party's public key
+          // regardless of who sent it.
+          try {
+            const otherPubKey = (conversation?.user as any)?.public_key || (conversation?.user as any)?.publicKey;
+            if (otherPubKey && msg.content && msg.content.length > 30) {
+              const decrypted = await decryptMessage(msg.content, otherPubKey);
+              return { ...msg, text: decrypted, content: decrypted };
+            }
+          } catch (e) { }
+          return msg;
         }));
 
         setMessages(prev => {
@@ -1284,11 +1284,11 @@ const DirectMessageScreen = () => {
             try {
               const otherPubKey = (conversation?.user as any)?.public_key || (conversation?.user as any)?.publicKey;
               if (otherPubKey && message.content && message.content.length > 30) {
-                  const decrypted = await decryptMessage(message.content, otherPubKey);
-                  message.text = decrypted;
-                  message.content = decrypted;
+                const decrypted = await decryptMessage(message.content, otherPubKey);
+                message.text = decrypted;
+                message.content = decrypted;
               }
-            } catch(e) {}
+            } catch (e) { }
 
             setMessages((prev) => {
               const exists = prev.some((m) => m.id === message.id);
