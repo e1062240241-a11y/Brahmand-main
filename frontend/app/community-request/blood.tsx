@@ -229,14 +229,20 @@ export default function CommunityRequestBloodPage() {
 
         <View style={styles.fieldSection}>
           <Text style={styles.fieldLabel}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Describe the situation (required)"
-            placeholderTextColor={COLORS.textLight}
-            multiline
-          />
+          <View>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Describe the situation (required)"
+              placeholderTextColor={COLORS.textLight}
+              multiline
+              maxLength={200}
+            />
+            <Text style={{ fontSize: 12, color: "#999", textAlign: "right", marginTop: 4, marginRight: 4 }}>
+              {description?.length || 0}/200
+            </Text>
+          </View>
         </View>
 
         <View style={styles.fieldSection}>
