@@ -628,6 +628,10 @@ export default function HomeScreen() {
   const [followingIds, setFollowingIds] = useState<string[]>(
     Array.isArray((user as any)?.following) ? (user as any).following : []
   );
+  // OPT: Maintain a parallel Set for O(1) following membership lookups in child components
+  const followingSetRef = useRef<Set<string>>(
+    new Set(Array.isArray((user as any)?.following) ? (user as any).following : [])
+  );
   const [communityRequests, setCommunityRequests] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [localCommunities, setLocalCommunities] = useState<any[]>([]);
@@ -832,7 +836,9 @@ export default function HomeScreen() {
   }, [user?.bio]);
 
   useEffect(() => {
-    setFollowingIds(Array.isArray((user as any)?.following) ? (user as any).following : []);
+    const arr = Array.isArray((user as any)?.following) ? (user as any).following : [];
+    setFollowingIds(arr);
+    followingSetRef.current = new Set(arr);
   }, [user]);
 
   useEffect(() => {
@@ -947,10 +953,16 @@ export default function HomeScreen() {
   };
 
   const handleFollowUser = useCallback(async (userId: string) => {
-    const isFollowing = followingIds.includes(userId);
+    const isFollowing = followingSetRef.current.has(userId);
     const nextIds = isFollowing
       ? followingIds.filter((id) => id !== userId)
       : [...followingIds, userId];
+
+    if (isFollowing) {
+      followingSetRef.current.delete(userId);
+    } else {
+      followingSetRef.current.add(userId);
+    }
 
     setFollowingIds(nextIds);
     updateUser({ following: nextIds } as any);
@@ -1107,7 +1119,8 @@ export default function HomeScreen() {
           setPostComments(prev => {
             const serverComments = response.data;
             const optimistic = prev.filter(c => c.is_optimistic);
-            const serverIds = new Set(serverComments.map((c: any) => c.id));
+            const serverIds = new Set();
+            for (const c of serverComments) serverIds.add(c.id);
             const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
             // Keep already-loaded older comments (beyond first page) that aren't in the refreshed top page
             const keptOlder = prev.filter(c => !c.is_optimistic && !serverIds.has(c.id));
@@ -1187,7 +1200,8 @@ export default function HomeScreen() {
         if (Array.isArray(freshResponse.data)) {
           setPostComments(prev => {
             const fresh = freshResponse.data;
-            const freshIds = new Set(fresh.map((c: any) => c.id));
+            const freshIds = new Set();
+            for (const c of fresh) freshIds.add(c.id);
             const optimistic = prev.filter(c => c.is_optimistic && !freshIds.has(c.id));
             const keptOlder = prev.filter(c => !c.is_optimistic && !freshIds.has(c.id));
             return [...optimistic, ...fresh, ...keptOlder];
@@ -1216,7 +1230,8 @@ export default function HomeScreen() {
       if (batch.length === 0) {
         setCommentsHasMore(false);
       } else {
-        const existingIds = new Set(postComments.map((c: any) => c.id));
+        const existingIds = new Set();
+        for (const c of postComments) existingIds.add(c.id);
         const newOnes = batch.filter((c: any) => !existingIds.has(c.id));
         setPostComments(prev => [...prev, ...newOnes]);
         setCommentsHasMore(batch.length === COMMENTS_PAGE_SIZE);
@@ -1662,7 +1677,7 @@ export default function HomeScreen() {
       loadingHashtags={loadingHashtags}
       searchResults={searchResults}
       loadingUsers={loadingUsers}
-      followingIds={followingIds}
+      followingSet={followingSetRef.current}
       handleFollowUser={handleFollowUser}
       saveRecentSearch={saveRecentSearch}
       recentSearches={recentSearches}
@@ -1727,7 +1742,7 @@ export default function HomeScreen() {
     loadingHashtags,
     searchResults,
     loadingUsers,
-    followingIds,
+    followingIds, // Track followingIds to trigger re-renders
     handleFollowUser,
     recentSearches,
     handleNotificationPress,

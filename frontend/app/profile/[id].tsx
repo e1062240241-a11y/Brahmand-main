@@ -602,7 +602,8 @@ const UserProfileScreen = () => {
 
       setPosts(prev => {
         if (reset) return validated;
-        const existingIds = new Set(prev.map(x => String(x.id)));
+        const existingIds = new Set();
+        for (const x of prev) existingIds.add(String(x.id));
         const deduplicated = validated.filter(x => !existingIds.has(String(x.id)));
         return [...prev, ...deduplicated];
       });

@@ -12,11 +12,20 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
+import { useLanguageStore } from '../src/utils/i18n';
 
+// 🧡 Engagement: Reframed jaap completion screen from transactional task completion ("You Have Done It!")
+//               to devotional offering ("आपकी साधना पूर्ण हुई 🙏").
+// Lever: Reframing + Devotion + Mother Tongue (Hindi Primary)
+// Why: "आपकी साधना पूर्ण हुई" connects deeply with Sanatan spiritual sentiment (bhavna),
+//      turning a routine app action into a meaningful devotional milestone.
+// UI: Text-only change, zero structural or visual component modifications.
 export default function JaapCompleted() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
 
   const handlePressContinue = () => {
     router.replace('/(tabs)/home');
@@ -50,14 +59,18 @@ export default function JaapCompleted() {
 
           {/* Heading Section */}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>You Have Done It!</Text>
+            <Text style={styles.title}>
+              {isHindi ? 'आपकी साधना पूर्ण हुई 🙏' : 'You Have Done It!'}
+            </Text>
             {user?.name ? (
               <Text style={styles.userName}>{user.name.trim()}</Text>
             ) : null}
           </View>
           
           <Text style={styles.subtitle}>
-            Your effort, your time, your energy{"\n"}— all have meaning.
+            {isHindi
+              ? 'आपका समय, आपका समर्पण, आपकी साधना\n— ईश्वर को सहर्ष समर्पित है।'
+              : 'Your effort, your time, your energy\n— all have meaning.'}
           </Text>
         </View>
 
@@ -73,10 +86,22 @@ export default function JaapCompleted() {
           />
           <View style={styles.cardContent}>
             <Text style={styles.cardText1}>
-              Your journey and records are now stored in your <Text style={styles.cardText1Bold}>Brahmand Passport</Text>.
+              {isHindi ? (
+                <>
+                  आपकी इस पावन साधना का विवरण आपके{' '}
+                  <Text style={styles.cardText1Bold}>Brahmand Passport</Text> में अंकित कर दिया गया है।
+                </>
+              ) : (
+                <>
+                  Your journey and records are now stored in your{' '}
+                  <Text style={styles.cardText1Bold}>Brahmand Passport</Text>.
+                </>
+              )}
             </Text>
             <Text style={styles.cardText2}>
-              {"Carry this feeling forward.\nYou're capable of amazing things. ✨"}
+              {isHindi
+                ? 'इस पवित्र भाव को मन में बनाए रखें। ✨'
+                : "Carry this feeling forward.\nYou're capable of amazing things. ✨"}
             </Text>
 
             {/* Button */}
@@ -85,7 +110,9 @@ export default function JaapCompleted() {
               activeOpacity={0.85}
               onPress={handlePressContinue}
             >
-              <Text style={styles.buttonText}>BACK TO HOME</Text>
+              <Text style={styles.buttonText}>
+                {isHindi ? 'मुख्य पृष्ठ पर लौटें' : 'BACK TO HOME'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -95,7 +122,9 @@ export default function JaapCompleted() {
 
         {/* Footer Mantra */}
         <View style={styles.footerContainer}>
-          <Text style={styles.footerMantra}>PURPOSE • PROGRESS • PEACE</Text>
+          <Text style={styles.footerMantra}>
+            {isHindi ? 'संकल्प • साधना • शांति' : 'PURPOSE • PROGRESS • PEACE'}
+          </Text>
         </View>
       </View>
     </ImageBackground>

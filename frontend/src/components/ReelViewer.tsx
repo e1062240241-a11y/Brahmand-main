@@ -1823,7 +1823,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const currentVideos = videosRef.current;
 
       // Build set of all IDs currently in the queue to avoid immediate duplicates
-      const currentIds = new Set(currentVideos.map((p: any) => p.id).filter(Boolean));
+      const currentIds = new Set();
+      for (const p of currentVideos) { if (p.id) currentIds.add(p.id); }
 
       // Pass ALL session-seen IDs so backend prioritises truly unseen posts
       const allSeenIds = Array.from(seenIdsRef.current).slice(-250).join(',');
@@ -1853,7 +1854,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       if (uniqueNew.length > 0) {
         // Great — append fresh unseen content with state deduplication
         setVideos(prev => {
-          const existingIds = new Set(prev.map((p: any) => p.id));
+          const existingIds = new Set();
+          for (const p of prev) existingIds.add(p.id);
           const filtered = uniqueNew.filter((p: any) => !existingIds.has(p.id));
           if (filtered.length === 0) return prev;
           return [...prev, ...filtered];
@@ -1864,7 +1866,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         if (pool.length > 1) {
           // Shuffle only the necessary items to avoid O(N log N) sorting on large pools
           setVideos(prev => {
-            const existingIds = new Set(prev.map((p: any) => p.id));
+            const existingIds = new Set();
+            for (const p of prev) existingIds.add(p.id);
             const recyclable = pool.filter(p => p?.id && !existingIds.has(p.id));
             const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
             return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
@@ -1872,7 +1875,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         } else if (currentVideos.length > 1) {
           // Fallback: recycle what's currently queued
           setVideos(prev => {
-            const existingIds = new Set(prev.map((p: any) => p.id));
+            const existingIds = new Set();
+            for (const p of prev) existingIds.add(p.id);
             const recyclable = currentVideos.filter(p => p?.id && !existingIds.has(p.id));
             const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
             return shuffled.length > 0 ? [...prev, ...shuffled] : prev;

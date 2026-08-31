@@ -321,7 +321,7 @@ else:
     allowed_origins = default_allowed_origins.copy()
 
 # Socket.IO for real-time
-sio_cors = '*' if cors_origins == '*' else (allowed_origins if allowed_origins else '*')
+sio_cors = '*' if cors_origins == '*' else allowed_origins
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=sio_cors,
@@ -2149,11 +2149,15 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     # 2. Delete user's posts
     try:
         posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
-        for post in posts:
-            try:
-                await _delete_post_with_dependencies(db, post['id'])
-            except Exception as e:
-                logger.warning(f"Failed to delete post {post.get('id')} during user deletion: {e}")
+        # ⚡ Bolt Optimization: Concurrently delete posts to prevent N+1 blocking
+        valid_posts = [p for p in posts if p.get('id')]
+        chunk_size = 50
+        for i in range(0, len(valid_posts), chunk_size):
+            chunk = valid_posts[i:i + chunk_size]
+            results = await asyncio.gather(*[_delete_post_with_dependencies(db, post['id']) for post in chunk], return_exceptions=True)
+            for post, result in zip(chunk, results):
+                if isinstance(result, Exception):
+                    logger.warning(f"Failed to delete post {post.get('id')} during user deletion: {result}")
     except Exception as e:
         logger.warning(f"Error querying posts for deletion: {e}")
 
@@ -4008,19 +4012,26 @@ async def get_my_posts(
     safe_limit = max(1, min(limit, 50))
 
     try:
-        # Fetch posts belonging to the target user
+        # Architectural fix: Limit the candidate document fetch at the DB level
+        # with created_at DESC ordering to (offset + safe_limit + 1) instead of fetching ALL historical posts.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request
+        # when power users accumulate hundreds/thousands of posts.
+        fetch_limit = offset + safe_limit + 1
         my_posts = await db.query_documents(
             'posts',
-            filters=[('user_id', '==', target_user_id)]
+            filters=[('user_id', '==', target_user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
         )
 
-        # Sort in memory by created_at DESC (avoiding Firestore composite index requirement)
+        # Secondary fallback sort in memory by created_at DESC
         my_posts.sort(
             key=lambda x: str(x.get('created_at') or ''),
             reverse=True
         )
 
-        # De-duplicate posts by media_path and caption to maintain absolute integrity and avoid duplicates
+        # De-duplicate posts by media_path and caption
         deduplicated_posts = _deduplicate_posts(my_posts)
 
         # Strict validation check on the backend to avoid any leak
@@ -4033,16 +4044,15 @@ async def get_my_posts(
                 raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
             validated_posts.append(post)
 
-        # Sort and slice for offset/limit pagination
-        total_count = len(validated_posts)
+        # Slice for offset/limit pagination
         paginated_posts = validated_posts[offset : offset + safe_limit]
 
-        # Has reached the end?
-        has_reached_end = (offset + len(paginated_posts)) >= total_count
+        # Determine has_reached_end accurately based on candidate set length
+        has_reached_end = len(validated_posts) <= (offset + safe_limit)
 
         return {
             "posts": paginated_posts,
-            "total": total_count,
+            "total": len(validated_posts),
             "has_reached_end": has_reached_end,
             "offset": offset,
             "limit": safe_limit
@@ -7060,73 +7070,6 @@ async def join_community_by_code(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
-@api_router.get("/communities/my-creation-requests")
-async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
-    """Get all community creation requests initiated by the current user, with per-invitee response status."""
-    try:
-        db = await get_db()
-        owner_id = token_data["user_id"]
-        requests = await db.query_documents(
-            'community_creation_requests',
-            filters=[('owner_id', '==', owner_id)]
-        )
-        # Gather all unique user IDs to prevent N+1 query loops
-        all_user_ids = set()
-        for req in (requests or []):
-            all_user_ids.update(req.get('admin_ids', []))
-            all_user_ids.update(req.get('member_ids', []))
-
-        users_map = {}
-        if all_user_ids:
-            user_docs = await db.get_documents_batch('users', list(all_user_ids))
-            users_map = {u.get('id'): u for u in user_docs if u and u.get('id')}
-
-        result = []
-        for req in (requests or []):
-            # Enrich with user names for admin_ids and member_ids
-            admin_ids = req.get('admin_ids', [])
-            member_ids = req.get('member_ids', [])
-            responses = req.get('responses', {})
-
-            admin_list = []
-            for uid in admin_ids:
-                user_doc = users_map.get(uid) or {}
-                admin_list.append({
-                    'id': uid,
-                    'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
-                    'photo': user_doc.get('photo') if user_doc else None,
-                    'status': responses.get(uid, 'pending')
-                })
-
-            member_list = []
-            for uid in member_ids:
-                user_doc = users_map.get(uid) or {}
-                member_list.append({
-                    'id': uid,
-                    'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
-                    'photo': user_doc.get('photo') if user_doc else None,
-                    'status': responses.get(uid, 'pending')
-                })
-
-            result.append({
-                'id': req.get('id'),
-                'name': req.get('name'),
-                'description': req.get('description'),
-                'photo': req.get('photo'),
-                'status': req.get('status', 'pending'),
-                'created_at': req.get('created_at'),
-                'admins': admin_list,
-                'members': member_list,
-                'community_id': req.get('community_id')  # set when approved
-            })
-        # Sort newest first
-        result.sort(key=lambda x: x.get('created_at') or '', reverse=True)
-        return result
-    except Exception as e:
-        logger.error(f"Error fetching my creation requests: {e}")
-        logger.error(f"Internal error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 
 @api_router.post("/communities/requests/{request_id}/resend-invite")
@@ -16265,7 +16208,7 @@ async def handle_send_dm_socket(sid, data):
         return {'status': 'success', 'message': response_msg}
     except Exception as e:
         logger.error(f"Socket send_dm error: {e}")
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': 'An internal server error occurred'}
 # =================== JAAP INVITE NOTIFICATION ===================
 
 # In-memory cooldown: { user_id: last_invite_time }

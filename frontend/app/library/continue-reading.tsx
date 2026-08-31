@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { useTranslation } from '../../src/utils/i18n';
 import { FONTS } from '../../src/constants/theme';
 
 const { width: SW } = Dimensions.get('window');
@@ -20,7 +21,10 @@ const CLAY   = '#8E7164';
 export default function ContinueReadingPage() {
   const router   = useRouter();
   const insets   = useSafeAreaInsets();
+  const { t }    = useTranslation();
   const { progresses } = useLibraryStore();
+
+  const isHindi = t('language') === 'hi';
 
   const activeBooks = useMemo(() => {
     return Object.values(progresses || {})
@@ -82,13 +86,21 @@ export default function ContinueReadingPage() {
         {activeBooks.length === 0 ? (
           <View style={s.emptyState}>
             <Ionicons name="book-outline" size={64} color={CLAY} style={{ marginBottom: 16 }} />
-            <Text style={s.emptyStateTitle}>No Active Books</Text>
-            <Text style={s.emptyStateSub}>Start reading a book to see your progress here.</Text>
+            <Text style={s.emptyStateTitle}>
+              {isHindi ? 'कोई सक्रिय पुस्तक नहीं' : 'No Active Books'}
+            </Text>
+            <Text style={s.emptyStateSub}>
+              {isHindi
+                ? 'अपनी आध्यात्मिक यात्रा शुरू करने के लिए लाइब्रेरी से पढ़ना आरंभ करें 📖'
+                : 'Begin reading from the library to track your spiritual journey 📖'}
+            </Text>
             <TouchableOpacity
               style={s.startReadingBtn}
               onPress={() => router.push('/library' as any)}
             >
-              <Text style={s.startReadingTxt}>Go to Library</Text>
+              <Text style={s.startReadingTxt}>
+                {isHindi ? 'लाइब्रेरी पर जाएं' : 'Go to Library'}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : (

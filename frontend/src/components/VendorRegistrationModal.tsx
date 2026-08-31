@@ -367,6 +367,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [subCategoryInput, setSubCategoryInput] = useState('');
   const [showSubCategoryDropdown, setShowSubCategoryDropdown] = useState(false);
 
+  // OPT: Memoize selected temp categories as a Set to provide O(1) membership lookups
+  // during FlatList renderItem cycles, preventing O(N) overhead on frequent scrolling/re-renders.
+  const selectedTempCategoriesSet = React.useMemo(() => new Set(selectedTempCategories), [selectedTempCategories]);
+
   // OPT: Memoize and use Set for O(1) membership check instead of array .includes()
   // This reduces complexity from O(N*M) to O(N) when filtering categories.
   const filteredCategories = React.useMemo(() => {
@@ -1259,7 +1263,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   }}
                   onPress={() => {
                     const newCat = customCategoryQuery.trim();
-                    if (selectedTempCategories.includes(newCat)) {
+                    if (selectedTempCategoriesSet.has(newCat)) {
                       Alert.alert('Already Selected', 'This category is already selected.');
                       return;
                     }
@@ -1328,7 +1332,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               renderItem={({ item }) => {
                 const isCustom = item.startsWith('ADD_CUSTOM:');
                 const displayName = isCustom ? item.replace('ADD_CUSTOM:', '') : item;
-                const isSelected = selectedTempCategories.includes(displayName);
+                const isSelected = selectedTempCategoriesSet.has(displayName);
                 return (
                   <TouchableOpacity
                     style={[

@@ -1,41 +1,25 @@
 ## What
-- Removed unused `import re` from `backend/check_refs.py`.
-- Removed unused `List` and `Optional` imports from `typing` in `backend/offensive_detector.py`.
+Removed the redundant, dead second definition of `get_my_creation_requests` in `backend/main.py`.
 
 ## Why
-These module-level standard library and typing imports were flagged as unused by `pyflakes`. They were remnants of previous iterations or boilerplate and serve no purpose in the current logic.
+The method `get_my_creation_requests` for the route `@api_router.get("/communities/my-creation-requests")` was defined twice in the same module. Due to FastAPI's routing and Python's namespace rules, the first definition handles the requests, and the second definition (lines 7070-7136) overwrites the Python symbol but is effectively unreachable dead code for the route handler.
 
 ## Verification
-- Grepped the codebase and confirmed they are standard Python imports with no dynamic usage or side-effects.
-- Verified using `pyflakes backend/check_refs.py backend/offensive_detector.py` that the warnings are resolved.
-- Verified using `python -m py_compile backend/check_refs.py backend/offensive_detector.py` that no syntax errors were introduced.
+- Used `grep` and `sed` to verify that both definitions had the exact same route.
+- Ran `python -m py_compile backend/main.py` to verify no syntax errors were introduced.
+- Followed Scythe's guidelines for atomic, surgically precise dead code removal without breaking existing endpoints.
 
 ## Impact
-- 2 files cleaned.
-- 1 unused `import re` line removed.
-- 2 unused types removed from a `typing` import.
-## 💡 What
-Replaced the `db.get_documents_batch` call in `backend/main.py` (`get_users_batch` endpoint) with concurrent, independent `db.get_document` calls via `asyncio.gather`.
+- Removed ~66 lines of unreachable dead code in `backend/main.py`.
+- Made the file cleaner and easier to maintain without changing any functionality.
+🚨 **Severity:** MEDIUM
 
-## 🎯 Why
-The custom `FirestoreDB.get_documents_batch` implementation internally divides requests and batches them to fit API limits but can inadvertently cause threadpool exhaustion issues when called rapidly on large datasets. Standard concurrent `asyncio.gather` with `db.get_document` executes natively async (especially inside the wrapper) which maps exactly what the backend expects, improving concurrency without locking. Additionally, `db.get_documents_batch` injects an 'id' attribute into the payload dictionary which can cause inconsistency if the implementation differs. Individual fetches maintain predictable and reliable parsing format for each hydrated entity.
+💡 **Vulnerability:** The application was exposing explicit exception strings directly to the client inside JSON payload responses (e.g., `return {'error': str(e)}`) in the Socket.IO handler `send_dm` and external API services (`AstrologyApiService`, `VedicAstroApiService`). This constitutes a CWE-209 Information Exposure vulnerability because it bypasses FastAPI's built-in 500 error sanitization.
 
-## 📊 Impact
-* Eliminates the risk of threadpool exhaustion due to batch blocking limits on massive concurrent queries.
-* Resolves batch data mapping compatibility regressions across firestore client versions.
-* Speeds up resolution by operating in fully asynchronous individual streams rather than sequential chunk blocks.
+🎯 **Impact:** Exposing internal exception strings could leak sensitive backend implementation details (e.g., database connection issues, API key failures, infrastructure paths) to the client, providing attackers with reconnaissance information.
 
-## 🔬 Measurement
-Run `python -m py_compile backend/main.py` to check for regressions. Code was safely checked for None values before attribute parsing (`if user:`).
-## What
-Added a visual character count indicator to the "Additional comments" text input in the Report Modal.
+🔧 **Fix:** Replaced dynamic error handling `str(e)` with safe, static fallback messages (e.g. "An internal server error occurred") in explicit JSON return payloads, while preserving the actual exception in server-side logs via `logger.error()`.
 
-## Why
-The input had a hard limit (`maxLength={200}`) but no visual indication of this limit for the user. Adding the character count improves usability by providing immediate feedback on how many characters are left.
-
-## Before/After
-**Before:** The text input accepted up to 200 characters but provided no feedback on length.
-**After:** A subtle `0/200` character count appears below the text input, updating as the user types.
-
-## Accessibility
-Improves predictability and cognitive accessibility by clearly communicating input constraints to the user before they hit the limit unexpectedly.
+✅ **Verification:**
+1. Run `python -m py_compile backend/main.py backend/services/astrology_api_service.py backend/services/vedic_astro_api_service.py` to ensure there are no syntax regressions.
+2. Verified that unhandled framework exceptions naturally degrade securely to 500s.

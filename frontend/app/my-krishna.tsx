@@ -24,6 +24,7 @@ import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { useAuthStore } from '../src/store/authStore';
+import { useTranslation } from '../src/utils/i18n';
 import Svg, { Path } from 'react-native-svg';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -73,13 +74,26 @@ const getISTDateDetails = () => {
 
 // ─── Suggested prompts ───────────────────────────────────────────────────────
 
-const SUGGESTIONS = [
-  'Mera mann bahut anxious hai 😔',
-  'Life mein purpose kya hai?',
-  'Relationship mein dard hai',
-  'Karm aur result ka kya connection hai?',
-  'Main khud pe trust nahi kar pa raha',
-  'Ek bada decision lena hai',
+// 🧡 Engagement: Reframed suggestion prompts from Romanized Hinglish to Devotional/Pure Hindi primary with English fallback.
+// Lever: Reframing (Emotional Copy) + First-Person Guidance
+// Why: Devotional Hindi phrases evoke deep emotional resonance and connection with Shri Krishna.
+// UI: Text-only change, no new visual elements.
+const SUGGESTIONS_HI = [
+  'मेरा मन बहुत व्याकुल है 😔',
+  'जीवन का क्या उद्देश्य है?',
+  'संबंधों में पीड़ा हो रही है',
+  'कर्म और परिणाम का संबंध क्या है?',
+  'स्वयं पर विश्वास कैसे लौटाऊँ?',
+  'एक बड़ा निर्णय लेना है',
+];
+
+const SUGGESTIONS_EN = [
+  'My mind feels anxious 😔',
+  'What is the purpose of life?',
+  'I am experiencing pain in relationships',
+  'What is the connection between karma and results?',
+  'How do I restore faith in myself?',
+  'I need to make a big decision',
 ];
 
 const getMessageDateLabel = (timestampInput: any) => {
@@ -168,7 +182,9 @@ export default function MyKrishnaChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const displayName = user?.name?.trim() ? user.name.trim() : 'Partha';
+  const suggestions = t('language') === 'hi' ? SUGGESTIONS_HI : SUGGESTIONS_EN;
 
   // ─── IST Deterministic Shubh Vichar & Time-of-Day Greeting ─────────────────
 
@@ -518,7 +534,7 @@ export default function MyKrishnaChat() {
               style={styles.suggestionsScroll}
               contentContainerStyle={styles.suggestionsContent}
             >
-              {SUGGESTIONS.map((s, i) => (
+              {suggestions.map((s, i) => (
                 <Pressable
                   key={i}
                   style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
@@ -532,13 +548,19 @@ export default function MyKrishnaChat() {
           )}
 
           {/* ── Info Banner ── */}
+          {/* 🧡 Engagement: Reframed info banner instruction from robotic English to warm Hindi primary with English fallback. */}
+          {/* Lever: Reframing (Emotional Copy) */}
+          {/* Why: Expressing guidance in Hindi makes user feel comfortable and respected in their native tongue. */}
+          {/* UI: Text-only change, no new visual elements. */}
           {!historyLoading && messages.length < 3 && (
             <View style={styles.infoBanner}>
               <Svg width={15.692} height={15.68} viewBox="0 0 16 16" fill="none">
                 <Path d="M7.8517 0C1.81646 0 -1.95556 6.53333 1.06206 11.76C4.07967 16.9867 11.6237 16.9867 14.6413 11.76C15.3294 10.5682 15.6917 9.21621 15.6917 7.84C15.6871 3.51198 12.1797 0.004575 7.8517 0ZM7.8517 14.4738C2.74496 14.4741 -0.446704 8.94601 2.10647 4.52333C4.65964 0.100656 11.0431 0.100369 13.5966 4.52282C14.179 5.53135 14.4855 6.67542 14.4855 7.84C14.4814 11.5021 11.5137 14.4697 7.8517 14.4738ZM9.05785 11.4585C9.05785 11.7915 8.78783 12.0615 8.45477 12.0615C7.78861 12.0616 7.24862 11.5215 7.24862 10.8554V7.84C6.78437 7.84 6.49422 7.33744 6.72634 6.93539C6.83406 6.7488 7.03317 6.63386 7.24862 6.63384C7.91478 6.63382 8.45477 7.17384 8.45477 7.84V10.8554C8.78783 10.8554 9.05785 11.1254 9.05785 11.4585ZM6.64554 4.52308C6.64554 3.82671 7.39939 3.39147 8.00246 3.73966C8.60554 4.08784 8.60554 4.95831 8.00246 5.3065C7.86496 5.38589 7.70894 5.42769 7.55016 5.42769C7.05053 5.42771 6.64554 5.0227 6.64554 4.52308Z" fill="black"/>
               </Svg>
               <Text style={styles.infoText}>
-                Ask your complete question in one message, then press Enter. Please avoid splitting your question across multiple messages.
+                {t('language') === 'hi'
+                  ? 'अपना प्रश्न एक ही संदेश में पूरा लिखें। कृपया प्रश्नों को अलग-अलग टुकड़ों में न भेजें।'
+                  : 'Ask your complete question in one message, then press Enter. Please avoid splitting your question across multiple messages.'}
               </Text>
             </View>
           )}
