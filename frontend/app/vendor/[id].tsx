@@ -36,9 +36,10 @@ export default function VendorProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null);
-  
-  const { vendors, myVendor } = useVendorStore();
-  const { user } = useAuthStore();
+  // ponytail: atomic selectors to prevent cascade re-renders when unrelated vendors change
+  const myVendor = useVendorStore(state => state.myVendor);
+  const storeVendor = useVendorStore(React.useCallback(state => (state.myVendor?.id === id ? state.myVendor : state.vendors.find(v => v.id === id)), [id]));
+  const user = useAuthStore(state => state.user);
   const [isSendingRequest, setIsSendingRequest] = React.useState(false);
   const [fetchedVendor, setFetchedVendor] = React.useState<any>(null);
   const [vendorLoading, setVendorLoading] = React.useState(false);
@@ -92,8 +93,7 @@ export default function VendorProfileScreen() {
     }
   }, [justCreated]);
 
-  // First try from myVendor (fastest & most up-to-date for owner) or local vendors store, fall back to API fetch
-  const storeVendor = (myVendor?.id === id ? myVendor : null) || vendors.find(v => v.id === id);
+  // First try from targeted storeVendor, fall back to API fetch
   const vendor = storeVendor || fetchedVendor;
   const isOwner = Boolean(user && vendor && (vendor.owner_id === user.id || myVendor?.id === vendor.id));
 

@@ -224,23 +224,27 @@ export default function VendorScreen() {
     return `No '${term}' in your area.`;
   };
 
-  const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
+  // ponytail: atomic selectors to prevent cascade re-renders on unrelated store changes
+  const user = useAuthStore(state => state.user);
+  const authLoading = useAuthStore(state => state.isLoading);
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const updateUser = useAuthStore(state => state.updateUser);
+
   const userId = user?.id;
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
   const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
   const isKycVerified = currentKycStatus === 'verified';
   const isKycPending = currentKycStatus === 'pending' || currentKycStatus === 'manual_review';
-  const { 
-    vendors, 
-    myVendor, 
-    categories,
-    loading,
-    fetchVendors, 
-    fetchMyVendor,
-    fetchCategories,
-    createVendor,
-    uploadBusinessImage
-  } = useVendorStore();
+
+  const vendors = useVendorStore(state => state.vendors);
+  const myVendor = useVendorStore(state => state.myVendor);
+  const categories = useVendorStore(state => state.categories);
+  const loading = useVendorStore(state => state.loading);
+  const fetchVendors = useVendorStore(state => state.fetchVendors);
+  const fetchMyVendor = useVendorStore(state => state.fetchMyVendor);
+  const fetchCategories = useVendorStore(state => state.fetchCategories);
+  const createVendor = useVendorStore(state => state.createVendor);
+  const uploadBusinessImage = useVendorStore(state => state.uploadBusinessImage);
   const hasVerifiedKyc =
     isKycVerified ||
     Boolean((user as any)?.is_verified) ||
