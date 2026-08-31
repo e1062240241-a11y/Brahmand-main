@@ -330,20 +330,26 @@ const M3OutlinedInput = ({
           ))}
         </View>
       )}
-      <TextInput
-        style={[
-          styles.input,
-          multiline && styles.inputMultiline,
-          isFocused && styles.inputFocused,
-        ]}
-        value={value}
-        onChangeText={handleChangeText}
-        placeholder={isFocused ? placeholder : label}
-        placeholderTextColor={COLORS.textSecondary}
-        multiline={multiline}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-      />
+      <View>
+        <TextInput
+          style={[
+            styles.input,
+            multiline && styles.inputMultiline,
+            isFocused && styles.inputFocused,
+          ]}
+          value={value}
+          onChangeText={handleChangeText}
+          placeholder={isFocused ? placeholder : label}
+          placeholderTextColor={COLORS.textSecondary}
+          multiline={multiline}
+          maxLength={200}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+        />
+        <Text style={{ fontSize: 12, color: "#999", textAlign: "right", marginTop: 4, marginRight: 4 }}>
+          {value?.length || 0}/200
+        </Text>
+      </View>
     </View>
   );
 };

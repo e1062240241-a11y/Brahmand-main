@@ -305,15 +305,21 @@ export default function CommunityRequestEmergencyPage() {
             {/* Description */}
             <View style={styles.fieldSection}>
               <Text style={styles.fieldLabel}>Description <Text style={styles.requiredAsterisk}>*</Text></Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Describe the situation (required)"
-                placeholderTextColor="#999"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={4}
-              />
+              <View>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Describe the situation (required)"
+                  placeholderTextColor="#999"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={200}
+                />
+                <Text style={{ fontSize: 12, color: "#999", textAlign: "right", marginTop: 4, marginRight: 4 }}>
+                  {description?.length || 0}/200
+                </Text>
+              </View>
             </View>
 
             {/* Contact Phone Number */}
