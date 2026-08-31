@@ -1855,7 +1855,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         // Great — append fresh unseen content with state deduplication
         setVideos(prev => {
           const existingIds = new Set();
-          for (const p of prev) existingIds.add(p.id);
+          for (const p of prev) { if (p.id) existingIds.add(p.id); }
           const filtered = uniqueNew.filter((p: any) => !existingIds.has(p.id));
           if (filtered.length === 0) return prev;
           return [...prev, ...filtered];
@@ -1867,7 +1867,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           // Shuffle only the necessary items to avoid O(N log N) sorting on large pools
           setVideos(prev => {
             const existingIds = new Set();
-            for (const p of prev) existingIds.add(p.id);
+            for (const p of prev) { if (p.id) existingIds.add(p.id); }
             const recyclable = pool.filter(p => p?.id && !existingIds.has(p.id));
             const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
             return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
@@ -1876,7 +1876,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           // Fallback: recycle what's currently queued
           setVideos(prev => {
             const existingIds = new Set();
-            for (const p of prev) existingIds.add(p.id);
+            for (const p of prev) { if (p.id) existingIds.add(p.id); }
             const recyclable = currentVideos.filter(p => p?.id && !existingIds.has(p.id));
             const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
             return shuffled.length > 0 ? [...prev, ...shuffled] : prev;

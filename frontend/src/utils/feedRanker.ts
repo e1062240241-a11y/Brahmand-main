@@ -109,14 +109,12 @@ function diversify(posts: any[]): any[] {
     const cid = creatorOf(post);
     // Look at last 4 entries to ensure no same creator in 5 consecutive
     const tail = result.slice(-4).map(creatorOf);
-    // OPT: Convert tail to Set for O(1) lookups
-    const tailSet = new Set(tail);
-    if (tailSet.has(cid)) {
+    if (tail.includes(cid)) {
       pending.push(post);
     } else {
       result.push(post);
       // Try to insert a pending post of a different creator
-      const idx = pending.findIndex(p => !tailSet.has(creatorOf(p)));
+      const idx = pending.findIndex(p => !tail.includes(creatorOf(p)));
       if (idx !== -1) result.push(...pending.splice(idx, 1));
     }
   }
@@ -186,7 +184,8 @@ export function rankPosts(posts: any[], opts: RankOptions): any[] {
   if (!posts || posts.length === 0) return posts;
 
   const { history, lastTopPostId, recentSessionIds = [] } = opts;
-  const recentSet = new Set(recentSessionIds.slice(-15));
+  const recentSlice = recentSessionIds.slice(-15);
+  const recentSet = recentSlice.length > 0 ? new Set(recentSlice) : null;
 
   // Score every post
   const scored = posts.map(post => {
@@ -205,7 +204,7 @@ export function rankPosts(posts: any[], opts: RankOptions): any[] {
   visible.sort((a, b) => b.score - a.score);
 
   // Rule 5: Move posts seen in last 15 out of top slots
-  if (recentSet.size > 0 && visible.length > 1) {
+  if (recentSet && visible.length > 1) {
     const top = visible.slice(0, 15);
     const rest = visible.slice(15);
     const blocked = top.filter(s => recentSet.has(String(s.post.id ?? '')));
