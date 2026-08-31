@@ -22,7 +22,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from 'expo-router';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1542,7 +1542,7 @@ const styles = StyleSheet.create({
   rightReactions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   reactionBtn: { width: 38, height: 38, justifyContent: 'center', alignItems: 'center' },
   reactionBtnText: { fontSize: 22 },
-  reactionOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', alignItems: 'flex-end', paddingBottom: 100, paddingRight: 40, zIndex: 100 },
+  reactionOverlay: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end', alignItems: 'flex-end', paddingBottom: 100, paddingRight: 40, zIndex: 100 },
   floatingEmoji: { position: 'absolute', fontSize: 32, bottom: 0 },
   roomStatsBox: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
   roomStats: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' },
@@ -1964,7 +1964,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   completionBlurView: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   completionCardText1: {
     fontSize: 18,

@@ -27,7 +27,7 @@ import {
 import { InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1564,7 +1564,6 @@ function MessagesScreen({
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
         keyboardShouldPersistTaps="handled"
-        delaysContentTouches={false}
         refreshControl={<InstagramRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
         onScroll={(event) => {
           onMessagesScrollTabBar(event);

@@ -203,7 +203,6 @@ const ChatMessageItem = React.memo(({
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
         <Pressable
-          delayPressIn={0}
           style={({ pressed }) => [
             styles.messageBubble,
             isOwnMessage && styles.ownMessageBubble,

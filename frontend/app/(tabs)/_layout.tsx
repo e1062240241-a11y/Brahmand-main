@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
 import { TabBarProvider } from '../../src/contexts/TabBarContext';
-import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+import { ThemeProvider, DefaultTheme } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 
 const MyTheme = {
@@ -17,7 +17,7 @@ const MyTheme = {
   },
 };
 
-const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
+const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: any }) => (
   <View style={styles.iconContainer}>
     <IconComponent name={name} size={22} color={color} />
   </View>

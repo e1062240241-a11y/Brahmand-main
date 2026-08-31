@@ -19,8 +19,7 @@ import {
   AppState,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
+import { useRouter, useIsFocused } from 'expo-router';
 
 import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';

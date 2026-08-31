@@ -5,11 +5,6 @@
     "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "splash": {
-      "image": "./assets/images/splash-composed.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "scheme": "sanatanlok",
     "userInterfaceStyle": "light",
     "ios": {
@@ -150,7 +145,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "16.0",
+            "deploymentTarget": "16.4",
             "useFrameworks": "static",
             "buildReactNativeFromSource": true
           },
@@ -167,12 +162,6 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Brahmand to use your location to join local communities."
-        }
-      ],
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow Brahmand to use your microphone for voice ordering and live mantra jaap audio rooms."
         }
       ],
       "@react-native-firebase/app",

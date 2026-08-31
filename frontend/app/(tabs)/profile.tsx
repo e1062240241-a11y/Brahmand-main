@@ -24,8 +24,7 @@ import {
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -219,11 +218,13 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      if (showSettingsModal) {
-        NavigationBar.setButtonStyleAsync('dark').catch(() => {});
-      } else {
-        NavigationBar.setButtonStyleAsync('light').catch(() => {});
-      }
+      try {
+        if (showSettingsModal) {
+          NavigationBar.setStyle('dark');
+        } else {
+          NavigationBar.setStyle('light');
+        }
+      } catch (err) {}
     }
   }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
@@ -2345,10 +2346,10 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   heroBackdropGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   heroBackdropTap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   heroBottomFade: {
@@ -2525,7 +2526,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
   },
   gridImageLoader: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#141414',
@@ -2641,7 +2642,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   settingsBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalOverlay: {

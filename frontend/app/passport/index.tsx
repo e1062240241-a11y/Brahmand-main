@@ -8,7 +8,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { getUserProfile } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from 'expo-router';
 
 const { width: windowWidth } = Dimensions.get('window');
 

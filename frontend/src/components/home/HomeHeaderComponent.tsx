@@ -214,7 +214,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     loadingHashtags,
     searchResults,
     loadingUsers,
-    followingIds,
+    followingSet,
     handleFollowUser,
     saveRecentSearch,
     recentSearches,
@@ -1284,7 +1284,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             >
                                 <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                                     <LinearGradient
-                                        colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+                                        colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
                                         style={styles.featuredLiveOverlay}
                                     >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1462,9 +1462,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     handleLiveJaapNavigation('shiva', 'Om Namah Shivay');
                                 }}
                             >
-                                <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+                                <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                                     <LinearGradient
-                                        colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+                                        colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
                                         style={styles.featuredLiveOverlay}
                                     >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>

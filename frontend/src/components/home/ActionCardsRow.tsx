@@ -1,7 +1,6 @@
 import { useVendorStore } from '../../store/vendorStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -72,7 +71,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
         : '';
     return (
         <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="rose">
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
                         <View style={{ marginBottom: 6, marginTop: -4 }}>
@@ -131,7 +130,7 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
 }) {
     return (
         <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="peach">
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
                         <View style={{ marginBottom: 6, marginTop: -4 }}>
@@ -190,7 +189,7 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
         : 'Flower Decor\nAndheri West';
     return (
         <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="mint">
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
                         <View style={{ marginBottom: 6, marginTop: -4 }}>
@@ -247,7 +246,7 @@ const AartiCard = React.memo(function AartiCard({
 }) {
     return (
         <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="lavender">
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
                         <View style={{ marginBottom: 6, marginTop: -4 }}>

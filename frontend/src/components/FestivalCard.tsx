@@ -17,7 +17,7 @@ export interface FestivalCardRef {
 
 export const FestivalCard = forwardRef<FestivalCardRef, FestivalCardProps>(
   ({ festivalName, recipientName, customMessage, festivalDescription, backgroundImageUri }, ref) => {
-    const viewRef = useRef<ViewShot>(null);
+    const viewRef = useRef<any>(null);
 
     useImperativeHandle(ref, () => ({
       capture: async () => {
