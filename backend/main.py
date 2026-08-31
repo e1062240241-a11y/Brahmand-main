@@ -2149,11 +2149,15 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     # 2. Delete user's posts
     try:
         posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
-        for post in posts:
-            try:
-                await _delete_post_with_dependencies(db, post['id'])
-            except Exception as e:
-                logger.warning(f"Failed to delete post {post.get('id')} during user deletion: {e}")
+        # ⚡ Bolt Optimization: Concurrently delete posts to prevent N+1 blocking
+        valid_posts = [p for p in posts if p.get('id')]
+        chunk_size = 50
+        for i in range(0, len(valid_posts), chunk_size):
+            chunk = valid_posts[i:i + chunk_size]
+            results = await asyncio.gather(*[_delete_post_with_dependencies(db, post['id']) for post in chunk], return_exceptions=True)
+            for post, result in zip(chunk, results):
+                if isinstance(result, Exception):
+                    logger.warning(f"Failed to delete post {post.get('id')} during user deletion: {result}")
     except Exception as e:
         logger.warning(f"Error querying posts for deletion: {e}")
 
@@ -16204,7 +16208,7 @@ async def handle_send_dm_socket(sid, data):
         return {'status': 'success', 'message': response_msg}
     except Exception as e:
         logger.error(f"Socket send_dm error: {e}")
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': 'An internal server error occurred'}
 # =================== JAAP INVITE NOTIFICATION ===================
 
 # In-memory cooldown: { user_id: last_invite_time }
