@@ -25,11 +25,10 @@ import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useIsFocused, useNavigation } from "expo-router/react-navigation";
 import { useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, useIsFocused, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, InteractionManager, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Share, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -916,8 +915,10 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress' as any, () => {
-      if (navigation.isFocused()) {
+    if (!navigation || typeof (navigation as any).addListener !== 'function') return;
+    const unsubscribe = (navigation as any).addListener('tabPress', () => {
+      const focused = typeof (navigation as any).isFocused === 'function' ? (navigation as any).isFocused() : true;
+      if (focused) {
         const isAtTop = currentScrollY.current <= 15;
         if (isAtTop) {
           onRefresh();
@@ -934,7 +935,11 @@ export default function HomeScreen() {
         }
       }
     });
-    return unsubscribe;
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, [navigation, onRefresh]);
 
   const safeCommunityRequests = Array.isArray(communityRequests) ? communityRequests : [];

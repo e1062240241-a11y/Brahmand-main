@@ -217,7 +217,7 @@ export default function NewPassportJourneyScreen() {
   const [activeMicField] = useState<'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation' | null>(null);
 
   const handleMicPress = (_field: 'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation') => {
-    Alert.alert('Voice Input', 'Voice recognition is disabled.');
+    // Voice speech recognition module removed
   };
 
   useEffect(() => {

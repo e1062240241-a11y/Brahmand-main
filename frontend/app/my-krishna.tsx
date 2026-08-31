@@ -464,8 +464,6 @@ export default function MyKrishnaChat() {
         <Stack.Screen options={{ headerShown: false }} />
         <StatusBar
           style="dark"
-          translucent
-          backgroundColor="transparent"
         />
 
         {/* ── Header ── */}

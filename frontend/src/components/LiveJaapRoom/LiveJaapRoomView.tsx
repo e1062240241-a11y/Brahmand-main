@@ -20,7 +20,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Defs, RadialGradient, Rect, Stop, Path } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useNavigation, useIsFocused } from "expo-router/react-navigation";
+import { useNavigation, useIsFocused } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
 import { usePassportStore } from '../../store/passportStore';

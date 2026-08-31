@@ -25,7 +25,7 @@ import {
   InteractionManager,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useIsFocused } from "expo-router/react-navigation";
+import { useIsFocused } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { decryptMessage } from '../../src/utils/cryptoUtil';

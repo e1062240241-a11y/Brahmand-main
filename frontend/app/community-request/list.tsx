@@ -434,9 +434,10 @@ export default function ActiveRequestsList() {
         const matchTitle = (req.title || '').toLowerCase().includes(query);
         const matchDesc = (req.description || '').toLowerCase().includes(query);
         const matchLoc = (req.location || '').toLowerCase().includes(query);
-        const matchUser = (req.user_name || req.name || '').toLowerCase().includes(query);
-        const matchSlId = (req.user_sl_id || req.sl_id || '').toLowerCase().includes(query);
-        const matchType = (req.request_type || req.type || '').toLowerCase().includes(query);
+        const rAny = req as any;
+        const matchUser = (req.user_name || rAny.name || '').toLowerCase().includes(query);
+        const matchSlId = (req.user_sl_id || rAny.sl_id || '').toLowerCase().includes(query);
+        const matchType = (req.request_type || rAny.type || '').toLowerCase().includes(query);
         return matchTitle || matchDesc || matchLoc || matchUser || matchSlId || matchType;
       }
 

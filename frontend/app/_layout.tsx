@@ -748,7 +748,7 @@ export default function RootLayout() {
         } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
           (NavigationBar as any).setButtonStyleAsync(buttonStyle).catch(() => {});
         }
-      } catch {}
+      } catch (err) {}
     }
   }, [pathname, isDarkScreen]);
 
@@ -1214,8 +1214,6 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar
           style={isDarkScreen ? 'light' : 'dark'}
-          backgroundColor="transparent"
-          translucent={true}
         />
         <MuteProvider>
           <Stack screenOptions={{

@@ -194,8 +194,6 @@ export default function NewDMScreen() {
     <Pressable
       key={item.id}
       style={styles.userRow}
-      delayPressIn={0}
-      unstable_pressDelay={0}
       android_ripple={{ color: 'rgba(0, 0, 0, 0.12)', foreground: true, borderless: false }}
       onPress={() => handleSelectUser(item)}
     >
@@ -225,8 +223,6 @@ export default function NewDMScreen() {
           {/* Header */}
           <View style={styles.header}>
             <Pressable
-              delayPressIn={0}
-              unstable_pressDelay={0}
               onPress={handleBackNavigation}
               style={styles.backButton}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -244,8 +240,6 @@ export default function NewDMScreen() {
                 <View style={styles.searchContainer}>
                   <Pressable
                     style={styles.searchBar}
-                    delayPressIn={0}
-                    unstable_pressDelay={0}
                     onPress={() => searchInputRef.current?.focus()}
                     android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', foreground: true, borderless: false }}
                   >
@@ -260,8 +254,6 @@ export default function NewDMScreen() {
                     />
                     {userSearchQuery.length > 0 && (
                       <Pressable
-                        delayPressIn={0}
-                        unstable_pressDelay={0}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         android_ripple={{ color: 'rgba(0, 0, 0, 0.16)', foreground: true, borderless: true, radius: 16 }}
                         onPress={() => handleUserSearch('')}
@@ -276,8 +268,6 @@ export default function NewDMScreen() {
                 <View style={styles.rowActionsContainer}>
                   <Pressable
                     style={styles.actionRow}
-                    delayPressIn={0}
-                    unstable_pressDelay={0}
                     android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                     onPress={() => router.push('/circle/create')}
                   >
@@ -287,8 +277,6 @@ export default function NewDMScreen() {
 
                   <Pressable
                     style={styles.actionRow}
-                    delayPressIn={0}
-                    unstable_pressDelay={0}
                     android_ripple={{ color: 'rgba(0, 0, 0, 0.10)', foreground: true, borderless: false }}
                     onPress={() => searchInputRef.current?.focus()}
                   >

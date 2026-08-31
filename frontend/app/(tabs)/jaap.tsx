@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from "expo-router/react-navigation";
+import { useIsFocused } from 'expo-router';
 import { resolveTempleImage } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import {
@@ -658,7 +658,7 @@ export default function JaapLandingScreen() {
                   <LinearGradient
                     colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
                     locations={[0, 0.38, 1]}
-                    style={StyleSheet.absoluteFillObject}
+                    style={StyleSheet.absoluteFill}
                   />
 
                   <View style={styles.bannerContent}>
@@ -1030,7 +1030,7 @@ export default function JaapLandingScreen() {
                     android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                     onPress={() => handleUpcomingCardPress(jaap)}
                   >
-                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
+                    <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
                       <Image
                         source={jaap.image}
                         style={{ width: '100%', height: '100%', position: 'absolute' }}
@@ -1039,7 +1039,7 @@ export default function JaapLandingScreen() {
                       <LinearGradient
                         colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
                         locations={[0, 0.5, 1]}
-                        style={StyleSheet.absoluteFillObject}
+                        style={StyleSheet.absoluteFill}
                       />
 
                       <View style={styles.upcomingCardContent}>
@@ -1103,7 +1103,7 @@ export default function JaapLandingScreen() {
                         <LinearGradient
                           colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
                           locations={[0, 0.38, 1]}
-                          style={StyleSheet.absoluteFillObject}
+                          style={StyleSheet.absoluteFill}
                         />
                         <View style={styles.bannerContent}>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>

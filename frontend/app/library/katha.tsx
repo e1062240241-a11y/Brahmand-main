@@ -26,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from '../../src/components/SafeVideoView';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useIsFocused } from "expo-router/react-navigation";
+import { useIsFocused } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '../../src/services/api';

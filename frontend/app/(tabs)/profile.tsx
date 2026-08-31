@@ -24,8 +24,7 @@ import {
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from "expo-router/react-navigation";
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -226,7 +225,7 @@ export default function ProfileScreen() {
         } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
           (NavigationBar as any).setButtonStyleAsync(style).catch(() => {});
         }
-      } catch {}
+      } catch (err) {}
     }
   }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
@@ -2348,10 +2347,10 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   heroBackdropGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   heroBackdropTap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 0,
   },
   heroBottomFade: {
@@ -2528,7 +2527,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
   },
   gridImageLoader: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#141414',
@@ -2644,7 +2643,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   settingsBackdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalOverlay: {
