@@ -25,6 +25,7 @@ import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -185,6 +186,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
+  const offsetRef = useRef(0);
+  const hasMoreRef = useRef(true);
   const [postsCount, setPostsCount] = useState(0);
   const LIMIT = 15;
 
@@ -726,9 +729,10 @@ export default function ProfileScreen() {
   const loadPosts = useCallback(async (reset = false, silent = false) => {
     if (!userId) return;
 
-    if (!reset && !hasMore) return;
+    if (isFetchingRef.current || (!reset && !hasMoreRef.current)) return;
+    isFetchingRef.current = true;
 
-    const currentOffset = reset ? 0 : offset;
+    const currentOffset = reset ? 0 : offsetRef.current;
 
     if (!silent) {
       setPostsLoading(true);
@@ -769,54 +773,55 @@ export default function ProfileScreen() {
         return [...prev, ...deduplicated];
       });
       setPostsCount(payload?.total || 0);
+
+      offsetRef.current = nextOffset;
+      hasMoreRef.current = nextHasMore;
       setOffset(nextOffset);
       setHasMore(nextHasMore);
     } catch (err) {
       console.warn('Failed to load posts on profile:', err);
     } finally {
+      isFetchingRef.current = false;
       setPostsLoading(false);
       setRefreshing(false);
     }
-  }, [userId, offset, hasMore]);
-
-
+  }, [userId]);
 
   const handleUploadPostSuccess = () => {
     setShowUploadModal(false);
   };
 
-  useEffect(() => {
-    activeUserIdRef.current = userId;
+  useFocusEffect(
+    useCallback(() => {
+      const isDifferentUser = activeUserIdRef.current !== userId;
+      const isPlaceholder = !userId ||
+        userId.toLowerCase().trim() === 'undefined' ||
+        userId.toLowerCase().trim() === 'null' ||
+        userId.toLowerCase().trim() === 'none' ||
+        userId === '';
 
-    // Clear state immediately to prevent cross-account display/leakage
-    setPosts([]);
-    setPostsCount(0);
-    setOffset(0);
-    setHasMore(true);
-    setProfile(user || null);
+      if (isPlaceholder) {
+        setPostsLoading(false);
+        setLoading(false);
+        return;
+      }
 
-    const isPlaceholder = !userId ||
-      userId.toLowerCase().trim() === 'undefined' ||
-      userId.toLowerCase().trim() === 'null' ||
-      userId.toLowerCase().trim() === 'none' ||
-      userId === '';
+      if (isDifferentUser || posts.length === 0) {
+        activeUserIdRef.current = userId;
 
-    if (isPlaceholder) {
-      setPostsLoading(false);
-      setLoading(false);
-      return;
-    }
+        setPosts([]);
+        setPostsCount(0);
+        offsetRef.current = 0;
+        hasMoreRef.current = true;
+        setOffset(0);
+        setHasMore(true);
+        setProfile(user || null);
 
-    setPostsLoading(false);
-    setLoading(!user);
-
-    // Ensure we don't query for 'undefined' or missing user ids
-    if (!userId || userId.trim() === '' || userId.toLowerCase() === 'undefined') {
-      return;
-    }
-
-    fetchProfile(!user);
-  }, [userId]);
+        fetchProfile(!user);
+        loadPosts(true);
+      }
+    }, [userId, loadPosts, user, fetchProfile, posts.length])
+  );
 
   // Listen for background video/post uploads and instantly prepend to profile feed & increment posts count
   useEffect(() => {
