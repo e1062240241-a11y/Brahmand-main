@@ -24,7 +24,6 @@ import { BlurView } from 'expo-blur';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePassportStore } from '../../../src/store/passportStore';
 import { PassportAnswer, PassportMediaItem, PassportJourneyVisibility } from '../../../src/types/passport';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 const { width, height } = Dimensions.get('window');
 const isSmallAndroid = Platform.OS === 'android' && height < 820;
@@ -215,74 +214,10 @@ export default function NewPassportJourneyScreen() {
   const [rememberBecause, setRememberBecause] = useState('');
   const [shareWithCommunity, setShareWithCommunity] = useState(false);
 
-  const [activeMicField, setActiveMicField] = useState<'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation' | null>(null);
+  const [activeMicField] = useState<'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation' | null>(null);
 
-  useSpeechRecognitionEvent("result", (event) => {
-    const text = event.results[0]?.transcript || "";
-    if (activeMicField === 'puja') {
-      setPujaDetails(text);
-    } else if (activeMicField === 'touched') {
-      setTouchedHeart(text);
-    } else if (activeMicField === 'prasad') {
-      setPrasadExperience(text);
-    } else if (activeMicField === 'darshan') {
-      setDarshanExperience(text);
-    } else if (activeMicField === 'blessing') {
-      setBlessingCarried(text);
-    } else if (activeMicField === 'memory') {
-      setUnforgettableMemory(text);
-    } else if (activeMicField === 'remember') {
-      setRememberBecause(text);
-    } else if (activeMicField === 'accommodation') {
-      setAccommodationWhy(text);
-    }
-  });
-
-  useSpeechRecognitionEvent("end", () => {
-    setActiveMicField(null);
-  });
-
-  useSpeechRecognitionEvent("error", (event) => {
-    console.log("Speech recognition error:", event.error);
-    setActiveMicField(null);
-  });
-
-  const handleMicPress = async (field: 'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation') => {
-    if (activeMicField === field) {
-      try {
-        await ExpoSpeechRecognitionModule.stop();
-      } catch (err) {
-        console.log("Error stopping mic:", err);
-      }
-      setActiveMicField(null);
-      return;
-    }
-
-    if (activeMicField) {
-      try {
-        await ExpoSpeechRecognitionModule.stop();
-      } catch (err) {
-        console.log("Error stopping other mic:", err);
-      }
-    }
-
-    try {
-      const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission Denied", "Microphone access is required for speech input.");
-        return;
-      }
-
-      setActiveMicField(field);
-      await ExpoSpeechRecognitionModule.start({
-        lang: 'en-US',
-        interimResults: true,
-      });
-    } catch (error) {
-      console.log("Error starting voice recognition:", error);
-      Alert.alert("Error", "Speech recognition failed to start.");
-      setActiveMicField(null);
-    }
+  const handleMicPress = (_field: 'puja' | 'touched' | 'prasad' | 'darshan' | 'blessing' | 'memory' | 'remember' | 'accommodation') => {
+    Alert.alert('Voice Input', 'Voice recognition is disabled.');
   };
 
   useEffect(() => {

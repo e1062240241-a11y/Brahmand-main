@@ -219,11 +219,14 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      if (showSettingsModal) {
-        NavigationBar.setButtonStyleAsync('dark').catch(() => {});
-      } else {
-        NavigationBar.setButtonStyleAsync('light').catch(() => {});
-      }
+      try {
+        const style = showSettingsModal ? 'dark' : 'light';
+        if (typeof NavigationBar.setStyle === 'function') {
+          NavigationBar.setStyle(style as any);
+        } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
+          (NavigationBar as any).setButtonStyleAsync(style).catch(() => {});
+        }
+      } catch {}
     }
   }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);

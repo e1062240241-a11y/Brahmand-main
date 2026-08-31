@@ -164,12 +164,6 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Brahmand to use your location to join local communities."
         }
       ],
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Allow Brahmand to use your microphone for voice ordering and live mantra jaap audio rooms."
-        }
-      ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       [

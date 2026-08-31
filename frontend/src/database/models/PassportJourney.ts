@@ -4,11 +4,11 @@ import { text, date, readonly } from '@nozbe/watermelondb/decorators'
 export default class PassportJourney extends Model {
   static table = 'passport_journeys'
 
-  @text('location') location!: string
-  @text('date') date!: string
-  @text('story') story!: string
-  @text('answers') rawAnswers!: string
-  @readonly @date('created_at') createdAt!: Date
+  @text('location') location: string
+  @text('date') date: string
+  @text('story') story: string
+  @text('answers') rawAnswers: string
+  @readonly @date('created_at') createdAt: Date
 
   // Getter for generated_story (for backward compatibility/consistency)
   get generated_story(): string {

@@ -74,7 +74,7 @@ const ChatNativeVideoPlayer = React.memo(({
       if (isPlayerValid(player)) {
         try {
           player.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, [player]);
@@ -136,7 +136,7 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
   }
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[style, { backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center', position: 'relative' }]}
       onPress={() => setIsPlaying(true)}
     >
@@ -153,7 +153,7 @@ const getTimeAgo = (dateString?: string) => {
     if (!ds.includes('Z') && !ds.includes('+')) {
       ds = ds.includes('T') ? `${ds}Z` : `${ds.replace(' ', 'T')}Z`;
     }
-    
+
     const date = new Date(ds);
     if (isNaN(date.getTime())) return 'Just now';
     const now = new Date();
@@ -319,7 +319,7 @@ const ChatScreen = ({
   try {
     const tabBar = useTabBar();
     hideTabBar = tabBar.hideTabBar;
-  } catch (_e) {}
+  } catch (_e) { }
 
   useEffect(() => {
     hideTabBar?.();
@@ -731,7 +731,7 @@ const ChatScreen = ({
           await database.write(async () => {
             await record.destroyPermanently();
           });
-        } catch (e) {}
+        } catch (e) { }
       }
       const errMsg = error.response?.data?.detail || error.message || 'Failed to send message';
       if (errMsg.includes('Only verified members can post') || errMsg.includes('verified members')) {
@@ -765,7 +765,7 @@ const ChatScreen = ({
             await database.batch(...batchOps);
           }
         });
-      } catch (err) {}
+      } catch (err) { }
     }
 
     Alert.alert('Chat Cleared', 'This chat is cleared on this device only.');
@@ -774,12 +774,12 @@ const ChatScreen = ({
   const handleGoBack = () => {
     try {
       Keyboard.dismiss();
-    } catch (e) {}
+    } catch (e) { }
     if (router.canGoBack()) {
       router.back();
     } else {
-      const route = type === 'community' 
-        ? '/messages?tab=Community' 
+      const route = type === 'community'
+        ? '/messages?tab=Community'
         : '/messages?tab=Private%20Chat';
       router.replace(route);
     }
@@ -901,15 +901,15 @@ const ChatScreen = ({
     const confirmed = Platform.OS === 'web'
       ? typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName || 'this user'}?`)
       : await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Remove Member',
-            `Are you sure you want to remove ${memberName || 'this user'}?`,
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
-            ],
-          );
-        });
+        Alert.alert(
+          'Remove Member',
+          `Are you sure you want to remove ${memberName || 'this user'}?`,
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+          ],
+        );
+      });
 
     if (!confirmed) return;
 
@@ -1028,13 +1028,13 @@ const ChatScreen = ({
               try {
                 const conv = await convsColl.find(id);
                 batchOps.push(conv.prepareDestroyPermanently());
-              } catch (e) {}
+              } catch (e) { }
 
               if (batchOps.length > 0) {
                 await database.batch(...batchOps);
               }
             });
-          } catch (e) {}
+          } catch (e) { }
         }
 
         useChatStore.getState().setChatCache(roomKey, { messages: [], circleInfo: null });
@@ -1076,9 +1076,9 @@ const ChatScreen = ({
     : (type === 'community' ? (subgroup || 'Community') : 'Circle');
 
   const isRestrictedGroup = (
-    subgroup?.toLowerCase() === 'state' || 
+    subgroup?.toLowerCase() === 'state' ||
     subgroup?.toLowerCase() === 'national' ||
-    name?.toLowerCase().includes('state') || 
+    name?.toLowerCase().includes('state') ||
     name?.toLowerCase().includes('national') ||
     headerTitle?.toLowerCase().includes('state') ||
     headerTitle?.toLowerCase().includes('national')
@@ -1544,15 +1544,15 @@ const ChatScreen = ({
       </Modal>
       {/* Dynamic Header with Notch support */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={handleGoBack}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.headerInfo} 
+        <TouchableOpacity
+          style={styles.headerInfo}
           onPress={type === 'circle' ? handleOpenCircleOptions : (type === 'community' ? () => setShowMembersPanel(true) : undefined)}
           activeOpacity={0.7}
         >
@@ -1560,8 +1560,8 @@ const ChatScreen = ({
           <View style={styles.headerSubtitleRow}>
             <Text style={styles.headerSubtitle} numberOfLines={1}>{headerSubTitleLabel}</Text>
             {type === 'community' && !isRestrictedGroup && (
-              <TouchableOpacity 
-                style={styles.headerShareButton} 
+              <TouchableOpacity
+                style={styles.headerShareButton}
                 onPress={handleShareCommunityInvite}
                 activeOpacity={0.7}
               >
@@ -1579,8 +1579,8 @@ const ChatScreen = ({
           )}
         </TouchableOpacity>
         {type === 'circle' && (
-          <TouchableOpacity 
-            style={styles.menuButton} 
+          <TouchableOpacity
+            style={styles.menuButton}
             onPress={handleOpenCircleOptions}
             hitSlop={{ top: 18, bottom: 18, left: 18, right: 18 }}
           >
@@ -1689,7 +1689,7 @@ const ChatScreen = ({
             </View>
           </View>
         ) : type === 'community' && !isVerified ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.verificationBanner}
             onPress={() => router.push('/verification')}
           >
@@ -1745,14 +1745,14 @@ const ChatScreen = ({
                   }}
                 />
                 <TouchableOpacity
-                   style={styles.attachButton}
-                   onPress={toggleAttachmentOptions}
-                   disabled={uploadingMedia || sending}
-                 >
-                   <View style={styles.attachIconBadge}>
-                     <Ionicons name="image" size={18} color={COLORS.primary} />
-                   </View>
-                 </TouchableOpacity>
+                  style={styles.attachButton}
+                  onPress={toggleAttachmentOptions}
+                  disabled={uploadingMedia || sending}
+                >
+                  <View style={styles.attachIconBadge}>
+                    <Ionicons name="image" size={18} color={COLORS.primary} />
+                  </View>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
                 style={[
@@ -2181,7 +2181,7 @@ const ChatScreen = ({
               </TouchableOpacity>
             </View>
 
-            <View style={styles.groupSummary}> 
+            <View style={styles.groupSummary}>
               <Text style={styles.groupSummaryTitle}>{circleInfo?.name || headerTitle}</Text>
               <Text style={styles.groupSummarySubtitle}>{circleInfo?.code || 'Group Code unavailable'}</Text>
               <Text style={styles.groupSummaryDescription}>{circleInfo?.members?.length ?? 0} members</Text>
@@ -2733,21 +2733,21 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-   attachButton: {
-     padding: 4,
-     marginLeft: 4,
-   },
-   attachIconBadge: {
-     width: 36,
-     height: 36,
-     borderRadius: 18,
-     backgroundColor: '#FFF5E6',
-     borderWidth: 1.5,
-     borderColor: COLORS.primary,
-     justifyContent: 'center',
-     alignItems: 'center',
-   },
-   sendButton: {
+  attachButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  attachIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF5E6',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,

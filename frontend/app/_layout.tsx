@@ -742,7 +742,13 @@ export default function RootLayout() {
       if (lastNavColorRef.current === buttonStyle) return;
       lastNavColorRef.current = buttonStyle;
 
-      NavigationBar.setButtonStyleAsync(buttonStyle).catch(() => {});
+      try {
+        if (typeof NavigationBar.setStyle === 'function') {
+          NavigationBar.setStyle(buttonStyle as any);
+        } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
+          (NavigationBar as any).setButtonStyleAsync(buttonStyle).catch(() => {});
+        }
+      } catch {}
     }
   }, [pathname, isDarkScreen]);
 
