@@ -13,3 +13,10 @@
 ## 2023-11-28 - Optimize N+1
 **Learning:** In the frontend, O(N) recreations of `new Set(prev.map(...))` inside state updates caused potential CPU bottlenecks in lists. In the backend, `db.get_documents_batch` was processing chunks in a single blocking synchronous loop (`get_all`), leading to slower fetch times for large batches.
 **Action:** Changed array `map` mapping inside `new Set()` loops in frontend to loop directly via `new Set(); for (const x of arr) set.add(x)` eliminating unnecessary intermediary allocations. Changed `get_documents_batch` in `firestore_db.py` to use `asyncio.gather` for fetching parallel chunks.
+## 2024-11-21 - Parallelizing Independent Variables with asyncio.gather
+**Learning:** When using `asyncio.gather` with `return_exceptions=True` in the Python backend, explicitly iterate over the returned results and use `isinstance(result, Exception)` to log or handle failures. Failing to do so will silently swallow exceptions and degrade observability.
+**Action:** Always capture results of `asyncio.gather(..., return_exceptions=True)` and manually verify for `Exception` objects to ensure errors are handled appropriately.
+
+## 2026-11-28 - Optimize N+1 Chunking
+**Learning:** When using `asyncio.gather` for concurrent database operations (like batched deletions) in the Python backend, unbounded concurrency can overwhelm connection pools or hit rate limits for users with massive data. Chunking the requests (e.g., in batches of 50) prevents this.
+**Action:** Use chunking limits before firing large arrays to `asyncio.gather`.
