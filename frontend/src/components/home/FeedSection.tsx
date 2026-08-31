@@ -10,6 +10,7 @@ import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
 import { getHomeFeed, getPostsFeed } from '../../services/api';
+import { useTranslation } from '../../utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FEED_PAGE_SIZE = 10;
@@ -47,6 +48,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   blockedUserSet,
   blockedByMeUserSet,
 }) => {
+  const { t } = useTranslation();
   const activeTab = useFeedStore(state => state.activeTab);
   const setActiveTab = useFeedStore(state => state.setActiveTab);
   const tabFeeds = useFeedStore(state => state.tabFeeds);
@@ -300,9 +302,17 @@ const FeedSection: React.FC<FeedSectionProps> = ({
             <ActivityIndicator size="large" color="#FF8D57" />
           ) : (
             <Text style={styles.emptyFeedText}>
+              {/* 🧡 Engagement: Reframed bland empty feed text to warm, devotional Hindi primary copy with English fallback */}
+              {/* Lever: Reframing (Emotional Copy) + Community Belonging (Satsang) */}
+              {/* Why: Reframing "Not following anyone" to inviting users to connect with saints and devotees deepens spiritual belonging */}
+              {/* UI: Text-only change, zero structural or visual components added */}
               {activeTab === 'following'
-                ? "You aren't following anyone yet"
-                : "No posts yet"}
+                ? (t('language') === 'hi'
+                  ? 'अभी तक किसी का अनुसरण नहीं किया है — संतों व भक्तों से जुड़ें'
+                  : 'Not following anyone yet — connect with sacred devotees')
+                : (t('language') === 'hi'
+                  ? 'कोई पोस्ट नहीं — पहला विचार साझा करें'
+                  : 'No posts yet — share your first thought')}
             </Text>
           )}
         </View>
