@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
 import { TabBarProvider } from '../../src/contexts/TabBarContext';
-import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+import { ThemeProvider, DefaultTheme } from "expo-router/react-navigation";
 import { useAuthStore } from '../../src/store/authStore';
 
 const MyTheme = {

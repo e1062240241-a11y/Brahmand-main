@@ -28,7 +28,7 @@ import {View,
   Linking
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -337,20 +337,10 @@ export default function CommunityDetailScreen() {
       if (!item) return false;
       const url = item.image || item.image_url || item.media_url || '';
       const mediaUrl = typeof url === 'string' ? url : (url?.uri || '');
-      return (
-        (typeof url === 'object' && url !== null && (
-          String(url.type || url.media_type || url.mediaType || '').toLowerCase().startsWith('video')
-        )) || (
-          typeof mediaUrl === 'string' && (
-            /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
-            mediaUrl.toLowerCase().startsWith('video') || 
-            mediaUrl.toLowerCase().includes('/video/') || 
-            mediaUrl.toLowerCase().includes('_video_') ||
-            ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
-             !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
-          )
-        )
-      );
+      return ((typeof url === 'object' && url !== null && (String(url.type || url.media_type || url.mediaType || '').toLowerCase().startsWith('video'))) || (typeof mediaUrl === 'string' && (/\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
+      mediaUrl.toLowerCase().startsWith('video') || 
+      mediaUrl.toLowerCase().includes('/video/') || 
+      mediaUrl.toLowerCase().includes('_video_') || ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl)))));
     };
 
     const firstVideoItem = viewableItems.find((vi: any) => isVideoItem(vi.item));

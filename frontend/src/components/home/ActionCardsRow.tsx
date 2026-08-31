@@ -1,6 +1,6 @@
 import { useVendorStore } from '../../store/vendorStore';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';

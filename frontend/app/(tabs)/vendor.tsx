@@ -34,7 +34,7 @@ import { isCategoryMatch, filterVendorsBySmartSearch } from '../../src/utils/cat
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from "expo-router/react-navigation";
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuthStore } from '../../src/store/authStore';
