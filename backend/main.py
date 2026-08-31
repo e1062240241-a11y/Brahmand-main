@@ -92,7 +92,7 @@ from models.schemas import (
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
-from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit
+from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
 from routes.ramcharitmanas_routes import router as ramcharitmanas_router
 from routes.atharvaved_routes import router as atharvaved_router
@@ -5787,7 +5787,7 @@ async def save_fcm_token(request: dict, token_data: dict = Depends(verify_token)
 # =================== GEOCODE ===================
 
 @api_router.post("/geocode/reverse")
-async def reverse_geocode(request: dict):
+async def reverse_geocode(request: dict, _: bool = Depends(geocode_rate_limit)):
     """Reverse geocode coordinates to location using Google Maps API"""
     lat = request.get("latitude")
     lon = request.get("longitude")
@@ -6017,22 +6017,6 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
     return None, None
 
 
-@api_router.post("/geocode/forward")
-async def forward_geocode_endpoint(data: dict):
-    """Forward geocode an address query to latitude and longitude coordinates."""
-    query = (data.get("query") or "").strip()
-    if not query:
-        return {"status": "error", "message": "Query string required", "latitude": None, "longitude": None, "results": []}
-    lat, lng = await _geocode_address(query)
-    if lat is not None and lng is not None:
-        return {
-            "status": "success",
-            "latitude": lat,
-            "longitude": lng,
-            "results": [{"latitude": lat, "longitude": lng, "formatted_address": query}]
-        }
-    return {"status": "error", "message": "Location not found", "latitude": None, "longitude": None, "results": []}
-
 INDIAN_CITIES_FALLBACK = [
     {"name": "Ahmedabad", "state": "Gujarat", "display_name": "Ahmedabad, Gujarat, Bharat"},
     {"name": "Agra", "state": "Uttar Pradesh", "display_name": "Agra, Uttar Pradesh, Bharat"},
@@ -6146,7 +6130,7 @@ INDIAN_CITIES_FALLBACK = [
 ]
 
 @api_router.post("/geocode/forward")
-async def forward_geocode(request: dict):
+async def forward_geocode(request: dict, _: bool = Depends(geocode_rate_limit)):
     """Forward geocode place text to coordinates using Google Maps / Places API with fallback"""
     query = str(request.get("query") or "").strip()
     if not query:
