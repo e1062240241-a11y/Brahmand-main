@@ -2679,7 +2679,11 @@ const DirectMessageScreen = () => {
   }
 
   return (
-    <>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
+      style={{ flex: 1 }}
+    >
       <SafeAreaView
         style={styles.container}
         edges={['left', 'right']}
@@ -2706,14 +2710,14 @@ const DirectMessageScreen = () => {
           }
         }}
       />
-    </>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  chatScreen: { flex: 1, backgroundColor: '#FFFFFF' },
-  chatBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F2ECE8', pointerEvents: 'none' },
+  container: { flex: 1, backgroundColor: 'transparent' },
+  chatScreen: { flex: 1, backgroundColor: 'transparent' },
+  chatBackground: { ...StyleSheet.absoluteFillObject, pointerEvents: 'none' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

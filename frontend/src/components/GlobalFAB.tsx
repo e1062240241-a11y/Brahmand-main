@@ -18,6 +18,7 @@ import {
   Keyboard,
   Platform,
   useWindowDimensions,
+  Modal,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons , Ionicons } from '@expo/vector-icons';
@@ -430,8 +431,14 @@ export function GlobalFAB() {
 
   return (
     <>
-      {/* ─── Floating Action Button (FAB) Overlay ─── */}
-      {fabExpanded && (
+      {/* ─── Floating Action Button (FAB) Modal Overlay ─── */}
+      <Modal
+        visible={fabExpanded}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={toggleFab}
+      >
         <TouchableOpacity
           style={fabStyles.overlay}
           activeOpacity={1}
@@ -705,7 +712,7 @@ export function GlobalFAB() {
               </View>
           </Animated.View>
         </TouchableOpacity>
-      )}
+      </Modal>
 
       {/* FAB trigger button */}
       <Animated.View
@@ -743,12 +750,16 @@ export function GlobalFAB() {
 
 const fabStyles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    zIndex: 99999, // Ensure very high z-index
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 999999,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 99,
+    elevation: 999,
   },
   menuContainer: {
     width: 360,
