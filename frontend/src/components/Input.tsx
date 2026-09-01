@@ -8,6 +8,21 @@ interface InputProps extends TextInputProps {
 }
 
 export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
+  const [internalValue, setInternalValue] = React.useState(props.defaultValue || '');
+
+  const displayValue = props.value !== undefined ? props.value : internalValue;
+  const stringValue = typeof displayValue === 'string' ? displayValue : '';
+  const currentLength = stringValue.length;
+
+  const handleChangeText = (text: string) => {
+    if (props.value === undefined) {
+      setInternalValue(text);
+    }
+    if (props.onChangeText) {
+      props.onChangeText(text);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -22,7 +37,17 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
         aria-invalid={!!error}
         aria-errormessage={error}
         {...props}
+        onChangeText={handleChangeText}
       />
+      {props.maxLength !== undefined && (
+        <Text
+          style={styles.charCount}
+          accessibilityLabel={`${currentLength} of ${props.maxLength} characters`}
+          accessibilityRole="text"
+        >
+          {currentLength}/{props.maxLength}
+        </Text>
+      )}
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
@@ -55,5 +80,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.error,
     marginTop: SPACING.xs,
+  },
+  charCount: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    textAlign: 'right',
+    marginTop: 4,
+    marginRight: 4,
   },
 });
