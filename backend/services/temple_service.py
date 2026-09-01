@@ -77,27 +77,35 @@ class TempleService:
         return serialize_doc(temple) or {}
     
     @staticmethod
-    async def get_temples(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get all temples with caching"""
+    async def get_temples(
+        user_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Get temples with caching and pagination"""
         cached = await cache_manager.get_temples()
         if not cached:
             db = await TempleService.get_db()
             temples = await db.query_documents("temples")
-            temples.sort(key=lambda t: t.get("follower_count", 0), reverse=True)
+            temples.sort(key=lambda t: t.get("follower_count", 0) or 0, reverse=True)
             
             cached = []
             for t in temples:
                 temple_data = serialize_doc(t) or {}
                 temple_data["followers"] = t.get("followers", [])
-                temple_data["follower_count"] = t.get("follower_count", 0)
+                temple_data["follower_count"] = t.get("follower_count", len(t.get("followers", [])))
                 cached.append(temple_data)
             
             await cache_manager.set_temples(cached)
         
+        safe_limit = max(1, min(limit, 100))
+        paginated_items = cached[offset:offset + safe_limit]
+
         result = []
-        for t in cached:
+        for t in paginated_items:
             temple_data = t.copy()
-            temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
+            followers_list = temple_data.pop("followers", [])
+            temple_data["is_following"] = user_id in followers_list if user_id else False
             result.append(temple_data)
         
         return result
@@ -117,7 +125,8 @@ class TempleService:
         result = []
         for t in cached[:20]:
             temple_data = t.copy()
-            temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
+            followers_list = temple_data.pop("followers", [])
+            temple_data["is_following"] = user_id in followers_list if user_id else False
             temple_data["distance"] = "2.5 km"  # Placeholder
             result.append(temple_data)
         
@@ -139,14 +148,57 @@ class TempleService:
             
             cached = serialize_doc(temple) or {}
             cached["followers"] = temple.get("followers", [])
-            cached["follower_count"] = temple.get("follower_count", 0)
+            cached["follower_count"] = temple.get("follower_count", len(temple.get("followers", [])))
             await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
 
         temple_data = cached.copy() if cached else {}
-        temple_data["is_following"] = user_id in temple_data.get("followers", []) if user_id else False
+        followers_list = temple_data.pop("followers", [])
+        temple_data["is_following"] = user_id in followers_list if user_id else False
         temple_data["follower_count"] = temple_data.get("follower_count", 0)
         
         return temple_data
+
+    @staticmethod
+    async def follow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
+        """Follow a temple atomically"""
+        db = await TempleService.get_db()
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        doc_id = temple["id"] if temple else temple_id
+        if not temple:
+            temple = await db.get_document("temples", doc_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        followers = temple.get("followers", [])
+        if user_id not in followers:
+            await db.array_union_update("temples", doc_id, "followers", [user_id])
+            await db.increment_field("temples", doc_id, "follower_count", 1)
+            await cache_manager.invalidate_temples()
+            await cache_manager.delete(f"temple:detail:{temple_id}")
+            if temple.get("temple_id"):
+                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+        return {"message": "Now following temple"}
+
+    @staticmethod
+    async def unfollow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
+        """Unfollow a temple atomically"""
+        db = await TempleService.get_db()
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        doc_id = temple["id"] if temple else temple_id
+        if not temple:
+            temple = await db.get_document("temples", doc_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        followers = temple.get("followers", [])
+        if user_id in followers:
+            await db.array_remove_update("temples", doc_id, "followers", [user_id])
+            await db.increment_field("temples", doc_id, "follower_count", -1)
+            await cache_manager.invalidate_temples()
+            await cache_manager.delete(f"temple:detail:{temple_id}")
+            if temple.get("temple_id"):
+                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+        return {"message": "Unfollowed temple"}
     
 
     
