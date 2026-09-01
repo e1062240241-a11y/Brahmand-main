@@ -184,9 +184,9 @@ const PostScreen = () => {
             // All returned posts already visible — recycle from session pool (shuffled)
             const pool = allSessionPostsRef.current;
             if (pool.length > 1) {
-              const shuffled = [...pool].sort(() => Math.random() - 0.5);
-              const recycledFiltered = shuffled.filter(p => p && p.id && !existing.has(String(p.id)));
-              return [...prev, ...recycledFiltered.slice(0, FEED_PAGE_SIZE * 2)];
+              const recycledFiltered = pool.filter(p => p && p.id && !existing.has(String(p.id)));
+              const shuffled = recycledFiltered.sort(() => Math.random() - 0.5);
+              return [...prev, ...shuffled.slice(0, FEED_PAGE_SIZE * 2)];
             }
             return prev;
           }
