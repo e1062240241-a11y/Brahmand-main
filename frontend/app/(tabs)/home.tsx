@@ -23,6 +23,7 @@ import { useVendorStore } from '../../src/store/vendorStore';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
@@ -93,7 +94,7 @@ export default function HomeScreen() {
     isBlocked: boolean;
     onConfirm: () => void;
   } | null>(null);
-  const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
+  const [bioText, setBioText] = useState(user?.bio || '');
   const [isEditingBio, setIsEditingBio] = useState(false);
   const activeTab = useFeedStore(state => state.activeTab);
   const setActiveTab = useFeedStore(state => state.setActiveTab);
@@ -266,7 +267,7 @@ export default function HomeScreen() {
   const currentScrollY = useRef(0);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const originalLikeStateRefs = useRef<{ [postId: string]: boolean }>({});
+  const originalPostRefs = useRef<{ [postId: string]: any }>({});
 
   useEffect(() => {
     return () => {
@@ -286,8 +287,10 @@ export default function HomeScreen() {
 
   const quickAccessItems = useMemo(() => getDynamicQuickAccess(quickAccessRotation), [quickAccessRotation]);
 
-  // Fluid smooth auto-scroll for quick access feature cards (gentle speed, pauses on hold/tap)
+  // Gentle, ultra-low speed auto-scroll for quick access feature cards (pauses on user touch/drag)
   const topFeaturesAutoScrollIndex = useRef(0);
+  const bannerAutoScrollIndex = useRef(0);
+
   useEffect(() => {
     if (!isFocused) return;
     const CARD_WIDTH = featureSnapInterval || 185;
@@ -302,7 +305,7 @@ export default function HomeScreen() {
           x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
           animated: true,
         });
-      }, 9500);
+      }, 14000);
     };
 
     const stopTopFeatures = () => {
@@ -329,50 +332,6 @@ export default function HomeScreen() {
       appStateSub.remove();
     };
   }, [isFocused, quickAccessItems.length, featureSnapInterval]);
-
-  // Smooth subtle auto-scroll for main hero banners (pauses on hold/tap)
-  const bannerAutoScrollIndex = useRef(0);
-  useEffect(() => {
-    if (!isFocused) return;
-    const BANNER_CARD_WIDTH = (screenWidth - 40) + 12;
-    const TOTAL_BANNERS = 3;
-
-    const startBanner = () => {
-      if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
-      bannerIntervalRef.current = setInterval(() => {
-        if (isHoldingBannerRef.current) return;
-        bannerAutoScrollIndex.current = (bannerAutoScrollIndex.current + 1) % TOTAL_BANNERS;
-        bannerScrollRef.current?.scrollTo({
-          x: bannerAutoScrollIndex.current * BANNER_CARD_WIDTH,
-          animated: true,
-        });
-      }, 11000);
-    };
-
-    const stopBanner = () => {
-      if (bannerIntervalRef.current) {
-        clearInterval(bannerIntervalRef.current);
-        bannerIntervalRef.current = null;
-      }
-    };
-
-    if (AppState.currentState === 'active') {
-      startBanner();
-    }
-
-    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        startBanner();
-      } else {
-        stopBanner();
-      }
-    });
-
-    return () => {
-      stopBanner();
-      appStateSub.remove();
-    };
-  }, [isFocused, screenWidth]);
 
   useEffect(() => {
     if (user?.id) {
@@ -733,11 +692,7 @@ export default function HomeScreen() {
 
   const findCityCommunity = useCallback(() => {
     return (
-      communities.find((c) => c.type === 'city' && (c.name || '').toLowerCase().includes('mumbai')) ||
-      communities.find((c) => (c.name || '').toLowerCase().includes('mumbai')) ||
       communities.find((c) => c.type === 'city') ||
-      localCommunities.find((c) => c.type === 'city' && (c.name || '').toLowerCase().includes('mumbai')) ||
-      localCommunities.find((c) => (c.name || '').toLowerCase().includes('mumbai')) ||
       localCommunities.find((c) => c.type === 'city') ||
       null
     );
@@ -754,19 +709,14 @@ export default function HomeScreen() {
 
   const findStateCommunity = useCallback(() => {
     return (
-      communities.find((c) => c.type === 'state' || (c.name || '').toLowerCase().includes('maharashtra')) ||
+      communities.find((c) => c.type === 'state') ||
       null
     );
   }, [communities]);
 
   const findNationalCommunity = useCallback(() => {
     return (
-      communities.find(
-        (c) =>
-          c.type === 'country' ||
-          (c.name || '').toLowerCase().includes('bharat') ||
-          (c.name || '').toLowerCase().includes('india')
-      ) ||
+      communities.find((c) => c.type === 'country') ||
       null
     );
   }, [communities]);
@@ -775,20 +725,19 @@ export default function HomeScreen() {
     (item: any) => {
       if (!item) return null;
       const id = String(item.id || '');
-      const nameLower = (item.name || '').toLowerCase();
 
-      if (id !== 'city_default' && id !== 'food_pune' && !id.includes('fallback')) {
+      if (!isCommunityFallbackId(id)) {
         return item;
       }
 
       const resolved =
-        item.type === 'city' || nameLower.includes('mumbai')
+        item.type === 'city'
           ? findCityCommunity()
-          : item.type === 'state' || nameLower.includes('maharashtra')
+          : item.type === 'state'
             ? findStateCommunity()
-            : item.type === 'country' || nameLower.includes('bharat') || nameLower.includes('india')
+            : item.type === 'country'
               ? findNationalCommunity()
-              : item.type === 'user_group' || item.type === 'local' || nameLower.includes('food')
+              : item.type === 'user_group' || item.type === 'local'
                 ? findLocalCommunity()
                 : null;
 
@@ -831,7 +780,7 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    setBioText(user?.bio || 'Sanatan Lok Community');
+    setBioText(user?.bio || '');
   }, [user?.bio]);
 
   useEffect(() => {
@@ -953,15 +902,12 @@ export default function HomeScreen() {
       updateUser({ bio: bioText } as any);
     } catch (error) {
       console.warn('Failed to update bio:', error);
-      setBioText(user?.bio || 'Sanatan Lok Community');
+      setBioText(user?.bio || '');
     }
   };
 
   const handleFollowUser = useCallback(async (userId: string) => {
     const isFollowing = followingSetRef.current.has(userId);
-    const nextIds = isFollowing
-      ? followingIds.filter((id) => id !== userId)
-      : [...followingIds, userId];
 
     if (isFollowing) {
       followingSetRef.current.delete(userId);
@@ -969,8 +915,13 @@ export default function HomeScreen() {
       followingSetRef.current.add(userId);
     }
 
-    setFollowingIds(nextIds);
-    updateUser({ following: nextIds } as any);
+    setFollowingIds((prev) => {
+      const nextIds = isFollowing
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId];
+      updateUser({ following: nextIds } as any);
+      return nextIds;
+    });
 
     try {
       if (isFollowing) {
@@ -979,11 +930,21 @@ export default function HomeScreen() {
         await followUser(userId);
       }
     } catch (error) {
-      setFollowingIds(followingIds);
-      updateUser({ following: followingIds } as any);
+      if (isFollowing) {
+        followingSetRef.current.add(userId);
+      } else {
+        followingSetRef.current.delete(userId);
+      }
+      setFollowingIds((prev) => {
+        const rollbackIds = isFollowing
+          ? [...prev, userId]
+          : prev.filter((id) => id !== userId);
+        updateUser({ following: rollbackIds } as any);
+        return rollbackIds;
+      });
       console.warn('Follow request from home search failed:', error);
     }
-  }, [followingIds, updateUser]);
+  }, [updateUser]);
 
   const handleLikePost = useCallback((post: any) => {
     const postId = post?.id;
@@ -994,7 +955,12 @@ export default function HomeScreen() {
     const newLikedState = !liked;
     const currentLikes = Number(post?.likes_count || 0);
 
-    // 2. Perform optimistic UI update instantly
+    // 2. Track exact original post snapshot before any mutation if not already tracking
+    if (originalPostRefs.current[postId] === undefined) {
+      originalPostRefs.current[postId] = { ...post };
+    }
+
+    // 3. Perform optimistic UI update instantly
     const optimisticPost = {
       ...post,
       liked_by_me: newLikedState,
@@ -1006,36 +972,28 @@ export default function HomeScreen() {
     });
 
     // Update local database record optimistically
-    if (Platform.OS !== 'web') {
-      try {
-        const { database } = require('../../src/database');
-        if (database) {
-          database.write(async () => {
-            let feedRecord: any = null;
-            try {
-              feedRecord = await database.get('feeds').find(postId);
-            } catch {
-              // Record not found in local WatermelonDB SQLite cache
-              feedRecord = null;
-            }
-            if (feedRecord) {
+    if (Platform.OS !== 'web' && database) {
+      (async () => {
+        try {
+          let feedRecord: any = null;
+          try {
+            feedRecord = await database.get('feeds').find(postId);
+          } catch {
+            // Record not found in local WatermelonDB SQLite cache
+            feedRecord = null;
+          }
+          if (feedRecord) {
+            await database.write(async () => {
               await feedRecord.update((record: any) => {
                 record.likedByMe = optimisticPost.liked_by_me;
                 record.likesCount = optimisticPost.likes_count;
               });
-            }
-          }).catch(() => {
-            // Silently catch any async database write errors
-          });
+            });
+          }
+        } catch (dbErr) {
+          console.warn('[Like DB Update] failed:', dbErr);
         }
-      } catch (dbErr) {
-        console.warn('[Like DB Update] failed:', dbErr);
-      }
-    }
-
-    // 3. Track original server state if not already tracking
-    if (originalLikeStateRefs.current[postId] === undefined) {
-      originalLikeStateRefs.current[postId] = liked;
+      })();
     }
 
     // 4. Clear any existing timeout for this post
@@ -1045,13 +1003,15 @@ export default function HomeScreen() {
 
     // 5. Set a new debounce timeout of 500ms
     likeDebounceRefs.current[postId] = setTimeout(async () => {
-      const originalState = originalLikeStateRefs.current[postId];
+      const originalPostSnapshot = originalPostRefs.current[postId];
+      const originalState = !!originalPostSnapshot?.liked_by_me;
+
       // Cleanup tracking for this post
       delete likeDebounceRefs.current[postId];
-      delete originalLikeStateRefs.current[postId];
 
-      // If final state equals original state, skip server update!
+      // If final state equals original state, clean up snapshot and skip server update!
       if (newLikedState === originalState) {
+        delete originalPostRefs.current[postId];
         return;
       }
 
@@ -1059,6 +1019,7 @@ export default function HomeScreen() {
       try {
         const response = await togglePostLike(postId);
         const updatedPost = response.data?.post;
+        delete originalPostRefs.current[postId];
         if (updatedPost) {
           const finalPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
           setTabFeed(activeTab, {
@@ -1067,22 +1028,15 @@ export default function HomeScreen() {
         }
       } catch (error) {
         console.warn('Failed to like/unlike post:', error);
-        // Rollback to original state on failure
-        const rollbackPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-        setTabFeed(activeTab, {
-          posts: rollbackPosts.map((item) =>
-            item.id === postId
-              ? {
-                ...item,
-                liked_by_me: originalState,
-                likes_count: originalState
-                  ? (item.liked_by_me ? item.likes_count : item.likes_count + 1)
-                  : (item.liked_by_me ? Math.max(0, item.likes_count - 1) : item.likes_count),
-              }
-              : item
-          )
-        });
-        alert('Could not update like. Please check your network.');
+        // Foolproof rollback: put the exact backup copy of the original post back into the feed
+        if (originalPostSnapshot) {
+          const rollbackPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+          setTabFeed(activeTab, {
+            posts: rollbackPosts.map((item) => (item.id === postId ? originalPostSnapshot : item))
+          });
+        }
+        delete originalPostRefs.current[postId];
+        Alert.alert('Error', 'Could not update like. Please check your network.');
       }
     }, 500);
   }, [activeTab, setTabFeed]);
@@ -1111,34 +1065,6 @@ export default function HomeScreen() {
       setCommentsLoading(false);
     }
   }, []);
-
-  // Poll comments in real-time when the comment modal is visible
-  useEffect(() => {
-    if (!commentModalVisible || !selectedCommentPostId) return;
-
-    const interval = setInterval(async () => {
-      if (AppState.currentState !== 'active') return;
-      try {
-        const response = await getPostComments(selectedCommentPostId, COMMENTS_PAGE_SIZE, 0);
-        if (Array.isArray(response.data)) {
-          setPostComments(prev => {
-            const serverComments = response.data;
-            const optimistic = prev.filter(c => c.is_optimistic);
-            const serverIds = new Set();
-            for (const c of serverComments) serverIds.add(c.id);
-            const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
-            // Keep already-loaded older comments (beyond first page) that aren't in the refreshed top page
-            const keptOlder = prev.filter(c => !c.is_optimistic && !serverIds.has(c.id));
-            return [...filteredOptimistic, ...serverComments, ...keptOlder];
-          });
-        }
-      } catch (error) {
-        console.warn('[Comments Polling] Failed:', error);
-      }
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [commentModalVisible, selectedCommentPostId]);
 
   const handleSubmitComment = async () => {
     if (!selectedCommentPostId || !commentText.trim() || commentSubmitting) return;
@@ -1219,7 +1145,7 @@ export default function HomeScreen() {
       // Rollback on error
       setPostComments(prev => prev.filter(c => c.id !== tempId));
       const detail = error.response?.data?.detail || error.message;
-      alert(detail || 'Could not post comment. Please try again.');
+      Alert.alert('Error', detail || 'Could not post comment. Please try again.');
     } finally {
       setCommentSubmitting(false);
     }
@@ -1274,7 +1200,7 @@ export default function HomeScreen() {
       const msg = String(error?.message || error || '').toLowerCase();
       if (msg.includes('cancel') || msg.includes('dismiss') || msg.includes('aborted')) return;
       console.warn('Failed to open share sheet:', error);
-      alert('Could not open share sheet. Please try again.');
+      Alert.alert('Error', 'Could not open share sheet. Please try again.');
     }
   };
 
@@ -1298,10 +1224,10 @@ export default function HomeScreen() {
       } else {
         // FeedSection handles feed refresh
       }
-      alert('Reposted to your feed.');
+      Alert.alert('Success', 'Reposted to your feed.');
     } catch (error) {
       console.warn('Failed to repost:', error);
-      alert('Could not repost. Please try again.');
+      Alert.alert('Error', 'Could not repost. Please try again.');
     }
   }, [activeTab, setTabFeed]);
 
@@ -1329,7 +1255,7 @@ export default function HomeScreen() {
       setTabFeed(activeTab, {
         posts: rollbackPosts.some((item) => item.id === postId) ? rollbackPosts : [deletedPost, ...rollbackPosts]
       });
-      alert('Could not delete post. Please try again.');
+      Alert.alert('Error', 'Could not delete post. Please try again.');
     }
   }, [selectedCommentPostId, activeTab, setTabFeed]);
 
@@ -1638,30 +1564,24 @@ export default function HomeScreen() {
 
 
   const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity()) || {
-    id: 'mumbai-fallback',
-    name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+    id: 'city-community-default',
+    name: t('cityCommunity') || (t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community'),
     type: 'city',
     member_count: 1,
   };
-  let cityName = resolvedCityComm.name || 'City Community';
-  if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
-    cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
-  }
+  const cityName = resolvedCityComm.name || (t('cityCommunity') || (t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community'));
   const cityId = resolvedCityComm.id;
   const rawCityCount = resolvedCityComm.member_count ?? resolvedCityComm.members_count ?? (resolvedCityComm as any).memberCount ?? (Array.isArray(resolvedCityComm.members) ? resolvedCityComm.members.length : 1);
   const cityMembers = (rawCityCount || 1) * 11;
 
   const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity()) || {
-    id: 'food_pune',
-    name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
+    id: 'local-community-default',
+    name: t('yourCommunity') || (t('language') === 'hi' ? 'स्थानीय समूह' : 'Local Community'),
     type: 'user_group',
     member_count: 1,
   };
   const localId = resolvedLocalComm.id;
-  let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
-  if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
-    realGroupName = 'पुणे भोजन साझाकरण समूह';
-  }
+  const realGroupName = resolvedLocalComm.name || (t('yourCommunity') || (t('language') === 'hi' ? 'स्थानीय समूह' : 'Local Community'));
   const rawLocalCount = resolvedLocalComm.member_count ?? resolvedLocalComm.members_count ?? (resolvedLocalComm as any).memberCount ?? (Array.isArray(resolvedLocalComm.members) ? resolvedLocalComm.members.length : 1);
   const localMembers = (rawLocalCount || 1) * 11;
   const localSubgroup = resolvedLocalComm.type || 'city';
@@ -1747,7 +1667,6 @@ export default function HomeScreen() {
     loadingHashtags,
     searchResults,
     loadingUsers,
-    followingIds, // Track followingIds to trigger re-renders
     handleFollowUser,
     recentSearches,
     handleNotificationPress,
@@ -1797,18 +1716,27 @@ export default function HomeScreen() {
                   autoFocus
                   placeholder="Tell us about yourself..."
                   placeholderTextColor="#8A7B89"
+                  accessibilityLabel="Bio description"
+                  accessibilityHint="Enter your personal bio"
                 />
                 <View style={styles.bioModalActions}>
                   <TouchableOpacity
                     onPress={() => {
-                      setBioText(user?.bio || 'Sanatan Lok Community');
+                      setBioText(user?.bio || '');
                       setIsEditingBio(false);
                     }}
                     style={styles.bioModalBtnCancel}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel bio edit"
                   >
                     <Text style={styles.bioModalBtnCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleSaveBio} style={styles.bioModalBtn}>
+                  <TouchableOpacity
+                    onPress={handleSaveBio}
+                    style={styles.bioModalBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel="Save bio"
+                  >
                     <Text style={styles.bioModalBtnText}>Save</Text>
                   </TouchableOpacity>
                 </View>
@@ -1839,7 +1767,7 @@ export default function HomeScreen() {
               if (selectedSharePost?.id) {
                 const Clipboard = await import('expo-clipboard');
                 await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
-                alert('Link copied to clipboard');
+                Alert.alert('Success', 'Link copied to clipboard');
                 setShareModalVisible(false);
               }
             }}
@@ -1849,12 +1777,12 @@ export default function HomeScreen() {
                   const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
                   const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
                   await FileSystemModule.downloadAsync(selectedSharePost.media_url, localPath);
-                  alert('Saved to app documents');
+                  Alert.alert('Success', 'Saved to app documents');
                 } catch {
-                  alert('Download failed');
+                  Alert.alert('Error', 'Download failed');
                 }
               } else {
-                alert('Download not supported on this platform');
+                Alert.alert('Notice', 'Download not supported on this platform');
               }
               setShareModalVisible(false);
             }}
@@ -1945,6 +1873,8 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.modalBackgroundDismiss}
                 activeOpacity={1}
+                accessibilityRole="button"
+                accessibilityLabel="Close comments modal"
                 onPress={() => {
                   setCommentModalVisible(false);
                   setSelectedCommentPostId(null);
@@ -1967,6 +1897,8 @@ export default function HomeScreen() {
                       setReplyingToComment(null);
                     }}
                     style={styles.commentCloseBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel="Close comments"
                   >
                     <Ionicons name="close" size={24} color="#22142E" />
                   </TouchableOpacity>
@@ -1994,9 +1926,7 @@ export default function HomeScreen() {
                       return acc;
                     }, {} as Record<string, any[]>);
 
-                    // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
                     return (
-                      // ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android.
                       <FlatList
                         data={parentComments}
                         keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
@@ -2022,6 +1952,8 @@ export default function HomeScreen() {
                                       <TouchableOpacity
                                         style={styles.commentActionButton}
                                         onPress={() => handleDeleteComment(item)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Delete comment"
                                       >
                                         <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                       </TouchableOpacity>
@@ -2029,6 +1961,8 @@ export default function HomeScreen() {
                                       <TouchableOpacity
                                         style={styles.commentActionButton}
                                         onPress={() => handleCommentMenuPress(item)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Comment options"
                                       >
                                         <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
                                       </TouchableOpacity>
@@ -2042,6 +1976,8 @@ export default function HomeScreen() {
                                       onPress={() => {
                                         setReplyingToComment(item);
                                       }}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={`Reply to ${item?.username || 'user'}`}
                                     >
                                       <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
                                     </TouchableOpacity>
@@ -2068,6 +2004,8 @@ export default function HomeScreen() {
                                           <TouchableOpacity
                                             style={styles.commentActionButton}
                                             onPress={() => handleDeleteComment(reply)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Delete reply"
                                           >
                                             <Ionicons name="trash-outline" size={14} color="#FF3B30" />
                                           </TouchableOpacity>
@@ -2075,6 +2013,8 @@ export default function HomeScreen() {
                                           <TouchableOpacity
                                             style={styles.commentActionButton}
                                             onPress={() => handleCommentMenuPress(reply)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Reply options"
                                           >
                                             <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
                                           </TouchableOpacity>
@@ -2089,6 +2029,8 @@ export default function HomeScreen() {
                                             setReplyingToComment(item); // Reply to top-level comment
                                             setCommentText(`@${reply.username} `); // Mention specific user
                                           }}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={`Reply to ${reply?.username || 'user'}`}
                                         >
                                           <Text style={{ fontSize: 11, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
                                         </TouchableOpacity>
@@ -2136,7 +2078,11 @@ export default function HomeScreen() {
                     <Text style={{ fontSize: 13, color: '#3B214E' }}>
                       Replying to <Text style={{ fontWeight: 'bold', color: '#8C36DB' }}>@{replyingToComment.username}</Text>
                     </Text>
-                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                    <TouchableOpacity
+                      onPress={() => setReplyingToComment(null)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Cancel replying"
+                    >
                       <Ionicons name="close-circle" size={18} color="#8A7B89" />
                     </TouchableOpacity>
                   </View>
@@ -2155,6 +2101,9 @@ export default function HomeScreen() {
                     style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}
                     onPress={handleSubmitComment}
                     disabled={!commentText.trim() || commentSubmitting}
+                    accessibilityRole="button"
+                    accessibilityLabel="Post comment"
+                    accessibilityState={{ disabled: !commentText.trim() || commentSubmitting }}
                   >
                     {commentSubmitting ? (
                       <ActivityIndicator size="small" color="#3B214E" />
@@ -2217,7 +2166,12 @@ export default function HomeScreen() {
         <View style={{ flex: 1, backgroundColor: '#000' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: insets.top + 10, paddingVertical: 15, backgroundColor: '#111' }}>
             <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#FFF' }}>{selectedAartiTitle}</Text>
-            <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
+            <TouchableOpacity
+              onPress={() => setIsAartiModalVisible(false)}
+              style={{ padding: 5 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close live aarti video"
+            >
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
           </View>

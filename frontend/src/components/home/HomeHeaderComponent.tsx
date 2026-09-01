@@ -425,6 +425,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 activeOpacity={0.86}
                                 style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
+                                accessibilityRole="button"
+                                accessibilityLabel="View your profile"
                             >
                                 <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                             </TouchableOpacity>
@@ -502,27 +504,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     </View>
 
-                    {/*     {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
-                        <TouchableOpacity
-                            style={styles.festivalAlertCard}
-                            activeOpacity={0.9}
-                            onPress={() => router.push('/festivals')}
-                        >
-                            <View style={styles.festivalAlertIcon}>
-                                <Ionicons name="notifications-outline" size={18} color="#FFF" />
-                            </View>
-                            <View style={styles.festivalAlertTextWrapper}>
-                                <Text style={styles.festivalAlertTitle}>{t('festivalReminder')}</Text>
-                                <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
-                                    {nextFestival.days_until === 0
-                                        ? `${nextFestival.name} ${t('isTodayClick')}`
-                                        : `${nextFestival.name} ${t('isTomorrowClick')} (${formatFestivalDate(nextFestival.date)})`}
-                                </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    )}. */}
-
                     {searchActive ? (
                         <View style={styles.searchPanel}>
                             <View style={styles.searchBar}>
@@ -534,6 +515,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     placeholder={t('recentSearchPlaceholder')}
                                     placeholderTextColor="#8E7D90"
                                     autoFocus
+                                    accessibilityLabel="Search users or hashtags"
+                                    accessibilityHint="Type a username or hashtag starting with #"
                                 />
                             </View>
                             {searchTerm.trim().length > 0 ? (
@@ -545,6 +528,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             <TouchableOpacity
                                                 style={styles.userResultItem}
                                                 activeOpacity={0.8}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Hashtag ${searchTerm.trim()}`}
                                                 onPress={() => {
                                                     const hashtag = searchTerm.trim().replace(/^#+/, '');
                                                     router.push(`/hashtag/${encodeURIComponent(hashtag)}`);
@@ -572,6 +557,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         <TouchableOpacity
                                                             style={styles.userResultContent}
                                                             activeOpacity={0.8}
+                                                            accessibilityRole="button"
+                                                            accessibilityLabel={`View profile of ${item.name || 'User'}`}
                                                             onPress={() => {
                                                                 saveRecentSearch(item);
                                                                 router.push(`/profile/${item.id}`);
@@ -589,6 +576,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         <TouchableOpacity
                                                             style={[styles.followButton, isFollowing && styles.followingButton]}
                                                             activeOpacity={0.8}
+                                                            accessibilityRole="button"
+                                                            accessibilityLabel={isFollowing ? `Unfollow ${item.name || 'user'}` : `Follow ${item.name || 'user'}`}
                                                             onPress={() => handleFollowUser(item.id)}
                                                         >
                                                             <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
@@ -607,12 +596,16 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 <View style={styles.recentSearchSection}>
                                     <View style={styles.recentSearchHeader}>
                                         <Text style={styles.recentSearchesTitle}>{t('recentSearchTitle')}</Text>
-                                        <TouchableOpacity onPress={async () => {
-                                            if (user?.id) {
-                                                setRecentSearches([]);
-                                                await AsyncStorage.removeItem(`recent_searches_${user.id}`);
-                                            }
-                                        }}>
+                                        <TouchableOpacity
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Clear recent search history"
+                                            onPress={async () => {
+                                                if (user?.id) {
+                                                    setRecentSearches([]);
+                                                    await AsyncStorage.removeItem(`recent_searches_${user.id}`);
+                                                }
+                                            }}
+                                        >
                                             <Text style={styles.clearHistoryText}>{t('clearHistory')}</Text>
                                         </TouchableOpacity>
                                     </View>
@@ -626,6 +619,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 key={`recent-${item.id}`}
                                                 style={styles.recentSearchItem}
                                                 activeOpacity={0.7}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Recent search ${item.name || 'User'}`}
                                                 onPress={() => router.push(`/profile/${item.id}`)}
                                             >
                                                 <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
@@ -731,6 +726,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 12 }
                                             ]}
                                             activeOpacity={0.9}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={displayLabel}
+                                            accessibilityHint={displaySubtitle ? displaySubtitle.replace('\n', ' ') : undefined}
                                             onPressIn={() => {
                                                 if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = true;
                                             }}
