@@ -15359,7 +15359,13 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 db.query_documents('posts', filters=[('user_id', '==', b_uid)])
                 for b_uid in blocked_user_ids
             ]
-            all_blocked_posts = await asyncio.gather(*blocked_tasks)
+            all_blocked_posts = []
+            for i in range(0, len(blocked_tasks), 50):
+                chunk = blocked_tasks[i:i+50]
+                chunk_res = await asyncio.gather(*chunk, return_exceptions=True)
+                for r in chunk_res:
+                    if not isinstance(r, Exception):
+                        all_blocked_posts.append(r)
             for blocked_posts in all_blocked_posts:
                 for bp in blocked_posts:
                     bp_id = bp.get('id')
@@ -15429,7 +15435,16 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 query = messages_ref.limit(30)
             chat_message_tasks.append(fetch_chat_messages(chat_id, query))
             
-        chat_results = await asyncio.gather(*chat_message_tasks, return_exceptions=True)
+        chat_results = []
+        for i in range(0, len(chat_message_tasks), 50):
+            chunk = chat_message_tasks[i:i+50]
+            chunk_res = await asyncio.gather(*chunk, return_exceptions=True)
+            for r in chunk_res:
+                if not isinstance(r, Exception):
+                    chat_results.append(r)
+                else:
+                    logger.warning(f"Error fetching chat messages chunk: {r}")
+
         for res in chat_results:
             if isinstance(res, tuple):
                 chat_id, docs = res
@@ -15514,7 +15529,16 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                     query = messages_ref.limit(30)
                 community_message_tasks.append(fetch_chat_messages(chat_id, query))
                 
-            comm_msg_results = await asyncio.gather(*community_message_tasks, return_exceptions=True)
+            comm_msg_results = []
+            for i in range(0, len(community_message_tasks), 50):
+                chunk = community_message_tasks[i:i+50]
+                chunk_res = await asyncio.gather(*chunk, return_exceptions=True)
+                for r in chunk_res:
+                    if not isinstance(r, Exception):
+                        comm_msg_results.append(r)
+                    else:
+                        logger.warning(f"Error fetching community messages chunk: {r}")
+
             for res in comm_msg_results:
                 if isinstance(res, tuple):
                     chat_id, docs = res
