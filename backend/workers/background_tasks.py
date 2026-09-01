@@ -107,20 +107,7 @@ async def process_notification(
     logger.info(f"Notification processed for user {user_id}")
 
 
-async def process_moderation_check(message_id: str, content: str, user_id: str):
-    """Background task to check message content"""
-    from services.moderation_service import ModerationService
-    from config.firebase_config import get_firestore
-    from config.firestore_db import FirestoreDB
-    
-    is_ok, reason = await ModerationService.auto_moderate_message(content, user_id)
-    
-    if not is_ok:
-        # Flag the message
-        client = await get_firestore()
-        db = FirestoreDB(client)
-        await db.update_document('messages', message_id, {"flagged": True, "flag_reason": reason})
-        logger.warning(f"Message {message_id} flagged: {reason}")
+
 
 
 async def cleanup_expired_otps():

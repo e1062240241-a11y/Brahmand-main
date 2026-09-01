@@ -129,3 +129,22 @@ async def upload_rate_limit(request: Request):
 
     key_prefix = f"upload:uid:{user_id}" if user_id else "upload:ip"
     return await rate_limit_dependency(request, limit=10, window=600, key_prefix=key_prefix)
+
+async def geocode_rate_limit(request: Request):
+    """Rate limit for geocoding endpoints to prevent Google Maps/Nominatim quota abuse.
+    Allows 30 requests per 60 seconds per user/IP — generous enough for normal search-as-you-type,
+    strict enough to prevent automated resource exhaustion.
+    """
+    user_id = None
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            import jwt as _jwt
+            token = auth_header[7:]
+            payload = _jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("user_id") or payload.get("sub")
+    except Exception:
+        pass
+
+    key_prefix = f"geocode:uid:{user_id}" if user_id else "geocode:ip"
+    return await rate_limit_dependency(request, limit=30, window=60, key_prefix=key_prefix)

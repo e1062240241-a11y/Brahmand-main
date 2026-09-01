@@ -114,7 +114,11 @@ export default function DiscoverCommunitiesScreen() {
         const alreadyJoined = new Set<string>(
           userGroupsList.filter((c: Community) => c.is_member).map((c: Community) => c.id)
         );
-        setJoinedIds(prev => new Set([...prev, ...alreadyJoined]));
+        setJoinedIds(prev => {
+          const next = new Set(prev);
+          alreadyJoined.forEach(id => next.add(id));
+          return next;
+        });
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: userGroupsList, timestamp: Date.now() }));
       }
 
@@ -171,7 +175,11 @@ export default function DiscoverCommunitiesScreen() {
         console.warn("Key generation on join failed", e);
       }
 
-      setJoinedIds(prev => new Set(prev).add(communityId));
+      setJoinedIds(prev => {
+        const next = new Set(prev);
+        next.add(communityId);
+        return next;
+      });
 
 
       // Update cache so it persists when returning to this screen
@@ -202,7 +210,11 @@ export default function DiscoverCommunitiesScreen() {
 
   const handleResendInvite = async (requestId: string, userId: string, userName: string) => {
     const key = `${requestId}-${userId}`;
-    setResendingInviteIds(prev => new Set(prev).add(key));
+    setResendingInviteIds(prev => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
     try {
       await resendCommunityInvite(requestId, userId);
       Alert.alert('Success', `Invitation notification sent again to ${userName}.`);
