@@ -68,10 +68,14 @@ async def seed_temples(
 
 
 @router.get("")
-async def get_temples(token_data: dict = Depends(optional_verify_token)):
-    """Get all temples"""
+async def get_temples(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(optional_verify_token)
+):
+    """Get temples with pagination"""
     user_id = token_data.get("user_id") if token_data else None
-    return await TempleService.get_temples(user_id)
+    return await TempleService.get_temples(user_id, limit=limit, offset=offset)
 
 
 @router.get("/nearby")
@@ -94,10 +98,32 @@ async def get_temple(
     try:
         user_id = token_data.get("user_id") if token_data else None
         return await TempleService.get_temple(temple_id, user_id)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
+@router.post("/{temple_id}/follow")
+async def follow_temple(
+    temple_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Follow a temple"""
+    try:
+        return await TempleService.follow_temple(temple_id, token_data["user_id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Resource not found")
+
+
+@router.post("/{temple_id}/unfollow")
+async def unfollow_temple(
+    temple_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Unfollow a temple"""
+    try:
+        return await TempleService.unfollow_temple(temple_id, token_data["user_id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Resource not found")
 
 
 @router.post("/{temple_id}/posts")
@@ -115,7 +141,7 @@ async def create_temple_post(
             content=post.content,
             post_type=post.post_type.value
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -127,7 +153,7 @@ async def get_temple_posts(
     """Get temple posts"""
     try:
         return await TempleService.get_posts(temple_id)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 

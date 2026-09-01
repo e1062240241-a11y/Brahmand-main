@@ -9133,35 +9133,39 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 # =================== TEMPLES ===================
 
 @api_router.get("/temples")
-async def get_temples(token_data: dict = Depends(verify_token)):
+async def get_temples(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
     from services.temple_service import TempleService
     user_id = token_data.get("user_id")
-    return await TempleService.get_temples(user_id)
+    return await TempleService.get_temples(user_id, limit=limit, offset=offset)
 
 
 @api_router.get("/temples/nearby")
-async def get_nearby_temples(lat: Optional[float] = None, lng: Optional[float] = None, token_data: dict = Depends(verify_token)):
+async def get_nearby_temples(
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    token_data: dict = Depends(verify_token)
+):
     """Get temples, optionally filtered by location"""
     from services.temple_service import TempleService
     user_id = token_data.get("user_id")
+    if lat and lng:
+        return await TempleService.get_nearby_temples(lat=lat, lng=lng, user_id=user_id)
     return await TempleService.get_temples(user_id)
 
 
 @api_router.get("/temples/{temple_id}")
 async def get_temple(temple_id: str, token_data: dict = Depends(verify_token)):
     """Get temple details"""
-    db = await get_db()
-    temple = await db.get_document('temples', temple_id)
-    if not temple:
+    from services.temple_service import TempleService
+    user_id = token_data.get("user_id")
+    try:
+        return await TempleService.get_temple(temple_id, user_id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Temple not found")
-    
-    # Add is_following status
-    user_id = token_data["user_id"]
-    followers = temple.get('followers', [])
-    temple['is_following'] = user_id in followers
-    temple['follower_count'] = len(followers)
-    
-    return temple
 
 
 @api_router.post("/temples")
@@ -9209,16 +9213,20 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
 
 @api_router.post("/temples/{temple_id}/follow")
 async def follow_temple(temple_id: str, token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    await db.array_union_update('temples', temple_id, 'followers', [token_data["user_id"]])
-    return {"message": "Now following temple"}
+    from services.temple_service import TempleService
+    try:
+        return await TempleService.follow_temple(temple_id, token_data["user_id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Temple not found")
 
 
 @api_router.post("/temples/{temple_id}/unfollow")
 async def unfollow_temple(temple_id: str, token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    await db.array_remove_update('temples', temple_id, 'followers', [token_data["user_id"]])
-    return {"message": "Unfollowed temple"}
+    from services.temple_service import TempleService
+    try:
+        return await TempleService.unfollow_temple(temple_id, token_data["user_id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Temple not found")
 
 
 @api_router.get("/temples/{temple_id}/posts")
