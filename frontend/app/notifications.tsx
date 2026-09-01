@@ -734,6 +734,15 @@ export default function NotificationsScreen() {
               </View>
               <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
               <Text style={styles.emptyText}>{t('noNotificationsSub')}</Text>
+              <TouchableOpacity
+                style={styles.emptyActionButton}
+                onPress={() => router.push('/(tabs)/jaap')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emptyActionText}>
+                  {t('language') === 'hi' ? 'जाप शुरू करें 🙏' : 'Start Jaap 🙏'}
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={{ backgroundColor: 'transparent' }}>
@@ -965,5 +974,22 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  emptyActionButton: {
+    marginTop: 18,
+    backgroundColor: '#FF6600',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
