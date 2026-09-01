@@ -295,7 +295,8 @@ export function useCommunityData(
         const currentUserName = currentUser?.name || null;
 
         const serverPosts = [...formattedMsgs];
-        const serverIds = new Set(serverPosts.map((p: any) => String(p.id)));
+        const serverIds = new Set<string>();
+        for (const p of serverPosts) serverIds.add(String(p.id));
         const prevPosts = currentCache?.communityPosts || [];
 
         const localPosts = prevPosts.filter((p: any) => {
@@ -331,7 +332,8 @@ export function useCommunityData(
           return isLocal;
         });
 
-        const seenIds = new Set(localPosts.map((p: any) => String(p.id)));
+        const seenIds = new Set<string>();
+        for (const p of localPosts) seenIds.add(String(p.id));
         const uniqueServerMsgs = formattedMsgs.filter(
           (p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id))
         );
@@ -359,7 +361,8 @@ export function useCommunityData(
         });
       } else {
         setCommunityPosts((prev: any[]) => {
-          const serverIds = new Set(formattedMsgs.map((p: any) => p.id));
+          const serverIds = new Set<string>();
+          for (const p of formattedMsgs) serverIds.add(p.id);
           const serverPosts = [...formattedMsgs];
 
           const localPosts = prev.filter((p: any) => {
@@ -389,7 +392,8 @@ export function useCommunityData(
 
             return true;
           });
-          const seenIds = new Set(localPosts.map((p: any) => p.id));
+          const seenIds = new Set<string>();
+          for (const p of localPosts) seenIds.add(p.id);
           const uniqueServerMsgs = formattedMsgs.filter(
             (p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id))
           );
