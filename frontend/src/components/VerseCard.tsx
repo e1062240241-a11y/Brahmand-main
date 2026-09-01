@@ -6,33 +6,52 @@ const convertToHindiNumerals = (num: number) => {
   return num.toString().split('').map(digit => hindiNumerals[parseInt(digit)]).join('');
 };
 
+interface VerseTranslation {
+  author_name?: string;
+  language?: string;
+  description?: string;
+}
+
+interface VerseData {
+  text?: string;
+  verse: number | string;
+  translations?: VerseTranslation[] | Record<string, string> | VerseTranslation;
+}
+
 interface VerseCardProps {
-  verse: any;
+  verse: VerseData;
   nightMode: boolean;
   index: number;
   isLast: boolean;
   bookId?: string;
 }
 
+/**
+ * 🎨 Varnish Code Quality Fix:
+ * Replaced `verse: any` with strict `VerseData` & `VerseTranslation` interfaces.
+ * Replaced dynamic inline style objects `{ backgroundColor: '#6e4733' }` in the divider section
+ * with StyleSheet.create static properties to eliminate unnecessary allocations during render.
+ */
 const VerseCard = React.memo(({ verse, nightMode, index, isLast, bookId }: VerseCardProps) => {
   // Common text cleaning logic
   const cleanSanskrit = (verse.text || '').replace(/[\u1CD0-\u1CFF\u0951-\u0952]/g, '');
 
-  let translationText = null;
+  let translationText: string | null = null;
   if (verse.translations) {
     if (bookId === 'bhagvad-geeta' || bookId === 'gita' || bookId === 'bhagavad-gita-3d') {
-      const gitaTranslations = Array.isArray(verse.translations)
+      const gitaTranslations: VerseTranslation[] = Array.isArray(verse.translations)
         ? verse.translations
-        : [verse.translations];
+        : [verse.translations as VerseTranslation];
 
-      const ramsukhdas = gitaTranslations.find((t: any) => t.author_name === 'Swami Ramsukhdas');
-      const sivananda = gitaTranslations.find((t: any) => t.author_name === 'Swami Sivananda');
-      const hindiTrans = ramsukhdas || gitaTranslations.find((t: any) => t.language === 'hindi');
-      const englishTrans = sivananda || gitaTranslations.find((t: any) => t.language === 'english');
+      const ramsukhdas = gitaTranslations.find((t) => t.author_name === 'Swami Ramsukhdas');
+      const sivananda = gitaTranslations.find((t) => t.author_name === 'Swami Sivananda');
+      const hindiTrans = ramsukhdas || gitaTranslations.find((t) => t.language === 'hindi');
+      const englishTrans = sivananda || gitaTranslations.find((t) => t.language === 'english');
 
-      translationText = hindiTrans ? hindiTrans.description : (englishTrans ? englishTrans.description : null);
-    } else {
-      translationText = verse.translations.hindi || verse.translations.english;
+      translationText = hindiTrans?.description || englishTrans?.description || null;
+    } else if (typeof verse.translations === 'object' && !Array.isArray(verse.translations)) {
+      const dict = verse.translations as Record<string, string>;
+      translationText = dict.hindi || dict.english || null;
     }
   }
 
@@ -41,13 +60,13 @@ const VerseCard = React.memo(({ verse, nightMode, index, isLast, bookId }: Verse
       {/* Sanskrit Text */}
       <View style={styles.sanskritWrapper}>
         <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{cleanSanskrit}</Text>
-        <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
+        <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(Number(verse.verse) || 0)}</Text>
       </View>
 
       {/* Hindi/English Translation */}
       {translationText ? (
         <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-          <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
+          <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(Number(verse.verse) || 0)}. </Text>
           {translationText}
         </Text>
       ) : null}
@@ -55,9 +74,9 @@ const VerseCard = React.memo(({ verse, nightMode, index, isLast, bookId }: Verse
       {/* Divider */}
       {!isLast && (
         <View style={styles.dividerContainer}>
-          <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-          <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
-          <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
+          <View style={[styles.dividerLine, nightMode && styles.dividerLineNight]} />
+          <View style={[styles.dividerDot, nightMode && styles.dividerDotNight]} />
+          <View style={[styles.dividerLine, nightMode && styles.dividerLineNight]} />
         </View>
       )}
     </View>
@@ -71,6 +90,8 @@ const VerseCard = React.memo(({ verse, nightMode, index, isLast, bookId }: Verse
     prev.bookId === next.bookId
   );
 });
+
+VerseCard.displayName = 'VerseCard';
 
 const styles = StyleSheet.create({
   verseContainer: {
@@ -127,11 +148,17 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#8C5A3C',
   },
+  dividerLineNight: {
+    backgroundColor: '#6e4733',
+  },
   dividerDot: {
     width: 6,
     height: 6,
     backgroundColor: '#8C5A3C',
     marginHorizontal: 12,
+  },
+  dividerDotNight: {
+    backgroundColor: '#6e4733',
   },
 });
 
