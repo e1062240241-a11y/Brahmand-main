@@ -752,7 +752,11 @@ export const FloatingUtilityButton = () => {
     setIsResponding(true);
     try {
       await respondToSOS(sosId, 'coming');
-      setRespondedSOSIds(prev => new Set([...prev, sosId]));
+      setRespondedSOSIds(prev => {
+        const next = new Set(prev);
+        next.add(sosId);
+        return next;
+      });
 
       // Update nearbySOSAlerts so responders array reflects current user
       setNearbySOSAlerts(prev => prev.map(sos => {

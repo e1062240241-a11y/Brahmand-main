@@ -25,3 +25,6 @@
 ## 2027-02-15 - Array.prototype.includes vs Set for Small Arrays
 **Learning:** When checking for inclusion against a very small, fixed-size array (e.g., < 5 elements) inside a loop, `new Set()` instantiation adds unnecessary overhead. `Array.prototype.includes()` avoids this allocation and is faster.
 **Action:** Use `Array.prototype.includes()` instead of creating a new `Set` for small arrays (< 5 elements) inside loops.
+## $(date +%Y-%m-%d) - Array sorting and Set recreation optimizations
+**Learning:** React state updaters recreating Sets from arrays (e.g. `new Set([...prev, id])`) causes O(N) array allocation overhead on every state update, which can accumulate to UI jank. Additionally, using `Array.sort(() => Math.random() - 0.5)` for picking a random subset from a large array incurs an unnecessary O(N log N) sorting cost on the main UI thread.
+**Action:** When picking a random subset from a large array, implement a partial Fisher-Yates shuffle (O(K) where K is the number of elements needed) instead of full array sorting. When adding elements to a React state Set, explicitly clone the Set (`const next = new Set(prev)`) and use `.add()` rather than converting back to arrays.
