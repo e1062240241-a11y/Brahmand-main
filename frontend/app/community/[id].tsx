@@ -1341,12 +1341,15 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const handleLike = useCallback((postId: string) => {
+  const handleLike = useCallback((postOrId: any) => {
+    const postId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
+    if (!postId) return;
+
     if (Platform.OS === 'android') {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     }
     setDiscussionPosts(prev => prev.map(post => {
-      if (post.id === postId) {
+      if (String(post.id) === postId) {
         const isLiked = post.liked;
         return {
           ...post,
@@ -1357,19 +1360,19 @@ export default function CommunityDetailScreen() {
       return post;
     }));
 
-    const matchedPost = communityPosts.find(p => p.id === postId);
+    const matchedPost = communityPosts.find(p => String(p.id) === postId);
     const isCommunityMsg = matchedPost ? !!matchedPost.isCommunityMsg : false;
     const targetSubgroup = matchedPost?.subgroupType || 'city';
     const targetCommunityId = matchedPost?.communityId || (id as string);
 
     setCommunityPosts(prev => {
       const updated = prev.map(post => {
-        if (post.id === postId) {
+        if (String(post.id) === postId) {
           const isLiked = post.liked;
           return {
             ...post,
             liked: !isLiked,
-            likes: isLiked ? Math.max(0, post.likes - 1) : post.likes + 1
+            likes: isLiked ? Math.max(0, (post.likes || 0) - 1) : (post.likes || 0) + 1
           };
         }
         return post;
@@ -1393,8 +1396,10 @@ export default function CommunityDetailScreen() {
     }
   }, [communityPosts, discussionPosts, id, cacheKey]);
 
-  const handleRepost = useCallback((postId: string) => {
-    const targetId = String(postId);
+  const handleRepost = useCallback((postOrId: any) => {
+    const targetId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
+    if (!targetId) return;
+
     const postToRepost = communityPosts.find(p => String(p.id) === targetId) || discussionPosts.find(p => String(p.id) === targetId);
     if (!postToRepost) return;
 
@@ -1449,8 +1454,11 @@ export default function CommunityDetailScreen() {
     }
   }, [communityPosts, discussionPosts, user?.name]);
 
-  const handleDeletePost = useCallback((postId: string) => {
-    const postToDelete = discussionPosts.find(p => p.id === postId) || communityPosts.find(p => p.id === postId);
+  const handleDeletePost = useCallback((postOrId: any) => {
+    const postId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
+    if (!postId) return;
+
+    const postToDelete = discussionPosts.find(p => String(p.id) === postId) || communityPosts.find(p => String(p.id) === postId);
     if (postToDelete) {
       const isOwn = postToDelete.sender_id === user?.id || postToDelete.user?.name === user?.name;
       if (!isOwn) {
@@ -1817,8 +1825,9 @@ export default function CommunityDetailScreen() {
     handlePostSuccess(finalCategory, textChunks);
   };
 
-  const handleShare = useCallback(async (postId: string) => {
+  const handleShare = useCallback(async (postOrId: any) => {
     try {
+      const postId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
       const appLink = `https://brahmand.app/community/${id}?postId=${postId}`;
 
       await Share.share({
@@ -1826,14 +1835,14 @@ export default function CommunityDetailScreen() {
       });
 
       setCommunityPosts(prev => prev.map(post => {
-        if (post.id === postId) {
+        if (String(post.id) === postId) {
           return { ...post, shares: (post.shares || 0) + 1 };
         }
         return post;
       }));
 
       setDiscussionPosts(prev => prev.map(post => {
-        if (post.id === postId) {
+        if (String(post.id) === postId) {
           return { ...post, shares: (post.shares || 0) + 1 };
         }
         return post;
@@ -2798,7 +2807,6 @@ const styles = StyleSheet.create({
   postContent: { fontSize: 15, color: '#333', lineHeight: 24, fontWeight: '500' },
 
   postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F5F5F5' },
-  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postActionText: { fontSize: 13, color: '#666', fontWeight: '600' },
 
   footer: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
@@ -2867,8 +2875,14 @@ const styles = StyleSheet.create({
   postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
   postContentText: { fontSize: 16, color: '#0F1419', lineHeight: 22, marginTop: 4 },
   postMediaImage: { width: '100%', maxWidth: '100%', height: 250, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4', overflow: 'hidden' },
-  postActionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingRight: 40 },
-  postActionCount: { fontSize: 13, color: '#536471' },
+  postImageContainer: { marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#EFF3F4' },
+  postImage: { width: '100%', maxWidth: '100%', height: 220, borderRadius: 16 },
+  postActionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingRight: 24, maxWidth: '92%' },
+  postActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingRight: 24, maxWidth: '92%' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
+  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
+  actionCountText: { fontSize: 13, color: '#536471', fontWeight: '500' },
+  postActionCount: { fontSize: 13, color: '#536471', fontWeight: '500' },
 
   imagePreviewContainer: { marginBottom: 12, position: 'relative', alignSelf: 'flex-start' },
   imagePreview: { width: 80, height: 80, borderRadius: 12 },

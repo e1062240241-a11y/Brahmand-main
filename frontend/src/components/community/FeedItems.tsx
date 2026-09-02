@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
@@ -181,33 +182,57 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
           )}
 
           {item.image && (
-            <View style={styles.postImageContainer}>
+            <View style={styles.postImageContainer || feedItemStyles.postImageContainer}>
               <CommunityMediaItem
                 media={item.image}
-                style={styles.postImage}
+                style={styles.postImage || feedItemStyles.postImage}
                 isActive={activeVideoKey === String(item.id)}
                 onPress={() => onFullScreenMedia(typeof item.image === 'string' ? item.image : item.image.uri)}
               />
             </View>
           )}
 
-          <View style={styles.postActionsRow}>
-            <TouchableOpacity style={styles.actionBtn} onPress={() => onComment(item)}>
+          <View style={[feedItemStyles.postActionsRow, styles.postActionsRow || styles.postActionRow]}>
+            <TouchableOpacity
+              style={[feedItemStyles.actionBtn, styles.actionBtn || styles.postActionBtn]}
+              onPress={() => onComment(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Comment"
+            >
               <Ionicons name="chatbubble-outline" size={18} color="#536471" />
-              <Text style={styles.actionCountText}>{item.comments || 0}</Text>
+              <Text style={[feedItemStyles.actionCountText, styles.actionCountText || styles.postActionCount]}>{item.comments || 0}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost(item.id)}>
+            <TouchableOpacity
+              style={[feedItemStyles.actionBtn, styles.actionBtn || styles.postActionBtn]}
+              onPress={() => onRepost(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Repost"
+            >
               <Ionicons name="repeat" size={18} color={item.isRepost ? "#00BA7C" : "#536471"} />
-              <Text style={[styles.actionCountText, item.isRepost && { color: "#00BA7C" }]}>{item.reposts || 0}</Text>
+              <Text style={[feedItemStyles.actionCountText, styles.actionCountText || styles.postActionCount, item.isRepost && { color: "#00BA7C" }]}>{item.reposts || 0}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => onLike(item)}>
+            <TouchableOpacity
+              style={[feedItemStyles.actionBtn, styles.actionBtn || styles.postActionBtn]}
+              onPress={() => onLike(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={item.liked ? "Unlike" : "Like"}
+            >
               <Ionicons name={item.liked ? "heart" : "heart-outline"} size={18} color={item.liked ? "#F91880" : "#536471"} />
-              <Text style={[styles.actionCountText, item.liked && { color: "#F91880" }]}>{item.likes || 0}</Text>
+              <Text style={[feedItemStyles.actionCountText, styles.actionCountText || styles.postActionCount, item.liked && { color: "#F91880" }]}>{item.likes || 0}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={() => onShare(item)}>
+            <TouchableOpacity
+              style={[feedItemStyles.actionBtn, styles.actionBtn || styles.postActionBtn]}
+              onPress={() => onShare(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Share"
+            >
               <Ionicons name="share-outline" size={18} color="#536471" />
             </TouchableOpacity>
           </View>
@@ -734,4 +759,41 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
       </View>
     </View>
   );
+});
+
+const feedItemStyles = StyleSheet.create({
+  postActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingRight: 24,
+    maxWidth: '92%',
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    minHeight: 28,
+  },
+  actionCountText: {
+    fontSize: 13,
+    color: '#536471',
+    fontWeight: '500',
+    includeFontPadding: false,
+  },
+  postImageContainer: {
+    marginTop: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EFF3F4',
+  },
+  postImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 16,
+  },
 });

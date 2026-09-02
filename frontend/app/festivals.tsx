@@ -1,224 +1,452 @@
-// accessibility: placeholder
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
-  Platform,
   Alert,
   InteractionManager,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withTiming,
+  withRepeat,
+  withSequence,
+  Easing,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { FlashList } from '@shopify/flash-list';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
-import { BrandedLoading } from '../src/components/BrandedLoading';
 import { CustomLoader } from '../src/components/CustomLoader';
-import { syncFestivalReminders, toggleAllFestivals, getAllFestivalReminders } from '../src/utils/festivalReminders';
-import { useNotificationStore } from '../src/store/notificationStore';
+import { getFestivalImage } from '../src/constants/festivalImages';
+import {
+  syncFestivalReminders,
+  toggleAllFestivals,
+  getAllFestivalReminders,
+} from '../src/utils/festivalReminders';
 
-import { FESTIVAL_IMAGE_MAP, getFestivalImage } from '../src/constants/festivalImages';
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
 
+export interface FestivalItemData {
+  id?: string;
+  name?: string;
+  festival_name?: string;
+  title?: string;
+  date: string;
+  description?: string;
+  image?: string | number;
+  image_url?: string | number;
+  photo?: string;
+  imageUrl?: string;
+  [key: string]: unknown;
+}
+
+interface HeroHeaderProps {
+  userName: string;
+  nextFestivalName: string;
+  onTypingComplete: () => void;
+}
+
+interface FestivalItemProps {
+  festival: FestivalItemData;
+  index: number;
+  isReady: boolean;
+  onPress: (index: number) => void;
+}
+
+// FlashList v2 compatibility helper (matching temple.tsx & profile.tsx)
 const SafeFlashList = FlashList as any;
 
-const CARD_COLORS = [
+// ============================================================================
+// CONSTANTS & HELPERS
+// ============================================================================
+
+const EASING_CUBIC = Easing.out(Easing.cubic);
+
+const CARD_COLORS: readonly string[] = [
   '#FFE082', // Yellow
   '#B2EBF2', // Light Blue
   '#F48FB1', // Pink
-  '#A7F3D0', // Sage/Mint Green
+  '#A7F3D0', // Mint Green
   '#A5D6A7', // Green
   '#FFCC80', // Orange
   '#CFD8DC', // Blue Grey
 ];
 
-const formatFestivalDate = (dateStr: string) => {
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+] as const;
+
+/**
+ * Pure helper function to format a YYYY-MM-DD date string into "DD Month YYYY"
+ */
+const formatFestivalDate = (dateStr?: string): string => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
   if (parts.length === 3) {
     const year = parts[0];
     const monthIndex = parseInt(parts[1], 10) - 1;
     const day = parseInt(parts[2], 10);
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    const monthName = months[monthIndex] || parts[1];
+    const monthName = MONTH_NAMES[monthIndex] || parts[1];
     return `${day} ${monthName} ${year}`;
   }
   return dateStr;
 };
 
-interface FestivalItemProps {
-  festival: any;
-  index: number;
-  onPress: (index: number) => void;
-}
+/**
+ * Extract display name from festival data object
+ */
+const getFestivalDisplayName = (festival?: FestivalItemData | null): string => {
+  if (!festival) return 'Upcoming Festival';
+  return festival.name || festival.festival_name || festival.title || 'Upcoming Festival';
+};
 
-const FestivalItem = React.memo(({ festival, index, onPress }: FestivalItemProps) => {
+// ============================================================================
+// COMPONENTS
+// ============================================================================
+
+// --- 1. Clean Top-Left Hero Header: Streamlined Greeting + Dynamic Subtitle ---
+const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
+  userName,
+  nextFestivalName,
+  onTypingComplete,
+}) => {
+  const reducedMotion = useReducedMotion();
+  const targetGreeting = `Hello ${userName || 'Friend'} 👋`;
+  const [streamedText, setStreamedText] = useState<string>(reducedMotion ? targetGreeting : '');
+  const [isTyping, setIsTyping] = useState<boolean>(!reducedMotion);
+
+  // Subtitle animation values (driven by Reanimated on UI thread)
+  const subtitleOpacity = useSharedValue(reducedMotion ? 1 : 0);
+  const subtitleTranslateY = useSharedValue(reducedMotion ? 0 : 8);
+
+  // Cursor opacity animation (Reanimated UI thread - replaces useState/setInterval)
+  const cursorOpacity = useSharedValue(1);
+
+  const displayFestival = nextFestivalName && nextFestivalName.trim().length > 0
+    ? nextFestivalName.trim()
+    : 'Upcoming Festival';
+
+  // Typewriter streaming effect
+  useEffect(() => {
+    if (reducedMotion) {
+      subtitleOpacity.value = 1;
+      subtitleTranslateY.value = 0;
+      onTypingComplete();
+      return;
+    }
+
+    let idx = 0;
+    const timer = setInterval(() => {
+      idx += 1;
+      setStreamedText(targetGreeting.slice(0, idx));
+      if (idx >= targetGreeting.length) {
+        clearInterval(timer);
+        setIsTyping(false);
+        onTypingComplete();
+
+        // 200ms delay after typing finishes, followed by 400ms cubic transition
+        subtitleOpacity.value = withDelay(
+          200,
+          withTiming(1, { duration: 400, easing: EASING_CUBIC })
+        );
+        subtitleTranslateY.value = withDelay(
+          200,
+          withTiming(0, { duration: 400, easing: EASING_CUBIC })
+        );
+      }
+    }, 40);
+
+    return () => clearInterval(timer);
+  }, [targetGreeting, reducedMotion, onTypingComplete, subtitleOpacity, subtitleTranslateY]);
+
+  // Reanimated cursor blinking animation (eliminates JS thread re-renders)
+  useEffect(() => {
+    if (reducedMotion || !isTyping) {
+      cursorOpacity.value = 0;
+      return;
+    }
+
+    cursorOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 450 }),
+        withTiming(1, { duration: 450 })
+      ),
+      -1,
+      true
+    );
+
+    return () => {
+      cursorOpacity.value = 0;
+    };
+  }, [isTyping, reducedMotion, cursorOpacity]);
+
+  const animatedSubtitleStyle = useAnimatedStyle(() => ({
+    opacity: subtitleOpacity.value,
+    transform: [{ translateY: subtitleTranslateY.value }],
+  }));
+
+  const animatedCursorStyle = useAnimatedStyle(() => ({
+    opacity: cursorOpacity.value,
+  }));
+
+  return (
+    <View style={styles.heroContainer} accessibilityRole="header">
+      {/* Left-Aligned Streaming Typewriter Greeting */}
+      <Text style={styles.greetingTitle} aria-hidden={true}>
+        {streamedText}
+        {isTyping && (
+          <Animated.Text style={[styles.cursor, animatedCursorStyle]}>|</Animated.Text>
+        )}
+      </Text>
+
+      {/* Dynamic Context-Aware Subtitle */}
+      <Animated.View style={animatedSubtitleStyle}>
+        <Text style={styles.festivalSubMessage}>
+          Your next celebration is here — <Text style={styles.festivalHighlight}>{displayFestival}</Text>. Let's walk through its traditions together. ✨
+        </Text>
+      </Animated.View>
+    </View>
+  );
+});
+
+HeroHeader.displayName = 'HeroHeader';
+
+// --- 2. Cascading Festival List Card ---
+const FestivalItem: React.FC<FestivalItemProps> = React.memo(({ festival, index, isReady, onPress }: FestivalItemProps) => {
+  const reducedMotion = useReducedMotion();
   const color = CARD_COLORS[index % CARD_COLORS.length];
-  const festivalName = festival.name || festival.festival_name || '';
+  const festivalName = getFestivalDisplayName(festival);
   const festivalImg = useMemo(() => getFestivalImage(festival), [festival]);
   const formattedDate = useMemo(() => formatFestivalDate(festival.date), [festival.date]);
 
+  const cardOpacity = useSharedValue(reducedMotion ? 1 : 0);
+  const cardTranslateY = useSharedValue(reducedMotion ? 0 : 24);
+
+  const handlePress = useCallback(() => {
+    onPress(index);
+  }, [onPress, index]);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      cardOpacity.value = 1;
+      cardTranslateY.value = 0;
+      return;
+    }
+
+    if (isReady) {
+      const delay = 350 + index * 60;
+      cardOpacity.value = withDelay(delay, withTiming(1, { duration: 380, easing: EASING_CUBIC }));
+      cardTranslateY.value = withDelay(delay, withTiming(0, { duration: 400, easing: EASING_CUBIC }));
+    }
+  }, [isReady, index, reducedMotion, cardOpacity, cardTranslateY]);
+
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    opacity: cardOpacity.value,
+    transform: [{ translateY: cardTranslateY.value }],
+  }));
+
   return (
-    <TouchableOpacity 
-      activeOpacity={0.9}
-      style={{ marginBottom: 12 }}
-      onPress={() => onPress(index)}
-    >
-      <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
-        {/* Card Content Overlay */}
-        <View style={styles.cardInnerPadding}>
-          <View style={styles.cardContent}>
-            <View style={styles.cardTextContainer}>
-              <Text style={styles.cardLabel}>Festival</Text>
-              <Text style={styles.cardName}>{festivalName}</Text>
-              <Text style={styles.cardDate}>{formattedDate}</Text>
-            </View>
-            
-            <View style={styles.cardRightSection}>
-              <View style={styles.artworkBox}>
-                <Image
-                  source={festivalImg}
-                  style={styles.artworkImage}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
+    <Animated.View style={animatedCardStyle}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={styles.cardTouchable}
+        onPress={handlePress}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${festivalName}, on ${formattedDate}`}
+      >
+        <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
+          <View style={styles.cardInnerPadding}>
+            <View style={styles.cardContent}>
+              <View style={styles.cardTextContainer}>
+                <Text style={styles.cardLabel}>Festival</Text>
+                <Text style={styles.cardName}>{festivalName}</Text>
+                <Text style={styles.cardDate}>{formattedDate}</Text>
               </View>
-              <View style={styles.chevronWrapper}>
-                <Ionicons name="chevron-forward" size={16} color="#000000" />
+
+              <View style={styles.cardRightSection}>
+                <View style={styles.artworkBox}>
+                  <Image
+                    source={festivalImg}
+                    style={styles.artworkImage}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                  />
+                </View>
+                <View style={styles.chevronWrapper}>
+                  <Ionicons name="chevron-forward" size={16} color="#000000" />
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 });
 
-const FestivalPage = () => {
+FestivalItem.displayName = 'FestivalItem';
+
+// --- 3. Main Festival Page ---
+const FestivalPage: React.FC = () => {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [festivals, setFestivals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [allRemindersEnabled, setAllRemindersEnabled] = useState(false);
-  const [isTogglingAll, setIsTogglingAll] = useState(false);
+  const [festivals, setFestivals] = useState<FestivalItemData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [allRemindersEnabled, setAllRemindersEnabled] = useState<boolean>(false);
+  const [isTogglingAll, setIsTogglingAll] = useState<boolean>(false);
+  const [isTypingComplete, setIsTypingComplete] = useState<boolean>(false);
 
-  const checkGlobalReminderState = async () => {
+  // Use useRef for mount check to safely guard async calls and avoid state updates after unmount
+  const isMountedRef = useRef<boolean>(true);
+
+  const checkGlobalReminderState = useCallback(async () => {
     try {
       const allReminders = await getAllFestivalReminders();
-      const hasActive = Object.keys(allReminders).length > 0;
-      setAllRemindersEnabled(hasActive);
+      if (isMountedRef.current) {
+        setAllRemindersEnabled(Object.keys(allReminders).length > 0);
+      }
     } catch (e) {
       console.warn(e);
     }
-  };
+  }, []);
 
+  // Fetch festival list on mount
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
+
     const loadFestivals = async () => {
       try {
         const response = await getFestivalList();
-        const items = response.data || [];
-        if (isMounted) {
-          setFestivals(items);
+        const items: FestivalItemData[] = response?.data || response || [];
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const upcoming = (Array.isArray(items) ? items : []).filter((f: FestivalItemData) => {
+          if (!f.date) return true;
+          return new Date(f.date) >= today;
+        });
+
+        const sorted = upcoming.sort(
+          (a: FestivalItemData, b: FestivalItemData) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        const finalList = sorted.length > 0 ? sorted : items;
+
+        if (isMountedRef.current) {
+          setFestivals(finalList);
           setLoading(false);
         }
+
         InteractionManager.runAfterInteractions(() => {
-          if (isMounted) {
+          if (isMountedRef.current) {
             checkGlobalReminderState();
-            syncFestivalReminders(items).catch(e => console.warn(e));
+            syncFestivalReminders(finalList).catch(console.warn);
           }
         });
       } catch (err) {
         console.warn('Failed to load festivals', err);
-        if (isMounted) {
-          setError('Could not load festivals.');
+        if (isMountedRef.current) {
           setLoading(false);
         }
       }
     };
 
     loadFestivals();
-    return () => { isMounted = false; };
-  }, []);
 
-  const handleToggleAll = async () => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [checkGlobalReminderState]);
+
+  const handleToggleAll = useCallback(async () => {
     if (isTogglingAll) return;
     setIsTogglingAll(true);
     try {
       const newValue = !allRemindersEnabled;
       await toggleAllFestivals(festivals, newValue);
-      setAllRemindersEnabled(newValue);
-      
-      if (newValue) {
-        Alert.alert(
-          'All Reminders Set',
-          'You will be notified 1 day before every upcoming festival at 9:00 AM and 9:00 PM.'
-        );
-      } else {
-        Alert.alert(
-          'Reminders Cancelled',
-          'All scheduled festival notifications have been successfully removed.'
-        );
+      if (isMountedRef.current) {
+        setAllRemindersEnabled(newValue);
       }
-    } catch (err: any) {
-      console.warn('Failed to toggle all reminders', err);
-      if (err.message === 'Permission not granted') {
-        Alert.alert('Permission Required', 'Please enable notifications in your device settings.');
-      } else {
-        Alert.alert('Error', 'Could not schedule festival notifications.');
-      }
-    } finally {
-      setIsTogglingAll(false);
-    }
-  };
 
-  const handleItemPress = useCallback((index: number) => {
-    router.push(`/festival-detail?index=${index}`);
+      Alert.alert(
+        newValue ? 'All Reminders Set' : 'Reminders Cancelled',
+        newValue
+          ? 'You will be notified before every upcoming festival.'
+          : 'All scheduled festival notifications have been removed.'
+      );
+    } catch (_err) {
+      Alert.alert('Notice', 'Unable to update reminder preferences.');
+    } finally {
+      if (isMountedRef.current) {
+        setIsTogglingAll(false);
+      }
+    }
+  }, [allRemindersEnabled, festivals, isTogglingAll]);
+
+  const handleItemPress = useCallback(
+    (index: number) => {
+      router.push(`/festival-detail?index=${index}`);
+    },
+    [router]
+  );
+
+  const handleTypingComplete = useCallback(() => {
+    setIsTypingComplete(true);
+  }, []);
+
+  const handleBackPress = useCallback(() => {
+    router.back();
   }, [router]);
 
-  const userName = user?.name?.split(' ')[0] || 'Daniel';
-  const nextFestivalName = festivals[0]?.name || festivals[0]?.festival_name || 'Upcoming';
+  const userName = useMemo(() => user?.name?.split(' ')[0] || 'Friend', [user?.name]);
+  const nextFestivalName = useMemo(() => getFestivalDisplayName(festivals[0]), [festivals]);
 
-  const renderHeader = useMemo(() => (
-    <View style={styles.heroCard}>
-      <Text style={styles.statisticsLabel}>Discover</Text>
-      <Text style={styles.heroTitle}>
-        Hello {userName} 👋{'\n'}upcoming{'\n'}
-        <Text style={styles.heroTitleBold}>festivals</Text>
-      </Text>
-      
-      <View style={styles.pillsRow}>
-        <View style={styles.pill}>
-          <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
-          <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.arrowIconContainer}
-          onPress={handleToggleAll}
-        >
-          <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  ), [userName, nextFestivalName, handleToggleAll]);
+  const renderItem = useCallback(
+    ({ item, index }: { item: FestivalItemData; index: number }) => (
+      <FestivalItem
+        festival={item}
+        index={index}
+        isReady={isTypingComplete}
+        onPress={handleItemPress}
+      />
+    ),
+    [handleItemPress, isTypingComplete]
+  );
 
-  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
-    <FestivalItem festival={item} index={index} onPress={handleItemPress} />
-  ), [handleItemPress]);
+  const keyExtractor = useCallback(
+    (item: FestivalItemData, idx: number) => item?.id || `${item?.name || 'fest'}-${item?.date || idx}-${idx}`,
+    []
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <HeroHeader
+        userName={userName}
+        nextFestivalName={nextFestivalName}
+        onTypingComplete={handleTypingComplete}
+      />
+    ),
+    [userName, nextFestivalName, handleTypingComplete]
+  );
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={styles.loadingContainer}>
         <CustomLoader size={70} message="Loading Festivals..." />
       </View>
     );
@@ -228,144 +456,158 @@ const FestivalPage = () => {
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
       locations={[0, 0.0913, 0.25]}
-      style={{ flex: 1 }}
+      style={styles.gradientContainer}
     >
       <SafeAreaView style={styles.page} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace('/');
-              }
-            }} 
-            style={styles.headerIcon}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        {/* Top Header Bar with Transparent Back Button & Corner Notification Bell */}
+        <View style={styles.headerBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBackPress}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={26} color="#000000" />
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleToggleAll} 
-            style={styles.headerIcon}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            disabled={isTogglingAll}
+
+          {/* Notification Button in Top-Right Corner */}
+          <TouchableOpacity
+            style={[
+              styles.cornerNotificationButton,
+              allRemindersEnabled && styles.cornerNotificationButtonActive,
+            ]}
+            onPress={handleToggleAll}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={
+              allRemindersEnabled
+                ? 'Disable all festival reminders'
+                : 'Enable all festival reminders'
+            }
           >
-            {isTogglingAll ? (
-              <Ionicons name="refresh" size={24} color="#FFFFFF" />
-            ) : (
-              <Ionicons 
-                name={allRemindersEnabled ? "notifications" : "notifications-outline"} 
-                size={24} 
-                color="#FFFFFF" 
-              />
-            )}
+            <Ionicons
+              name={allRemindersEnabled ? 'notifications' : 'notifications-outline'}
+              size={22}
+              color={allRemindersEnabled ? '#E65100' : '#000000'}
+            />
           </TouchableOpacity>
         </View>
 
         <SafeFlashList
           data={festivals}
           renderItem={renderItem}
-          keyExtractor={(item: any, idx: number) => item.id || item.name || String(idx)}
-          ListHeaderComponent={renderHeader}
-          drawDistance={400}
-          overrideItemLayout={(layout: any) => {
-            layout.size = 132;
-          }}
-          contentContainerStyle={styles.scrollContent}
+          estimatedItemSize={132}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={listHeader}
         />
       </SafeAreaView>
     </LinearGradient>
   );
 };
 
+// ============================================================================
+// STYLESHEET
+// ============================================================================
+
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   page: {
     flex: 1,
   },
-  header: {
+  headerBar: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
   },
-  headerIcon: {
-    width: 44,
-    height: 44,
+  backButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    backgroundColor: 'transparent',
+  },
+  cornerNotificationButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
-  scrollView: {
-    flex: 1,
+  cornerNotificationButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
-  scrollContent: {
+  listContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 36,
-    padding: 28,
-    marginBottom: 16,
+  heroContainer: {
+    alignItems: 'flex-start',
+    paddingTop: 8,
+    paddingBottom: 20,
   },
-  statisticsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666666',
+  greetingTitle: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#000000',
+    lineHeight: 42,
+    textAlign: 'left',
+    fontFamily: Platform.select({
+      ios: 'Canela-Bold',
+      android: 'serif',
+      default: 'serif',
+    }),
+    letterSpacing: -0.6,
+  },
+  festivalSubMessage: {
+    fontSize: 15,
+    color: '#262626',
+    fontWeight: '400',
+    lineHeight: 22,
+    marginTop: 6,
+    marginBottom: 16,
+    textAlign: 'left',
+    fontFamily: Platform.select({
+      ios: 'MaisonNeue-Book',
+      android: 'Inter_400Regular',
+      default: 'System',
+    }),
+    letterSpacing: 0.1,
+  },
+  festivalHighlight: {
+    fontWeight: '700',
+    color: '#000000',
+    fontFamily: Platform.select({
+      ios: 'Canela-Medium',
+      android: 'serif',
+      default: 'serif',
+    }),
+    letterSpacing: -0.2,
+  },
+  cursor: {
+    color: '#E65100',
+    fontWeight: '400',
+  },
+  cardTouchable: {
     marginBottom: 12,
   },
-  heroTitle: {
-    fontSize: 40,
-    lineHeight: 48,
-    fontWeight: '500',
-    color: '#000000',
-    letterSpacing: -1,
-  },
-  heroTitleBold: {
-    fontWeight: '800',
-  },
-  pillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 32,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 6,
-    color: '#000000',
-  },
-  arrowIconContainer: {
-    marginLeft: 'auto',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F5F5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   festivalCardContainer: {
-    borderRadius: 32,
+    borderRadius: 28,
     overflow: 'hidden',
-    minHeight: 120,
-    position: 'relative',
+    minHeight: 110,
   },
   cardInnerPadding: {
     flex: 1,
-    padding: 20,
+    padding: 18,
     justifyContent: 'center',
-    zIndex: 2,
   },
   cardContent: {
     flexDirection: 'row',
@@ -375,64 +617,70 @@ const styles = StyleSheet.create({
   cardTextContainer: {
     flex: 1,
     marginRight: 12,
+    alignItems: 'flex-start',
   },
   cardLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#000000',
     opacity: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#000000',
+    textAlign: 'left',
   },
   cardDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#000000',
     opacity: 0.7,
-    marginTop: 4,
+    marginTop: 2,
+    textAlign: 'left',
   },
   cardRightSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   artworkBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#FFF5F0',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.8)',
-    elevation: 3,
-    shadowColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
+    elevation: 3,
   },
   artworkImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
   },
   chevronWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: 8,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
 });
 
 export default FestivalPage;
+
