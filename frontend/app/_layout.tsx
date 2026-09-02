@@ -1219,6 +1219,7 @@ export default function RootLayout() {
           <Stack screenOptions={{
             headerShown: false,
             animation: 'ios_from_right',
+            animationMatchesGesture: true,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: COLORS.background }
@@ -1334,7 +1335,39 @@ export default function RootLayout() {
               key="my-krishna"
               name="my-krishna"
               options={{
-                animation: 'fade',
+                animation: 'slide_from_bottom',
+                gestureDirection: 'vertical',
+                animationMatchesGesture: true,
+              }}
+            />
+            <Stack.Screen
+              key="dm/[conversationId]"
+              name="dm/[conversationId]"
+              options={{
+                animation: 'ios_from_right',
+                animationMatchesGesture: true,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+              }}
+            />
+            <Stack.Screen
+              key="temple/[id]"
+              name="temple/[id]"
+              options={{
+                animation: 'ios_from_right',
+                animationMatchesGesture: true,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
+              }}
+            />
+            <Stack.Screen
+              key="post/[id]"
+              name="post/[id]"
+              options={{
+                animation: 'ios_from_right',
+                animationMatchesGesture: true,
+                gestureEnabled: true,
+                gestureDirection: 'horizontal',
               }}
             />
             <Stack.Screen
@@ -1348,21 +1381,21 @@ export default function RootLayout() {
               key="festivals"
               name="festivals"
               options={{
-                animation: 'ios_from_right',
+                animation: 'ios_from_right', animationMatchesGesture: true,
               }}
             />
             <Stack.Screen
               key="festival-detail"
               name="festival-detail"
               options={{
-                animation: 'ios_from_right',
+                animation: 'ios_from_right', animationMatchesGesture: true,
               }}
             />
             <Stack.Screen
               key="festival-section-detail"
               name="festival-section-detail"
               options={{
-                animation: 'ios_from_right',
+                animation: 'ios_from_right', animationMatchesGesture: true,
               }}
             />
             {/* Other standard stack navigations will inherit default ios sliding */}
