@@ -1,4 +1,4 @@
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../../src/utils/dateUtils';
+import { formatTimeIST } from '../../../src/utils/dateUtils';
 // Mantra chanting time slots configuration
 
 export type TimeSlot = {
