@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getPanchang, askAstrologyAI } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 import { useJyotishStore } from '../src/store/jyotishStore';
+import { useLanguageStore } from '../src/utils/i18n';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
@@ -130,6 +131,7 @@ export default function PanchangScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const language = useLanguageStore((state) => state.language);
   
   const userLocation = (user as any)?.home_location;
   const initialLocationLabel = [
@@ -493,6 +495,29 @@ export default function PanchangScreen() {
             </View>
           ))}
         </View>
+
+        {/* Cross-Feature Connection: Nearby Temples */}
+        <TouchableOpacity
+          style={styles.templeBannerCard}
+          onPress={() => router.push('/(tabs)/temple')}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={language === 'hi' ? 'आस-पास के मंदिर देखें' : 'Explore Nearby Temples'}
+        >
+          <View style={styles.templeBannerIconBox}>
+            <Ionicons name="location-sharp" size={20} color="#9B4500" />
+          </View>
+          <View style={styles.templeBannerContent}>
+            <Text style={styles.templeBannerTitle}>
+              {language === 'hi' ? 'आस-पास के मंदिर देखें →' : 'Nearby Temples →'}
+            </Text>
+            <Text style={styles.templeBannerDesc}>
+              {language === 'hi'
+                ? 'शुभ दर्शन और प्रार्थना के लिए अपने पास के पवित्र मंदिर खोजें।'
+                : 'Find sacred mandirs near you for auspicious darshan and prayers.'}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -1716,5 +1741,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     marginLeft: 8,
+  },
+
+  // Temple Cross-Feature Banner
+  templeBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFE2D5',
+    shadowColor: '#8C4200',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  templeBannerIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFE2D5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  templeBannerContent: {
+    flex: 1,
+  },
+  templeBannerTitle: {
+    color: '#311303',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  templeBannerDesc: {
+    color: '#584235',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
   },
 });
