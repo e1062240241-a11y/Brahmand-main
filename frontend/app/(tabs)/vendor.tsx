@@ -14,25 +14,35 @@ import {
   ActivityIndicator,
   Image,
   Platform,
-  Animated,
   Dimensions,
   AppState,
   Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  useAnimatedReaction,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance, { calculateHaversineDistance } from '../../src/utils/formatDistance';
 import { sortItemsByLocationPreference, computeLocationTier } from '../../src/utils/locationPreference';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { isCategoryMatch, filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
+import { FlashList } from '@shopify/flash-list';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import VendorCategories from '../../src/components/VendorCategories';
+import { VendorSearchBar } from '../../src/components/VendorSearchBar';
 import { useTranslation } from '../../src/utils/i18n';
 import { useIsFocused } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
@@ -196,22 +206,58 @@ export default function VendorScreen() {
   const onVendorScrollTabBar = useScrollToHideTabBar();
   const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
 
-  const headerTopPadding = insets.top > 0 ? insets.top + 12 : 24;
-  const headerTotalHeight = headerTopPadding + 52 + 12;
+  const scrollY = useSharedValue(0);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-
-  const headerBlurOpacity = scrollY.interpolate({
-    inputRange: [0, 20],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
+  const animatedScrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollY.set(e.contentOffset.y);
+    },
   });
 
-  const handleVendorScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y;
-    scrollY.setValue(y);
-    onVendorScrollTabBar(event);
-  }, [onVendorScrollTabBar, scrollY]);
+  const AnimatedFlashList = React.useMemo(() => Animated.createAnimatedComponent(FlashList as any), []) as any;
+
+  const animatedSearchContainerStyle = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.get(), [0, 70], [52, 0], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.get(), [0, 60], [1, 0], Extrapolation.CLAMP),
+    overflow: 'hidden' as const,
+  }));
+
+  const animatedSearchInnerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(scrollY.get(), [0, 70], [0, -14], Extrapolation.CLAMP) }],
+  }));
+
+  const lastY = useSharedValue(0);
+  const acc = useSharedValue(0);
+  const dir = useSharedValue(0);
+  useAnimatedReaction(
+    () => scrollY.get(),
+    (cur, prev) => {
+      if (prev === null) {
+        lastY.set(cur);
+        return;
+      }
+      if (cur <= 10) {
+        acc.set(0);
+        dir.set(0);
+        lastY.set(cur);
+        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as any);
+        return;
+      }
+      const delta = cur - lastY.get();
+      lastY.set(cur);
+      if (Math.abs(delta) < 0.5) return;
+      const curDir = delta > 0 ? 1 : -1;
+      if (dir.get() !== curDir) {
+        dir.set(curDir);
+        acc.set(Math.abs(delta));
+      } else {
+        acc.set(acc.get() + Math.abs(delta));
+      }
+      if (acc.get() >= 12) {
+        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as any);
+      }
+    }
+  );
 
   const localT = (key: keyof typeof LOCAL_TRANSLATIONS.en): any => {
     return (LOCAL_TRANSLATIONS[currentLang] as any)[key] || (LOCAL_TRANSLATIONS.en as any)[key] || key;
@@ -273,11 +319,7 @@ export default function VendorScreen() {
   const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const searchAnim = useRef(new Animated.Value(0)).current;
-
   const isFocused = useIsFocused();
-
-
 
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
@@ -295,7 +337,6 @@ export default function VendorScreen() {
     }
   }, [updateUser]);
 
-  const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
   const registerBtnRef = useRef<any>(null);
   const homeLocation = (user as any)?.home_location;
@@ -473,22 +514,6 @@ export default function VendorScreen() {
       }
     };
   }, [showSearch, searchTerm, searchPlaceholderIndex, isPlaceholderPaused]);
-
-  useEffect(() => {
-    Animated.timing(searchAnim, {
-      toValue: showSearch ? 1 : 0,
-      duration: 375,
-      useNativeDriver: false,
-    }).start();
-  }, [showSearch, searchAnim]);
-
-  useEffect(() => {
-    Animated.timing(filterAnim, {
-      toValue: showCategoryFilter ? 1 : 0,
-      duration: 375,
-      useNativeDriver: false,
-    }).start();
-  }, [showCategoryFilter, filterAnim]);
 
   const userLocInfo = React.useMemo(() => {
     return {
@@ -761,408 +786,362 @@ export default function VendorScreen() {
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
-      {/* Top Floating Blur Header */}
-      <View
-        style={[
-          styles.headerWrapper,
-          {
-            paddingTop: headerTopPadding,
-            paddingBottom: 12,
-          }
-        ]}
-      >
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFillObject,
-            {
-              opacity: headerBlurOpacity,
-              overflow: 'hidden',
-            }
-          ]}
-          pointerEvents="none"
-        >
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 70 : 85}
-            tint="light"
-            style={StyleSheet.absoluteFillObject}
-          />
-          <View
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: 'rgba(255, 238, 229, 0.72)',
-              }
-            ]}
-          />
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: StyleSheet.hairlineWidth,
-              backgroundColor: 'rgba(255, 141, 87, 0.3)',
-            }}
-          />
-        </Animated.View>
-
-        <View style={styles.figmaSearchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
-          <TextInput
-            ref={searchInputRef}
-            style={styles.figmaSearchInput}
-            placeholder={localT('searchRequests')}
-            placeholderTextColor="#9CA3AF"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-          {!!searchTerm && (
-            <TouchableOpacity onPress={() => setSearchTerm('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <View style={styles.stickyHeaderArea}>
+          <Animated.View style={animatedSearchContainerStyle}>
+            <Animated.View style={animatedSearchInnerStyle}>
+              <VendorSearchBar
+                ref={searchInputRef}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                placeholder={localT('searchRequests')}
+                containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
+              />
+            </Animated.View>
+          </Animated.View>
         </View>
-      </View>
 
-      {!searchTerm ? (
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: headerTotalHeight + 6, paddingBottom: 100 }}
-          onScroll={handleVendorScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={handleRefresh} 
-              colors={[COLORS.primary]}
-              progressViewOffset={headerTotalHeight}
-            />
-          }
-        >
-          {/* Categories Row */}
-          <VendorCategories />
-
-          {/* Registration Button */}
-          <TouchableOpacity 
-            ref={registerBtnRef}
-            style={[styles.figmaRegisterBtn, { zIndex: 10 }]}
-            onPress={() => {
-              if (myVendor) {
-                if (canAccessDashboard) {
-                  router.push(`/vendor/${myVendor.id}`);
-                } else {
-                  Alert.alert(
-                    localT('kycRequiredTitle'),
-                    localT('kycRequiredMsg'),
-                    [
-                      { text: localT('cancel'), style: 'cancel' },
-                      { text: localT('completeKyc'), onPress: () => router.push({ pathname: '/kyc', params: { returnUrl: '/(tabs)/vendor' } }) }
-                    ]
-                  );
-                }
-              } else {
-                if (!hasVerifiedKyc) {
-                  router.push({
-                    pathname: '/kyc',
-                    params: { returnUrl: '/(tabs)/vendor' }
-                  });
-                  return;
-                }
-                setShowRegistrationModal(true);
-              }
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <Text style={styles.figmaRegisterBtnText}>
-                {myVendor 
-                  ? localT('manageMyService')
-                  : localT('registerBusinessService')}
-              </Text>
-              {myVendor && hasVerifiedKyc && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
-                  <Ionicons name="checkmark-circle" size={14} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>{localT('kycComplete')}</Text>
-                </View>
-              )}
-              {myVendor && !hasVerifiedKyc && hasPendingKyc && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
-                  <Ionicons name="time" size={12} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycUnderReview')}</Text>
-                </View>
-              )}
-              {myVendor && !hasVerifiedKyc && !hasPendingKyc && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
-                  <Ionicons name="lock-closed" size={12} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycRequired')}</Text>
-                </View>
-              )}
-            </View>
-            <Ionicons name="arrow-forward" size={20} color="#FFF" />
-          </TouchableOpacity>
-
-          {/* KYC Banner and Services Grid Wrapper */}
-          <View style={{ width: wrapperWidth, height: 360, backgroundColor: '#FCECD1', alignSelf: 'center', borderRadius: 20, paddingTop: 24, marginTop: -10, paddingBottom: 20 }}>
-            {/* KYC Banner */}
-            <View style={styles.figmaCapsuleContainer}>
-              <View style={styles.figmaKycCapsule}>
-                <Text 
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={styles.figmaKycCapsuleText}
+        {!searchTerm ? (
+          <AnimatedFlashList
+            data={[{ id: 'landing_sections' }]}
+            renderItem={() => (
+              <>
+                <VendorCategories containerStyle={{ marginBottom: 10, marginTop: 6 }} />
+                {/* Registration Button */}
+                <TouchableOpacity 
+                  ref={registerBtnRef}
+                  style={[styles.figmaRegisterBtn, { zIndex: 10, marginTop: 6 }]}
+                  onPress={() => {
+                    if (myVendor) {
+                      if (canAccessDashboard) {
+                        router.push(`/vendor/${myVendor.id}`);
+                      } else {
+                        Alert.alert(
+                          localT('kycRequiredTitle'),
+                          localT('kycRequiredMsg'),
+                          [
+                            { text: localT('cancel'), style: 'cancel' },
+                            { text: localT('completeKyc'), onPress: () => router.push({ pathname: '/kyc', params: { returnUrl: '/(tabs)/vendor' } }) }
+                          ]
+                        );
+                      }
+                    } else {
+                      if (!hasVerifiedKyc) {
+                        router.push({
+                          pathname: '/kyc',
+                          params: { returnUrl: '/(tabs)/vendor' }
+                        });
+                        return;
+                      }
+                      setShowRegistrationModal(true);
+                    }
+                  }}
                 >
-                  {localT('allVendorsKyc')}
-                </Text>
-                <Ionicons name="checkmark-circle" size={14} color="#F26522" />
-              </View>
-            </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Text style={styles.figmaRegisterBtnText}>
+                      {myVendor 
+                        ? localT('manageMyService')
+                        : localT('registerBusinessService')}
+                    </Text>
+                    {myVendor && hasVerifiedKyc && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                        <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>{localT('kycComplete')}</Text>
+                      </View>
+                    )}
+                    {myVendor && !hasVerifiedKyc && hasPendingKyc && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                        <Ionicons name="time" size={12} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycUnderReview')}</Text>
+                      </View>
+                    )}
+                    {myVendor && !hasVerifiedKyc && !hasPendingKyc && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                        <Ionicons name="lock-closed" size={12} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycRequired')}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                </TouchableOpacity>
 
-            {/* Services Grid (3x2) */}
-            <View style={[styles.figmaServicesGrid, { marginTop: 24 }]}>
-              {/* Left Column (Astrologer spans 2 rows) */}
-              <TouchableOpacity 
-                style={[styles.figmaServiceCard, { width: cardWidth, height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
-                onPress={() => router.push('/vendor/category/Astrologer' as any)}
-              >
-                {/* Manual crop offset for landscape Astrologer image */}
-                <Image 
-                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' }} 
-                  style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
-                  resizeMode="cover" 
-                />
-                <View style={styles.figmaServiceBadge}>
+                {/* KYC Banner and Services Grid Wrapper */}
+                <View style={{ width: wrapperWidth, height: 360, backgroundColor: '#FCECD1', alignSelf: 'center', borderRadius: 20, paddingTop: 24, marginTop: -10, paddingBottom: 20 }}>
+                  {/* KYC Banner */}
+                  <View style={styles.figmaCapsuleContainer}>
+                    <View style={styles.figmaKycCapsule}>
+                      <Text 
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={styles.figmaKycCapsuleText}
+                      >
+                        {localT('allVendorsKyc')}
+                      </Text>
+                      <Ionicons name="checkmark-circle" size={14} color="#F26522" />
+                    </View>
+                  </View>
+
+                  {/* Services Grid (3x2) */}
+                  <View style={[styles.figmaServicesGrid, { marginTop: 24 }]}>
+                    {/* Left Column (Astrologer spans 2 rows) */}
+                    <TouchableOpacity 
+                      style={[styles.figmaServiceCard, { width: cardWidth, height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
+                      onPress={() => router.push('/vendor/category/Astrologer' as any)}
+                    >
+                      {/* Manual crop offset for landscape Astrologer image */}
+                      <Image 
+                        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' }} 
+                        style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
+                        resizeMode="cover" 
+                      />
+                      <View style={styles.figmaServiceBadge}>
+                        <Image 
+                          source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' }} 
+                          style={{ width: 12, height: 12, marginRight: 2 }} 
+                          resizeMode="contain"
+                        />
+                        <Text 
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          style={styles.figmaServiceBadgeText}
+                        >
+                          {localT('astrologer')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Right Columns (2x2 grid) */}
+                    <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {/* Electrician */}
+                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('electrician')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {/* Panditji */}
+                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('panditji')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {/* Carpenter */}
+                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                        />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('carpenter')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      {/* Plumber */}
+                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp' }} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('plumber')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Services Header */}
+                  <View style={[styles.figmaCapsuleContainer, { marginTop: 16 }]}>
+                    <View style={styles.figmaServicesCapsule}>
+                      <Text 
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={styles.figmaServicesCapsuleText}
+                      >
+                        {localT('sanataniServicesAround')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Colorful Background Container for the Business Section */}
+                <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
                   <Image 
-                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' }} 
-                    style={{ width: 12, height: 12, marginRight: 2 }} 
-                    resizeMode="contain"
+                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }} 
+                    style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
+                    resizeMode="cover" 
                   />
-                  <Text 
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    style={styles.figmaServiceBadgeText}
-                  >
-                    {localT('astrologer')}
-                  </Text>
+                  
+                  {/* Business Header */}
+                  <View style={[styles.figmaCapsuleContainer, { marginTop: 24, marginBottom: 24 }]}>
+                    <View style={styles.figmaBusinessCapsule}>
+                      <Text 
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={styles.figmaBusinessCapsuleText}
+                      >
+                        {localT('sanataniBusinessAround')}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Business Grid */}
+                  <View style={styles.figmaBusinessGrid}>
+                    <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
+                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('general store')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('dairy')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
+                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
+                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' }} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                        <View style={styles.figmaServiceBadge}>
+                          <Image 
+                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' }} 
+                            style={{ width: 12, height: 12, marginRight: 2 }} 
+                            resizeMode="contain"
+                          />
+                          <Text 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            style={styles.figmaServiceBadgeText}
+                          >
+                            {localT('salon')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
-              </TouchableOpacity>
-
-              {/* Right Columns (2x2 grid) */}
-              <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {/* Electrician */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('electrician')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                {/* Panditji */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('panditji')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                {/* Carpenter */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                  />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('carpenter')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                {/* Plumber */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp' }} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('plumber')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Services Header */}
-            <View style={[styles.figmaCapsuleContainer, { marginTop: 16 }]}>
-              <View style={styles.figmaServicesCapsule}>
-                <Text 
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={styles.figmaServicesCapsuleText}
-                >
-                  {localT('sanataniServicesAround')}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Colorful Background Container for the Business Section */}
-          <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
-            <Image 
-              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }} 
-              style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
-              resizeMode="cover" 
-            />
-            
-            {/* Business Header */}
-            <View style={[styles.figmaCapsuleContainer, { marginTop: 24, marginBottom: 24 }]}>
-              <View style={styles.figmaBusinessCapsule}>
-                <Text 
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={styles.figmaBusinessCapsuleText}
-                >
-                  {localT('sanataniBusinessAround')}
-                </Text>
-              </View>
-            </View>
-
-            {/* Business Grid */}
-            <View style={styles.figmaBusinessGrid}>
-              <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
-                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('general store')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('dairy')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-              <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
-                <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                  <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' }} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                  <View style={styles.figmaServiceBadge}>
-                    <Image 
-                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' }} 
-                      style={{ width: 12, height: 12, marginRight: 2 }} 
-                      resizeMode="contain"
-                    />
-                    <Text 
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                      style={styles.figmaServiceBadgeText}
-                    >
-                      {localT('salon')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-        </ScrollView>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {/* Loading State */}
-          {loading && vendors.length === 0 && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
-          )}
-
-          {/* Listing */}
-          <FlatList
-            data={displayVendors}
-            renderItem={renderVendor}
+              </>
+            )}
             keyExtractor={(item: any) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingTop: headerTotalHeight + 6, paddingBottom: 90 }]}
-            onScroll={handleVendorScroll}
-            scrollEventThrottle={16}
+            estimatedItemSize={700}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+            onScroll={animatedScrollHandler}
+            scrollEventThrottle={1}
             refreshControl={
               <RefreshControl 
                 refreshing={refreshing} 
-                onRefresh={handleRefresh}
+                onRefresh={handleRefresh} 
                 colors={[COLORS.primary]}
-                progressViewOffset={headerTotalHeight}
+                progressViewOffset={42}
               />
             }
-            ListEmptyComponent={
-              !loading ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyText}>
-                    {searchTerm
-                      ? getNoItemsInAreaText(searchTerm)
-                      : localT('noServicesFound')}
-                  </Text>
-                  {!searchTerm && (
-                    <Text style={styles.emptySubtext}>
-                      {localT('beFirstRegisterSub')}
-                    </Text>
-                  )}
-                </View>
-              ) : null
-            }
           />
-        </View>
-      )}
+        ) : (
+          <View style={{ flex: 1 }}>
+            {loading && vendors.length === 0 && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            )}
+
+            <AnimatedFlashList
+              data={displayVendors}
+              renderItem={renderVendor}
+              keyExtractor={(item: any) => item.id}
+              estimatedItemSize={110}
+              contentContainerStyle={[styles.listContent, { paddingTop: 8, paddingBottom: 90 }]}
+              onScroll={animatedScrollHandler}
+              scrollEventThrottle={1}
+              refreshControl={
+                <RefreshControl 
+                  refreshing={refreshing} 
+                  onRefresh={handleRefresh}
+                  colors={[COLORS.primary]}
+                  progressViewOffset={42}
+                />
+              }
+              ListEmptyComponent={
+                !loading ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
+                    <Text style={styles.emptyText}>
+                      {searchTerm
+                        ? getNoItemsInAreaText(searchTerm)
+                        : localT('noServicesFound')}
+                    </Text>
+                    {!searchTerm && (
+                      <Text style={styles.emptySubtext}>
+                        {localT('beFirstRegisterSub')}
+                      </Text>
+                    )}
+                  </View>
+                ) : null
+              }
+            />
+          </View>
+        )}
 
       {/* Vendor Registration Modal */}
       <VendorRegistrationModal
@@ -1170,7 +1149,7 @@ export default function VendorScreen() {
         onClose={() => setShowRegistrationModal(false)}
         onSubmit={handleRegisterVendor}
       />
-
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -1629,6 +1608,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     marginTop: SPACING.xs,
+  },
+  stickyHeaderArea: {
+    backgroundColor: 'transparent',
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   headerWrapper: {
     position: 'absolute',

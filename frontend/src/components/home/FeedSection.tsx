@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, Activ
 import { FlashList } from '@shopify/flash-list';
 const SafeFlashList = FlashList as any;
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { InstagramRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
@@ -48,6 +48,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
   blockedUserSet,
   blockedByMeUserSet,
 }) => {
+  const isFocused = useIsFocused();
   const { t } = useTranslation();
   const activeTab = useFeedStore(state => state.activeTab);
   const setActiveTab = useFeedStore(state => state.setActiveTab);
@@ -335,13 +336,14 @@ const FeedSection: React.FC<FeedSectionProps> = ({
           onPostMenuPress={onPostMenu}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
           isActive={isActive}
+          isFocused={isFocused}
           theme="dark"
           isBlackBackground={true}
           isFirstReel={index === 0}
         />
       </View>
     );
-  }, [activePostId, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare, loadingFeed]);
+  }, [activePostId, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare, loadingFeed, isFocused]);
 
   const overrideItemLayout = useCallback((layout: { span?: number; size?: number }, item: any) => {
     if (!item || item.type === 'empty') {

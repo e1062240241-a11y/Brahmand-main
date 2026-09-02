@@ -1,5 +1,5 @@
 import React, { Component, ReactNode, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, Image } from 'react-native';
+import { View, StyleSheet, Platform, Image, AppState } from 'react-native';
 
 let ExpoVideoModule: any = null;
 try {
@@ -53,6 +53,20 @@ export const useSafeVideoPlayer = (
   // Track pending release timers so we can cancel them if needed
   const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Synchronously pause player when app transitions to background or inactive
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState !== 'active' && playerRef.current) {
+        try {
+          if (isPlayerValid(playerRef.current)) {
+            playerRef.current.pause();
+          }
+        } catch (_e) {}
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     if (!ExpoVideoModule) return;
 
@@ -80,12 +94,20 @@ export const useSafeVideoPlayer = (
 
     if (!newPlayer) return;
 
+    try {
+      newPlayer.staysActiveInBackground = false;
+    } catch (_e) {}
+
     // Run setup (mute/loop/play) on the new player
     if (setup) {
       try { setup(newPlayer); } catch (e) {
         console.warn('[useSafeVideoPlayer] Error running setup:', e);
       }
     }
+
+    try {
+      newPlayer.staysActiveInBackground = false;
+    } catch (_e) {}
 
     // Swap ref: deferred-release the old player AFTER React commits new player
     const stalePlayer = playerRef.current;

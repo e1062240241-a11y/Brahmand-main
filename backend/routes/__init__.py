@@ -4,7 +4,6 @@ from .community_routes import router as community_router
 from .messaging_routes import router as messaging_router
 from .temple_routes import router as temple_router
 from .event_routes import router as event_router
-from .circle_routes import router as circle_router
 from .video_upload_routes import router as video_upload_router
 
 __all__ = [
@@ -14,6 +13,6 @@ __all__ = [
     'messaging_router',
     'temple_router',
     'event_router',
-    'circle_router',
     'video_upload_router'
 ]
+

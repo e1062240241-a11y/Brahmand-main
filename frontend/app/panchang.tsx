@@ -798,9 +798,13 @@ export default function PanchangScreen() {
 
       {/* Main Top Header with integrated navigation & tabs */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#311303" />
-        </TouchableOpacity>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color="#311303" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Panchang</Text>
+          <View style={{ width: 40 }} />
+        </View>
         
         {/* Responsive Tabs in Header matching Figma perfectly */}
         <View style={styles.tabsWrapper}>
@@ -864,17 +868,31 @@ const styles = StyleSheet.create({
   header: {
     display: 'flex',
     width: '100%',
-    paddingVertical: 16,
+    paddingBottom: 0,
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#311303',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
   backBtn: {
-    width: 40, 
-    height: 40, 
-    justifyContent: 'center', 
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
     alignItems: 'flex-start',
-    marginLeft: 20,
-    marginBottom: 16,
   },
   tabsWrapper: {
     flexDirection: 'row',

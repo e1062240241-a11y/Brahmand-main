@@ -138,24 +138,24 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
       )}
 
       <View style={styles.postMainRow}>
-        <View style={[styles.postLeftCol, { width: 48, alignItems: 'center' }]}>
+        <View style={[styles.postLeftCol, { width: 38, alignItems: 'center' }]}>
           {hasPrevThreadConnection ? (
-            <View style={{ position: 'absolute', left: 24, top: 0, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
+            <View style={{ position: 'absolute', left: 19, top: 0, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
           ) : (
             <>
-              <Avatar name={userName} photo={userPhoto} size={48} />
+              <Avatar name={userName} photo={userPhoto} size={38} />
               {hasNextThreadConnection && (
-                <View style={{ position: 'absolute', left: 24, top: 48, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
+                <View style={{ position: 'absolute', left: 19, top: 38, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
               )}
             </>
           )}
         </View>
 
-        <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 24 }]}>
+        <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 19 }]}>
           <View style={styles.postHeaderRow}>
             <View style={styles.postNameContainer}>
               <Text style={styles.feedPostUserName} numberOfLines={1}>{userName}</Text>
-              {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={15} color="#FF6B00" style={{ marginLeft: 2 }} />}
               <Text style={styles.postHandle} numberOfLines={1}>
                 {` ${userHandle}`}
               </Text>
@@ -172,7 +172,7 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
               )}
             </View>
             <TouchableOpacity onPress={() => onDelete(item.id)} style={{ padding: 4 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="ellipsis-horizontal" size={18} color="#536471" />
+              <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
             </TouchableOpacity>
           </View>
 
@@ -191,24 +191,24 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
             </View>
           )}
 
-          <View style={styles.postActionsRow}>
+          <View style={styles.postActionsRow || styles.postActionRow}>
             <TouchableOpacity style={styles.actionBtn} onPress={() => onComment(item)}>
-              <Ionicons name="chatbubble-outline" size={18} color="#536471" />
+              <Ionicons name="chatbubble-outline" size={16} color="#536471" />
               <Text style={styles.actionCountText}>{item.comments || 0}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost(item.id)}>
-              <Ionicons name="repeat" size={18} color={item.isRepost ? "#00BA7C" : "#536471"} />
+              <Ionicons name="repeat" size={16} color={item.isRepost ? "#00BA7C" : "#536471"} />
               <Text style={[styles.actionCountText, item.isRepost && { color: "#00BA7C" }]}>{item.reposts || 0}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionBtn} onPress={() => onLike(item)}>
-              <Ionicons name={item.liked ? "heart" : "heart-outline"} size={18} color={item.liked ? "#F91880" : "#536471"} />
+              <Ionicons name={item.liked ? "heart" : "heart-outline"} size={16} color={item.liked ? "#F91880" : "#536471"} />
               <Text style={[styles.actionCountText, item.liked && { color: "#F91880" }]}>{item.likes || 0}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionBtn} onPress={() => onShare(item)}>
-              <Ionicons name="share-outline" size={18} color="#536471" />
+              <Ionicons name="share-outline" size={16} color="#536471" />
             </TouchableOpacity>
           </View>
         </View>

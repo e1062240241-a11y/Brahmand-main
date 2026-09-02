@@ -151,6 +151,8 @@ const formatTime = (seconds: number): string => {
 };
 
 const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 16) : insets.bottom;
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -232,7 +234,7 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
       {...seekBarPan.panHandlers}
       style={{
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 40 : 30,
+        bottom: bottomInset + (Platform.OS === 'ios' ? 36 : 14),
         left: 16,
         right: 16,
         height: isScrubbing ? 40 : 20,
@@ -289,6 +291,8 @@ const ReelVideoItem = React.memo(({
   // OPT-2: appState is now received as a prop from the single parent listener
   appState,
 }: any) => {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === 'android' ? Math.max(insets.bottom, 16) : insets.bottom;
   const { t, language } = useTranslation();
   const [showPlayPause, setShowPlayPause] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -903,7 +907,7 @@ const ReelVideoItem = React.memo(({
           top: 0,
           left: 0,
           right: 0,
-          height: Platform.OS === 'ios' ? 140 : 100,
+          height: Math.max(insets.top, Platform.OS === 'ios' ? 50 : 28) + 80,
           zIndex: 10,
         }}
         pointerEvents="none"
@@ -920,7 +924,7 @@ const ReelVideoItem = React.memo(({
           left: 0,
           right: 0,
           zIndex: 20,
-          paddingTop: Platform.OS === 'ios' ? 56 : 32,
+          paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 50 : 24) + 8,
           paddingLeft: 16,
         }}
       >
@@ -942,7 +946,7 @@ const ReelVideoItem = React.memo(({
           bottom: 0,
           left: 0,
           right: 0,
-          height: 250,
+          height: 260 + bottomInset,
           zIndex: 10,
         }}
         pointerEvents="none"
@@ -953,7 +957,7 @@ const ReelVideoItem = React.memo(({
         pointerEvents="box-none"
         style={{
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 95 : 75,
+          bottom: bottomInset + (Platform.OS === 'ios' ? 84 : 58),
           left: 16,
           right: 90,
           zIndex: 20,
@@ -1023,7 +1027,7 @@ const ReelVideoItem = React.memo(({
       {/* Right Side - Action Buttons + Speed */}
       <View style={{
         position: 'absolute',
-        bottom: '22%', // Moved up closer to upper-middle/right
+        bottom: bottomInset + (Platform.OS === 'ios' ? 84 : 58),
         right: 12,
         alignItems: 'center',
         zIndex: 20,
@@ -1112,18 +1116,34 @@ const ReelVideoItem = React.memo(({
           />
         </TouchableOpacity>
 
-        {/* Options (Three Dots) */}
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('openMenu') || 'Open menu'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={32}
-            color="#FFF"
-            style={{
-              textShadowColor: 'rgba(0, 0, 0, 0.4)',
-              textShadowOffset: { width: 0, height: 2 },
-              textShadowRadius: 4,
-            }}
-          />
+        {/* Options (2-line menu icon matching PostFeedCard) */}
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={t('openMenu') || 'Open menu'}
+          style={{
+            alignItems: 'center',
+            marginBottom: 20,
+            width: 44,
+            height: 44,
+            justifyContent: 'center',
+          }}
+          onPress={onOpenOptions}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <View style={{
+            justifyContent: 'center',
+            alignItems: 'flex-end',
+            width: 26,
+            height: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.6,
+            shadowRadius: 3,
+            elevation: 4,
+          }}>
+            <View style={{ width: 22, height: 3, backgroundColor: '#FFFFFF', borderRadius: 1.5, marginBottom: 4 }} />
+            <View style={{ width: 14, height: 3, backgroundColor: '#FFFFFF', borderRadius: 1.5 }} />
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -2166,6 +2186,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       transparent={true}
       animationType="slide"
       onRequestClose={handleClose}
+      statusBarTranslucent={true}
     >
       <View style={{ flex: 1 }}>
         <Animated.View
@@ -2367,21 +2388,26 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         <Modal
           visible={isOptionsVisible}
           transparent={true}
-          animationType="fade"
+          animationType="none"
+          statusBarTranslucent={true}
           onRequestClose={() => setIsOptionsVisible(false)}
         >
           <View style={styles.sheetBackdrop}>
-            <TouchableOpacity
-              style={{ ...StyleSheet.absoluteFillObject }}
-              activeOpacity={1}
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPressIn={() => setIsOptionsVisible(false)}
               onPress={() => setIsOptionsVisible(false)}
             />
-            <View style={[styles.sheetContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={[
+              styles.sheetContainer,
+              { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 48) + 28 : Math.max(insets.bottom, 24) + 16 }
+            ]}>
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>{t('reelSettings')}</Text>
 
               <TouchableOpacity
                 style={styles.sheetRow}
+                activeOpacity={0.8}
                 onPress={() => {
                   toggleAutoScroll();
                   setIsOptionsVisible(false);
@@ -2437,7 +2463,7 @@ const styles = StyleSheet.create({
   },
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {

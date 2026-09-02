@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -12,8 +12,15 @@ import {
   StatusBar,
   Dimensions,
   Pressable,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  Easing,
+  SharedValue,
+} from 'react-native-reanimated';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +29,56 @@ import { useLibraryStore } from '../../src/store/libraryStore';
 import { scheduleDailyScriptureNotifications } from '../../src/services/pushNotifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// ── Flowing Forward Arrows Animation (Lightweight, UI-thread worklet) ───────
+const CHEVRONS = [0, 1, 2];
+
+const ChevronItem = React.memo(function ChevronItem({
+  index,
+  waveProgress,
+}: {
+  index: number;
+  waveProgress: SharedValue<number>;
+}) {
+  const animStyle = useAnimatedStyle(() => {
+    'worklet';
+    const phase = (waveProgress.value - index * 0.18 + 1) % 1;
+    const opacity = 0.2 + 0.8 * Math.sin(phase * Math.PI);
+    const translateX = Math.sin(phase * Math.PI) * 2.5;
+
+    return {
+      opacity,
+      transform: [{ translateX }],
+    };
+  });
+
+  return (
+    <Animated.Text style={[{ fontSize: 13, fontWeight: '800', color: '#FF6B00', marginHorizontal: -1 }, animStyle]}>
+      ❯
+    </Animated.Text>
+  );
+});
+
+const FlowingForwardArrows = React.memo(function FlowingForwardArrows() {
+  const waveProgress = useSharedValue(0);
+
+  useEffect(() => {
+    waveProgress.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [waveProgress]);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingRight: 10, paddingLeft: 4 }}>
+      <Ionicons name="chevron-forward" size={16} color="#FF6B00" style={{ marginRight: -3 }} />
+      {CHEVRONS.map((i) => (
+        <ChevronItem key={i} index={i} waveProgress={waveProgress} />
+      ))}
+    </View>
+  );
+});
 
 // ── Assets ────────────────────────────────────────────────────────────────
 const geetaCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_6.webp' };
@@ -147,24 +204,26 @@ function LibraryPage() {
   }, [debouncedQuery]);
 
   return (
-    <View style={styles.root}>
-      <Stack.Screen options={{ animation: 'slide_from_right' }} />
-
-      {/* Community tab background */}
-      <LinearGradient
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.09, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={DARK} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Brahmand Library</Text>
-        <View style={{ width: 38 }} />
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
+      <Stack.Screen options={{ animation: 'slide_from_right', headerShown: false }} />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <LinearGradient
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+          locations={[0, 0.0913, 0.25]}
+          style={styles.screen}
+        >
+          {/* ── Header ── */}
+          <View style={[styles.header, { paddingTop: 6 }]}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => router.back()}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="chevron-back" size={28} color={DARK} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Brahmand Library</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -248,7 +307,7 @@ function LibraryPage() {
                     return (
                       <TouchableOpacity
                         key={`${book.id}-${index}`}
-                        style={[styles.gitaProgressCard, { marginHorizontal: 0, width: SCREEN_WIDTH * 0.85 }]}
+                        style={[styles.gitaProgressCard, { marginHorizontal: 0, width: Math.min(SCREEN_WIDTH * 0.74, 285) }]}
                         onPress={() => router.push(targetRoute as any)}
                         activeOpacity={0.9}
                       >
@@ -265,7 +324,7 @@ function LibraryPage() {
                             <Text style={[styles.gitaProgressText, { opacity: 0.6 }]}>{timeString}</Text>
                           </View>
                         </View>
-                        <Ionicons name="play-circle" size={36} color="#FF6B00" style={{ marginRight: 16 }} />
+                        <FlowingForwardArrows />
                       </TouchableOpacity>
                     );
                   })}
@@ -337,16 +396,18 @@ function LibraryPage() {
 
 
 
-      </ScrollView>
+        </ScrollView>
+        </LinearGradient>
+      </SafeAreaView>
     </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: {
+  screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFEEE5',
   },
 
   /* Header */
@@ -358,17 +419,10 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    width: 40,
+    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 20,
@@ -493,17 +547,18 @@ const styles = StyleSheet.create({
   gitaProgressCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF3EB',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 12,
     marginHorizontal: H_PADDING,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    borderColor: '#EFE7DE',
+    overflow: 'hidden',
+    shadowColor: '#5A4136',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   gitaProgressImg: {
     width: 60,

@@ -761,7 +761,7 @@ export default function RootLayout() {
           interruptionMode: 'doNotMix',
           allowsRecording: false,
           shouldRouteThroughEarpiece: false,
-          shouldPlayInBackground: true,
+          shouldPlayInBackground: false,
         });
       } catch (error) {
         console.warn('[Audio] Failed to set default audio mode:', error);
