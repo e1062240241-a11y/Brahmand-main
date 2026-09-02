@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';

@@ -5,10 +5,8 @@ import { database } from '../database';
 import { useAuthStore } from './authStore';
 import api from '../services/api';
 import {
-  PassportAnswer,
   PassportCertificate,
   PassportJourney,
-  PassportJourneyVisibility,
   PassportBadge,
 } from '../types/passport';
 
@@ -233,9 +231,6 @@ export const usePassportStore = create<PassportState>((set, get) => ({
         (async () => {
           try {
             const { sendCommunityMessage, uploadChatMedia } = require('../services/api');
-            const currentUser = useAuthStore.getState().user;
-            const username = currentUser?.name || 'User';
-            const userPhoto = currentUser?.photo || null;
 
             // Get first media uri if present
             const firstMedia = Array.isArray(newJourney.media) && newJourney.media.length > 0 ? newJourney.media[0] : null;
