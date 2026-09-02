@@ -7,6 +7,9 @@
 ## 2026-09-02 - Atomic Increments for Post Likes, Comments, and Community Chat Likes
 **Learning:** Read-modify-write patterns for counters (`likes_count`, `comments_count`) and list mutations (`liked_by`) across post likes (`/posts/{post_id}/like`), post comments (`add_post_comment`/`delete_post_comment`), and community chat message likes cause lost updates and corrupted state when concurrent requests hit the endpoints under heavy load (10k+ users).
 **Action:** Replaced read-then-set overwrites with Firestore atomic transforms (`db.increment_field` for post counters, `firestore.ArrayUnion`/`ArrayRemove` + `firestore.Increment` for community chat message likes).
+## 2026-09-02 - Atomic `likes_count` Updates on Post Likes
+**Learning:** Read-modify-write patterns for `likes_count` in post like/unlike operations (`/posts/{post_id}/like`) cause lost updates and corrupted like counters when concurrent requests hit the endpoint under heavy load (10k+ users).
+**Action:** Replaced `db.update_document('posts', post_id, {'likes_count': new_count})` with atomic `db.increment_field('posts', post_id, 'likes_count', ±1)` using Firestore's atomic increment transform.
 
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:

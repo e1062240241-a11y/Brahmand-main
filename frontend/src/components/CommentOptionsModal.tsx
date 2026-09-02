@@ -69,7 +69,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Comment Options</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close options">
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close options">
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
@@ -86,6 +86,8 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
               return (
                 <Pressable
                   key={idx}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.label}
                   style={({ pressed }) => [
                     styles.optionRow,
                     pressed && { backgroundColor: isDestructive ? 'rgba(229, 57, 53, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
