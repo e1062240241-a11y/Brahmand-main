@@ -412,7 +412,7 @@ export function GlobalFAB() {
 
 
 
-  // Do not show FAB on authentication screens or legal/terms/privacy screens
+  // Do not show FAB on authentication screens, library, or legal/terms/privacy screens
   if (
     !pathname ||
     pathname === '/' ||
@@ -422,6 +422,8 @@ export function GlobalFAB() {
     pathname === '/shravan-paath' ||
     pathname.includes('shravan-paath') ||
     pathname.includes('katha') ||
+    pathname.includes('library') ||
+    pathname.startsWith('/library') ||
     pathname.includes('privacy') ||
     pathname.includes('terms') ||
     pathname.includes('guidelines')
@@ -734,7 +736,7 @@ export function GlobalFAB() {
           accessibilityState={{ expanded: fabExpanded }}
         >
           {activeSOS || nearbySOSAlerts.length > 0 ? (
-            <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
+            <MaterialCommunityIcons name="alarm-light" size={24} color="#FFF" />
           ) : (
             <ExpoImage
               source={require('../../assets/images/tab-bar/my_krishna.webp')}
@@ -870,26 +872,26 @@ const fabStyles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    right: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#FF5100',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8, // Reduced to prevent harsh black box shadow on Android
-    zIndex: 99999, // Super high zIndex
-    borderWidth: 3.5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 99999,
+    borderWidth: 2.5,
     borderColor: '#FFD5B8',
   },
   fabIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   sosActiveView: { alignItems: 'center', padding: 12, justifyContent: 'center' },
   sosHeader: { alignItems: 'center', marginTop: -10 },

@@ -1342,8 +1342,9 @@ export default function CommunityDetailScreen() {
   };
 
   const handleLike = useCallback((postOrId: any) => {
-    const postId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
-    if (!postId) return;
+    const rawId = typeof postOrId === 'object' && postOrId !== null ? (postOrId.id ?? postOrId.post_id) : postOrId;
+    if (!rawId) return;
+    const postId = String(rawId);
 
     if (Platform.OS === 'android') {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -1381,7 +1382,7 @@ export default function CommunityDetailScreen() {
       return updated;
     });
 
-    if (!postId.startsWith('post-')) {
+    if (!postId.startsWith('post-') && !postId.startsWith('dummy-')) {
       (async () => {
         try {
           if (isCommunityMsg) {
@@ -1397,9 +1398,9 @@ export default function CommunityDetailScreen() {
   }, [communityPosts, discussionPosts, id, cacheKey]);
 
   const handleRepost = useCallback((postOrId: any) => {
-    const targetId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
-    if (!targetId) return;
-
+    const rawId = typeof postOrId === 'object' && postOrId !== null ? (postOrId.id ?? postOrId.post_id) : postOrId;
+    if (!rawId) return;
+    const targetId = String(rawId);
     const postToRepost = communityPosts.find(p => String(p.id) === targetId) || discussionPosts.find(p => String(p.id) === targetId);
     if (!postToRepost) return;
 
@@ -1455,9 +1456,9 @@ export default function CommunityDetailScreen() {
   }, [communityPosts, discussionPosts, user?.name]);
 
   const handleDeletePost = useCallback((postOrId: any) => {
-    const postId = typeof postOrId === 'object' && postOrId !== null ? String(postOrId.id || '') : String(postOrId || '');
-    if (!postId) return;
-
+    const rawId = typeof postOrId === 'object' && postOrId !== null ? (postOrId.id ?? postOrId.post_id) : postOrId;
+    if (!rawId) return;
+    const postId = String(rawId);
     const postToDelete = discussionPosts.find(p => String(p.id) === postId) || communityPosts.find(p => String(p.id) === postId);
     if (postToDelete) {
       const isOwn = postToDelete.sender_id === user?.id || postToDelete.user?.name === user?.name;
@@ -2046,35 +2047,6 @@ export default function CommunityDetailScreen() {
   };
 
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
-          locations={[0, 0.25, 0.55, 0.8, 1]}
-          style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
-        >
-          <View style={styles.headerTopRow}>
-            <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
-              <Ionicons name="chevron-back" size={26} color="#000" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitleText} numberOfLines={1}>
-              {community?.name || 'Community'}
-            </Text>
-            <View style={[styles.headerCreateBtn, { opacity: 0.4 }]}>
-              <Ionicons name="add" size={16} color="#FFF" />
-            </View>
-          </View>
-          <Text style={styles.headerMembersText}> </Text>
-          <Text style={styles.headerTaglineText}> </Text>
-        </LinearGradient>
-        <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
-          <CustomLoader size={70} message="Loading Community Group..." />
-        </View>
-      </View>
-    );
-  }
-
   const listHandlers = useMemo(
     () => ({
       onLike: handleLike,
@@ -2127,6 +2099,35 @@ export default function CommunityDetailScreen() {
       renderFestivalEvent,
     ]
   );
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
+          locations={[0, 0.25, 0.55, 0.8, 1]}
+          style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
+        >
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
+              <Ionicons name="chevron-back" size={26} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleText} numberOfLines={1}>
+              {community?.name || 'Community'}
+            </Text>
+            <View style={[styles.headerCreateBtn, { opacity: 0.4 }]}>
+              <Ionicons name="add" size={16} color="#FFF" />
+            </View>
+          </View>
+          <Text style={styles.headerMembersText}> </Text>
+          <Text style={styles.headerTaglineText}> </Text>
+        </LinearGradient>
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+          <CustomLoader size={70} message="Loading Community Group..." />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -2862,27 +2863,27 @@ const styles = StyleSheet.create({
   commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, minHeight: 38, maxHeight: 100 },
   postCommentBtn: { color: '#FF3B30', fontWeight: '800', fontSize: 14 },
 
-  postContainer: { backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },
-  repostHeaderLabel: { flexDirection: 'row', alignItems: 'center', marginLeft: 40, marginBottom: 4, gap: 4 },
-  repostHeaderText: { fontSize: 13, color: '#536471', fontWeight: '700' },
+  postContainer: { backgroundColor: 'transparent', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', paddingHorizontal: 12, paddingVertical: 10 },
+  repostHeaderLabel: { flexDirection: 'row', alignItems: 'center', marginLeft: 34, marginBottom: 4, gap: 4 },
+  repostHeaderText: { fontSize: 12, color: '#536471', fontWeight: '700' },
   postMainRow: { flexDirection: 'row' },
-  postLeftCol: { marginRight: 12 },
+  postLeftCol: { marginRight: 10 },
   postRightCol: { flex: 1, overflow: 'hidden' },
   postHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   postNameContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   feedPostUserName: { fontSize: 15, fontWeight: '700', color: '#0F1419', maxWidth: '65%' },
-  postHandle: { fontSize: 15, color: '#536471', marginLeft: 4, flexShrink: 1 },
-  postDot: { fontSize: 15, color: '#536471', marginHorizontal: 4 },
-  postContentText: { fontSize: 16, color: '#0F1419', lineHeight: 22, marginTop: 4 },
-  postMediaImage: { width: '100%', maxWidth: '100%', height: 250, borderRadius: 16, marginTop: 12, borderWidth: 1, borderColor: '#EFF3F4', overflow: 'hidden' },
+  postHandle: { fontSize: 14, color: '#536471', marginLeft: 4, flexShrink: 1 },
+  postDot: { fontSize: 14, color: '#536471', marginHorizontal: 2 },
+  postContentText: { fontSize: 15, color: '#0F1419', lineHeight: 20, marginTop: 2, letterSpacing: -0.1 },
+  postMediaImage: { width: '100%', maxWidth: '100%', height: 230, borderRadius: 14, marginTop: 8, borderWidth: 1, borderColor: '#EFF3F4', overflow: 'hidden' },
   postImageContainer: { marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#EFF3F4' },
   postImage: { width: '100%', maxWidth: '100%', height: 220, borderRadius: 16 },
-  postActionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingRight: 24, maxWidth: '92%' },
-  postActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingRight: 24, maxWidth: '92%' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
-  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
-  actionCountText: { fontSize: 13, color: '#536471', fontWeight: '500' },
-  postActionCount: { fontSize: 13, color: '#536471', fontWeight: '500' },
+  postActionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingRight: 32, maxWidth: '90%' },
+  postActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingRight: 32, maxWidth: '90%' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
+  postActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 4, minHeight: 28 },
+  actionCountText: { fontSize: 12, color: '#536471', fontWeight: '500' },
+  postActionCount: { fontSize: 12, color: '#536471', fontWeight: '500' },
 
   imagePreviewContainer: { marginBottom: 12, position: 'relative', alignSelf: 'flex-start' },
   imagePreview: { width: 80, height: 80, borderRadius: 12 },

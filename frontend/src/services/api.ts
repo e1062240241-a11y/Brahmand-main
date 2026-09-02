@@ -1,5 +1,5 @@
 import axios from "axios";
-import { encryptMessage, decryptMessage, encryptGroupMessage } from '../utils/cryptoUtil';
+import { encryptMessage, encryptGroupMessage } from '../utils/cryptoUtil';
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
@@ -2769,3 +2769,14 @@ export const deleteComment = (commentId: string) => {
 
 export default api;
 
+
+// Circle API endpoints
+export const getCircles = () => api.get('/circles');
+export const getCircle = (circleId: string) => api.get(`/circles/${circleId}`);
+export const createCircle = (data: any) => api.post('/circles', data);
+export const updateCircle = (circleId: string, data: any) => api.put(`/circles/${circleId}`, data);
+export const joinCircle = (code: string) => api.post(`/circles/join/${code}`);
+export const leaveCircle = (circleId: string) => api.post(`/circles/${circleId}/leave`);
+export const removeCircleMember = (circleId: string, memberId: string) => api.delete(`/circles/${circleId}/members/${memberId}`);
+export const inviteToCircle = (circleId: string, userId: string) => api.post(`/circles/${circleId}/invite`, { user_id: userId });
+export const transferCircleAdmin = (circleId: string, newAdminId: string) => api.post(`/circles/${circleId}/transfer-admin`, { new_admin_id: newAdminId });

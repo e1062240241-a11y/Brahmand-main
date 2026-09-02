@@ -109,14 +109,13 @@ function diversify(posts: any[]): any[] {
     const cid = creatorOf(post);
     // Look at last 4 entries to ensure no same creator in 5 consecutive
     const tail = result.slice(-4).map(creatorOf);
-    // OPT: Convert tail to Set for O(1) lookups
-    const tailSet = new Set(tail);
-    if (tailSet.has(cid)) {
+    // Using includes() instead of Set because max size is 4 (O(1) lookup vs allocation overhead)
+    if (tail.includes(cid)) {
       pending.push(post);
     } else {
       result.push(post);
       // Try to insert a pending post of a different creator
-      const idx = pending.findIndex(p => !tailSet.has(creatorOf(p)));
+      const idx = pending.findIndex(p => !tail.includes(creatorOf(p)));
       if (idx !== -1) result.push(...pending.splice(idx, 1));
     }
   }

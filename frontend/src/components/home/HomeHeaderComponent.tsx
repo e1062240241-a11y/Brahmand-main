@@ -348,6 +348,17 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     quickAccessItems?: any[];
 }) {
     const router = useRouter();
+    const isNavigatingRef = React.useRef(false);
+
+    const handleNavigateKatha = React.useCallback(() => {
+        if (isNavigatingRef.current) return;
+        isNavigatingRef.current = true;
+        router.push('/library/katha');
+        setTimeout(() => {
+            isNavigatingRef.current = false;
+        }, 1000);
+    }, [router]);
+
     const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
 
@@ -828,6 +839,10 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             showsHorizontalScrollIndicator={false}
                             decelerationRate="fast"
                             snapToInterval={screenWidth - 40 + 12}
+                            snapToAlignment="start"
+                            disableIntervalMomentum={true}
+                            directionalLockEnabled={true}
+                            removeClippedSubviews={false}
                             contentContainerStyle={{ gap: 12, paddingRight: 20 }}
                             onTouchStart={() => {
                                 if (isHoldingBannerRef) isHoldingBannerRef.current = true;
@@ -846,17 +861,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     if (isHoldingBannerRef) isHoldingBannerRef.current = false;
                                 }, 1500);
                             }}
-                            onScroll={(e) => {
-                                const x = e.nativeEvent.contentOffset.x;
-                                const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
-                                if (idx !== activeBannerIndex) {
-                                    setActiveBannerIndex(idx);
-                                }
-                                if (bannerAutoScrollIndex) {
-                                    bannerAutoScrollIndex.current = idx;
-                                }
-                            }}
                             onMomentumScrollEnd={(e) => {
                                 setTimeout(() => {
                                     if (isHoldingBannerRef) isHoldingBannerRef.current = false;
@@ -871,7 +875,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     bannerAutoScrollIndex.current = idx;
                                 }
                             }}
-                            scrollEventThrottle={16}
+                            scrollEventThrottle={32}
                         >
                             {/* Live Katha Banner (First) */}
                             {(() => {
@@ -966,9 +970,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         onPressOut={() => {
                                             if (isHoldingBannerRef) isHoldingBannerRef.current = false;
                                         }}
-                                        onPress={() => {
-                                            router.push('/library/katha');
-                                        }}
+                                        onPress={handleNavigateKatha}
                                     >
                                         <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                                             {/* Local WebP Fallback (always rendered underneath video) */}
@@ -1209,7 +1211,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     try {
                                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                                                     } catch (_e) { }
-                                                                    router.push('/library/katha');
+                                                                    handleNavigateKatha();
                                                                 }}
                                                             >
                                                                 <Ionicons name="play" size={11} color="#FFF" style={{ marginRight: 4 }} />
@@ -1237,7 +1239,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     try {
                                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                                     } catch (_e) { }
-                                                                    router.push('/library/katha');
+                                                                    handleNavigateKatha();
                                                                 }}
                                                             >
                                                                 <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
@@ -1265,7 +1267,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     try {
                                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                                     } catch (_e) { }
-                                                                    router.push('/library/katha');
+                                                                    handleNavigateKatha();
                                                                 }}
                                                             >
                                                                 <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
@@ -1275,6 +1277,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                             <UiverseNotifyButton
                                                                 isNotified={!!reminders['shravan_katha']}
                                                                 onPress={async () => {
+                                                                    if (isNavigatingRef.current) return;
+                                                                    isNavigatingRef.current = true;
                                                                     try {
                                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                                                     } catch (_e) { }
@@ -1287,6 +1291,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                         pathname: '/shravan-paath',
                                                                         params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
                                                                     });
+                                                                    setTimeout(() => {
+                                                                        isNavigatingRef.current = false;
+                                                                    }, 1000);
                                                                 }}
                                                                 label={eventStatus === 'starting_soon' ? "Remind Me" : "Notify Me"}
                                                                 notifiedLabel="Notified"
@@ -1659,7 +1666,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             Platform.OS === 'android' && { overflow: 'hidden' },
                             pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                         ]}
-                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                        android_ripple={{ color: 'rgba(255, 255, 255, 0.35)', borderless: false }}
                         onPress={() => {
                             router.push({
                                 pathname: '/community/[id]',
@@ -1685,7 +1692,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             Platform.OS === 'android' && { overflow: 'hidden' },
                             pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                         ]}
-                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                        android_ripple={{ color: 'rgba(255, 255, 255, 0.35)', borderless: false }}
                         onPress={() => {
                             router.push({
                                 pathname: '/community/[id]',

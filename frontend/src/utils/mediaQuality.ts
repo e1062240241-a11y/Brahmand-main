@@ -36,8 +36,6 @@ export function getThumbnailUrl(mediaUrl: string): string {
     // GCS doesn't natively resize; use query params that are ignored but
     // signal intent. For actual resizing, the backend should pre-generate thumbs.
     if (mediaUrl.includes('firebasestorage.googleapis.com') || mediaUrl.includes('.storage.googleapis.com')) {
-      // Try a thumbnail_ prefix convention used by many Firebase setups
-      const thumbUrl = mediaUrl.replace(/\/([^/]+)(\?|$)/, '/_thumb_$1$2');
       // We can't verify if it exists without fetching, so we try the raw CDN
       // with quality hint appended to alt url
       return mediaUrl.includes('?')
