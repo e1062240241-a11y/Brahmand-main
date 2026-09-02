@@ -4923,9 +4923,11 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     if liked:
         new_count = max(0, prev_count - 1)
         await db.array_remove_update('posts', post_id, 'liked_by', [user_id])
+        await db.increment_field('posts', post_id, 'likes_count', -1)
     else:
         new_count = prev_count + 1
         await db.array_union_update('posts', post_id, 'liked_by', [user_id])
+        await db.increment_field('posts', post_id, 'likes_count', 1)
 
         # Push notification logic for new likes
         post_owner_id = post.get('user_id')
@@ -4965,8 +4967,8 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
-    # Synchronize the denormalized count
-    await db.update_document('posts', post_id, {'likes_count': new_count})
+    # Atomic server-side increment/decrement was applied above via db.increment_field,
+    # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
     updated_post = await db.get_document('posts', post_id)
@@ -5207,8 +5209,10 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     comment_id = await db.create_document('post_comments', comment_doc)
     comment_doc['id'] = comment_id
 
-    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
-    await db.update_document('posts', post_id, {'comments_count': comments_count})
+    # Atomic server-side increment for comments_count prevents read-modify-write race conditions
+    await db.increment_field('posts', post_id, 'comments_count', 1)
+    prev_comments_count = (post.get('comments_count', 0) or 0)
+    comments_count = prev_comments_count + 1
 
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
@@ -5351,8 +5355,10 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
 
     await db.delete_document('post_comments', comment_id)
 
-    # Recalculate comments_count
-    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
+    # Atomic server-side decrement for comments_count prevents read-modify-write race conditions
+    await db.increment_field('posts', post_id, 'comments_count', -1)
+    prev_comments_count = (post.get('comments_count', 0) or 0)
+    comments_count = max(0, prev_comments_count - 1)
 
     # Recalculate top_comments
     top_comments = await db.query_documents(
@@ -5375,7 +5381,6 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
 
     await db.update_document('posts', post_id, {
-        'comments_count': comments_count,
         'top_comments': top_comments[:5]
     })
 
@@ -7618,10 +7623,23 @@ async def toggle_community_message_like(
     else:
         liked_by.append(user_id)
         
-    await db.update_chat_message(chat_id, message_id, {
-        'liked_by': liked_by,
-        'likes_count': len(liked_by)
-    })
+    if getattr(db, 'use_mock', False):
+        await db.update_chat_message(chat_id, message_id, {
+            'liked_by': liked_by,
+            'likes_count': len(liked_by)
+        })
+    else:
+        from google.cloud import firestore
+        if liked:
+            await db.update_chat_message(chat_id, message_id, {
+                'liked_by': firestore.ArrayRemove([user_id]),
+                'likes_count': firestore.Increment(-1)
+            })
+        else:
+            await db.update_chat_message(chat_id, message_id, {
+                'liked_by': firestore.ArrayUnion([user_id]),
+                'likes_count': firestore.Increment(1)
+            })
 
     if not liked:
         # Send notification to the message owner
