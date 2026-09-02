@@ -209,7 +209,7 @@ def ml_check(text: str, threshold: float = 0.5) -> Dict[str, Any]:
         return {
             'offensive': False,
             'method': 'ml',
-            'error': str(e),
+            'error': 'An internal error occurred during ML check',
             'confidence': 0.0,
             'categories': {}
         }
