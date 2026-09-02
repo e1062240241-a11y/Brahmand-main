@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -144,14 +144,16 @@ const FestivalSectionDetailPage = () => {
     );
   }
 
+  const isStorySection = decodeURIComponent(section) === 'Story';
+
   return (
-    <LinearGradient
-      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-      locations={[0, 0.1058, 0.2212]}
-      style={{ flex: 1 }}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F0" />
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: isStorySection ? '#030712' : '#FDF8F0' }}>
+      <StatusBar
+        translucent={isStorySection}
+        barStyle={isStorySection ? 'light-content' : 'dark-content'}
+        backgroundColor={isStorySection ? 'transparent' : '#FDF8F0'}
+      />
+      <SafeAreaView style={{ flex: 1 }} edges={isStorySection ? [] : ['top']}>
         {/* Offscreen Full Master Catalog Image Container */}
         <View
           style={{
@@ -168,9 +170,15 @@ const FestivalSectionDetailPage = () => {
           </View>
         </View>
 
-        <View style={styles.header}>
+        {/* Top Header Bar */}
+        <View
+          style={[
+            styles.header,
+            isStorySection && styles.headerStoryFloating,
+          ]}
+        >
           <TouchableOpacity 
-            style={styles.backButton} 
+            style={[styles.backButton, isStorySection && styles.storyHeaderButtonCircle]} 
             onPress={() => {
               if (router.canGoBack()) {
                 router.back();
@@ -180,27 +188,49 @@ const FestivalSectionDetailPage = () => {
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chevron-back" size={28} color="#000000" />
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>{decodeURIComponent(section)}</Text>
+          {!isStorySection && (
+            <Text style={styles.headerTitle}>
+              {decodeURIComponent(section)}
+            </Text>
+          )}
 
           <TouchableOpacity 
-            style={styles.shareButton} 
+            style={[styles.shareButton, isStorySection && styles.storyHeaderButtonCircle]} 
             onPress={handleShare}
             activeOpacity={0.7}
             disabled={isSharing}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {isSharing ? (
-              <ActivityIndicator size="small" color="#000000" />
+              <ActivityIndicator
+                size="small"
+                color="#FFFFFF"
+              />
             ) : (
-              <Ionicons name="share-social-outline" size={22} color="#000000" />
+              <Ionicons
+                name="share-social-outline"
+                size={20}
+                color="#FFFFFF"
+              />
             )}
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.container,
+            isStorySection && { paddingBottom: 80, backgroundColor: '#030712' },
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <FestivalSectionDetailCard
             festival={festival}
             section={decodeURIComponent(section)}
@@ -208,7 +238,7 @@ const FestivalSectionDetailPage = () => {
           />
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -236,6 +266,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     backgroundColor: 'transparent',
+  },
+  headerStoryFloating: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 44 : 28,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    paddingHorizontal: 16,
+  },
+  storyHeaderButtonCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backButton: {
     width: 40,

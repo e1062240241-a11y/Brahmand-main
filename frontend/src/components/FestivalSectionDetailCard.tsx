@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -9,6 +10,8 @@ import { SPACING, BORDER_RADIUS } from '../constants/theme';
 import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import CelebrationPage from './CelebrationPage';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FestivalSectionDetailCardProps {
   festival: any;
@@ -397,108 +400,154 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
       : `Mythology & Divine Origin of ${festivalName}`;
 
     return (
-      <View style={styles.refStoryContainer}>
-        {/* Top Hero Section with Full-Bleed Artwork Backdrop */}
-        <View style={styles.refHeroContainer}>
-          <Image
-            source={heroImageSource}
-            style={styles.refHeroImage}
-            contentFit="cover"
-          />
-          <LinearGradient
-            colors={['rgba(253, 248, 240, 0.4)', 'rgba(253, 248, 240, 0.85)', '#FDF8F0']}
-            locations={[0.2, 0.75, 1]}
-            style={styles.refHeroGradientOverlay}
-          />
+      <View style={styles.journeyStoryContainer}>
+        {/* Full-Screen Immersive Deity Artwork Background */}
+        <Image
+          source={currentChapter.image || heroImageSource}
+          style={styles.journeyFullScreenImage}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+        />
 
-          {/* Top Pill Badge */}
-          <View style={styles.refHeaderBadgeRow}>
-            <View style={styles.refPillBadge}>
-              <Ionicons name="book" size={12} color="#9A3412" />
-              <Text style={styles.refPillBadgeText}>SACRED MYTHOLOGICAL STORY</Text>
+        {/* Multi-stage Vignette & Deep Dark Gradient Overlay */}
+        <LinearGradient
+          colors={[
+            'rgba(3, 7, 18, 0.55)',
+            'rgba(3, 7, 18, 0.15)',
+            'rgba(3, 7, 18, 0.15)',
+            'rgba(3, 7, 18, 0.82)',
+            '#030712',
+            '#030712',
+          ]}
+          locations={[0, 0.22, 0.42, 0.62, 0.78, 1]}
+          style={styles.journeyFullScreenGradient}
+        />
+
+        {/* Top Spacer to showcase the hero artwork */}
+        <View style={styles.journeyHeroSpacer} />
+
+        {/* Narrative Chapter Content with Elegant Script Drop-Cap */}
+        <View style={styles.journeyContentSection}>
+          <View style={styles.dropCapStoryRow}>
+            <Text style={styles.dropCapLetter}>
+              {(currentChapter.content || '').charAt(0)}
+            </Text>
+            <Text style={styles.storyBodyText}>
+              <Text style={styles.storyFirstWord}>
+                {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
+              </Text>{' '}
+              {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
+            </Text>
+          </View>
+
+          {/* Next Chapter Preview Peek */}
+          {chapters[activeTab + 1] && (
+            <View style={styles.nextChapterPeek}>
+              <Text style={styles.nextChapterBlurredText} numberOfLines={2}>
+                In the next chapter, {chapters[activeTab + 1].content}
+              </Text>
             </View>
-          </View>
+          )}
         </View>
 
-        {/* Title & Subtitle Section */}
-        <View style={styles.refTitleSection}>
-          <View style={styles.refTitleDecorRow}>
-            <Text style={styles.refTitleLeaf}>🍂</Text>
-            <Text style={styles.refMainTitle}>{festivalName}</Text>
-            <Text style={styles.refTitleLeaf}>🍂</Text>
-          </View>
-          <View style={styles.refSubtitleRow}>
-            <View style={styles.refSubtitleLine} />
-            <Text style={styles.refSubtitleText}>{subtitleText}</Text>
-            <View style={styles.refSubtitleLine} />
-          </View>
-        </View>
+        {/* Floating Glassmorphic Journey Card Aligned at Bottom */}
+        <View style={styles.journeyCardContainerBottom}>
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 45 : 80}
+            tint="dark"
+            style={styles.journeyCardOverlay}
+          >
+            <Text style={styles.journeyCardHeading}>Journey</Text>
 
-        {/* 5-Step Horizontal Tab Navigator */}
-        <View style={styles.refTabsCard}>
-          {chapters.map((ch, idx) => {
-            const isActive = activeTab === idx;
-            return (
-              <React.Fragment key={ch.id}>
-                {idx > 0 && <View style={styles.refTabConnectorDotLine} />}
-                <TouchableOpacity
-                  style={styles.refTabItem}
-                  onPress={() => {
-                    Haptics.selectionAsync().catch(() => {});
-                    setActiveTab(idx);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.refTabCircle, isActive && styles.refTabCircleActive]}>
-                    {ch.icon === 'leaf' && <Ionicons name="leaf" size={16} color={isActive ? '#FFFFFF' : '#9A3412'} />}
-                    {ch.icon === 'flame' && <Ionicons name="flame" size={16} color={isActive ? '#FFFFFF' : '#C2410C'} />}
-                    {ch.icon === 'om' && <Text style={[styles.refTabOmText, isActive && styles.refTabOmTextActive]}>🕉</Text>}
-                    {ch.icon === 'flower' && <Ionicons name="flower-outline" size={16} color={isActive ? '#FFFFFF' : '#15803D'} />}
-                    {ch.icon === 'star' && <Ionicons name="star-outline" size={16} color={isActive ? '#FFFFFF' : '#B45309'} />}
-                    <View style={styles.refTabBadgeNum}>
-                      <Text style={styles.refTabBadgeNumText}>{idx + 1}</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.refTabLabel, isActive && styles.refTabLabelActive]}>{ch.title}</Text>
-                </TouchableOpacity>
-              </React.Fragment>
-            );
-          })}
-        </View>
-
-        {/* Selected Chapter Detail Card */}
-        <View style={styles.refChapterDetailCard}>
-          <View style={styles.refChapterCardCornerPattern} pointerEvents="none">
-            <Text style={styles.refCornerPatternText}>🏵️</Text>
-          </View>
-
-          <Image
-            source={currentChapter.image}
-            style={styles.refChapterThumbnail}
-            contentFit="cover"
-          />
-
-          <View style={styles.refChapterContentRight}>
-            <Text style={styles.refChapterCardTitle}>{idxToRoman(activeTab + 1)}. {currentChapter.title}</Text>
-            <Text style={styles.refChapterCardBody}>{currentChapter.content}</Text>
-          </View>
-        </View>
-
-        {/* Inspirational Lotus Quote Banner */}
-        <View style={styles.refQuoteBanner}>
-          <View style={styles.refQuoteDecorRow}>
-            <Text style={styles.refQuoteSymbol}>" True love and unwavering spiritual devotion possess the divine power to unite earth with the heavens. "</Text>
-            <Text style={styles.refQuoteLotus}>🪷</Text>
-          </View>
+            <View style={styles.journeyTabsRow}>
+              {chapters.map((ch, idx) => {
+                const isActive = activeTab === idx;
+                return (
+                  <React.Fragment key={ch.id}>
+                    {idx > 0 && (
+                      <View
+                        style={[
+                          styles.journeyConnectorLine,
+                          activeTab >= idx && styles.journeyConnectorLineActive,
+                        ]}
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.journeyTabItem}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => {});
+                        setActiveTab(idx);
+                      }}
+                      activeOpacity={0.8}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Chapter ${idx + 1}: ${ch.title}`}
+                    >
+                      <View
+                        style={[
+                          styles.journeyCircleBadge,
+                          isActive && styles.journeyCircleBadgeActive,
+                        ]}
+                      >
+                        {ch.icon === 'leaf' && (
+                          <Ionicons
+                            name="leaf"
+                            size={16}
+                            color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
+                          />
+                        )}
+                        {ch.icon === 'flame' && (
+                          <Ionicons
+                            name="water"
+                            size={16}
+                            color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
+                          />
+                        )}
+                        {ch.icon === 'om' && (
+                          <Text
+                            style={[
+                              styles.journeyOmIcon,
+                              isActive && styles.journeyOmIconActive,
+                            ]}
+                          >
+                            🕉
+                          </Text>
+                        )}
+                        {ch.icon === 'flower' && (
+                          <Ionicons
+                            name="flower"
+                            size={16}
+                            color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
+                          />
+                        )}
+                        {ch.icon === 'star' && (
+                          <Ionicons
+                            name="star-outline"
+                            size={16}
+                            color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
+                          />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.journeyTabLabel,
+                          isActive && styles.journeyTabLabelActive,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {ch.title}
+                      </Text>
+                    </TouchableOpacity>
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </BlurView>
         </View>
       </View>
     );
   }
 
-  // Helper for Roman Numerals
-  function idxToRoman(num: number) {
-    return `${num}`;
-  }
 
   // Dedicated Puja Vidhi Renderer
   if (section === 'Puja Vidhi') {
@@ -514,7 +563,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
             <Text style={[styles.sectionBadgeText, { color: '#C2410C' }]}>SIMPLE RITUAL GUIDE (PUJA VIDHI)</Text>
           </View>
 
-          <Text style={styles.refChapterCardTitle}>Step-by-Step Puja Rituals</Text>
+          <Text style={styles.blockTitle}>Step-by-Step Puja Rituals</Text>
 
           {/* Items Needed Checklist */}
           <View style={styles.sectionBlock}>
@@ -849,254 +898,194 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Reference Exact Layout Styles
-  refStoryContainer: {
+  // Journey Story Reference Design Styles
+  journeyStoryContainer: {
     paddingBottom: SPACING.xl,
-    backgroundColor: '#FDF8F0',
-  },
-  refHeroContainer: {
-    width: '100%',
-    height: 380,
+    backgroundColor: '#030712',
+    minHeight: SCREEN_HEIGHT - 70,
     position: 'relative',
-  },
-  refHeroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  refHeroGradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  refHeaderBadgeRow: {
-    position: 'absolute',
-    top: 14,
-    alignSelf: 'center',
-  },
-  refPillBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.3)',
-  },
-  refPillBadgeText: {
-    color: '#9A3412',
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  refListenBtn: {
-    position: 'absolute',
-    bottom: 24,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(74, 40, 16, 0.75)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  refListenBtnActive: {
-    backgroundColor: '#9A3412',
-  },
-  refListenTitle: {
-    color: '#FFFFFF',
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  refListenSub: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  refTitleSection: {
-    alignItems: 'center',
-    marginTop: -20,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  refTitleDecorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  refTitleLeaf: {
-    fontSize: 18,
-    color: '#D97706',
-  },
-  refMainTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#7C2D12',
-    letterSpacing: -0.5,
-    fontFamily: undefined,
-  },
-  refSubtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  refSubtitleLine: {
-    width: 24,
-    height: 1,
-    backgroundColor: '#D4AF37',
-  },
-  refSubtitleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4B3621',
-  },
-  refTabsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-    shadowColor: '#9A3412',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
   },
-  refTabItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  refTabCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFEDD5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    position: 'relative',
-  },
-  refTabCircleActive: {
-    backgroundColor: '#EA580C',
-  },
-  refTabOmText: {
-    fontSize: 18,
-    color: '#9A3412',
-  },
-  refTabOmTextActive: {
-    color: '#FFFFFF',
-  },
-  refTabBadgeNum: {
+  journeyFullScreenImage: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EA580C',
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 0,
+    left: 0,
+    right: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.72,
   },
-  refTabBadgeNumText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#EA580C',
-  },
-  refTabLabel: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  refTabLabelActive: {
-    color: '#EA580C',
-    fontWeight: '800',
-  },
-  refTabConnectorDotLine: {
-    width: 12,
-    height: 2,
-    backgroundColor: '#FED7AA',
-    marginTop: -16,
-  },
-  refChapterDetailCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 20,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.4)',
-    position: 'relative',
-    gap: 12,
-  },
-  refChapterCardCornerPattern: {
+  journeyFullScreenGradient: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    opacity: 0.25,
+    top: 0,
+    left: 0,
+    right: 0,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.75,
   },
-  refCornerPatternText: {
-    fontSize: 16,
+  journeyHeroSpacer: {
+    height: SCREEN_HEIGHT * 0.42,
   },
-  refChapterThumbnail: {
-    width: 120,
-    height: 130,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+  journeyContentSection: {
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    backgroundColor: 'transparent',
   },
-  refChapterContentRight: {
-    flex: 1,
-  },
-  refChapterCardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#451A03',
-    marginBottom: 6,
-  },
-  refChapterCardBody: {
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: '#374151',
-  },
-  refQuoteBanner: {
-    backgroundColor: '#FFF7ED',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.25)',
-  },
-  refQuoteDecorRow: {
+  dropCapStoryRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
-  refQuoteSymbol: {
-    flex: 1,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontWeight: '700',
+  dropCapLetter: {
+    fontSize: 66,
+    lineHeight: 74,
+    fontWeight: '400',
     fontStyle: 'italic',
-    color: '#9A3412',
+    color: '#F6D269',
+    fontFamily: Platform.select({
+      ios: 'Snell Roundhand',
+      android: 'serif',
+      default: 'serif',
+    }),
+    marginRight: 6,
+    marginTop: -10,
+  },
+  storyBodyText: {
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 28,
+    color: '#F9FAFB',
+    fontFamily: Platform.select({
+      ios: 'Times New Roman',
+      android: 'serif',
+      default: 'serif',
+    }),
+    letterSpacing: 0.15,
+  },
+  storyFirstWord: {
+    fontStyle: 'italic',
+    fontSize: 20,
+    color: '#F6D269',
+    fontWeight: '600',
+    fontFamily: Platform.select({
+      ios: 'Times New Roman',
+      android: 'serif',
+      default: 'serif',
+    }),
+  },
+  nextChapterPeek: {
+    marginTop: 6,
+    marginBottom: 16,
+    opacity: 0.35,
+  },
+  nextChapterBlurredText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#9CA3AF',
+    fontFamily: Platform.select({
+      ios: 'Times New Roman',
+      android: 'serif',
+      default: 'serif',
+    }),
+    fontStyle: 'italic',
+  },
+  journeyCardContainerBottom: {
+    paddingHorizontal: 14,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    paddingTop: 8,
+  },
+  journeyCardOverlay: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: Platform.OS === 'android' ? 'rgba(18, 22, 32, 0.72)' : 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 14,
+    paddingBottom: 16,
+    paddingHorizontal: 14,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  journeyCardHeading: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'sans-serif-medium',
+      default: 'System',
+    }),
+    marginBottom: 12,
+    marginLeft: 2,
+    letterSpacing: -0.2,
+  },
+  journeyTabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  journeyTabItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  journeyCircleBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(15, 20, 28, 0.55)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(229, 193, 88, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  journeyCircleBadgeActive: {
+    backgroundColor: 'rgba(64, 45, 15, 0.85)',
+    borderColor: '#F6D269',
+    borderWidth: 2,
+    shadowColor: '#F6D269',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.75,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  journeyOmIcon: {
+    fontSize: 18,
+    color: 'rgba(246, 210, 105, 0.7)',
+  },
+  journeyOmIconActive: {
+    color: '#F6D269',
+  },
+  journeyConnectorLine: {
+    width: 14,
+    height: 1.5,
+    backgroundColor: 'rgba(229, 193, 88, 0.3)',
+    marginTop: -20,
+  },
+  journeyConnectorLineActive: {
+    backgroundColor: '#F6D269',
+  },
+  journeyTabLabel: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
+    lineHeight: 13,
   },
-  refQuoteLotus: {
-    fontSize: 22,
+  journeyTabLabelActive: {
+    color: '#FCE7A1',
+    fontWeight: '700',
   },
+
+
+
   narrativeBlock: {
     marginBottom: 16,
   },
