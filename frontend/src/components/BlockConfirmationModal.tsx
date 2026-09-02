@@ -87,7 +87,12 @@ export const BlockConfirmationModal: React.FC<BlockConfirmationModalProps> = ({
           <Text style={styles.description}>{description}</Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel block or unblock action"
+            >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 
@@ -97,6 +102,8 @@ export const BlockConfirmationModal: React.FC<BlockConfirmationModalProps> = ({
                 onClose();
                 onConfirm();
               }}
+              accessibilityRole="button"
+              accessibilityLabel={`${confirmText} user`}
             >
               <Text style={styles.confirmButtonText}>{confirmText}</Text>
             </TouchableOpacity>
