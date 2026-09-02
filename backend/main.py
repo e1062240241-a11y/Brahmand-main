@@ -4923,9 +4923,11 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     if liked:
         new_count = max(0, prev_count - 1)
         await db.array_remove_update('posts', post_id, 'liked_by', [user_id])
+        await db.increment_field('posts', post_id, 'likes_count', -1)
     else:
         new_count = prev_count + 1
         await db.array_union_update('posts', post_id, 'liked_by', [user_id])
+        await db.increment_field('posts', post_id, 'likes_count', 1)
 
         # Push notification logic for new likes
         post_owner_id = post.get('user_id')
@@ -4965,8 +4967,8 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
             except Exception as notify_err:
                 logger.warning(f"Post like notification failed for post {post_id}: {notify_err}")
 
-    # Synchronize the denormalized count
-    await db.update_document('posts', post_id, {'likes_count': new_count})
+    # Atomic server-side increment/decrement was applied above via db.increment_field,
+    # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
     updated_post = await db.get_document('posts', post_id)
