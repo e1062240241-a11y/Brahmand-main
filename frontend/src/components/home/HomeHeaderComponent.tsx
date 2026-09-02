@@ -1354,10 +1354,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             fontSize: 13
                                         }]}>
                                             {hanumanStatus.isActive
-                                                ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                                ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
                                                 : (t('language') === 'hi'
-                                                    ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
-                                                    : '2300+ devotees already completed jaap')}
+                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
+                                                    // Lever: Devotional Reframing + Satsang Proof
+                                                    // UI: Text-only change, zero new components.
+                                                    ? '2300+ भक्त पहले ही जाप समर्पित कर चुके हैं'
+                                                    : '2300+ devotees already offered jaap')}
                                         </Text>
 
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
@@ -1522,10 +1525,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             fontSize: 13
                                         }]}>
                                             {shivaStatus.isActive
-                                                ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                                ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
                                                 : (t('language') === 'hi'
-                                                    ? '1800+ भक्त पहले ही जाप पूरा कर चुके हैं'
-                                                    : '1800+ devotees already completed jaap')}
+                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
+                                                    // Lever: Devotional Reframing + Satsang Proof
+                                                    // UI: Text-only change, zero new components.
+                                                    ? '1800+ भक्त पहले ही जाप समर्पित कर चुके हैं'
+                                                    : '1800+ devotees already offered jaap')}
                                         </Text>
 
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
