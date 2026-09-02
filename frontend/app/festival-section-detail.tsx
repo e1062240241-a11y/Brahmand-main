@@ -223,20 +223,25 @@ const FestivalSectionDetailPage = () => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          contentContainerStyle={[
-            styles.container,
-            isStorySection && { paddingBottom: 80, backgroundColor: '#030712' },
-          ]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
+        {isStorySection ? (
           <FestivalSectionDetailCard
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
           />
-        </ScrollView>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <FestivalSectionDetailCard
+              festival={festival}
+              section={decodeURIComponent(section)}
+              onBack={() => router.back()}
+            />
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -269,7 +274,7 @@ const styles = StyleSheet.create({
   },
   headerStoryFloating: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 44 : 28,
+    top: Platform.OS === 'ios' ? 56 : 38,
     left: 0,
     right: 0,
     zIndex: 50,

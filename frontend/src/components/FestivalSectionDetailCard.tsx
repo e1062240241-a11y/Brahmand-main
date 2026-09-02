@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -423,34 +423,42 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
           style={styles.journeyFullScreenGradient}
         />
 
-        {/* Top Spacer to showcase the hero artwork */}
-        <View style={styles.journeyHeroSpacer} />
+        {/* Scrollable Narrative Content */}
+        <ScrollView
+          style={styles.journeyScrollableContent}
+          contentContainerStyle={styles.journeyScrollableContentInner}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Top Spacer to showcase the hero artwork */}
+          <View style={styles.journeyHeroSpacer} />
 
-        {/* Narrative Chapter Content with Elegant Script Drop-Cap */}
-        <View style={styles.journeyContentSection}>
-          <View style={styles.dropCapStoryRow}>
-            <Text style={styles.dropCapLetter}>
-              {(currentChapter.content || '').charAt(0)}
-            </Text>
-            <Text style={styles.storyBodyText}>
-              <Text style={styles.storyFirstWord}>
-                {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
-              </Text>{' '}
-              {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
-            </Text>
-          </View>
-
-          {/* Next Chapter Preview Peek */}
-          {chapters[activeTab + 1] && (
-            <View style={styles.nextChapterPeek}>
-              <Text style={styles.nextChapterBlurredText} numberOfLines={2}>
-                In the next chapter, {chapters[activeTab + 1].content}
+          {/* Narrative Chapter Content with Elegant Script Drop-Cap */}
+          <View style={styles.journeyContentSection}>
+            <View style={styles.dropCapStoryRow}>
+              <Text style={styles.dropCapLetter}>
+                {(currentChapter.content || '').charAt(0)}
+              </Text>
+              <Text style={styles.storyBodyText}>
+                <Text style={styles.storyFirstWord}>
+                  {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
+                </Text>{' '}
+                {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
               </Text>
             </View>
-          )}
-        </View>
 
-        {/* Floating Glassmorphic Journey Card Aligned at Bottom */}
+            {/* Next Chapter Preview Peek */}
+            {chapters[activeTab + 1] && (
+              <View style={styles.nextChapterPeek}>
+                <Text style={styles.nextChapterBlurredText} numberOfLines={3}>
+                  In the next chapter, {chapters[activeTab + 1].content}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Floating Glassmorphic Journey Card Aligned & Pinned at Bottom */}
         <View style={styles.journeyCardContainerBottom}>
           <BlurView
             intensity={Platform.OS === 'ios' ? 45 : 80}
@@ -900,11 +908,16 @@ const styles = StyleSheet.create({
 
   // Journey Story Reference Design Styles
   journeyStoryContainer: {
-    paddingBottom: SPACING.xl,
     backgroundColor: '#030712',
-    minHeight: SCREEN_HEIGHT - 70,
+    height: SCREEN_HEIGHT,
     position: 'relative',
     justifyContent: 'space-between',
+  },
+  journeyScrollableContent: {
+    flex: 1,
+  },
+  journeyScrollableContentInner: {
+    paddingBottom: 24,
   },
   journeyFullScreenImage: {
     position: 'absolute',
@@ -923,7 +936,7 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.75,
   },
   journeyHeroSpacer: {
-    height: SCREEN_HEIGHT * 0.42,
+    height: SCREEN_HEIGHT * 0.40,
   },
   journeyContentSection: {
     paddingHorizontal: 22,
