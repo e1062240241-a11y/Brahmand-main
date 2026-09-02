@@ -219,11 +219,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (Platform.OS === 'android') {
       try {
-        const style = showSettingsModal ? 'dark' : 'light';
+        if (typeof (NavigationBar as any).setBackgroundColorAsync === 'function') {
+          (NavigationBar as any).setBackgroundColorAsync('#000000').catch(() => {});
+        }
         if (typeof NavigationBar.setStyle === 'function') {
-          NavigationBar.setStyle(style as any);
+          NavigationBar.setStyle('light' as any);
         } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
-          (NavigationBar as any).setButtonStyleAsync(style).catch(() => {});
+          (NavigationBar as any).setButtonStyleAsync('light').catch(() => {});
         }
       } catch (err) {}
     }

@@ -54,6 +54,10 @@
     "android": {
       "package": "com.brahmand.app",
       "softwareKeyboardLayoutMode": "resize",
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content"
+      },
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {

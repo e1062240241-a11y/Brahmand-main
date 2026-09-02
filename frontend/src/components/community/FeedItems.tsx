@@ -43,19 +43,32 @@ export const CommunityMediaItem = React.memo(({
     )
   );
 
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
+  const ref = React.useRef<View>(null);
+  const handlePress = React.useCallback(() => {
+    if (!onPress) return;
+    const anyPress = onPress as any;
+    if (anyPress.length === 0) { anyPress(); return; }
+    const node = ref.current as any;
+    if (node?.measureInWindow) {
+      node.measureInWindow((x: number, y: number, w: number, h: number) => anyPress({ x, y, width: w, height: h }));
+    } else {
+      anyPress(null);
+    }
+  }, [onPress]);
+
+  const Wrapper: any = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress: handlePress } : {};
 
   if (isVideo) {
     return (
-      <Wrapper {...wrapperProps} style={[{ backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }, style]}>
+      <Wrapper ref={ref} {...wrapperProps} style={[{ backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }, style]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
       </Wrapper>
     );
   }
 
   return (
-    <Wrapper {...wrapperProps}>
+    <Wrapper ref={ref} {...wrapperProps}>
       <ExpoImage
         source={typeof media === 'string' ? { uri: media } : media}
         style={style}
@@ -187,7 +200,7 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
                 media={item.image}
                 style={styles.postImage || feedItemStyles.postImage}
                 isActive={activeVideoKey === String(item.id)}
-                onPress={() => onFullScreenMedia(typeof item.image === 'string' ? item.image : item.image.uri)}
+                onPress={(r: any) => (onFullScreenMedia as any)(typeof item.image === 'string' ? item.image : item.image.uri, r)}
               />
             </View>
           )}
@@ -297,7 +310,7 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
             media={item.image_url || item.image || item.media_url}
             style={styles.festEventImage}
             isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-            onPress={() => onFullScreenMedia(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri)}
+            onPress={(r: any) => (onFullScreenMedia as any)(typeof (item.image_url || item.image || item.media_url) === 'string' ? (item.image_url || item.image || item.media_url) : (item.image_url || item.image || item.media_url).uri, r)}
           />
         )}
         <View style={styles.festEventInfo}>
@@ -467,7 +480,7 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
             media={item.image || item.image_url || item.media_url}
             style={styles.festEventImage}
             isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-            onPress={() => onFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
+            onPress={(r: any) => (onFullScreenMedia as any)(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri, r)}
           />
         )}
         <View style={styles.festEventInfo}>
@@ -652,7 +665,7 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
               media={item.image || item.image_url || item.media_url}
               style={styles.festEventImage}
               isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-              onPress={() => onFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
+              onPress={(r: any) => (onFullScreenMedia as any)(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri, r)}
             />
           )}
           <View style={styles.festEventInfo}>

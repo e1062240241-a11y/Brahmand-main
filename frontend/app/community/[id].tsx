@@ -495,6 +495,7 @@ export default function CommunityDetailScreen() {
 
   const [showCommentModal, setShowCommentModal] = useState<DiscussionPost | null>(null);
   const [fullScreenMedia, setFullScreenMedia] = useState<string | null>(null);
+  const [fullScreenOrigin, setFullScreenOrigin] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
 
@@ -866,11 +867,11 @@ export default function CommunityDetailScreen() {
           onPress={() => setActiveTab('My Posts')}
           style={[styles.pillTab, activeTab === 'My Posts' && styles.pillTabActive]}
         >
-          <View style={[styles.pillIconWrap, activeTab === 'My Posts' && styles.pillIconWrapActive]}>
+          <View style={styles.pillIconWrap}>
             <Ionicons
               name="person"
-              size={10}
-              color={activeTab === 'My Posts' ? '#FF6B00' : '#888'}
+              size={13}
+              color={activeTab === 'My Posts' ? '#FF6B00' : '#657786'}
             />
           </View>
           <Text style={[styles.pillTabText, activeTab === 'My Posts' && styles.pillTabTextActive]}>
@@ -878,7 +879,7 @@ export default function CommunityDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={{ width: 1.5, height: 18, backgroundColor: 'rgba(0,0,0,0.15)', marginHorizontal: 2 }} />
+        <View style={{ width: 1, height: 16, backgroundColor: 'rgba(0,0,0,0.1)', marginHorizontal: 2 }} />
 
         {dynamicTabs.map(tab => (
           <TouchableOpacity
@@ -1900,8 +1901,28 @@ export default function CommunityDetailScreen() {
     setReportCommunityPostModalVisible(true);
   }, []);
 
-  const handleFullScreenMedia = useCallback((uri: string) => {
-    setFullScreenMedia(uri);
+  const handleFullScreenMedia = useCallback((mediaOrUri: any, origin?: any) => {
+    if (origin && typeof origin === 'object' && typeof origin.x === 'number' && typeof origin.width === 'number') {
+      setFullScreenOrigin({
+        x: origin.x,
+        y: origin.y,
+        width: origin.width,
+        height: origin.height,
+      });
+    } else {
+      setFullScreenOrigin(null);
+    }
+
+    let resolvedUri: string | null = null;
+    if (typeof mediaOrUri === 'string') {
+      resolvedUri = mediaOrUri;
+    } else if (typeof mediaOrUri === 'object' && mediaOrUri !== null) {
+      resolvedUri = mediaOrUri.uri || mediaOrUri.url || mediaOrUri.image_url || mediaOrUri.image || null;
+    }
+
+    if (resolvedUri) {
+      setFullScreenMedia(resolvedUri);
+    }
   }, []);
 
 
@@ -2330,7 +2351,8 @@ export default function CommunityDetailScreen() {
 
       <AnimatedFullScreenMediaViewer
         mediaUrl={fullScreenMedia}
-        onClose={() => setFullScreenMedia(null)}
+        origin={fullScreenOrigin}
+        onClose={() => { setFullScreenMedia(null); setFullScreenOrigin(null); }}
         CommunityMediaItem={CommunityMediaItem}
       />
 
@@ -2713,52 +2735,37 @@ const styles = StyleSheet.create({
   fabBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   fabBtnMore: { backgroundColor: 'rgba(61,40,29,0.9)' },
 
-  tabsContainer: { marginTop: 20 },
-  tabsContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10, alignItems: 'center' },
+  tabsContainer: {
+    marginTop: 16,
+  },
+  tabsContent: { paddingHorizontal: 16, gap: 14, alignItems: 'center' },
   pillTab: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+    borderRadius: 2,
   },
   pillTabActive: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
-    shadowColor: '#FF6B00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    borderBottomColor: '#FF6B00',
   },
   pillTabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#4B5563',
+    color: '#536471',
     fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.1,
   },
   pillTabTextActive: {
-    color: '#FFFFFF',
+    color: '#0F1419',
+    fontWeight: '800',
   },
   pillIconWrap: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  pillIconWrapActive: {
-    backgroundColor: '#FFFFFF',
   },
   goingText: { marginLeft: 6, fontSize: 13, color: '#888', fontFamily: FONTS.regular },
   timeAgoText: { fontSize: 11, color: '#AAA', fontFamily: FONTS.regular },
