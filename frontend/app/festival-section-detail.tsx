@@ -187,11 +187,14 @@ const FestivalSectionDetailPage = () => {
               }
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons
               name="chevron-back"
               size={24}
-              color="#FFFFFF"
+              color={isStorySection ? '#FFFFFF' : '#111827'}
             />
           </TouchableOpacity>
 
@@ -207,17 +210,20 @@ const FestivalSectionDetailPage = () => {
             activeOpacity={0.7}
             disabled={isSharing}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Share section"
           >
             {isSharing ? (
               <ActivityIndicator
                 size="small"
-                color="#FFFFFF"
+                color={isStorySection ? '#FFFFFF' : '#111827'}
               />
             ) : (
               <Ionicons
                 name="share-social-outline"
                 size={20}
-                color="#FFFFFF"
+                color={isStorySection ? '#FFFFFF' : '#111827'}
               />
             )}
           </TouchableOpacity>

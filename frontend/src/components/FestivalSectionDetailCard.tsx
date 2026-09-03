@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -58,6 +59,7 @@ const formatStructuredContent = (text: string, sectionTitle: string) => {
 
 const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailCardProps) => {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const festivalName = festival.festival_name || festival.name || 'Festival';
 
   // Try to find enrichment data by festival name (case-insensitive)
@@ -160,7 +162,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
           : isShivratri
           ? 'Tandava & Lingam'
           : 'Sacred Origin',
-        icon: 'leaf',
+        icon: isJanmashtami ? 'leaf' : 'leaf',
         content: isHariyaliTeej
           ? 'Long ago, Goddess Parvati desired Lord Shiva as her divine consort. Shiva, immersed in deep samadhi on Mount Kailash, remained detached. Parvati realized that only supreme devotion could awaken his grace.'
           : isKajariTeej
@@ -207,7 +209,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
           : isShivratri
           ? 'Shiva-Parvati Marriage'
           : 'Divine Penance',
-        icon: 'flame',
+        icon: isJanmashtami ? 'drop' : 'flame',
         content: isHariyaliTeej
           ? 'Goddess Parvati embarked on severe austerities spanning 108 lifetimes across rugged mountain caves and dense Shravan forests. Renouncing all comfort, she meditated amidst scorching heat, torrential monsoon rains, and freezing snows.'
           : isKajariTeej
@@ -301,7 +303,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
           : isShivratri
           ? 'Maha Abhishekam'
           : 'Spiritual Grace',
-        icon: 'flower',
+        icon: isJanmashtami ? 'gear' : 'flower',
         content: isHariyaliTeej
           ? 'Goddess Parvati decreed that any woman observing fasts, wearing festive green bangles, and offering prayers on this holy day will be blessed with lifelong marital harmony, prosperity, and joy.'
           : isKajariTeej
@@ -459,7 +461,12 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
         </ScrollView>
 
         {/* Floating Glassmorphic Journey Card Aligned & Pinned at Bottom */}
-        <View style={styles.journeyCardContainerBottom}>
+        <View
+          style={[
+            styles.journeyCardContainerBottom,
+            { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 14 : 12) },
+          ]}
+        >
           <BlurView
             intensity={Platform.OS === 'ios' ? 45 : 80}
             tint="dark"
@@ -470,6 +477,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
             <View style={styles.journeyTabsRow}>
               {chapters.map((ch, idx) => {
                 const isActive = activeTab === idx;
+                const isOmBadge = ch.icon === 'om';
                 return (
                   <React.Fragment key={ch.id}>
                     {idx > 0 && (
@@ -494,6 +502,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
                       <View
                         style={[
                           styles.journeyCircleBadge,
+                          isOmBadge && styles.journeyCircleBadgePurple,
                           isActive && styles.journeyCircleBadgeActive,
                         ]}
                       >
@@ -504,7 +513,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
                             color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
                           />
                         )}
-                        {ch.icon === 'flame' && (
+                        {(ch.icon === 'flame' || ch.icon === 'drop') && (
                           <Ionicons
                             name="water"
                             size={16}
@@ -515,11 +524,18 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
                           <Text
                             style={[
                               styles.journeyOmIcon,
-                              isActive && styles.journeyOmIconActive,
+                              { color: '#FFFFFF' },
                             ]}
                           >
                             🕉
                           </Text>
+                        )}
+                        {ch.icon === 'gear' && (
+                          <Ionicons
+                            name="settings-sharp"
+                            size={16}
+                            color={isActive ? '#F6D269' : 'rgba(246, 210, 105, 0.65)'}
+                          />
                         )}
                         {ch.icon === 'flower' && (
                           <Ionicons
@@ -917,7 +933,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   journeyScrollableContentInner: {
-    paddingBottom: 24,
+    paddingBottom: 0,
   },
   journeyFullScreenImage: {
     position: 'absolute',
@@ -936,21 +952,22 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.75,
   },
   journeyHeroSpacer: {
-    height: SCREEN_HEIGHT * 0.40,
+    height: Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.50 : SCREEN_HEIGHT * 0.46,
   },
   journeyContentSection: {
     paddingHorizontal: 22,
-    paddingTop: 10,
+    paddingTop: 0,
+    paddingBottom: 0,
     backgroundColor: 'transparent',
   },
   dropCapStoryRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   dropCapLetter: {
     fontSize: 66,
-    lineHeight: 74,
+    lineHeight: 70,
     fontWeight: '400',
     fontStyle: 'italic',
     color: '#F6D269',
@@ -959,24 +976,24 @@ const styles = StyleSheet.create({
       android: 'serif',
       default: 'serif',
     }),
-    marginRight: 6,
-    marginTop: -10,
+    marginRight: 4,
+    marginTop: -8,
   },
   storyBodyText: {
     flex: 1,
     fontSize: 18,
-    lineHeight: 28,
+    lineHeight: 27,
     color: '#F9FAFB',
     fontFamily: Platform.select({
       ios: 'Times New Roman',
       android: 'serif',
       default: 'serif',
     }),
-    letterSpacing: 0.15,
+    letterSpacing: 0.1,
   },
   storyFirstWord: {
     fontStyle: 'italic',
-    fontSize: 20,
+    fontSize: 19,
     color: '#F6D269',
     fontWeight: '600',
     fontFamily: Platform.select({
@@ -986,13 +1003,13 @@ const styles = StyleSheet.create({
     }),
   },
   nextChapterPeek: {
-    marginTop: 6,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 10,
     opacity: 0.35,
   },
   nextChapterBlurredText: {
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 23,
     color: '#9CA3AF',
     fontFamily: Platform.select({
       ios: 'Times New Roman',
@@ -1003,8 +1020,8 @@ const styles = StyleSheet.create({
   },
   journeyCardContainerBottom: {
     paddingHorizontal: 14,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
-    paddingTop: 8,
+    paddingTop: 0,
+    marginTop: 0,
   },
   journeyCardOverlay: {
     borderRadius: 24,
@@ -1058,6 +1075,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+  },
+  journeyCircleBadgePurple: {
+    backgroundColor: '#7E22CE',
+    borderColor: '#C084FC',
+    borderWidth: 1.5,
+  },
+  journeyFloatingAccentBadge: {
+    position: 'absolute',
+    top: -12,
+    right: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EA580C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: '#FED7AA',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8,
   },
   journeyCircleBadgeActive: {
     backgroundColor: 'rgba(64, 45, 15, 0.85)',

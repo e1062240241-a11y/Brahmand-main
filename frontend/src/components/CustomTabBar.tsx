@@ -19,7 +19,7 @@ const OUTER_H_PADDING = 14;
 // at runtime to fit the actual device screen width.
 const DESIGN_BAR_WIDTH = 373;
 
-const HIDDEN_ROUTES = new Set(['index', 'temple', 'circles', 'discover']);
+const HIDDEN_ROUTES = new Set(['index', 'circles', 'discover']);
 
 const TAB_META: Record<string, { activeIcon: string; inactiveIcon: string; labelKey: string }> = {
   home:     { activeIcon: 'home',          inactiveIcon: 'home-outline',          labelKey: 'home'      },

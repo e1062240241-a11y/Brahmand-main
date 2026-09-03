@@ -569,7 +569,7 @@ export const LiveMantraRoom = () => {
               if (router.canGoBack()) {
                 router.back();
               } else {
-                router.replace('/temple');
+                router.replace('/(tabs)/jaap');
               }
             }}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}

@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Pressable,
-  TouchableOpacity, 
   RefreshControl,
-  FlatList,
   TextInput,
   Linking,
   Alert,
@@ -15,10 +13,6 @@ import {
   Image,
   Platform,
   Dimensions,
-  AppState,
-  Modal,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -31,30 +25,98 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { FlashList, FlashListProps } from '@shopify/flash-list';
+import * as Location from 'expo-location';
+
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import formatDistance, { calculateHaversineDistance } from '../../src/utils/formatDistance';
+import { calculateHaversineDistance } from '../../src/utils/formatDistance';
 import { sortItemsByLocationPreference, computeLocationTier } from '../../src/utils/locationPreference';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { isCategoryMatch, filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
-import { FlashList } from '@shopify/flash-list';
+import { filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import VendorCategories from '../../src/components/VendorCategories';
 import { VendorSearchBar } from '../../src/components/VendorSearchBar';
 import { useTranslation } from '../../src/utils/i18n';
-import { useIsFocused } from 'expo-router';
-import Svg, { Path } from 'react-native-svg';
-
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { getKYCStatus } from '../../src/services/api';
-import * as Location from 'expo-location';
+
+// ============================================================================
+// Types & Interfaces
+// ============================================================================
+
+export type TranslationKey = keyof typeof LOCAL_TRANSLATIONS.en;
+
+export interface UploadablePhoto {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+export interface VendorRegistrationFormData {
+  businessName: string;
+  ownerName: string;
+  yearsInBusiness?: number;
+  categories?: string[];
+  address: string;
+  locationLink?: string;
+  phoneNumber: string;
+  latitude?: number;
+  longitude?: number;
+  isCurrentLocation?: boolean;
+  photos?: (string | UploadablePhoto)[];
+}
+
+export interface UserLocationInfo {
+  latitude?: number;
+  longitude?: number;
+  area?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+}
+
+interface ServiceCardProps {
+  category: string;
+  title: string;
+  imageUri: string;
+  iconUri: string;
+  width: number;
+  height: number;
+  isTall?: boolean;
+  onPress: (category: string) => void;
+}
+
+interface BusinessCardProps {
+  category: string;
+  title: string;
+  imageUri: string;
+  iconUri: string;
+  width?: number;
+  height: number;
+  marginBottom?: number;
+  onPress: (category: string) => void;
+}
+
+interface VendorCardComponentProps {
+  item: Vendor;
+  userLocInfo: UserLocationInfo;
+  localT: (key: TranslationKey) => string;
+  onPress: (id: string) => void;
+  onCall: (phoneNumber: string) => void;
+}
+
+// ============================================================================
+// Constants & Module-Level Variables
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList as React.ComponentType<FlashListProps<any>>);
 
 const VSCREEN_WIDTH = Dimensions.get('window').width;
-const VSCREEN_HEIGHT = Dimensions.get('window').height;
 
 // Responsive variables to prevent horizontal scroll/layout cuts on both platforms
 const wrapperWidth = Math.min(394, VSCREEN_WIDTH - 16);
@@ -66,9 +128,6 @@ const rightColWidth = cardWidth * 2 + gap;
 const businessGridWidth = Math.min(347, VSCREEN_WIDTH - 16);
 const businessRightColWidth = (businessGridWidth - 12) / 3.13;
 const businessLeftColWidth = businessRightColWidth * 2.13;
-
-const TABS = ['Nearby'];
-const TOP_SKILL_SUGGESTIONS = ['Carpenter', 'Housemaid', 'Plumber', 'Electrician', 'Cook', 'Teacher', 'Painter', 'Beautician'];
 
 const LOCAL_TRANSLATIONS = {
   en: {
@@ -126,7 +185,7 @@ const LOCAL_TRANSLATIONS = {
     goDashboard: 'Go to Dashboard',
     searchRequests: 'Search services...',
     sanataniServicesAround: 'Sanatani Services Around You',
-    sanataniBusinessAround: 'Sanatani Business\'s Around You',
+    sanataniBusinessAround: "Sanatani Business's Around You",
     allVendorsKyc: 'All vendors are KYC verified.',
     kycComplete: 'KYC Complete',
     kycUnderReview: 'KYC Under Review',
@@ -196,15 +255,244 @@ const LOCAL_TRANSLATIONS = {
     kycRequired: 'केवाईसी आवश्यक',
     kycRequiredTitle: 'केवाईसी आवश्यक',
     kycRequiredMsg: 'अपना व्यवसाय/सेवा प्रबंधित करने के लिए कृपया केवाईसी सत्यापन पूरा करें।',
-  }
+  },
 };
+
+const getVendorIcon = (vendorCategories?: string[]): keyof typeof Ionicons.glyphMap => {
+  const cats = vendorCategories || [];
+  const category = cats[0]?.toLowerCase() || '';
+  if (category.includes('pooja') || category.includes('pandit')) return 'flower';
+  if (category.includes('grocery') || category.includes('sweets')) return 'basket';
+  if (category.includes('restaurant') || category.includes('catering')) return 'restaurant';
+  if (category.includes('gym') || category.includes('yoga')) return 'fitness';
+  if (category.includes('salon')) return 'cut';
+  return 'storefront';
+};
+
+// ============================================================================
+// Extracted Sub-Components
+// ============================================================================
+
+const ServiceCard = memo<ServiceCardProps>(({
+  category,
+  title,
+  imageUri,
+  iconUri,
+  width,
+  height,
+  isTall = false,
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={`View ${title} services`}
+      style={[
+        styles.figmaServiceCard,
+        {
+          width,
+          height,
+          ...(isTall ? { alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 } : {}),
+        },
+      ]}
+      onPress={() => onPress(category)}
+    >
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.cardCoverImage}
+          resizeMode="cover"
+        />
+      </View>
+      <View style={styles.figmaServiceBadge}>
+        <Image
+          source={{ uri: iconUri }}
+          style={styles.badgeIcon}
+          resizeMode="contain"
+        />
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={styles.figmaServiceBadgeText}
+        >
+          {title}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+ServiceCard.displayName = 'ServiceCard';
+
+const BusinessCard = memo<BusinessCardProps>(({
+  category,
+  title,
+  imageUri,
+  iconUri,
+  width,
+  height,
+  marginBottom,
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={`View ${title} businesses`}
+      style={[
+        styles.figmaBusinessCard,
+        {
+          height,
+          ...(width !== undefined ? { width } : {}),
+          ...(marginBottom !== undefined ? { marginBottom } : {}),
+        },
+      ]}
+      onPress={() => onPress(category)}
+    >
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.cardCoverImage}
+          resizeMode="cover"
+        />
+      </View>
+      <View style={styles.figmaServiceBadge}>
+        <Image
+          source={{ uri: iconUri }}
+          style={styles.badgeIcon}
+          resizeMode="contain"
+        />
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={styles.figmaServiceBadgeText}
+        >
+          {title}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+BusinessCard.displayName = 'BusinessCard';
+
+const VendorCardComponent = memo<VendorCardComponentProps>(({
+  item,
+  userLocInfo,
+  localT,
+  onPress,
+  onCall,
+}) => {
+  const vendorCategories = item?.categories || [];
+  const isApprovedVendor =
+    (item.kyc_status === 'verified' ||
+      item.kyc_status === 'approved' ||
+      item.is_verified ||
+      item.review_status === 'approved' ||
+      item.review_status === 'verified') &&
+    item.kyc_status !== 'rejected' &&
+    item.review_status !== 'rejected';
+
+  const previewImage =
+    (item.business_gallery_images && item.business_gallery_images.find((url: string) => Boolean(url))) ||
+    (item.photos && item.photos.length > 0 ? item.photos[0] : null);
+
+  const locTier = computeLocationTier(item, userLocInfo);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${item.business_name || 'Business'} profile`}
+      style={({ pressed }) => [
+        styles.vendorCard,
+        Platform.OS === 'ios' && pressed && { opacity: 0.7 },
+      ]}
+      android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
+      onPress={() => onPress(item.id)}
+    >
+      {/* Business Image Placeholder */}
+      <View style={styles.vendorImageContainer}>
+        {previewImage ? (
+          <Image
+            source={{ uri: previewImage }}
+            style={styles.vendorImage}
+          />
+        ) : (
+          <View style={styles.vendorImagePlaceholder}>
+            <Ionicons name={getVendorIcon(vendorCategories)} size={28} color={COLORS.primary} />
+          </View>
+        )}
+      </View>
+
+      <View style={styles.vendorInfo}>
+        <View style={styles.vendorNameRow}>
+          <Text style={styles.vendorName} numberOfLines={1}>
+            {item.business_name || 'Unnamed Business'}
+          </Text>
+          {isApprovedVendor && (
+            <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={styles.vendorVerifiedIcon} />
+          )}
+        </View>
+
+        {/* Categories */}
+        {vendorCategories.length > 0 && (
+          <View style={styles.categoriesRow}>
+            {vendorCategories.slice(0, 2).map((cat: string, idx: number) => {
+              const lowerKey = cat.toLowerCase() as TranslationKey;
+              const translated = (LOCAL_TRANSLATIONS.en[lowerKey] !== undefined) ? localT(lowerKey) : cat;
+              return (
+                <View key={idx} style={styles.categoryBadge}>
+                  <Text style={styles.categoryBadgeText} numberOfLines={1}>
+                    {translated || cat}
+                  </Text>
+                </View>
+              );
+            })}
+            {vendorCategories.length > 2 && (
+              <Text style={styles.moreCats}>+{vendorCategories.length - 2}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Distance & Location Preference Sub-Tier Badge */}
+        <View style={styles.distanceRow}>
+          <Ionicons name="location" size={12} color={COLORS.primary} />
+          <Text style={styles.distanceText}>{locTier.fullLabel}</Text>
+        </View>
+      </View>
+
+      {/* Call Button */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Call ${item.business_name || 'Vendor'}`}
+        style={({ pressed }) => [
+          styles.callButton,
+          Platform.OS === 'ios' && pressed && { opacity: 0.7 },
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: true }}
+        onPress={() => onCall(item.phone_number)}
+      >
+        <Ionicons name="call" size={20} color={COLORS.primary} />
+      </Pressable>
+    </Pressable>
+  );
+});
+VendorCardComponent.displayName = 'VendorCardComponent';
+
+// ============================================================================
+// Main Component (VendorScreen)
+// ============================================================================
 
 export default function VendorScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const onVendorScrollTabBar = useScrollToHideTabBar();
   const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
+
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const scrollY = useSharedValue(0);
 
@@ -213,8 +501,6 @@ export default function VendorScreen() {
       scrollY.set(e.contentOffset.y);
     },
   });
-
-  const AnimatedFlashList = React.useMemo(() => Animated.createAnimatedComponent(FlashList as any), []) as any;
 
   const animatedSearchContainerStyle = useAnimatedStyle(() => ({
     height: interpolate(scrollY.get(), [0, 70], [52, 0], Extrapolation.CLAMP),
@@ -229,6 +515,7 @@ export default function VendorScreen() {
   const lastY = useSharedValue(0);
   const acc = useSharedValue(0);
   const dir = useSharedValue(0);
+
   useAnimatedReaction(
     () => scrollY.get(),
     (cur, prev) => {
@@ -240,7 +527,7 @@ export default function VendorScreen() {
         acc.set(0);
         dir.set(0);
         lastY.set(cur);
-        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as any);
+        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as Parameters<typeof onVendorScrollTabBar>[0]);
         return;
       }
       const delta = cur - lastY.get();
@@ -254,14 +541,14 @@ export default function VendorScreen() {
         acc.set(acc.get() + Math.abs(delta));
       }
       if (acc.get() >= 12) {
-        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as any);
+        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as Parameters<typeof onVendorScrollTabBar>[0]);
       }
     }
   );
 
-  const localT = (key: keyof typeof LOCAL_TRANSLATIONS.en): any => {
-    return (LOCAL_TRANSLATIONS[currentLang] as any)[key] || (LOCAL_TRANSLATIONS.en as any)[key] || key;
-  };
+  const localT = useCallback((key: TranslationKey): string => {
+    return LOCAL_TRANSLATIONS[currentLang]?.[key] || LOCAL_TRANSLATIONS.en[key] || key;
+  }, [currentLang]);
 
   const getNoItemsInAreaText = (term: string) => {
     if (currentLang === 'hi') {
@@ -270,161 +557,174 @@ export default function VendorScreen() {
     return `No '${term}' in your area.`;
   };
 
-  // ponytail: atomic selectors to prevent cascade re-renders on unrelated store changes
+  // Atomic store selectors
   const user = useAuthStore(state => state.user);
   const authLoading = useAuthStore(state => state.isLoading);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const updateUser = useAuthStore(state => state.updateUser);
 
   const userId = user?.id;
-  const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
-  const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
+  const [kycStatus, setKycStatus] = useState<string | null>(user?.kyc_status || null);
+  const currentKycStatus = kycStatus || user?.kyc_status || null;
   const isKycVerified = currentKycStatus === 'verified';
   const isKycPending = currentKycStatus === 'pending' || currentKycStatus === 'manual_review';
 
   const vendors = useVendorStore(state => state.vendors);
   const myVendor = useVendorStore(state => state.myVendor);
-  const categories = useVendorStore(state => state.categories);
   const loading = useVendorStore(state => state.loading);
   const fetchVendors = useVendorStore(state => state.fetchVendors);
   const fetchMyVendor = useVendorStore(state => state.fetchMyVendor);
   const fetchCategories = useVendorStore(state => state.fetchCategories);
   const createVendor = useVendorStore(state => state.createVendor);
   const uploadBusinessImage = useVendorStore(state => state.uploadBusinessImage);
+
   const hasVerifiedKyc =
     isKycVerified ||
-    Boolean((user as any)?.is_verified) ||
-    (user as any)?.kyc_status === 'verified' ||
+    Boolean(user?.is_verified) ||
+    user?.kyc_status === 'verified' ||
     myVendor?.kyc_status === 'verified';
+
   const hasPendingKyc =
     isKycPending ||
-    (user as any)?.kyc_status === 'pending' ||
-    (user as any)?.kyc_status === 'manual_review' ||
+    user?.kyc_status === 'pending' ||
+    user?.kyc_status === 'manual_review' ||
     myVendor?.kyc_status === 'pending' ||
     myVendor?.kyc_status === 'manual_review';
+
   const canAccessDashboard = hasVerifiedKyc || hasPendingKyc;
-  
-  const [activeTab, setActiveTab] = useState('Nearby');
+
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
-  const [searchCategory, setSearchCategory] = useState<string>('All');
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
-  const [showExpandedCategories, setShowExpandedCategories] = useState(false);
-  const [searchPlaceholderIndex, setSearchPlaceholderIndex] = useState(0);
-  const [typedSkillPlaceholder, setTypedSkillPlaceholder] = useState('');
-  const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  const isFocused = useIsFocused();
 
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
       const response = await getKYCStatus();
       const serverStatus = response?.data?.kyc_status || null;
-      setKycStatus(serverStatus);
+      if (isMountedRef.current) {
+        setKycStatus(serverStatus);
+      }
       updateUser({
         kyc_status: serverStatus,
         is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-      } as any);
+      });
       return serverStatus;
-    } catch (error) {
-      console.warn('Failed to refresh KYC status:', error);
+    } catch (error: unknown) {
+      console.warn('Failed to refresh KYC status:', error instanceof Error ? error.message : String(error));
       return null;
     }
   }, [updateUser]);
 
   const searchInputRef = useRef<TextInput | null>(null);
-  const registerBtnRef = useRef<any>(null);
-  const homeLocation = (user as any)?.home_location;
-  const hLatVal = Number(homeLocation?.latitude ?? homeLocation?.lat);
-  const hLngVal = Number(homeLocation?.longitude ?? homeLocation?.lng);
+  const registerBtnRef = useRef<View | null>(null);
+
+  const homeLocation = user?.home_location;
+  const hLatVal = Number(homeLocation?.latitude);
+  const hLngVal = Number(homeLocation?.longitude);
   const homeLatitude = Number.isFinite(hLatVal) && Math.abs(hLatVal) > 0.001 ? hLatVal : undefined;
   const homeLongitude = Number.isFinite(hLngVal) && Math.abs(hLngVal) > 0.001 ? hLngVal : undefined;
   const hasHomeCoordinates = typeof homeLatitude === 'number' && typeof homeLongitude === 'number';
 
   const loadData = useCallback(async () => {
-    // Get user location
     try {
       if (Platform.OS === 'web') {
         const hasPermission = await ensureForegroundPermission();
         if (hasPermission) {
           const location = await getCurrentPosition();
-          setUserLocation({
-            lat: location.coords.latitude,
-            lng: location.coords.longitude
-          });
+          if (isMountedRef.current) {
+            setUserLocation({
+              lat: location.coords.latitude,
+              lng: location.coords.longitude,
+            });
+          }
           await fetchVendors({
             lat: location.coords.latitude,
-            lng: location.coords.longitude
+            lng: location.coords.longitude,
           });
-        } else if (hasHomeCoordinates) {
-          setUserLocation({
-            lat: homeLatitude!,
-            lng: homeLongitude!,
-          });
+        } else if (hasHomeCoordinates && homeLatitude !== undefined && homeLongitude !== undefined) {
+          if (isMountedRef.current) {
+            setUserLocation({
+              lat: homeLatitude,
+              lng: homeLongitude,
+            });
+          }
           await fetchVendors({
-            lat: homeLatitude!,
-            lng: homeLongitude!,
+            lat: homeLatitude,
+            lng: homeLongitude,
           });
         } else {
           await fetchVendors();
         }
       } else {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          // Robust location retrieval with timeout to avoid permanent hangs on devices/emulators
-          const location = await Promise.race([
-            (async () => {
-              try {
-                const lastKnown = await Location.getLastKnownPositionAsync({});
-                if (lastKnown) return lastKnown;
-              } catch (e) {}
-              return await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-              });
-            })(),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Location timeout')), 4000)
-            )
-          ]) as any;
+        if (status !== 'granted') {
+          if (hasHomeCoordinates && homeLatitude !== undefined && homeLongitude !== undefined) {
+            if (isMountedRef.current) {
+              setUserLocation({ lat: homeLatitude, lng: homeLongitude });
+            }
+            await fetchVendors({ lat: homeLatitude, lng: homeLongitude });
+          } else {
+            await fetchVendors();
+          }
+          await fetchMyVendor();
+          await fetchCategories();
+          return;
+        }
 
+        // Robust location retrieval with timeout
+        const location = await Promise.race([
+          (async () => {
+            try {
+              const lastKnown = await Location.getLastKnownPositionAsync({});
+              if (lastKnown) return lastKnown;
+            } catch {
+              // fallback to getCurrentPositionAsync
+            }
+            return await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+          })(),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('Location timeout')), 4000)
+          ),
+        ]);
+
+        if (location && isMountedRef.current) {
           setUserLocation({
             lat: location.coords.latitude,
-            lng: location.coords.longitude
+            lng: location.coords.longitude,
           });
           await fetchVendors({
             lat: location.coords.latitude,
-            lng: location.coords.longitude
+            lng: location.coords.longitude,
           });
         } else {
           await fetchVendors();
         }
       }
-    } catch (error) {
-      if (hasHomeCoordinates) {
-        setUserLocation({
-          lat: homeLatitude!,
-          lng: homeLongitude!,
-        });
+    } catch {
+      if (hasHomeCoordinates && homeLatitude !== undefined && homeLongitude !== undefined) {
+        if (isMountedRef.current) {
+          setUserLocation({
+            lat: homeLatitude,
+            lng: homeLongitude,
+          });
+        }
         await fetchVendors({
-          lat: homeLatitude!,
-          lng: homeLongitude!,
+          lat: homeLatitude,
+          lng: homeLongitude,
         });
       } else {
         await fetchVendors();
       }
     }
-    
+
     await fetchMyVendor();
     await fetchCategories();
   }, [fetchVendors, fetchMyVendor, fetchCategories, hasHomeCoordinates, homeLatitude, homeLongitude]);
 
   useEffect(() => {
-    // Redirect to auth if not authenticated after auth is loaded
     if (!authLoading && !isAuthenticated) {
       router.replace('/');
       return;
@@ -439,83 +739,9 @@ export default function VendorScreen() {
   useEffect(() => {
     if (!userId) return;
     loadKycStatus();
-  }, [userId]);
+  }, [userId, loadKycStatus]);
 
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = categories.filter(cat => 
-        cat.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredCategories(filtered);
-    } else {
-      setFilteredCategories([]);
-    }
-  }, [searchTerm, categories]);
-
-  const searchSuggestions = React.useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return [] as { label: string; type: 'vendor' | 'category' }[];
-
-    const seen = new Set<string>();
-    const suggestions: { label: string; type: 'vendor' | 'category' }[] = [];
-
-    (vendors || []).forEach((vendor) => {
-      const name = (vendor.business_name || '').trim();
-      if (!name || !name.toLowerCase().includes(term)) return;
-      const key = `vendor:${name.toLowerCase()}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      suggestions.push({ label: name, type: 'vendor' });
-    });
-
-    filteredCategories.forEach((category) => {
-      const key = `category:${category.toLowerCase()}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      suggestions.push({ label: category, type: 'category' });
-    });
-
-    return suggestions.slice(0, 10);
-  }, [searchTerm, vendors, filteredCategories]);
-
-  useEffect(() => {
-    let typeTimeout: ReturnType<typeof setTimeout> | null = null;
-    let switchTimeout: ReturnType<typeof setTimeout> | null = null;
-    const currentSuggestion = TOP_SKILL_SUGGESTIONS[searchPlaceholderIndex];
-
-    if (showSearch && !searchTerm && isPlaceholderPaused) {
-      setTypedSkillPlaceholder(currentSuggestion);
-    } else if (showSearch && !searchTerm) {
-      let index = 0;
-
-      const typeNext = () => {
-        if (index <= currentSuggestion.length) {
-          setTypedSkillPlaceholder(currentSuggestion.slice(0, index));
-          index += 1;
-          typeTimeout = setTimeout(typeNext, 80);
-        } else {
-          switchTimeout = setTimeout(() => {
-            setSearchPlaceholderIndex((prev) => (prev + 1) % TOP_SKILL_SUGGESTIONS.length);
-          }, 1000);
-        }
-      };
-
-      typeNext();
-    } else {
-      setTypedSkillPlaceholder('');
-    }
-
-    return () => {
-      if (typeTimeout) {
-        clearTimeout(typeTimeout);
-      }
-      if (switchTimeout) {
-        clearTimeout(switchTimeout);
-      }
-    };
-  }, [showSearch, searchTerm, searchPlaceholderIndex, isPlaceholderPaused]);
-
-  const userLocInfo = React.useMemo(() => {
+  const userLocInfo = React.useMemo<UserLocationInfo>(() => {
     return {
       latitude: userLocation?.lat ?? homeLatitude,
       longitude: userLocation?.lng ?? homeLongitude,
@@ -528,14 +754,6 @@ export default function VendorScreen() {
 
   const displayVendors = React.useMemo(() => {
     let filtered = vendors || [];
-    const effectiveCategory = searchCategory !== 'All' ? searchCategory : activeTab;
-
-    if (effectiveCategory && effectiveCategory !== 'Nearby') {
-      filtered = filtered.filter((v) => {
-        const categories = v.categories || [];
-        return categories.some((c) => isCategoryMatch(c, effectiveCategory));
-      });
-    }
 
     if (searchTerm && searchTerm.trim()) {
       filtered = filterVendorsBySmartSearch(filtered, searchTerm);
@@ -550,21 +768,17 @@ export default function VendorScreen() {
 
     // Sort by Search Relevance -> Location Tier -> SubTier -> Distance
     return sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
-  }, [vendors, activeTab, searchTerm, searchCategory, userLocInfo]);
+  }, [vendors, searchTerm, userLocInfo]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadData();
-    setRefreshing(false);
+    if (isMountedRef.current) {
+      setRefreshing(false);
+    }
   };
 
-  const handleSkillPlaceholderPress = () => {
-    const selectedSkill = TOP_SKILL_SUGGESTIONS[searchPlaceholderIndex];
-    setSearchTerm(selectedSkill);
-    setIsPlaceholderPaused(false);
-  };
-
-  const handleRegisterVendor = async (data: any) => {
+  const handleRegisterVendor = async (data: VendorRegistrationFormData) => {
     try {
       const newVendor = await createVendor({
         businessName: data.businessName,
@@ -577,199 +791,78 @@ export default function VendorScreen() {
         latitude: data.latitude ?? (data.isCurrentLocation ? userLocation?.lat : undefined),
         longitude: data.longitude ?? (data.isCurrentLocation ? userLocation?.lng : undefined),
       });
-      
-      console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
 
-      // Upload selected photos if present!
+      // Upload selected photos if present
       if (data.photos && data.photos.length > 0) {
         for (let i = 0; i < data.photos.length; i++) {
-          const photo = data.photos[i];
+          const rawPhoto = data.photos[i];
+          const photoPayload: UploadablePhoto = typeof rawPhoto === 'string'
+            ? { uri: rawPhoto, name: `photo-${i}.jpg`, type: 'image/jpeg' }
+            : rawPhoto;
           try {
-            await uploadBusinessImage(newVendor.id, i, photo);
-          } catch (uploadErr) {
-            console.warn(`Failed to upload photo at slot ${i}:`, uploadErr);
+            await uploadBusinessImage(newVendor.id, i, photoPayload);
+          } catch (uploadErr: unknown) {
+            console.warn(`Failed to upload photo at slot ${i}:`, uploadErr instanceof Error ? uploadErr.message : String(uploadErr));
           }
         }
       }
-      
-      // Close modal immediately after registration
-      setShowRegistrationModal(false);
-      
+
+      if (isMountedRef.current) {
+        setShowRegistrationModal(false);
+      }
+
       // Refresh vendor data in background
-      await Promise.all([
+      Promise.all([
         fetchMyVendor(),
-        userLocation ? fetchVendors(userLocation) : fetchVendors()
-      ]).catch(err => console.warn('Background fetch error:', err));
-      
+        userLocation ? fetchVendors(userLocation) : fetchVendors(),
+      ]).catch(err => console.warn('Background fetch error:', err instanceof Error ? err.message : String(err)));
+
       const isAlreadyVerified =
-        Boolean((user as any)?.is_verified) ||
-        (user as any)?.kyc_status === 'verified' ||
+        Boolean(user?.is_verified) ||
+        user?.kyc_status === 'verified' ||
         myVendor?.kyc_status === 'verified';
 
       if (isAlreadyVerified) {
         router.push({
-          pathname: `/vendor/${newVendor.id}` as any,
-          params: { justCreated: 'true' }
-        });
+          pathname: '/vendor/[id]',
+          params: { id: newVendor.id, justCreated: 'true' },
+        } as never);
       } else {
         router.push({
           pathname: '/kyc',
-          params: { returnUrl: `/vendor/${newVendor.id}?justCreated=true` }
-        });
+          params: { returnUrl: `/vendor/${newVendor.id}?justCreated=true` },
+        } as never);
       }
-    } catch (error: any) {
-      console.error('Vendor API Registration Error:', error.response?.data);
+    } catch (error: unknown) {
+      console.error('Vendor API Registration Error:', error instanceof Error ? error.message : String(error));
       throw error;
     }
   };
 
-  const handleDeleteVendor = () => {
-    if (!myVendor?.id) return;
+  const handleCategoryPress = useCallback((cat: string) => {
+    router.push(`/vendor/category/${cat}` as never);
+  }, [router]);
 
-    const performDelete = async () => {
-      try {
-        const store = useVendorStore.getState();
-        await store.deleteVendor(myVendor.id);
-        if (Platform.OS === 'web') {
-          window.alert(localT('deletedMsg'));
-        } else {
-          Alert.alert(localT('deletedTitle'), localT('deletedMsg'));
-        }
-        await loadData();
-      } catch (error: any) {
-        if (Platform.OS === 'web') {
-          window.alert(error?.message || localT('failedDelete'));
-        } else {
-          Alert.alert(localT('error'), error?.message || localT('failedDelete'));
-        }
-      }
-    };
+  const handleVendorPress = useCallback((id: string) => {
+    router.push(`/vendor/${id}` as never);
+  }, [router]);
 
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm(localT('deleteConfirm'));
-      if (confirm) {
-        performDelete();
-      }
-    } else {
-      Alert.alert(
-        localT('deleteTitle'),
-        localT('deleteConfirm'),
-        [
-          { text: localT('cancel'), style: 'cancel' },
-          {
-            text: localT('deletePermanently'),
-            style: 'destructive',
-            onPress: performDelete
-          }
-        ]
-      );
-    }
-  };
-
-
-  const handleCall = (phone: string) => {
+  const handleCall = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`);
-  };
+  }, []);
 
-
-  // ────────────────────────────────────────────────────────────────────────────
-
-
-  const getVendorIcon = (vendorCategories?: string[]) => {
-    const cats = vendorCategories || [];
-    const category = cats[0]?.toLowerCase() || '';
-    if (category.includes('pooja') || category.includes('pandit')) return 'flower';
-    if (category.includes('grocery') || category.includes('sweets')) return 'basket';
-    if (category.includes('restaurant') || category.includes('catering')) return 'restaurant';
-    if (category.includes('gym') || category.includes('yoga')) return 'fitness';
-    if (category.includes('salon')) return 'cut';
-    return 'storefront';
-  };
-
-  const renderVendor = ({ item }: { item: any }) => {
-    const vendorCategories = item?.categories || [];
-    const isApprovedVendor =
-      (item.kyc_status === 'verified' ||
-       item.kyc_status === 'approved' ||
-       item.is_verified ||
-       (item as any).review_status === 'approved' ||
-       (item as any).review_status === 'verified') &&
-      item.kyc_status !== 'rejected' &&
-      (item as any).review_status !== 'rejected';
-    
+  const renderVendorItem = useCallback(({ item }: { item: Vendor }) => {
     return (
-      <Pressable 
-        style={({ pressed }) => [
-          styles.vendorCard,
-          Platform.OS === 'ios' && pressed && { opacity: 0.7 }
-        ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
-        onPress={() => router.push(`/vendor/${item.id}`)}
-      >
-        {/* Business Image Placeholder */}
-        <View style={styles.vendorImageContainer}>
-          {(item.business_gallery_images && item.business_gallery_images.find((url: string) => !!url)) || (item.photos && item.photos.length > 0) ? (
-            <Image
-              source={{ uri: (item.business_gallery_images || []).find((url: string) => !!url) || item.photos[0] }}
-              style={styles.vendorImage}
-            />
-          ) : (
-            <View style={styles.vendorImagePlaceholder}>
-              <Ionicons name={getVendorIcon(vendorCategories) as any} size={28} color={COLORS.primary} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.vendorInfo}>
-          <View style={styles.vendorNameRow}>
-            <Text style={styles.vendorName} numberOfLines={1}>{item.business_name || 'Unnamed Business'}</Text>
-            {isApprovedVendor && (
-              <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={styles.vendorVerifiedIcon} />
-            )}
-          </View>
-          
-          {/* Categories */}
-          {vendorCategories.length > 0 && (
-            <View style={styles.categoriesRow}>
-              {vendorCategories.slice(0, 2).map((cat: string, idx: number) => (
-                <View key={idx} style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText} numberOfLines={1}>{localT(cat.toLowerCase() as any) || cat}</Text>
-                </View>
-              ))}
-              {vendorCategories.length > 2 && (
-                <Text style={styles.moreCats}>+{vendorCategories.length - 2}</Text>
-              )}
-            </View>
-          )}
-          
-          {/* Distance & Location Preference Sub-Tier Badge */}
-          {(() => {
-            const locTier = computeLocationTier(item, userLocInfo);
-            return (
-              <View style={styles.distanceRow}>
-                <Ionicons name="location" size={12} color={COLORS.primary} />
-                <Text style={styles.distanceText}>{locTier.fullLabel}</Text>
-              </View>
-            );
-          })()}
-        </View>
-
-        {/* Call Button */}
-        <Pressable 
-          style={({ pressed }) => [
-            styles.callButton,
-            Platform.OS === 'ios' && pressed && { opacity: 0.7 }
-          ]}
-          android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: true }}
-          onPress={() => handleCall(item.phone_number)}
-        >
-          <Ionicons name="call" size={20} color={COLORS.primary} />
-        </Pressable>
-      </Pressable>
+      <VendorCardComponent
+        item={item}
+        userLocInfo={userLocInfo}
+        localT={localT}
+        onPress={handleVendorPress}
+        onCall={handleCall}
+      />
     );
-  };
+  }, [userLocInfo, localT, handleVendorPress, handleCall]);
 
-  // Show loading while checking auth
   if (authLoading) {
     return (
       <View style={styles.container}>
@@ -808,20 +901,22 @@ export default function VendorScreen() {
               <>
                 <VendorCategories containerStyle={{ marginBottom: 10, marginTop: 6 }} />
                 {/* Registration Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={myVendor ? localT('manageMyService') : localT('registerBusinessService')}
                   ref={registerBtnRef}
                   style={[styles.figmaRegisterBtn, { zIndex: 10, marginTop: 6 }]}
                   onPress={() => {
                     if (myVendor) {
                       if (canAccessDashboard) {
-                        router.push(`/vendor/${myVendor.id}`);
+                        router.push(`/vendor/${myVendor.id}` as never);
                       } else {
                         Alert.alert(
                           localT('kycRequiredTitle'),
                           localT('kycRequiredMsg'),
                           [
                             { text: localT('cancel'), style: 'cancel' },
-                            { text: localT('completeKyc'), onPress: () => router.push({ pathname: '/kyc', params: { returnUrl: '/(tabs)/vendor' } }) }
+                            { text: localT('completeKyc'), onPress: () => router.push({ pathname: '/kyc', params: { returnUrl: '/(tabs)/vendor' } } as never) },
                           ]
                         );
                       }
@@ -829,8 +924,8 @@ export default function VendorScreen() {
                       if (!hasVerifiedKyc) {
                         router.push({
                           pathname: '/kyc',
-                          params: { returnUrl: '/(tabs)/vendor' }
-                        });
+                          params: { returnUrl: '/(tabs)/vendor' },
+                        } as never);
                         return;
                       }
                       setShowRegistrationModal(true);
@@ -839,7 +934,7 @@ export default function VendorScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <Text style={styles.figmaRegisterBtnText}>
-                      {myVendor 
+                      {myVendor
                         ? localT('manageMyService')
                         : localT('registerBusinessService')}
                     </Text>
@@ -870,7 +965,7 @@ export default function VendorScreen() {
                   {/* KYC Banner */}
                   <View style={styles.figmaCapsuleContainer}>
                     <View style={styles.figmaKycCapsule}>
-                      <Text 
+                      <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         style={styles.figmaKycCapsuleText}
@@ -884,113 +979,62 @@ export default function VendorScreen() {
                   {/* Services Grid (3x2) */}
                   <View style={[styles.figmaServicesGrid, { marginTop: 24 }]}>
                     {/* Left Column (Astrologer spans 2 rows) */}
-                    <TouchableOpacity 
-                      style={[styles.figmaServiceCard, { width: cardWidth, height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
-                      onPress={() => router.push('/vendor/category/Astrologer' as any)}
-                    >
-                      {/* Manual crop offset for landscape Astrologer image */}
-                      <Image 
-                        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' }} 
-                        style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
-                        resizeMode="cover" 
-                      />
-                      <View style={styles.figmaServiceBadge}>
-                        <Image 
-                          source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp' }} 
-                          style={{ width: 12, height: 12, marginRight: 2 }} 
-                          resizeMode="contain"
-                        />
-                        <Text 
-                          numberOfLines={1}
-                          adjustsFontSizeToFit
-                          style={styles.figmaServiceBadgeText}
-                        >
-                          {localT('astrologer')}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                    <ServiceCard
+                      category="Astrologer"
+                      title={localT('astrologer')}
+                      imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp"
+                      iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/siren.webp"
+                      width={cardWidth}
+                      height={208}
+                      isTall
+                      onPress={handleCategoryPress}
+                    />
 
                     {/* Right Columns (2x2 grid) */}
                     <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {/* Electrician */}
-                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('electrician')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      {/* Panditji */}
-                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('panditji')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      {/* Carpenter */}
-                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp' }} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                        />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('carpenter')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      {/* Plumber */}
-                      <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp' }} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('plumber')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                      <ServiceCard
+                        category="Electrician"
+                        title={localT('electrician')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Electrician.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/lightning.webp"
+                        width={cardWidth}
+                        height={100}
+                        onPress={handleCategoryPress}
+                      />
+                      <ServiceCard
+                        category="Panditji"
+                        title={localT('panditji')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/panditji_icon.webp"
+                        width={cardWidth}
+                        height={100}
+                        onPress={handleCategoryPress}
+                      />
+                      <ServiceCard
+                        category="Carpenter"
+                        title={localT('carpenter')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/carpener.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp"
+                        width={cardWidth}
+                        height={100}
+                        onPress={handleCategoryPress}
+                      />
+                      <ServiceCard
+                        category="Plumber"
+                        title={localT('plumber')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/plumber_icon.webp"
+                        width={cardWidth}
+                        height={100}
+                        onPress={handleCategoryPress}
+                      />
                     </View>
                   </View>
 
                   {/* Services Header */}
                   <View style={[styles.figmaCapsuleContainer, { marginTop: 16 }]}>
                     <View style={styles.figmaServicesCapsule}>
-                      <Text 
+                      <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         style={styles.figmaServicesCapsuleText}
@@ -1003,16 +1047,16 @@ export default function VendorScreen() {
 
                 {/* Colorful Background Container for the Business Section */}
                 <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
-                  <Image 
-                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }} 
-                    style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
-                    resizeMode="cover" 
+                  <Image
+                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }}
+                    style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }}
+                    resizeMode="cover"
                   />
-                  
+
                   {/* Business Header */}
                   <View style={[styles.figmaCapsuleContainer, { marginTop: 24, marginBottom: 24 }]}>
                     <View style={styles.figmaBusinessCapsule}>
-                      <Text 
+                      <Text
                         numberOfLines={1}
                         adjustsFontSizeToFit
                         style={styles.figmaBusinessCapsuleText}
@@ -1025,74 +1069,47 @@ export default function VendorScreen() {
                   {/* Business Grid */}
                   <View style={styles.figmaBusinessGrid}>
                     <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
-                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('general store')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp' }} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('dairy')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                      <BusinessCard
+                        category="General Store"
+                        title={localT('general store')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/generalstore.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/general_store.webp"
+                        height={92}
+                        marginBottom={11}
+                        onPress={handleCategoryPress}
+                      />
+                      <BusinessCard
+                        category="Dairy"
+                        title={localT('dairy')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/dairy.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/cow.webp"
+                        height={92}
+                        onPress={handleCategoryPress}
+                      />
                     </View>
                     <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
-                      <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                        <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp' }} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
-                        <View style={styles.figmaServiceBadge}>
-                          <Image 
-                            source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp' }} 
-                            style={{ width: 12, height: 12, marginRight: 2 }} 
-                            resizeMode="contain"
-                          />
-                          <Text 
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            style={styles.figmaServiceBadgeText}
-                          >
-                            {localT('salon')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                      <BusinessCard
+                        category="Salon"
+                        title={localT('salon')}
+                        imageUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon.webp"
+                        iconUri="https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/salon_icon.webp"
+                        height={195}
+                        onPress={handleCategoryPress}
+                      />
                     </View>
                   </View>
                 </View>
               </>
             )}
-            keyExtractor={(item: any) => item.id}
-            estimatedItemSize={700}
+            keyExtractor={(item) => (item as { id: string }).id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
             onScroll={animatedScrollHandler}
             scrollEventThrottle={1}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={handleRefresh} 
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
                 colors={[COLORS.primary]}
                 progressViewOffset={42}
               />
@@ -1108,15 +1125,14 @@ export default function VendorScreen() {
 
             <AnimatedFlashList
               data={displayVendors}
-              renderItem={renderVendor}
-              keyExtractor={(item: any) => item.id}
-              estimatedItemSize={110}
+              renderItem={renderVendorItem}
+              keyExtractor={(item) => (item as Vendor).id}
               contentContainerStyle={[styles.listContent, { paddingTop: 8, paddingBottom: 90 }]}
               onScroll={animatedScrollHandler}
               scrollEventThrottle={1}
               refreshControl={
-                <RefreshControl 
-                  refreshing={refreshing} 
+                <RefreshControl
+                  refreshing={refreshing}
                   onRefresh={handleRefresh}
                   colors={[COLORS.primary]}
                   progressViewOffset={42}
@@ -1143,366 +1159,29 @@ export default function VendorScreen() {
           </View>
         )}
 
-      {/* Vendor Registration Modal */}
-      <VendorRegistrationModal
-        visible={showRegistrationModal}
-        onClose={() => setShowRegistrationModal(false)}
-        onSubmit={handleRegisterVendor}
-      />
+        {/* Vendor Registration Modal */}
+        <VendorRegistrationModal
+          visible={showRegistrationModal}
+          onClose={() => setShowRegistrationModal(false)}
+          onSubmit={handleRegisterVendor}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
+// ============================================================================
+// StyleSheet & Default Export
+// ============================================================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
   },
-  sectionTabsContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.xs,
-    backgroundColor: COLORS.background,
-  },
-  sectionTabsInner: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.xs,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  sectionTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  sectionTabActive: {
-    backgroundColor: `${COLORS.primary}15`,
-  },
-  sectionTabText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  sectionTabTextActive: {
-    color: COLORS.primary,
-  },
   loadingContainer: {
     padding: SPACING.xl,
     alignItems: 'center',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    paddingVertical: SPACING.sm,
-  },
-  tabsScroll: {
-    flex: 1,
-  },
-  tab: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginLeft: SPACING.sm,
-    borderRadius: 20,
-  },
-  tabActive: {
-    backgroundColor: `${COLORS.primary}15`,
-  },
-  tabText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  headerIcon: {
-    padding: SPACING.sm,
-    marginRight: SPACING.sm,
-  },
-  inlineSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    marginRight: SPACING.xs,
-    overflow: 'hidden',
-  },
-  inlineFilterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: `${COLORS.primary}10`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.xs,
-  },
-  inlineInputWrapper: {
-    flex: 1,
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  inlineSearchInput: {
-    width: '100%',
-    fontSize: 14,
-    color: COLORS.text,
-    paddingVertical: 0,
-    paddingLeft: 0,
-  },
-  inlinePlaceholderRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inlinePlaceholderText: {
-    color: COLORS.textLight,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  inlinePlaceholderBold: {
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  inlineFilterPanelWrapper: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-    paddingHorizontal: SPACING.sm,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    flex: 1,
-  },
-  searchInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-  },
-  filterIconButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: BORDER_RADIUS.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeFilterContainer: {
-    marginTop: SPACING.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  activeFilterText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    marginRight: SPACING.xs,
-  },
-  filterPanel: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    padding: SPACING.sm,
-    marginTop: SPACING.xs,
-    width: '100%',
-    maxHeight: 400,
-  },
-  filterModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  filterModal: {
-    width: '90%',
-    maxHeight: '65%',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-  },
-  filterModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: SPACING.sm,
-    color: COLORS.text,
-  },
-  filterOptionsList: {
-    marginBottom: SPACING.sm,
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.xs,
-  },
-  filterOption: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.xs,
-    backgroundColor: COLORS.background,
-  },
-  filterOptionActive: {
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  filterOptionText: {
-    color: COLORS.text,
-    fontSize: 14,
-  },
-  categoryChip: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: 20,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  categoryChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  categoryChipText: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: COLORS.surface,
-  },
-  filterActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  filterActionButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  filterActionText: {
-    color: COLORS.surface,
-    fontWeight: '600',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  suggestionsScroll: {
-    marginTop: SPACING.xs,
-    maxHeight: 44,
-    paddingHorizontal: SPACING.md,
-  },
-  suggestionsContent: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xs,
-  },
-  suggestionChip: {
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: SPACING.sm,
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  myBusinessCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-    margin: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  myBusinessIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  myBusinessInfo: {
-    flex: 1,
-  },
-  myBusinessLabel: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  myBusinessName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  kycStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.xs,
-  },
-  kycStatusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: SPACING.xs,
-  },
-  kycStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  registerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-    margin: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderStyle: 'dashed',
-  },
-  registerText: {
-    fontSize: 15,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: SPACING.sm,
   },
   listContent: {
     paddingHorizontal: SPACING.md,
@@ -1614,51 +1293,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 2,
   },
-  headerWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    backgroundColor: 'transparent',
-  },
-  figmaSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 24,
-    borderRadius: 26,
-    height: 52,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  figmaSearchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000',
-  },
-  figmaCategoriesRow: {
-    paddingHorizontal: 24,
-    gap: 40,
-    marginBottom: 24,
-  },
-  figmaCategoryItem: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  figmaCategoryIconContainer: {
-    // Deprecated for categories, but keeping if needed elsewhere
-  },
-  figmaCategoryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#000000',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
   figmaRegisterBtn: {
     flexDirection: 'row',
     width: Math.min(361, VSCREEN_WIDTH - 32),
@@ -1688,19 +1322,6 @@ const styles = StyleSheet.create({
   },
   figmaCapsuleContainer: {
     alignItems: 'center',
-  },
-  figmaCapsule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
-  figmaCapsuleText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
   },
   figmaBusinessCapsule: {
     width: 228,
@@ -1767,8 +1388,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   figmaServiceCard: {
-    width: 110,
-    height: 100,
     borderRadius: 11,
     borderWidth: 1,
     borderColor: '#F26522',
@@ -1776,6 +1395,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 8,
+  },
+  cardCoverImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  badgeIcon: {
+    width: 12,
+    height: 12,
+    marginRight: 2,
   },
   figmaServiceBadge: {
     flexDirection: 'row',
@@ -1823,5 +1452,3 @@ const styles = StyleSheet.create({
     paddingBottom: 7,
   },
 });
-
-

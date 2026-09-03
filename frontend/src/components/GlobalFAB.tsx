@@ -412,7 +412,7 @@ export function GlobalFAB() {
 
 
 
-  // Do not show FAB on authentication screens, library, or legal/terms/privacy screens
+  // Do not show FAB on authentication screens, library, festivals, or legal/terms/privacy screens
   if (
     !pathname ||
     pathname === '/' ||
@@ -426,7 +426,9 @@ export function GlobalFAB() {
     pathname.startsWith('/library') ||
     pathname.includes('privacy') ||
     pathname.includes('terms') ||
-    pathname.includes('guidelines')
+    pathname.includes('guidelines') ||
+    pathname.includes('festival-section-detail') ||
+    pathname.includes('festival-detail')
   ) {
     return null;
   }

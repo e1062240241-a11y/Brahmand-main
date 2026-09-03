@@ -324,10 +324,10 @@ export default function TempleDetailScreen() {
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace('/(tabs)/temple');
+        router.replace({ pathname: '/(tabs)/jaap', params: { tab: 'temple' } });
       }
     } catch (error) {
-      router.replace('/(tabs)/temple');
+      router.replace({ pathname: '/(tabs)/jaap', params: { tab: 'temple' } });
     }
   };
 
