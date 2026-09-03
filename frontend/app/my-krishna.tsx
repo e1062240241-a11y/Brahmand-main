@@ -16,9 +16,11 @@ import {View,
   Dimensions,
   ScrollView} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
@@ -419,9 +421,11 @@ export default function MyKrishnaChat() {
       }
     }
 
+    const isWelcome = item.id === 'welcome';
+
     return (
       <View style={{ width: '100%' }}>
-        {showDateDivider && (
+        {showDateDivider && !isWelcome && (
           <View style={styles.dateDivider}>
             <Text style={styles.dateDividerText}>{dateLabel}</Text>
           </View>
@@ -440,10 +444,16 @@ export default function MyKrishnaChat() {
             />
           )}
           <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+            {!isUser && (
+              <View style={styles.aiSenderBadge}>
+                <Text style={styles.aiSenderText}>Shri Krishna</Text>
+                <Ionicons name="sparkles" size={11} color="#F97316" />
+              </View>
+            )}
             <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
               {item.content}
             </Text>
-            <Text style={styles.timestamp}>
+            <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.assistantTimestamp]}>
               {formatTimeIST(item.timestamp)}
             </Text>
           </View>
@@ -453,28 +463,26 @@ export default function MyKrishnaChat() {
   };
 
   return (
-    <View 
-      style={{ flex: 1 }}
-    >
+    <View style={{ flex: 1 }}>
       <LinearGradient
         colors={gradientColors}
-        locations={[0, 0.1058, 0.2212]}
+        locations={[0, 0.12, 0.28]}
         style={styles.container}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar
-          style="dark"
-        />
+        <StatusBar style="dark" />
 
-        {/* ── Header ── */}
+        {/* ── Gemini Minimal Glass Header ── */}
         <View style={[styles.header, { height: insets.top + 60, paddingTop: insets.top }]}>
           <View style={styles.headerLeft}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
               onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as any)}
               style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: true, radius: 20 }}
             >
-              <Ionicons name="chevron-back" size={26} color="#000" />
+              <Ionicons name="chevron-back" size={24} color="#1E1B18" />
             </Pressable>
 
             <View style={styles.headerCenter}>
@@ -483,7 +491,12 @@ export default function MyKrishnaChat() {
                 style={styles.headerAvatarImage}
               />
               <View style={styles.headerTitleColumn}>
-                <Text style={styles.headerTitle}>My Krishn</Text>
+                <View style={styles.headerTitleRow}>
+                  <Text style={styles.headerTitle}>My Krishn</Text>
+                  <View style={styles.geminiBadge}>
+                    <Text style={styles.geminiBadgeText}>Divine AI</Text>
+                  </View>
+                </View>
                 <Animated.Text style={[styles.shubhVicharText, { opacity: fadeAnim }]} numberOfLines={1}>
                   ✨ {shubhVichar}
                 </Animated.Text>
@@ -492,12 +505,14 @@ export default function MyKrishnaChat() {
           </View>
 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Clear chat"
             onPress={handleClearChat}
             style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}
             disabled={isLoading || historyLoading}
             android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: true, radius: 20 }}
           >
-            <Ionicons name="ellipsis-vertical" size={22} color="#000" />
+            <Ionicons name="trash-outline" size={20} color="rgba(30, 27, 24, 0.75)" />
           </Pressable>
         </View>
 
@@ -519,51 +534,70 @@ export default function MyKrishnaChat() {
               contentContainerStyle={styles.listContent}
               onContentSizeChange={scrollToBottom}
               showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                messages.length <= 1 ? (
+                  <View style={styles.geminiHeroSection}>
+                    <Image
+                      source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
+                      style={styles.heroAvatarImg}
+                    />
+                    <Text style={styles.heroGreetingText}>{timeOfDayGreeting.greeting}</Text>
+                    <Text style={styles.heroSubtitleText}>{timeOfDayGreeting.subtitle}</Text>
+                  </View>
+                ) : null
+              }
               ListFooterComponent={isLoading ? <TypingDots /> : null}
             />
           )}
 
-          {/* ── Suggestions chips (only shown before first user message) ── */}
+          {/* ── Gemini Suggested Prompts Grid ── */}
           {showSuggestions && !historyLoading && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              style={styles.suggestionsScroll}
-              contentContainerStyle={styles.suggestionsContent}
-            >
-              {suggestions.map((s, i) => (
-                <Pressable
-                  key={i}
-                  style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
-                  onPress={() => handleSuggestion(s)}
-                  android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
-                >
-                  <Text style={styles.chipText}>{s}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <View style={styles.suggestionsWrapper}>
+              <Text style={styles.suggestionsHeaderTitle}>
+                {t('language') === 'hi' ? 'सुझावित प्रश्न' : 'Suggested Questions'}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                style={styles.suggestionsScroll}
+                contentContainerStyle={styles.suggestionsContent}
+              >
+                {suggestions.map((s, i) => (
+                  <Pressable
+                    key={i}
+                    accessibilityRole="button"
+                    accessibilityLabel={s}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+                    ]}
+                    onPress={() => handleSuggestion(s)}
+                    android_ripple={{ color: 'rgba(249, 115, 22, 0.1)', borderless: false }}
+                  >
+                    <View style={styles.chipSparkle}>
+                      <Ionicons name="sparkles-outline" size={13} color="#EA580C" />
+                    </View>
+                    <Text style={styles.chipText}>{s}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
           )}
 
           {/* ── Info Banner ── */}
-          {/* 🧡 Engagement: Reframed info banner instruction from robotic English to warm Hindi primary with English fallback. */}
-          {/* Lever: Reframing (Emotional Copy) */}
-          {/* Why: Expressing guidance in Hindi makes user feel comfortable and respected in their native tongue. */}
-          {/* UI: Text-only change, no new visual elements. */}
           {!historyLoading && messages.length < 3 && (
             <View style={styles.infoBanner}>
-              <Svg width={15.692} height={15.68} viewBox="0 0 16 16" fill="none">
-                <Path d="M7.8517 0C1.81646 0 -1.95556 6.53333 1.06206 11.76C4.07967 16.9867 11.6237 16.9867 14.6413 11.76C15.3294 10.5682 15.6917 9.21621 15.6917 7.84C15.6871 3.51198 12.1797 0.004575 7.8517 0ZM7.8517 14.4738C2.74496 14.4741 -0.446704 8.94601 2.10647 4.52333C4.65964 0.100656 11.0431 0.100369 13.5966 4.52282C14.179 5.53135 14.4855 6.67542 14.4855 7.84C14.4814 11.5021 11.5137 14.4697 7.8517 14.4738ZM9.05785 11.4585C9.05785 11.7915 8.78783 12.0615 8.45477 12.0615C7.78861 12.0616 7.24862 11.5215 7.24862 10.8554V7.84C6.78437 7.84 6.49422 7.33744 6.72634 6.93539C6.83406 6.7488 7.03317 6.63386 7.24862 6.63384C7.91478 6.63382 8.45477 7.17384 8.45477 7.84V10.8554C8.78783 10.8554 9.05785 11.1254 9.05785 11.4585ZM6.64554 4.52308C6.64554 3.82671 7.39939 3.39147 8.00246 3.73966C8.60554 4.08784 8.60554 4.95831 8.00246 5.3065C7.86496 5.38589 7.70894 5.42769 7.55016 5.42769C7.05053 5.42771 6.64554 5.0227 6.64554 4.52308Z" fill="black"/>
-              </Svg>
+              <Ionicons name="bulb-outline" size={18} color="#D97706" style={{ marginRight: 6 }} />
               <Text style={styles.infoText}>
                 {t('language') === 'hi'
-                  ? 'अपना प्रश्न एक ही संदेश में पूरा लिखें। कृपया प्रश्नों को अलग-अलग टुकड़ों में न भेजें।'
-                  : 'Ask your complete question in one message, then press Enter. Please avoid splitting your question across multiple messages.'}
+                  ? 'अपना प्रश्न एक ही संदेश में पूरा लिखें। Shri Krishna मार्गदर्शन करेंगे।'
+                  : 'Ask your complete question in one message. Shri Krishna will guide you.'}
               </Text>
             </View>
           )}
 
-          {/* ── Input Bar ── */}
+          {/* ── Gemini-Style Frosted Glassmorphic Input Bar ── */}
           <View 
             style={[
               styles.inputWrapper,
@@ -576,13 +610,28 @@ export default function MyKrishnaChat() {
               }
             ]}
           >
-            <View style={styles.inputRow}>
-              <View style={styles.inputContainer}>
+            <View style={styles.glassInputCard}>
+              {Platform.OS === 'web' ? (
+                <View style={[StyleSheet.absoluteFill, styles.webGlassFill]} />
+              ) : (
+                <BlurView intensity={Platform.OS === 'ios' ? 70 : 40} tint="light" style={StyleSheet.absoluteFill} />
+              )}
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.85)', 'rgba(255, 248, 242, 0.65)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.inputInnerRow}>
+                <Image
+                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
+                  style={styles.krishnaLogoImage}
+                />
                 <TextInput
                   ref={inputRef}
                   style={styles.input}
-                  placeholder="Message..."
-                  placeholderTextColor="rgba(0, 0, 0, 0.5)"
+                  placeholder={t('language') === 'hi' ? 'कृष्ण से कुछ भी पूछें...' : 'Ask Shri Krishna anything...'}
+                  placeholderTextColor="rgba(112, 66, 20, 0.45)"
                   value={inputText}
                   onChangeText={setInputText}
                   multiline
@@ -592,22 +641,44 @@ export default function MyKrishnaChat() {
                   editable={!historyLoading}
                   disableFullscreenUI={true}
                   textAlignVertical="center"
+                  accessibilityRole="none"
+                  accessibilityLabel="Message input"
                 />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Send message"
+                  style={({ pressed }) => [
+                    styles.sendBtn,
+                    inputText.trim() ? styles.sendBtnActive : styles.sendBtnDisabled,
+                    pressed && { opacity: 0.8, transform: [{ scale: 0.94 }] }
+                  ]}
+                  onPress={handleSend}
+                  disabled={!inputText.trim() || isLoading || historyLoading}
+                >
+                  {inputText.trim() ? (
+                    <LinearGradient
+                      colors={['#F97316', '#EA580C']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.sendBtnGradient}
+                    >
+                      <Ionicons
+                        name="arrow-up"
+                        size={18}
+                        color="#FFF"
+                      />
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.sendBtnInactiveCircle}>
+                      <Ionicons
+                        name="arrow-up"
+                        size={17}
+                        color="rgba(120, 80, 50, 0.35)"
+                      />
+                    </View>
+                  )}
+                </Pressable>
               </View>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  pressed && { opacity: 0.7 }
-                ]}
-                onPress={handleSend}
-                disabled={!inputText.trim() || isLoading || historyLoading}
-              >
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color="#000"
-                />
-              </Pressable>
             </View>
           </View>
           {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
@@ -629,22 +700,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     zIndex: 100,
-    backgroundColor: 'rgba(255, 250, 248, 0.50)',
-    shadowColor: Platform.OS === 'ios' ? '#000' : undefined,
-    shadowOffset: Platform.OS === 'ios' ? { width: 0, height: 6 } : undefined,
-    shadowOpacity: Platform.OS === 'ios' ? 0.15 : undefined,
-    shadowRadius: Platform.OS === 'ios' ? 10 : undefined,
-    elevation: Platform.OS === 'android' ? 0 : 6,
-    borderBottomWidth: Platform.OS === 'android' ? 1 : 0,
-    borderBottomColor: Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.06)' : undefined,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(249, 115, 22, 0.10)',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  clearBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19 },
+  clearBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19 },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatarImage: {
     width: 36,
@@ -655,17 +721,68 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     maxWidth: Dimensions.get('window').width - 160,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   headerTitle: {
-    color: '#000000',
+    color: '#1E1B18',
     fontSize: 16,
     fontFamily: FONTS.bold,
     fontWeight: '700',
   },
+  geminiBadge: {
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 8,
+  },
+  geminiBadgeText: {
+    fontSize: 10,
+    color: '#EA580C',
+    fontWeight: '700',
+  },
   shubhVicharText: {
-    color: 'rgba(0, 0, 0, 0.60)',
+    color: 'rgba(100, 70, 50, 0.75)',
     fontSize: 11,
     fontFamily: FONTS.medium,
     marginTop: 1,
+  },
+
+  // Gemini Hero Section (when chat starts)
+  geminiHeroSection: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  heroAvatarImg: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    marginBottom: 14,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  heroGreetingText: {
+    fontSize: 22,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#1E1B18',
+    textAlign: 'center',
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  heroSubtitleText: {
+    fontSize: 14,
+    fontFamily: FONTS.medium,
+    color: 'rgba(80, 55, 35, 0.75)',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   // Loader
@@ -673,118 +790,168 @@ const styles = StyleSheet.create({
   loaderText: { color: '#FFD700', fontFamily: FONTS.medium, marginTop: 12, fontSize: 14 },
 
   // Messages
-  listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
+  listContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 },
   dateDivider: {
     alignSelf: 'center',
-    marginVertical: 12,
-    paddingHorizontal: 10,
+    marginVertical: 14,
+    paddingHorizontal: 12,
     paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.12)',
   },
   dateDividerText: {
-    color: 'rgba(0, 0, 0, 0.4)',
-    fontSize: 12,
+    color: 'rgba(120, 80, 50, 0.7)',
+    fontSize: 11,
     fontFamily: FONTS.medium,
   },
-  messageRow: { flexDirection: 'row', marginBottom: 14, maxWidth: '85%' },
+  messageRow: { flexDirection: 'row', marginBottom: 16, maxWidth: '88%' },
   userRow: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
-  assistantRow: { alignSelf: 'flex-start' },
+  assistantRow: { alignSelf: 'flex-start', alignItems: 'flex-start' },
 
   assistantAvatarImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    marginRight: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 10,
+    marginTop: 2,
   },
 
   messageBubble: { 
-    padding: 12, 
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 22,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   userBubble: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.50)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 3,
-    borderBottomLeftRadius: 20,
+    backgroundColor: '#F97316',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomRightRadius: 4,
+    borderBottomLeftRadius: 22,
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    borderBottomLeftRadius: 3,
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.18)',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 22,
+    borderBottomRightRadius: 22,
+    borderBottomLeftRadius: 22,
   },
-  messageText: { fontSize: 15, fontFamily: FONTS.medium, lineHeight: 22, color: '#000' },
-  userText: { color: '#000' },
-  assistantText: { color: '#000' },
+  aiSenderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  aiSenderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D97706',
+    fontFamily: FONTS.bold,
+  },
+  messageText: { fontSize: 15, fontFamily: FONTS.medium, lineHeight: 22 },
+  userText: { color: '#FFFFFF', fontWeight: '500' },
+  assistantText: { color: '#271D18', fontWeight: '400' },
   timestamp: {
     fontSize: 10,
-    color: 'rgba(0, 0, 0, 0.4)',
-    marginTop: 5,
+    marginTop: 6,
     alignSelf: 'flex-end',
+  },
+  userTimestamp: {
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  assistantTimestamp: {
+    color: 'rgba(146, 94, 56, 0.65)',
   },
 
   // Typing indicator
-  typingRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 14, paddingHorizontal: 14 },
+  typingRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, paddingHorizontal: 16 },
   typingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 20,
-    borderBottomLeftRadius: 3,
-    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    gap: 4,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.12)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 2,
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#000',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F97316',
   },
 
-  // Suggestion chips
+  // Suggestion chips (Gemini style cards)
+  suggestionsWrapper: {
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  suggestionsHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(90, 55, 30, 0.65)',
+    paddingHorizontal: 16,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   suggestionsScroll: {
     flexGrow: 0,
     maxHeight: 52,
-    marginBottom: 4,
   },
   suggestionsContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
   chip: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: 'rgba(249, 115, 22, 0.20)',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chipSparkle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   chipText: {
-    color: '#000',
+    color: '#2A1F18',
     fontSize: 13,
     fontFamily: FONTS.medium,
     lineHeight: 18,
@@ -792,71 +959,105 @@ const styles = StyleSheet.create({
 
   // Info Banner
   infoBanner: {
-    width: 315,
-    height: 68,
+    width: Dimensions.get('window').width - 32,
     alignSelf: 'center',
-    backgroundColor: '#F4F4F4',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 119, 6, 0.25)',
+    marginBottom: 6,
   },
   infoText: {
     fontSize: 12,
-    color: '#000000',
+    color: '#78350F',
     fontFamily: FONTS.regular,
     flex: 1,
-    textAlign: 'center',
+    lineHeight: 16,
   },
 
-  // Input
+  // Gemini-Style Frosted Glassmorphic Input
   inputWrapper: { 
-    paddingHorizontal: 12, 
-    paddingTop: 6,
+    paddingHorizontal: 16, 
+    paddingTop: 8,
   },
-  inputRow: {
+  glassInputCard: {
+    width: '100%',
+    borderRadius: 28,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.75)',
+    overflow: 'hidden',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 4,
+    backgroundColor: Platform.OS === 'android' ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.65)',
+  },
+  webGlassFill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backdropFilter: 'blur(20px)',
+  },
+  inputInnerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingLeft: 10,
+    paddingRight: 8,
+    paddingVertical: 6,
+    minHeight: 52,
   },
-  inputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    height: 44,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.50)',
+  krishnaLogoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    color: '#000',
+    color: '#1E1B18',
     fontFamily: FONTS.medium,
-    fontSize: 15,
-    paddingVertical: 4,
-  },
-  inputIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconMargin: {
-    marginRight: 2,
+    fontSize: 15.5,
+    lineHeight: 21,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    paddingRight: 8,
+    maxHeight: 100,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.50)',
-    alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
-    marginLeft: 9,
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  sendBtnActive: {
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  sendBtnDisabled: {
+    opacity: 0.85,
+  },
+  sendBtnGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendBtnInactiveCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
 });

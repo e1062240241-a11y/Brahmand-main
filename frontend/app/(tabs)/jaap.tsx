@@ -21,9 +21,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from 'expo-router';
 import { resolveTempleImage } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import {
@@ -131,12 +130,12 @@ const TempleCardImageItem = React.memo(({
     formattedDeity = 'LORD KRISHNA';
   }
   if (t('language') === 'hi') {
-    const upper = formattedDeity.toUpperCase();
-    if (upper.includes('SHIVA')) formattedDeity = 'भगवान शिव';
-    else if (upper.includes('KRISHNA')) formattedDeity = 'भगवान कृष्ण';
-    else if (upper.includes('GANESHA') || upper.includes('GANESH')) formattedDeity = 'भगवान गणेश';
-    else if (upper.includes('HANUMAN')) formattedDeity = 'हनुमान जी';
-    else if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) formattedDeity = 'माता लक्ष्मी';
+    if (formattedDeity.toUpperCase().includes('SHIVA')) formattedDeity = 'भगवान शिव';
+    else if (formattedDeity.toUpperCase().includes('KRISHNA')) formattedDeity = 'भगवान कृष्ण';
+    else if (formattedDeity.toUpperCase().includes('DURGA') || formattedDeity.toUpperCase().includes('SHAKTI')) formattedDeity = 'माँ दुर्गा';
+    else if (formattedDeity.toUpperCase().includes('VISHNU')) formattedDeity = 'भगवान विष्णु';
+    else if (formattedDeity.toUpperCase().includes('HANUMAN')) formattedDeity = 'भगवान हनुमान';
+    else if (formattedDeity.toUpperCase().includes('GANESHA') || formattedDeity.toUpperCase().includes('GANESH')) formattedDeity = 'भगवान गणेश';
   }
 
   return (
@@ -145,8 +144,8 @@ const TempleCardImageItem = React.memo(({
         styles.newTempleCard,
         pressed && Platform.OS === 'ios' && { opacity: 0.8 }
       ]}
-      android_ripple={{ color: 'rgba(255, 255, 255, 0.35)', borderless: false }}
-      onPress={() => router.push(`/temple/${encodeURIComponent(safeItemId)}`)}
+      android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
+      onPress={() => router.push(`/temple/${encodeURIComponent(targetId)}`)}
     >
       {hasError ? (
         <View style={[styles.newTempleCardImg, { backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA' }]}>
@@ -157,11 +156,7 @@ const TempleCardImageItem = React.memo(({
           source={currentSource}
           style={styles.newTempleCardImg}
           resizeMode="cover"
-          onError={() => {
-            if (!hasError) {
-              setHasError(true);
-            }
-          }}
+          onError={() => setHasError(true)}
         />
       )}
       <View style={styles.newTempleCardInfo}>
@@ -216,19 +211,19 @@ const LIVE_JAAPS = [
 const UPCOMING_JAAPS = [
   {
     id: 'uj1',
-    title: 'Ganesh Jaap',
-    titleHi: 'गणेश जाप',
-    mantraType: 'ganesh_aarti',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganesh.webp' },
-    allowedDays: [3], // Wednesday
+    title: 'Hanuman Chalisa',
+    titleHi: 'हनुमान चालीसा',
+    mantraType: 'hanuman',
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_hanuman.webp' },
+    allowedDays: [2, 6], // Tuesday, Saturday
   },
   {
     id: 'uj2',
-    title: 'Shani Chalisa',
-    titleHi: 'शनि चालीसा',
-    mantraType: 'shani_chalisa',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shani.webp' },
-    allowedDays: [6], // Saturday
+    title: 'Gayatri Mantra',
+    titleHi: 'गायत्री मंत्र',
+    mantraType: 'gayatri',
+    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_gayatri.webp' },
+    allowedDays: [0, 1, 2, 3, 4, 5, 6], // Daily
   },
   {
     id: 'uj3',
@@ -279,12 +274,16 @@ const getMantraRoomName = (id: string) => {
 export default function JaapLandingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string; section?: string }>();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const onJaapScrollTabBar = useScrollToHideTabBar();
   const [now, setNow] = useState(new Date());
-  const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
-  const sectionAnim = useRef(new Animated.Value(0)).current;
+
+  const initialSection =
+    params.tab === 'temple' || params.section === 'temple' ? 'temple' : 'jaap';
+  const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>(initialSection);
+  const sectionAnim = useRef(new Animated.Value(initialSection === 'temple' ? 1 : 0)).current;
   const heroBannerIndex = 0;
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
@@ -553,6 +552,13 @@ export default function JaapLandingScreen() {
       friction: 12,
     }).start();
   }, [activeSection, sectionAnim]);
+
+  useEffect(() => {
+    const target = params.tab || params.section;
+    if ((target === 'temple' || target === 'jaap') && target !== activeSection) {
+      switchSection(target);
+    }
+  }, [params.tab, params.section, switchSection, activeSection]);
 
   const heroTitle = t('language') === 'hi'
     ? (liveActive ? 'महामृत्युंजय मंत्र' : 'सायंकालीन गायत्री जाप')
