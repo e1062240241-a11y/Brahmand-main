@@ -1462,6 +1462,8 @@ api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
 api_router.include_router(home_router)
+from routes.engagement_routes import router as engagement_router
+api_router.include_router(engagement_router)
 
 
 
