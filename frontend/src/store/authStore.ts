@@ -132,14 +132,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: cleanedUser, token, isAuthenticated: true, isLoading: false });
 
     try {
-      const { setUserId, logEvent, setUserProperties } = require('../services/firebase/analytics');
+      const { setUserId, logLogin, setUserProperties } = require('../services/firebase/analytics');
       if (cleanedUser?.id) {
         setUserId(String(cleanedUser.id));
         setUserProperties({
           phone: cleanedUser.phone || '',
           language: cleanedUser.language || 'en',
         });
-        logEvent('login', { method: 'phone' });
+        logLogin('phone');
       }
     } catch (e) {}
 
