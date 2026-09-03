@@ -2811,15 +2811,17 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
 
     blocked_ids = set()
     try:
-        # Users blocked by user_id
-        blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+        # ⚡ Bolt Optimization: Use asyncio.gather for concurrent DB queries to reduce latency.
+        blocks_by_me, blocks_of_me = await asyncio.gather(
+            db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)]),
+            db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+        )
+
         for b in blocks_by_me:
             b_uid = b.get('blockedUid')
             if b_uid:
                 blocked_ids.add(b_uid)
         
-        # Users who blocked user_id
-        blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
         for b in blocks_of_me:
             b_uid = b.get('blockerUid')
             if b_uid:
