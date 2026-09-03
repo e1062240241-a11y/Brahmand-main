@@ -43,7 +43,7 @@ class AstrologyApiService:
                 response = await client.post(url, headers=headers, json=data)
             if response.status_code >= 400:
                 logger.error("Astrology API error: %s - %s", response.status_code, response.text)
-                return {"error": f"Status {response.status_code}: {response.text}"}
+                return {"error": "An internal server error occurred while fetching astrology data"}
             return response.json()
         except Exception as e:
             logger.error("Astrology API request failed: %s", e)
@@ -321,7 +321,7 @@ class AstrologyApiService:
                 response = await client.post(url, headers=headers, json=payload)
             if response.status_code >= 400:
                 logger.error("Astrology API Horoscope error: %s - %s", response.status_code, response.text)
-                return {"error": f"Status {response.status_code}: {response.text}"}
+                return {"error": "An internal server error occurred while fetching horoscope data"}
             
             data = response.json()
             # Normalize prediction to always be a string or object
