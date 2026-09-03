@@ -14,10 +14,17 @@
 **Learning:** Read-modify-write patterns for `likes_count` in post like/unlike operations (`/posts/{post_id}/like`) cause lost updates and corrupted like counters when concurrent requests hit the endpoint under heavy load (10k+ users).
 **Action:** Replaced `db.update_document('posts', post_id, {'likes_count': new_count})` with atomic `db.increment_field('posts', post_id, 'likes_count', ±1)` using Firestore's atomic increment transform.
 
+## 2026-09-03 - DB-level Query Bounds & Aggregations for Notifications and Requests
+**Learning:** Querying user notifications, help requests, and community requests without `limit` or `order_by` limits causes Firestore to stream 100% of historical documents for a user into Python memory on every feed render. At 1 lakh+ users, this results in O(N_total) document reads per request and massive memory spikes. Calculating unread notification counts by iterating all fetched documents in memory further amplifies this read overhead.
+**Action:** Capped candidate queries at the Firestore query level with fallback handling (`fetch_limit = limit * 3 + 10` for notifications; `fetch_limit = offset + safe_limit + 1` for user requests), added `limit` and `offset` pagination to `/help-requests/my` and `/community-requests/my`, and switched unread notification count computation to server-side `count_documents` aggregation.
+
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:
 - `/temples` — loads all temples — FIXED
 - `/temples/nearby` — loads all temples before slice — FIXED
+- `/notifications` — loads all historical user notifications — FIXED
+- `/help-requests/my` — loads all historical user help requests — FIXED
+- `/community-requests/my` — loads all historical user community requests — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
