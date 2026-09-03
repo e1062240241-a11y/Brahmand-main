@@ -6,3 +6,7 @@
 **Vulnerability:** The application was exposing explicit exception strings directly to the client inside JSON payload responses (e.g., `return {'error': str(e)}`) in socket handlers and API services.
 **Learning:** While unhandled Python exceptions (e.g., `RuntimeError`) are automatically sanitized into generic 500 errors by FastAPI, explicitly returning `str(e)` in a standard JSON response completely bypasses the framework's security perimeter and creates a CWE-209 vulnerability.
 **Prevention:** Never pass raw Python exception strings (e.g., `str(e)`) directly to the client in explicitly returned JSON payloads or `HTTPException` detail parameters. Replace dynamic error handling with safe, static fallback messages.
+## 2025-03-09 - CWE-209 Information Exposure via 3rd-Party API Responses
+**Vulnerability:** The backend was directly reflecting upstream API error responses (`response.text`) to the client when making external HTTP requests (e.g. to the Astrology API).
+**Learning:** Exposing raw 3rd-party response bodies in client-facing error payloads (e.g. `return {"error": f"Status {response.status_code}: {response.text}"}`) leaks external infrastructure details, potential API keys included in error messages, and upstream vulnerability signatures.
+**Prevention:** When handling errors from external APIs, log the raw `response.text` server-side for debugging, but always return a generic, static fallback message (e.g. `"An internal server error occurred while fetching data"`) to the client.
