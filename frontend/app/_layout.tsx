@@ -755,11 +755,48 @@ export default function RootLayout() {
   useEffect(() => {
     if (pathname) {
       try {
-        const { logScreenView } = require('../src/services/firebase/analytics');
+        const { logScreenView, startScreenTime, endScreenTime } = require('../src/services/firebase/analytics');
         logScreenView(pathname);
+
+        let currentTracked: string | null = null;
+        if (pathname === '/home' || pathname === '/(tabs)/home' || pathname === '/') {
+          currentTracked = 'Home';
+        } else if (pathname === '/profile' || pathname === '/(tabs)/profile') {
+          currentTracked = 'Profile';
+        } else if (pathname.includes('/jaap')) {
+          currentTracked = 'Jaap';
+        } else if (pathname.includes('/library')) {
+          currentTracked = 'Library';
+        } else if (pathname.includes('/panchang')) {
+          currentTracked = 'Panchang';
+        } else if (pathname.includes('/festival')) {
+          currentTracked = 'Festivals';
+        }
+
+        if (currentTracked) {
+          startScreenTime(currentTracked);
+        }
+
+        return () => {
+          if (currentTracked) {
+            endScreenTime(currentTracked);
+          }
+        };
       } catch (err) {}
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState.match(/inactive|background/)) {
+        try {
+          const { endScreenTime } = require('../src/services/firebase/analytics');
+          ['Home', 'Profile', 'Library', 'Jaap', 'Panchang', 'Festivals', 'SettingsMenu'].forEach(endScreenTime);
+        } catch (e) {}
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
 
   useEffect(() => {

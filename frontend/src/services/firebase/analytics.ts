@@ -341,6 +341,45 @@ export async function setUserProperties(properties: Record<string, any>) {
   }
 }
 
+const TRACKED_TIME_SCREENS = new Set([
+  'Home',
+  'Profile',
+  'SettingsMenu',
+  'Library',
+  'Jaap',
+  'Panchang',
+  'Festivals',
+]);
+
+const activeScreenTimers: Record<string, number> = {};
+
+/**
+ * Start tracking time spent on a specific screen/tab
+ * Only tracks: Home, Profile, SettingsMenu, Library, Jaap, Panchang, Festivals
+ */
+export function startScreenTime(screenKey: string) {
+  if (!TRACKED_TIME_SCREENS.has(screenKey)) return;
+  activeScreenTimers[screenKey] = Date.now();
+}
+
+/**
+ * End tracking time spent and log directly to Firebase Analytics
+ */
+export function endScreenTime(screenKey: string) {
+  const startTime = activeScreenTimers[screenKey];
+  if (!startTime) return;
+  delete activeScreenTimers[screenKey];
+
+  const durationSeconds = Math.round((Date.now() - startTime) / 1000);
+  if (durationSeconds >= 2 && durationSeconds <= 14400) {
+    logEvent('time_spent', {
+      screen_name: screenKey,
+      duration_seconds: durationSeconds,
+      duration_minutes: Math.round((durationSeconds / 60) * 10) / 10,
+    });
+  }
+}
+
 export default {
   logEvent,
   logScreenView,
@@ -351,4 +390,6 @@ export default {
   logSelectContent,
   logShare,
   setAnalyticsCollectionEnabled,
+  startScreenTime,
+  endScreenTime,
 };
