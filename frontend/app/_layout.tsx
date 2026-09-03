@@ -752,6 +752,15 @@ export default function RootLayout() {
     }
   }, [pathname]);
 
+  useEffect(() => {
+    if (pathname) {
+      try {
+        const { logScreenView } = require('../src/services/firebase/analytics');
+        logScreenView(pathname);
+      } catch (err) {}
+    }
+  }, [pathname]);
+
 
   useEffect(() => {
     const initAudio = async () => {

@@ -2,82 +2,165 @@ import { Platform } from 'react-native';
 
 type Params = Record<string, any> | undefined;
 
-let rnAnalytics: any = null;
-let expoAnalytics: any = null;
+let nativeAnalyticsInstance: any = null;
+let webAnalyticsInstance: any = null;
 
-if (Platform.OS !== 'web') {
-  try {
-    // prefer @react-native-firebase/analytics on native
-    // use require to avoid bundling on web
-     
-    rnAnalytics = require('@react-native-firebase/analytics').default;
-  } catch (e) {
-    rnAnalytics = null;
+function getNativeAnalytics() {
+  if (Platform.OS === 'web') return null;
+  if (!nativeAnalyticsInstance) {
+    try {
+      const analyticsModule = require('@react-native-firebase/analytics');
+      const getInst = analyticsModule?.default || analyticsModule;
+      if (typeof getInst === 'function') {
+        nativeAnalyticsInstance = getInst();
+      } else if (getInst && typeof getInst.logEvent === 'function') {
+        nativeAnalyticsInstance = getInst;
+      }
+    } catch (e) {
+      nativeAnalyticsInstance = null;
+    }
   }
-} else {
+  return nativeAnalyticsInstance;
+}
+
+function getWebAnalytics() {
+  if (Platform.OS !== 'web') return null;
+  if (!webAnalyticsInstance) {
+    try {
+      const { getAnalytics } = require('firebase/analytics');
+      const { getApp } = require('firebase/app');
+      webAnalyticsInstance = getAnalytics(getApp());
+    } catch (e) {
+      webAnalyticsInstance = null;
+    }
+  }
+  return webAnalyticsInstance;
+}
+
+// Enable analytics collection on initialization
+export async function setAnalyticsCollectionEnabled(enabled: boolean = true) {
   try {
-    // try expo-firebase-analytics for web-compatible behavior if present
-     
-    expoAnalytics = require('expo-firebase-analytics');
+    const native = getNativeAnalytics();
+    if (native && typeof native.setAnalyticsCollectionEnabled === 'function') {
+      await native.setAnalyticsCollectionEnabled(enabled);
+    }
   } catch (e) {
-    expoAnalytics = null;
+    console.warn('[Analytics] setAnalyticsCollectionEnabled error:', e);
   }
 }
 
+// Automatically enable collection when module is loaded
+setAnalyticsCollectionEnabled(true).catch(() => {});
+
 export async function logEvent(name: string, params?: Params) {
-  if (Platform.OS === 'web') {
-    if (expoAnalytics && typeof expoAnalytics.logEvent === 'function') {
-      return expoAnalytics.logEvent(name, params);
-    }
-    try {
-      // fallback to Firebase Web SDK if available
-       
-      const { getAnalytics, logEvent: firebaseLogEvent } = require('firebase/analytics');
-       
-      const { getApp } = require('firebase/app');
-      const analytics = getAnalytics(getApp());
-      return firebaseLogEvent(analytics, name, params || {});
-    } catch (e) {
-      // no-op if no web analytics available
-      // keep web behavior unchanged for testing
-      // console.warn('No web analytics available', e);
+  try {
+    // Sanitize event name (Firebase requires alphanumeric and underscores, max 40 chars)
+    const sanitizedName = name.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40);
+
+    if (Platform.OS === 'web') {
+      const analytics = getWebAnalytics();
+      if (analytics) {
+        const { logEvent: firebaseLogEvent } = require('firebase/analytics');
+        return firebaseLogEvent(analytics, sanitizedName, params || {});
+      }
       return;
     }
-  }
 
-  // native
-  if (rnAnalytics) {
-    return rnAnalytics().logEvent(name, params || {});
+    const native = getNativeAnalytics();
+    if (native && typeof native.logEvent === 'function') {
+      return await native.logEvent(sanitizedName, params || {});
+    }
+  } catch (e) {
+    // Analytics failures must never crash the user experience
   }
+}
 
-  // no-op if native analytics not installed
-  // console.warn('Native analytics not available');
-  return;
+export async function logScreenView(screenName: string, screenClass?: string) {
+  try {
+    const cleanScreen = (screenName || 'Unknown').replace(/^\//, '') || 'home';
+
+    if (Platform.OS === 'web') {
+      const analytics = getWebAnalytics();
+      if (analytics) {
+        const { logEvent: firebaseLogEvent } = require('firebase/analytics');
+        return firebaseLogEvent(analytics, 'screen_view', {
+          firebase_screen: cleanScreen,
+          firebase_screen_class: screenClass || cleanScreen,
+        });
+      }
+      return;
+    }
+
+    const native = getNativeAnalytics();
+    if (native) {
+      if (typeof native.logScreenView === 'function') {
+        return await native.logScreenView({
+          screen_name: cleanScreen,
+          screen_class: screenClass || cleanScreen,
+        });
+      } else if (typeof native.logEvent === 'function') {
+        return await native.logEvent('screen_view', {
+          screen_name: cleanScreen,
+          screen_class: screenClass || cleanScreen,
+        });
+      }
+    }
+  } catch (e) {
+    // Silent catch
+  }
 }
 
 export async function setUserId(id: string | null) {
-  if (Platform.OS === 'web') {
-    if (expoAnalytics && typeof expoAnalytics.setUserId === 'function') {
-      return expoAnalytics.setUserId(id);
-    }
-    try {
-      const { getAnalytics, setUserId: firebaseSetUserId } = require('firebase/analytics');
-      const { getApp } = require('firebase/app');
-      const analytics = getAnalytics(getApp());
-      return firebaseSetUserId(analytics, id);
-    } catch (e) {
+  try {
+    if (Platform.OS === 'web') {
+      const analytics = getWebAnalytics();
+      if (analytics) {
+        const { setUserId: firebaseSetUserId } = require('firebase/analytics');
+        return firebaseSetUserId(analytics, id);
+      }
       return;
     }
-  }
 
-  if (rnAnalytics) {
-    return rnAnalytics().setUserId(id);
+    const native = getNativeAnalytics();
+    if (native && typeof native.setUserId === 'function') {
+      return await native.setUserId(id);
+    }
+  } catch (e) {
+    // Silent catch
   }
+}
 
-  return;
+export async function setUserProperties(properties: Record<string, any>) {
+  try {
+    if (Platform.OS === 'web') {
+      const analytics = getWebAnalytics();
+      if (analytics) {
+        const { setUserProperties: firebaseSetUserProperties } = require('firebase/analytics');
+        return firebaseSetUserProperties(analytics, properties);
+      }
+      return;
+    }
+
+    const native = getNativeAnalytics();
+    if (native && typeof native.setUserProperties === 'function') {
+      // Firebase properties must have string values
+      const sanitizedProps: Record<string, string> = {};
+      for (const [key, val] of Object.entries(properties)) {
+        if (val !== null && val !== undefined) {
+          sanitizedProps[key] = String(val);
+        }
+      }
+      return await native.setUserProperties(sanitizedProps);
+    }
+  } catch (e) {
+    // Silent catch
+  }
 }
 
 export default {
   logEvent,
+  logScreenView,
   setUserId,
+  setUserProperties,
+  setAnalyticsCollectionEnabled,
 };
