@@ -258,6 +258,9 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Post Help Request"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
