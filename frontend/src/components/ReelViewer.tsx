@@ -1599,8 +1599,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const comment = data.comment;
       if (!comment) return prev;
       if (prev.some((c: any) => c.id === comment.id)) return prev;
-      const filtered = prev.filter((c: any) => c.id !== comment.id);
-      return [comment, ...filtered];
+      // Array definitely does not contain this comment ID, safe to prepend directly
+      return [comment, ...prev];
     });
   }, [selectedPost?.id]);
 
