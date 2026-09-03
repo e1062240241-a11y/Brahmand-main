@@ -1,15 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 const SafeFlashList = FlashList as any;
-import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useIsFocused } from 'expo-router';
 import { InstagramRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
-import { getHomeFeed, getPostsFeed } from '../../services/api';
+import { getHomeFeed } from '../../services/api';
 import { useTranslation } from '../../utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
