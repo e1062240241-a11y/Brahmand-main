@@ -1130,7 +1130,10 @@ export default function JaapLandingScreen() {
                                 marginBottom: 2,
                                 fontSize: 13
                               }}>
-                                {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                                {/* 🧡 Engagement: Reframed "भक्त जाप कर रहे हैं" to "भक्त साथ में जाप कर रहे हैं" for Satsang/collective devotion feeling */}
+                                {/* Lever: Social Proof (Satsang) */}
+                                {/* UI: Text-only change, no new visual components */}
+                                {t('language') === 'hi' ? '1,248 भक्त साथ में जाप कर रहे हैं' : '1,248 devotees chanting together'}
                               </Text>
 
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
