@@ -11740,16 +11740,36 @@ async def get_help_requests(
 
 
 @api_router.get("/help-requests/my")
-async def get_my_help_requests(token_data: dict = Depends(verify_token)):
-    """Get current user's help requests"""
+async def get_my_help_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get current user's help requests with pagination"""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    requests = await db.query_documents('help_requests', filters=[
-        ('creator_id', '==', user_id)
-    ], order_by='created_at', order_direction='DESCENDING')
-    
-    return requests
+
+    safe_limit = max(1, min(limit, 50))
+    fetch_limit = offset + safe_limit + 1
+
+    try:
+        requests = await db.query_documents(
+            'help_requests',
+            filters=[('creator_id', '==', user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(f"Fallback query for get_my_help_requests: {query_err}")
+        requests = await db.query_documents(
+            'help_requests',
+            filters=[('creator_id', '==', user_id)],
+            limit=fetch_limit
+        )
+        requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+
+    return requests[offset:offset + safe_limit]
 
 
 @api_router.get("/help-requests/active")
@@ -13738,16 +13758,36 @@ async def get_community_requests(
 
 
 @api_router.get("/community-requests/my")
-async def get_my_community_requests(token_data: dict = Depends(verify_token)):
-    """Get current user's community requests"""
+async def get_my_community_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get current user's community requests with pagination"""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    requests = await db.query_documents('community_requests', filters=[
-        ('user_id', '==', user_id)
-    ])
-    
-    return requests
+
+    safe_limit = max(1, min(limit, 50))
+    fetch_limit = offset + safe_limit + 1
+
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=[('user_id', '==', user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(f"Fallback query for get_my_community_requests: {query_err}")
+        requests = await db.query_documents(
+            'community_requests',
+            filters=[('user_id', '==', user_id)],
+            limit=fetch_limit
+        )
+        requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+
+    return requests[offset:offset + safe_limit]
 
 
 @api_router.post("/community-requests/{request_id}/resolve")

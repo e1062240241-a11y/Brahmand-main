@@ -679,8 +679,24 @@ class FirebaseNotificationService:
         if unread_only:
             filters.append(('is_read', '==', False))
         
-        # Query documents from Firestore
-        docs = await db.query_documents('notifications', filters=filters)
+        # Architectural fix: Cap the candidate fetch limit at DB level to prevent
+        # O(N_total) Firestore document reads per request when active users accumulate
+        # thousands of historical notifications.
+        safe_limit = max(1, min(limit, 100))
+        fetch_limit = max(100, safe_limit * 3) if cursor else max(50, safe_limit + 10)
+
+        try:
+            docs = await db.query_documents(
+                'notifications',
+                filters=filters,
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            logger.warning(f"Fallback un-ordered query for user notifications: {query_err}")
+            docs = await db.query_documents('notifications', filters=filters, limit=fetch_limit)
+
         filtered = [d for d in (docs or []) if str(d.get('user_id', '')) == str(user_id)]
 
         # Sort by updated_at or created_at descending (latest first)
@@ -790,7 +806,13 @@ class FirebaseNotificationService:
             }
             hydrated_items.append(hydrated_item)
 
-        unread_count = sum(1 for d in filtered if not d.get('is_read'))
+        # Compute unread count via server-side count aggregation instead of scanning
+        # the entire unbounded notification history in memory.
+        try:
+            unread_count = await db.count_documents('notifications', filters=[('user_id', '==', user_id), ('is_read', '==', False)])
+        except Exception as count_err:
+            logger.warning(f"Fallback in-memory unread count calculation: {count_err}")
+            unread_count = sum(1 for d in filtered if not d.get('is_read'))
 
         return {
             "items": hydrated_items,

@@ -165,15 +165,19 @@ async def get_community_requests(
 async def get_user_requests(
     db,
     user_id: str,
-    status: Optional[str] = None
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
 ) -> List[Dict[str, Any]]:
     """
-    Get all requests created by a specific user.
+    Get requests created by a specific user with pagination.
     
     Args:
         db: Database instance
         user_id: User ID
         status: Optional status filter
+        limit: Max requests to return
+        offset: Offset for pagination
     
     Returns:
         List of user's requests
@@ -182,8 +186,24 @@ async def get_user_requests(
     
     if status:
         filters.append(('status', '==', status))
-    
-    return await db.query_documents('community_requests', filters=filters)
+
+    safe_limit = max(1, min(limit, 100))
+    fetch_limit = offset + safe_limit + 1
+
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=filters,
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(f"Fallback query for get_user_requests: {query_err}")
+        requests = await db.query_documents('community_requests', filters=filters, limit=fetch_limit)
+        requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+
+    return requests[offset:offset + safe_limit]
 
 
 async def mark_request_fulfilled(
