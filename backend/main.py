@@ -4599,10 +4599,12 @@ async def record_watch_event(
         # engagement_score: watch_time 40%, completion 30%, likes 20%, rewatches 10%
         new_engagement = (new_wt * 0.4) + (new_cr * 100 * 0.3) + (likes * 0.2) + (new_rw * 10 * 0.1)
 
+        if rewatched:
+            await db.increment_field('posts', post_id, 'rewatches', 1)
+
         await db.update_document('posts', post_id, {
             'watch_time': round(new_wt, 3),
             'completion_rate': round(new_cr, 4),
-            'rewatches': new_rw,
             'engagement_score': round(new_engagement, 3),
         })
 
@@ -10671,10 +10673,8 @@ async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
     attendees = list(event.get('attendees', []) or [])
     if user_id not in attendees:
         attendees.append(user_id)
-        await db.update_document(collection, event_id, {
-            'attendees': attendees,
-            'attendee_count': len(attendees)
-        })
+        await db.array_union_update(collection, event_id, 'attendees', [user_id])
+        await db.increment_field(collection, event_id, 'attendee_count', 1)
 
     # Notify creator
     creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
@@ -10731,10 +10731,8 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
     attendees = list(event.get('attendees', []) or [])
     if user_id in attendees:
         attendees.remove(user_id)
-        await db.update_document(collection, event_id, {
-            'attendees': attendees,
-            'attendee_count': len(attendees)
-        })
+        await db.array_remove_update(collection, event_id, 'attendees', [user_id])
+        await db.increment_field(collection, event_id, 'attendee_count', -1)
 
     return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
 
