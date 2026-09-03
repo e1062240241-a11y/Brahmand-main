@@ -94,17 +94,10 @@ const SubtleJoinButton = ({ onPress, style, children }: any) => {
 };
 
 
-const UPCOMING_GRID_PADDING = Platform.OS === 'android'
-  ? 12
-  : Math.max(10, (SCREEN_WIDTH - 361) / 2);
-
-const UPCOMING_CARD_WIDTH = Platform.OS === 'android'
-  ? (SCREEN_WIDTH - 2 * 12 - 16) / 3
-  : 115;
-
-const UPCOMING_CARD_HEIGHT = Platform.OS === 'android'
-  ? Math.round(180 * (UPCOMING_CARD_WIDTH / 115))
-  : 180;
+const UPCOMING_GRID_PADDING = 16;
+const UPCOMING_GRID_GAP = 10;
+const UPCOMING_CARD_WIDTH = Math.floor((SCREEN_WIDTH - (2 * UPCOMING_GRID_PADDING) - (2 * UPCOMING_GRID_GAP)) / 3);
+const UPCOMING_CARD_HEIGHT = Math.round(UPCOMING_CARD_WIDTH * 1.55);
 
 const JAAP_CARD_WIDTH = Platform.OS === 'android' ? 125 : 115;
 const JAAP_CARD_HEIGHT = Platform.OS === 'android' ? 190 : 180;
@@ -1022,7 +1015,7 @@ export default function JaapLandingScreen() {
               </Pressable>
             </View>
 
-            <View style={[styles.upcomingGridContainer, { paddingHorizontal: UPCOMING_GRID_PADDING }]}>
+            <View style={styles.upcomingGridContainer}>
               {UPCOMING_JAAPS.map((jaap) => {
                 const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
                 return (
@@ -1143,7 +1136,10 @@ export default function JaapLandingScreen() {
                                 marginBottom: 2,
                                 fontSize: 13
                               }}>
-                                {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                                {/* 🧡 Engagement: Reframed "भक्त जाप कर रहे हैं" to "भक्त साथ में जाप कर रहे हैं" for Satsang/collective devotion feeling */}
+                                {/* Lever: Social Proof (Satsang) */}
+                                {/* UI: Text-only change, no new visual components */}
+                                {t('language') === 'hi' ? '1,248 भक्त साथ में जाप कर रहे हैं' : '1,248 devotees chanting together'}
                               </Text>
 
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
@@ -1249,7 +1245,7 @@ export default function JaapLandingScreen() {
                                   isSelected && styles.templeCatPillActive,
                                   pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                                 ]}
-                                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                                android_ripple={{ color: 'rgba(255, 255, 255, 0.35)', borderless: false }}
                                 onPress={() => {
                                   setSelectedCategory('Char Dham');
                                   setShowCharDhamDropdown(true);
@@ -1262,7 +1258,7 @@ export default function JaapLandingScreen() {
                                   <MaterialCommunityIcons
                                     name="chevron-down"
                                     size={16}
-                                    color={isSelected ? "#FFFFFF" : "#8B4513"}
+                                    color={isSelected ? "#FF6600" : "#8B4513"}
                                     style={{ marginLeft: 4 }}
                                   />
                                 </View>
@@ -1278,7 +1274,7 @@ export default function JaapLandingScreen() {
                                 selectedCategory === cat && styles.templeCatPillActive,
                                 pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                               ]}
-                              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                              android_ripple={{ color: 'rgba(255, 255, 255, 0.35)', borderless: false }}
                               onPress={() => setSelectedCategory(cat)}
                             >
                               <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
@@ -1806,11 +1802,28 @@ const styles = StyleSheet.create({
   templeSearchSection: { paddingHorizontal: 20, marginBottom: 15 },
   templeSearchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8F0', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: '#F5E0C3' },
   templeSearchInputField: { flex: 1, fontSize: 14, color: '#2D1400', fontWeight: '600' },
-  templeCatPillsRow: { marginBottom: 12 },
-  templeCatPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', marginRight: 10, borderWidth: 1, borderColor: '#F5E0C3' },
-  templeCatPillActive: { backgroundColor: '#FF6600', borderColor: '#FF6600' },
-  templeCatPillText: { fontSize: 13, fontWeight: '700', color: '#8B4513' },
-  templeCatPillTextActive: { color: '#FFF' },
+  templeCatPillsRow: { marginBottom: 14 },
+  templeCatPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginRight: 12,
+    borderBottomWidth: 3.5,
+    borderBottomColor: 'transparent',
+    borderRadius: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  templeCatPillActive: {
+    borderBottomColor: '#FF6600',
+  },
+  templeCatPillText: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#666',
+  },
+  templeCatPillTextActive: {
+    color: '#FF6600',
+  },
   templeListPadding: { paddingHorizontal: 20 },
   templeCardItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 24, padding: 12, marginBottom: 15, elevation: 4, shadowColor: '#8B4513', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: '#F5E0C3' },
   templeCardImg: { width: 80, height: 80, borderRadius: 18 },
@@ -1842,9 +1855,10 @@ const styles = StyleSheet.create({
   upcomingGridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    columnGap: 8,
-    rowGap: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: UPCOMING_GRID_GAP,
+    paddingHorizontal: UPCOMING_GRID_PADDING,
     marginBottom: 20,
   },
   upcomingCard: {
@@ -1856,20 +1870,22 @@ const styles = StyleSheet.create({
   upcomingCardContent: {
     flex: 1,
     justifyContent: 'flex-end',
+    alignItems: 'center',
     padding: 8,
     paddingBottom: 10,
   },
   upcomingCardTitle: {
     color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 13,
+    fontSize: 12.5,
     fontStyle: 'normal',
     fontWeight: '700',
     marginBottom: 6,
+    textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-    lineHeight: 16.25,
+    lineHeight: 16,
   },
   upcomingReminderBtn: {
     backgroundColor: '#FFF',

@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 export interface CommunityMediaItemProps {
   media: string | any;
   style: any;
-  onPress?: () => void;
+  onPress?: (origin?: { x: number; y: number; width: number; height: number } | null) => void;
   isActive?: boolean;
 }
 
@@ -36,19 +36,37 @@ export const CommunityMediaItem = React.memo(({
     )
   );
 
+  const containerRef = React.useRef<View>(null);
+
+  const handlePress = React.useCallback(() => {
+    if (!onPress) return;
+    const node = containerRef.current as any;
+    if (node?.measureInWindow) {
+      node.measureInWindow((x: number, y: number, width: number, height: number) => {
+        if (width > 0 && height > 0) {
+          onPress({ x, y, width, height });
+        } else {
+          onPress(null);
+        }
+      });
+    } else {
+      onPress(null);
+    }
+  }, [onPress]);
+
   const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
+  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress: handlePress } : {};
 
   if (isVideo) {
     return (
-      <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+      <Wrapper ref={containerRef} {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
       </Wrapper>
     );
   }
 
   return (
-    <Wrapper {...wrapperProps}>
+    <Wrapper ref={containerRef} {...wrapperProps}>
       <Image
         source={typeof media === 'string' ? { uri: media } : media}
         style={style}

@@ -1599,8 +1599,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const comment = data.comment;
       if (!comment) return prev;
       if (prev.some((c: any) => c.id === comment.id)) return prev;
-      const filtered = prev.filter((c: any) => c.id !== comment.id);
-      return [comment, ...filtered];
+      // Array definitely does not contain this comment ID, safe to prepend directly
+      return [comment, ...prev];
     });
   }, [selectedPost?.id]);
 
@@ -1889,8 +1889,15 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             const existingIds = new Set();
             for (const p of prev) existingIds.add(p.id);
             const recyclable = pool.filter(p => p?.id && !existingIds.has(p.id));
-            const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
-            return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
+            const shuffled = [...recyclable];
+            for (let i = 0; i < 20 && i < shuffled.length; i++) {
+              const j = i + Math.floor(Math.random() * (shuffled.length - i));
+              const temp = shuffled[i];
+              shuffled[i] = shuffled[j];
+              shuffled[j] = temp;
+            }
+            const finalShuffled = shuffled.slice(0, 20);
+            return finalShuffled.length > 0 ? [...prev, ...finalShuffled] : prev;
           });
         } else if (currentVideos.length > 1) {
           // Fallback: recycle what's currently queued
@@ -1898,8 +1905,15 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             const existingIds = new Set();
             for (const p of prev) existingIds.add(p.id);
             const recyclable = currentVideos.filter(p => p?.id && !existingIds.has(p.id));
-            const shuffled = recyclable.sort(() => Math.random() - 0.5).slice(0, 20);
-            return shuffled.length > 0 ? [...prev, ...shuffled] : prev;
+            const shuffled = [...recyclable];
+            for (let i = 0; i < 20 && i < shuffled.length; i++) {
+              const j = i + Math.floor(Math.random() * (shuffled.length - i));
+              const temp = shuffled[i];
+              shuffled[i] = shuffled[j];
+              shuffled[j] = temp;
+            }
+            const finalShuffled = shuffled.slice(0, 20);
+            return finalShuffled.length > 0 ? [...prev, ...finalShuffled] : prev;
           });
         }
       }

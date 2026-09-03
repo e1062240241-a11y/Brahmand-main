@@ -67,7 +67,7 @@ class VedicAstroApiService:
             response = await asyncio.to_thread(_request)
             if response.status_code >= 400:
                 logger.error("VedicAstroAPI error: %s - %s", response.status_code, response.text)
-                return {"error": f"Status {response.status_code}: {response.text}"}
+                return {"error": "An internal server error occurred while fetching vedic astrology data"}
             return response.json()
         except Exception as e:
             logger.error("VedicAstroAPI request failed: %s", e)

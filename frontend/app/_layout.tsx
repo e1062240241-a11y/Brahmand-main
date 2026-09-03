@@ -734,23 +734,23 @@ export default function RootLayout() {
     clearLegacyLibraryCache();
   }, []);
 
-  const lastNavColorRef = useRef<string>('');
   useEffect(() => {
     if (Platform.OS === 'android') {
-      const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
-      const buttonStyle = isDark ? 'light' : 'dark';
-      if (lastNavColorRef.current === buttonStyle) return;
-      lastNavColorRef.current = buttonStyle;
-
       try {
+        if (typeof (NavigationBar as any).setBackgroundColorAsync === 'function') {
+          (NavigationBar as any).setBackgroundColorAsync('#000000').catch(() => {});
+        }
+        if (typeof (NavigationBar as any).setBorderColorAsync === 'function') {
+          (NavigationBar as any).setBorderColorAsync('#000000').catch(() => {});
+        }
         if (typeof NavigationBar.setStyle === 'function') {
-          NavigationBar.setStyle(buttonStyle as any);
+          NavigationBar.setStyle('light' as any);
         } else if (typeof (NavigationBar as any).setButtonStyleAsync === 'function') {
-          (NavigationBar as any).setButtonStyleAsync(buttonStyle).catch(() => {});
+          (NavigationBar as any).setButtonStyleAsync('light').catch(() => {});
         }
       } catch (err) {}
     }
-  }, [pathname, isDarkScreen]);
+  }, [pathname]);
 
 
   useEffect(() => {

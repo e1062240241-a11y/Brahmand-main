@@ -13,6 +13,12 @@ import {
   Image,
   Platform,
   Dimensions,
+  AppState,
+  Modal,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -617,11 +623,14 @@ export default function VendorScreen() {
   }, [updateUser]);
 
   const searchInputRef = useRef<TextInput | null>(null);
-  const registerBtnRef = useRef<View | null>(null);
-
-  const homeLocation = user?.home_location;
-  const hLatVal = Number(homeLocation?.latitude);
-  const hLngVal = Number(homeLocation?.longitude);
+  const registerBtnRef = useRef<any>(null);
+  const dismissSearch = useCallback(() => {
+    searchInputRef.current?.blur();
+    Keyboard.dismiss();
+  }, []);
+  const homeLocation = (user as any)?.home_location;
+  const hLatVal = Number(homeLocation?.latitude ?? homeLocation?.lat);
+  const hLngVal = Number(homeLocation?.longitude ?? homeLocation?.lng);
   const homeLatitude = Number.isFinite(hLatVal) && Math.abs(hLatVal) > 0.001 ? hLatVal : undefined;
   const homeLongitude = Number.isFinite(hLngVal) && Math.abs(hLngVal) > 0.001 ? hLngVal : undefined;
   const hasHomeCoordinates = typeof homeLatitude === 'number' && typeof homeLongitude === 'number';
@@ -880,19 +889,23 @@ export default function VendorScreen() {
       style={styles.container}
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <View style={styles.stickyHeaderArea}>
-          <Animated.View style={animatedSearchContainerStyle}>
-            <Animated.View style={animatedSearchInnerStyle}>
-              <VendorSearchBar
-                ref={searchInputRef}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                placeholder={localT('searchRequests')}
-                containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
-              />
-            </Animated.View>
-          </Animated.View>
-        </View>
+        <TouchableWithoutFeedback onPress={dismissSearch}>
+          <View style={{ flex: 1 }}>
+            <Pressable onPress={dismissSearch} style={styles.stickyHeaderArea}>
+              <Animated.View style={animatedSearchContainerStyle}>
+                <Animated.View style={animatedSearchInnerStyle}>
+                  <Pressable onPress={(e) => e.stopPropagation()}>
+                    <VendorSearchBar
+                      ref={searchInputRef}
+                      searchTerm={searchTerm}
+                      setSearchTerm={setSearchTerm}
+                      placeholder={localT('searchRequests')}
+                      containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
+                    />
+                  </Pressable>
+                </Animated.View>
+              </Animated.View>
+            </Pressable>
 
         {!searchTerm ? (
           <AnimatedFlashList
@@ -1106,6 +1119,8 @@ export default function VendorScreen() {
             contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
             onScroll={animatedScrollHandler}
             scrollEventThrottle={1}
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={dismissSearch}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -1130,6 +1145,8 @@ export default function VendorScreen() {
               contentContainerStyle={[styles.listContent, { paddingTop: 8, paddingBottom: 90 }]}
               onScroll={animatedScrollHandler}
               scrollEventThrottle={1}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={dismissSearch}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -1158,8 +1175,8 @@ export default function VendorScreen() {
             />
           </View>
         )}
-
-        {/* Vendor Registration Modal */}
+          </View>
+        </TouchableWithoutFeedback>
         <VendorRegistrationModal
           visible={showRegistrationModal}
           onClose={() => setShowRegistrationModal(false)}

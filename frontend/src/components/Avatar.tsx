@@ -1,17 +1,17 @@
 import * as React from 'react';
 import { Image } from 'expo-image';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, BORDER_RADIUS } from '../constants/theme';
+import { COLORS } from '../constants/theme';
 
 interface AvatarProps {
   name: string;
-  photo?: any;
+  photo?: string | number | { uri?: string } | null | undefined;
   size?: number;
   shape?: 'circle' | 'square' | 'rounded';
 }
 
-export const hasCustomPhoto = (photo: any): boolean => {
+export const hasCustomPhoto = (photo: unknown): boolean => {
   return !!(
     photo &&
     photo !== 'nan' &&
@@ -21,7 +21,7 @@ export const hasCustomPhoto = (photo: any): boolean => {
   );
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 'circle' }) => {
+export const Avatar: React.FC<AvatarProps> = React.memo(({ name, photo, size = 48, shape = 'circle' }) => {
   const initials = React.useMemo(() => {
     return (name || 'U')
       .split(' ')
@@ -34,7 +34,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
 
   const borderRadius = shape === 'circle' ? size / 2 : shape === 'rounded' ? 12 : 0;
 
-  const hasPhoto = React.useMemo(() => hasCustomPhoto(photo), [photo]);
+  const hasPhoto = hasCustomPhoto(photo);
 
   const source = React.useMemo(() => {
     if (!hasPhoto) return null;
@@ -51,9 +51,10 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
     const isRequiredAsset = typeof photo === 'number' || (typeof photo === 'object' && photo !== null);
     
     if (isRequiredAsset) {
+      const webSrc = typeof photo === 'string' ? photo : typeof photo === 'object' && photo !== null && 'uri' in photo ? photo.uri : undefined;
       return Platform.OS === 'web' ? (
         <img 
-          src={photo}
+          src={webSrc}
           style={{ width: size, height: size, borderRadius, objectFit: 'cover' }}
           alt={name}
         />
@@ -68,9 +69,10 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
       );
     }
     
+    const uri = typeof source === 'object' && source !== null && 'uri' in source ? (source as { uri: string }).uri : undefined;
     return Platform.OS === 'web' ? (
       <img 
-        src={source.uri}
+        src={uri}
         style={{ width: size, height: size, borderRadius, objectFit: 'cover' }}
         alt={name}
       />
@@ -95,7 +97,9 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
       <Text style={[styles.initials, { fontSize: size * 0.4 }]}>{initials}</Text>
     </LinearGradient>
   );
-};
+});
+
+Avatar.displayName = 'Avatar';
 
 const styles = StyleSheet.create({
   image: {
