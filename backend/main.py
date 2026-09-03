@@ -11147,7 +11147,6 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         try:
             from datetime import datetime, timezone
             db = await get_db()
-            chat_ref = db.collection('krishna_chats').document(user_id)
 
             # Idempotency guard: skip append if the last two messages in Firestore
             # already represent this exact user-turn + assistant-reply pair.
@@ -11167,19 +11166,20 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
                     )
 
             if not already_stored:
+                now_str = datetime.now(timezone.utc).isoformat()
                 db_messages.append({
                     "role": "user",
                     "content": latest_user_msg,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": now_str
                 })
                 db_messages.append({
                     "role": "assistant",
                     "content": assistant_reply,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": now_str
                 })
 
-            # Limit history to 100 messages to respect document limits
-            db_messages = db_messages[-100:]
+            # Limit history to save only the last 15 messages
+            db_messages = db_messages[-15:]
 
             await db.set_document('krishna_chats', user_id, {
                 "messages": db_messages,
@@ -11187,6 +11187,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
                 "history_summaries": history_summaries,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
+            logger.info("[Chat] Successfully saved chat to Firestore for user %s (total messages: %d)", user_id, len(db_messages))
         except Exception as fs_err:
             logger.warning(f"Failed to save chat to Firestore: {fs_err}")
 

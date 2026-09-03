@@ -907,12 +907,14 @@ class FirestoreDB:
             data_copy = fast_copy(data)
             data_copy['id'] = doc_id
             coll[doc_id] = data_copy
+            await self._cache.delete(f"{collection}:{doc_id}")
             return
 
         def _set():
             self.client.collection(collection).document(doc_id).set(data)
         
         await self._run_sync(_set)
+        await self._cache.delete(f"{collection}:{doc_id}")
     
     # =================== CHAT OPERATIONS ===================
     
