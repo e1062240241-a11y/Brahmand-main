@@ -131,6 +131,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ user: cleanedUser, token, isAuthenticated: true, isLoading: false });
 
+    try {
+      const { setUserId, logLogin, setUserProperties } = require('../services/firebase/analytics');
+      if (cleanedUser?.id) {
+        setUserId(String(cleanedUser.id));
+        setUserProperties({
+          phone: cleanedUser.phone || '',
+          language: cleanedUser.language || 'en',
+        });
+        logLogin('phone');
+      }
+    } catch (e) {}
+
     initializePushNotifications()
       .then((fcmToken) => {
         if (fcmToken) {
@@ -145,6 +157,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     const token = get().token;
     const fcmToken = get().fcmToken;
+
+    try {
+      const { setUserId, logEvent } = require('../services/firebase/analytics');
+      logEvent('logout');
+      setUserId(null);
+    } catch (e) {}
 
     // 1. Reset auth store state immediately so the UI responds instantly
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });

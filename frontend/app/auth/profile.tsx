@@ -376,6 +376,11 @@ export default function ProfileScreen() {
         language,
       });
 
+      try {
+        const { logSignUp } = require('../../src/services/firebase/analytics');
+        logSignUp('phone');
+      } catch (e) {}
+
       await login(response.data.user, response.data.token);
 
       // Join communities based on location

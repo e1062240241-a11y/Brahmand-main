@@ -1,7 +1,7 @@
 {
   "react-native": {
-    "analytics_auto_collection_enabled": false,
-    "analytics_collection_deactivated": true
+    "analytics_auto_collection_enabled": true,
+    "analytics_collection_deactivated": false
   },
   "hosting": {
     "public": "dist",

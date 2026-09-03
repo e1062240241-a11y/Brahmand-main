@@ -230,6 +230,20 @@ export default function ProfileScreen() {
       } catch (err) {}
     }
   }, [showSettingsModal]);
+
+  useEffect(() => {
+    if (showSettingsModal) {
+      try {
+        const { startScreenTime } = require('../../src/services/firebase/analytics');
+        startScreenTime('SettingsMenu');
+      } catch (e) {}
+    } else {
+      try {
+        const { endScreenTime } = require('../../src/services/firebase/analytics');
+        endScreenTime('SettingsMenu');
+      } catch (e) {}
+    }
+  }, [showSettingsModal]);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
