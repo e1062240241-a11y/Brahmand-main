@@ -78,7 +78,7 @@ export default function ContinueReadingPage() {
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#3D1A00" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Continue Reading</Text>
+        <Text style={s.headerTitle}>{isHindi ? 'पढ़ना जारी रखें' : 'Continue Reading'}</Text>
         <View style={s.headerRight} />
       </LinearGradient>
 
@@ -87,19 +87,21 @@ export default function ContinueReadingPage() {
           <View style={s.emptyState}>
             <Ionicons name="book-outline" size={64} color={CLAY} style={{ marginBottom: 16 }} />
             <Text style={s.emptyStateTitle}>
-              {isHindi ? 'कोई सक्रिय पुस्तक नहीं' : 'No Active Books'}
+              {isHindi ? 'अभी कोई पुस्तक आरंभ नहीं की' : 'No books in progress'}
             </Text>
             <Text style={s.emptyStateSub}>
               {isHindi
-                ? 'अपनी आध्यात्मिक यात्रा शुरू करने के लिए लाइब्रेरी से पढ़ना आरंभ करें 📖'
-                : 'Begin reading from the library to track your spiritual journey 📖'}
+                ? 'श्रीमद्भगवद्गीता या अन्य पवित्र ग्रंथों से अपनी आध्यात्मिक यात्रा आरंभ करें 🙏'
+                : 'Begin your spiritual journey with Srimad Bhagavad Gita or sacred scriptures 🙏'}
             </Text>
             <TouchableOpacity
               style={s.startReadingBtn}
               onPress={() => router.push('/library' as any)}
+              accessibilityRole="button"
+              accessibilityLabel={isHindi ? 'पवित्र ग्रंथ पढ़ें' : 'Explore Sacred Scriptures'}
             >
               <Text style={s.startReadingTxt}>
-                {isHindi ? 'लाइब्रेरी पर जाएं' : 'Go to Library'}
+                {isHindi ? 'पवित्र ग्रंथ पढ़ें 📖' : 'Explore Sacred Scriptures 📖'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -125,8 +127,10 @@ export default function ContinueReadingPage() {
                 <TouchableOpacity
                   style={s.continueBtn}
                   onPress={() => handleContinue(book.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isHindi ? 'पढ़ना जारी रखें' : 'Continue Reading'}
                 >
-                  <Text style={s.continueBtnTxt}>Continue Reading</Text>
+                  <Text style={s.continueBtnTxt}>{isHindi ? 'पढ़ना जारी रखें' : 'Continue Reading'}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFF" />
                 </TouchableOpacity>
               </View>
