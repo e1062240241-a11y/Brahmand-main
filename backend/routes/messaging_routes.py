@@ -150,5 +150,5 @@ async def get_direct_messages(
             conversation_id,
             limit
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=403, detail="Forbidden")

@@ -27,7 +27,7 @@ async def send_nettyfish_otp(request: OTPRequest, _: bool = Depends(auth_rate_li
 
     try:
         mobile = _normalize_phone(phone)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
 
     otp = generate_otp()
@@ -86,7 +86,7 @@ async def verify_nettyfish_otp(request: OTPVerify, _: bool = Depends(auth_rate_l
 
     try:
         mobile = _normalize_phone(phone)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
 
     collection_ref = db.collection("otp_verifications")

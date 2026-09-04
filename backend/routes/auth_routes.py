@@ -22,7 +22,7 @@ async def send_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
     except ValueError as e:
         logger.warning(f"/auth/send-otp failed for phone={request.phone}: {e}")
         raise HTTPException(status_code=400, detail="Validation error")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in /auth/send-otp for phone={request.phone}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -36,7 +36,7 @@ async def verify_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
     except ValueError as e:
         logger.warning(f"/auth/verify-otp failed for phone={request.phone}: {e}")
         raise HTTPException(status_code=400, detail="Validation error")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in /auth/verify-otp for phone={request.phone}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -46,7 +46,7 @@ async def verify_firebase_token(request: FirebaseTokenRequest, _: bool = Depends
     """Verify Firebase ID token from client after Firebase Phone Auth flow."""
     try:
         return await AuthService.verify_firebase_token(request.id_token)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -60,7 +60,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
             photo=user_data.photo,
             language=user_data.language
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 

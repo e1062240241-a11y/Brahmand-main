@@ -24,7 +24,7 @@ async def create_event(
             time=event_data.time,
             organizer_name=event_data.organizer_name
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -48,7 +48,7 @@ async def get_event(
     """Get event details"""
     try:
         return await EventService.get_event(event_id)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
