@@ -2997,10 +2997,13 @@ async def check_user_blocked_endpoint(user_id: str, token_data: dict = Depends(v
     db = await get_db()
     current_user_id = token_data['user_id']
     doc_id = f"{current_user_id}_{user_id}"
-    block_doc = await db.get_document('user_blocks', doc_id)
-    # Check reverse block too
     doc_id_reverse = f"{user_id}_{current_user_id}"
-    block_doc_reverse = await db.get_document('user_blocks', doc_id_reverse)
+
+    # ⚡ Bolt Optimization: Batch fetch block documents concurrently
+    block_doc, block_doc_reverse = await asyncio.gather(
+        db.get_document('user_blocks', doc_id),
+        db.get_document('user_blocks', doc_id_reverse)
+    )
     
     is_blocked = (block_doc is not None) or (block_doc_reverse is not None)
     return {'is_blocked': is_blocked}
