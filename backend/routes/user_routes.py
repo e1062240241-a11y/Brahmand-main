@@ -18,7 +18,7 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     """Get current user profile"""
     try:
         return await UserService.get_profile(token_data["user_id"])
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
@@ -31,7 +31,7 @@ async def get_all_users(
     """Get all registered users (for private chat user list)"""
     try:
         return await UserService.get_all_users(limit=limit, offset=offset)
-    except Exception as e:
+    except Exception:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -47,7 +47,7 @@ async def update_profile(
             token_data["user_id"],
             update.dict(exclude_none=True)
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -62,7 +62,7 @@ async def update_extended_profile(
             token_data["user_id"],
             update.dict(exclude_none=True)
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -77,7 +77,7 @@ async def setup_location(
             token_data["user_id"],
             location.dict()
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -93,7 +93,7 @@ async def setup_dual_location(
             locations.home_location,
             locations.office_location
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -105,7 +105,7 @@ async def search_user_by_sl_id(
     """Search for a user by their Sanatan Lok ID"""
     try:
         return await UserService.search_by_sl_id(sl_id)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
@@ -128,7 +128,7 @@ async def request_verification(
             data.get("id_type"),
             data.get("id_number")
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -143,7 +143,7 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
     """Get user's horoscope (if birth details are complete)"""
     try:
         return await UserService.get_horoscope(token_data["user_id"])
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
 
 
@@ -158,6 +158,6 @@ async def submit_personality_verification(
             token_data["user_id"],
             data
         )
-    except Exception as e:
+    except Exception:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")

@@ -31,8 +31,6 @@ async def global_search(
 
     # For Firestore prefix search, we need the start string and the end string
     # '\uf8ff' is a very high code point in Unicode, ensuring it covers all suffixes
-    query_start = query_str
-    query_end = query_str + '\uf8ff'
 
     # We will search by lowercased fields to make it case-insensitive (if available),
     # otherwise we search standard fields. In Firebase, exact match is case sensitive.
@@ -70,7 +68,7 @@ async def global_search(
                 filters=[('sl_id', '>=', q_start), ('sl_id', '<=', q_end)],
                 limit=lmt
             )
-        except Exception as e:
+        except Exception:
             return []
 
     async def search_communities(q_start, q_end, lmt):
