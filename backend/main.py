@@ -16430,21 +16430,35 @@ async def get_jaap_reminder_stats(
 ):
     """
     Get total registered user count and active status for a specific mantra_type.
+    Uses O(1) server-side count aggregation and point check to avoid loading
+    all registered user documents into memory.
     """
     db = await get_db()
     user_id = token_data["user_id"]
 
-    all_reminders = await db.query_documents(
-        "jaap_reminders",
-        filters=[
-            ("mantra_type", "==", mantra_type),
-            ("active", "==", True)
-        ]
+    # Each registered user has 4 session documents created together (Morning, Afternoon, Evening, Night).
+    # Counting 'Morning' session documents gives the exact unique user count without fetching all docs.
+    total_count, user_reminders = await asyncio.gather(
+        db.count_documents(
+            "jaap_reminders",
+            filters=[
+                ("mantra_type", "==", mantra_type),
+                ("session_name", "==", "Morning"),
+                ("active", "==", True)
+            ]
+        ),
+        db.query_documents(
+            "jaap_reminders",
+            filters=[
+                ("user_id", "==", user_id),
+                ("mantra_type", "==", mantra_type),
+                ("active", "==", True)
+            ],
+            limit=1
+        )
     )
 
-    unique_user_ids = {r.get("user_id") for r in all_reminders if r.get("user_id")}
-    total_count = len(unique_user_ids)
-    is_user_interested = user_id in unique_user_ids
+    is_user_interested = len(user_reminders) > 0
 
     return {
         "mantra_type": mantra_type,

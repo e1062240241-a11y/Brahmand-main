@@ -18,6 +18,10 @@
 **Learning:** Querying user notifications, help requests, and community requests without `limit` or `order_by` limits causes Firestore to stream 100% of historical documents for a user into Python memory on every feed render. At 1 lakh+ users, this results in O(N_total) document reads per request and massive memory spikes. Calculating unread notification counts by iterating all fetched documents in memory further amplifies this read overhead.
 **Action:** Capped candidate queries at the Firestore query level with fallback handling (`fetch_limit = limit * 3 + 10` for notifications; `fetch_limit = offset + safe_limit + 1` for user requests), added `limit` and `offset` pagination to `/help-requests/my` and `/community-requests/my`, and switched unread notification count computation to server-side `count_documents` aggregation.
 
+## 2026-09-04 - Server-side Aggregation & Point Lookups for Jaap Reminder Stats
+**Learning:** Fetching all `jaap_reminders` for a `mantra_type` without query limits on `/jaap/reminder-stats` forces Firestore to stream all registered reminder documents across all users into memory to construct a set of unique user IDs. At 1 lakh+ users, this causes $O(N_{\text{reminders}})$ document reads per request. Since each user registration creates 4 fixed session documents ("Morning", "Afternoon", "Evening", "Night"), filtering for a single session name ("Morning") with `db.count_documents` yields the exact registered user count server-side with zero document payload transfer.
+**Action:** Replaced full document query in `/jaap/reminder-stats` with concurrent server-side `db.count_documents` for session_name="Morning" and a point check `db.query_documents(..., limit=1)` for the requesting user.
+
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:
 - `/temples` — loads all temples — FIXED
@@ -25,6 +29,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/notifications` — loads all historical user notifications — FIXED
 - `/help-requests/my` — loads all historical user help requests — FIXED
 - `/community-requests/my` — loads all historical user community requests — FIXED
+- `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
