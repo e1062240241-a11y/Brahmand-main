@@ -10,7 +10,6 @@ import asyncio
 import logging
 import random
 import time
-from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from config.firestore_db import FirestoreDB
 
@@ -140,8 +139,7 @@ class FeedPoolService:
                 new_high_engagement = [p for p in engagement_res if isinstance(p, dict) and p.get('id')]
 
                 # Populate Fresh Pool (posts created within last 24h prioritized, fallback to latest)
-                now = datetime.now(timezone.utc)
-                cutoff_24h = now - timedelta(hours=24)
+                pass
 
                 new_fresh = []
                 for p in fresh_res:
