@@ -1476,6 +1476,22 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          <Pressable
+            style={({ pressed }) => [
+              styles.jaapJourneyCard,
+              Platform.OS === 'ios' && pressed && styles.actionPressed
+            ]}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.15)' }}
+            onPress={() => router.push('/(tabs)/jaap')}
+            accessibilityRole="button"
+            accessibilityLabel={language === 'hi' ? 'आपकी जाप यात्रा' : 'Your Jaap Journey'}
+          >
+            <Ionicons name="sparkles-outline" size={16} color="#FF9E00" />
+            <Text style={styles.jaapJourneyText}>
+              {language === 'hi' ? 'आपकी जाप यात्रा →' : 'Your Jaap Journey →'}
+            </Text>
+          </Pressable>
+
           <View style={styles.actionButtonsRow}>
             <Pressable
               style={({ pressed }) => [
@@ -2486,6 +2502,25 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: 'rgba(255,255,255,0.12)',
     marginVertical: 12,
+  },
+  jaapJourneyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 158, 0, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 158, 0, 0.25)',
+    marginBottom: 12,
+  },
+  jaapJourneyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FF9E00',
+    letterSpacing: 0.2,
   },
   actionButtonsRow: {
     flexDirection: 'row',
