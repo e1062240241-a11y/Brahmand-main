@@ -54,10 +54,6 @@
     "android": {
       "package": "com.brahmand.app",
       "softwareKeyboardLayoutMode": "resize",
-      "navigationBar": {
-        "backgroundColor": "#000000",
-        "barStyle": "light-content"
-      },
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
@@ -219,7 +215,13 @@
       "@react-native-community/datetimepicker",
       "expo-secure-store",
       "expo-tracking-transparency",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-navigation-bar",
+        {
+          "style": "light"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

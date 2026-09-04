@@ -113,25 +113,15 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
         onPress={() => handlePress(category)}
       >
         <View style={[styles.iconCircle, isActive && styles.activeIconCircle]}>
-          {Platform.OS === 'android' ? (
-            <ExpoImage
-              source={getCategoryIconSource(category)}
-              style={[
-                { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FFFFFF' : '#FF6B00' },
-                styles.image
-              ]}
-              contentFit="contain"
-            />
-          ) : (
-            <Image
-              source={getCategoryIconSource(category)}
-              style={[
-                { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FFFFFF' : '#FF6B00' },
-                styles.image
-              ]}
-              resizeMode="contain"
-            />
-          )}
+          <ExpoImage
+            source={getCategoryIconSource(category)}
+            style={[
+              { width: finalImageSize, height: finalImageSize },
+              styles.image
+            ]}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+          />
         </View>
         <Text 
           style={[

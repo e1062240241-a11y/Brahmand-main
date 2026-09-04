@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox , Alert as RNAlert } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox, Alert as RNAlert, AppState } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

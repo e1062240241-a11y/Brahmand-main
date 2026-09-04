@@ -35,142 +35,26 @@ import {
   deduplicateTemples,
 } from '../../src/data/jyotirlingaTravelData';
 import { socketService } from '../../src/services/socket';
-import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Svg, Path, Circle, G, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { CustomLoader } from '../../src/components/CustomLoader';
-import { AnimatedGoldKathaTitle } from '../../src/components/AnimatedGoldKathaTitle';
+import { KathaSection } from '../../src/components/KathaSection';
+import { SubtleJoinButton } from '../../src/components/SubtleJoinButton';
+import { TempleCard, TempleCardImageItem } from '../../src/components/TempleCard';
+import { CharDhamModal } from '../../src/components/CharDhamModal';
+import { LiveJaapCard, JAAP_CARD_WIDTH, JAAP_CARD_HEIGHT, JAAP_CARD_MARGIN_RIGHT } from '../../src/components/LiveJaapCard';
+import { UpcomingJaapsSection } from '../../src/components/UpcomingJaapsSection';
+import { JaapHeroBanner } from '../../src/components/JaapHeroBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
 const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
-const HERO_DOT_COUNT = 4;
 
-const SubtleJoinButton = ({ onPress, style, children }: any) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.timing(scaleAnim, {
-      toValue: 0.96, // Smooth subtle press inward
-      duration: 70,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.timing(scaleAnim, {
-      toValue: 1, // Smooth linear return without bounce
-      duration: 100,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
-      <Pressable
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={onPress}
-        android_ripple={{
-          color: 'rgba(255, 107, 0, 0.22)',
-          borderless: false,
-          foreground: true,
-        }}
-        style={({ pressed }) => [
-          styles.exactJoinBtn,
-          Platform.OS === 'ios' && pressed && { backgroundColor: 'rgba(255, 243, 230, 0.95)' }
-        ]}
-      >
-        <View pointerEvents="none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          {children}
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-
-const UPCOMING_GRID_PADDING = 16;
-const UPCOMING_GRID_GAP = 10;
-const UPCOMING_CARD_WIDTH = Math.floor((SCREEN_WIDTH - (2 * UPCOMING_GRID_PADDING) - (2 * UPCOMING_GRID_GAP)) / 3);
-const UPCOMING_CARD_HEIGHT = Math.round(UPCOMING_CARD_WIDTH * 1.55);
-
-const JAAP_CARD_WIDTH = Platform.OS === 'android' ? 125 : 115;
-const JAAP_CARD_HEIGHT = Platform.OS === 'android' ? 190 : 180;
-const JAAP_CARD_MARGIN_RIGHT = Platform.OS === 'android' ? 12 : 16;
-
-const TempleCardImageItem = React.memo(({
-  item,
-  safeItemId,
-  safeName,
-  imageSource,
-  router,
-  t,
-  renderSafeText,
-  getTranslatedTempleName,
-  getTranslatedTempleLocation,
-  getTempleLocation,
-}: any) => {
-  const [currentSource, setCurrentSource] = useState(imageSource);
-  const [hasError, setHasError] = useState(false);
-  const targetId = item?.temple_id || item?.templeId || item?.id || safeItemId;
-
-  useEffect(() => {
-    setCurrentSource(imageSource);
-    setHasError(false);
-  }, [imageSource, targetId, safeName]);
-
-  const rawDeity = renderSafeText(item?.deity) || 'LORD SHIVA';
-  let formattedDeity = rawDeity;
-  if (safeName.toLowerCase().includes('iskcon') || safeName.toLowerCase().includes('borivali')) {
-    formattedDeity = 'LORD KRISHNA';
-  }
-  if (t('language') === 'hi') {
-    if (formattedDeity.toUpperCase().includes('SHIVA')) formattedDeity = 'भगवान शिव';
-    else if (formattedDeity.toUpperCase().includes('KRISHNA')) formattedDeity = 'भगवान कृष्ण';
-    else if (formattedDeity.toUpperCase().includes('DURGA') || formattedDeity.toUpperCase().includes('SHAKTI')) formattedDeity = 'माँ दुर्गा';
-    else if (formattedDeity.toUpperCase().includes('VISHNU')) formattedDeity = 'भगवान विष्णु';
-    else if (formattedDeity.toUpperCase().includes('HANUMAN')) formattedDeity = 'भगवान हनुमान';
-    else if (formattedDeity.toUpperCase().includes('GANESHA') || formattedDeity.toUpperCase().includes('GANESH')) formattedDeity = 'भगवान गणेश';
-  }
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.newTempleCard,
-        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-      ]}
-      android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
-      onPress={() => router.push(`/temple/${encodeURIComponent(targetId)}`)}
-    >
-      {hasError ? (
-        <View style={[styles.newTempleCardImg, { backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA' }]}>
-          <MaterialCommunityIcons name="temple-hindu" size={40} color="#FF6B00" />
-        </View>
-      ) : (
-        <Image
-          source={currentSource}
-          style={styles.newTempleCardImg}
-          resizeMode="cover"
-          onError={() => setHasError(true)}
-        />
-      )}
-      <View style={styles.newTempleCardInfo}>
-        <View>
-          <Text style={styles.newTempleCardDeity} numberOfLines={1}>
-            {formattedDeity}
-          </Text>
-          <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(safeName)}</Text>
-          <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), safeName)}</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-});
 
 
 if (Platform.OS === 'android' && !(global as any).nativeFabricUIManager && !(global as any)._IS_FABRIC && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -208,56 +92,7 @@ const LIVE_JAAPS = [
   },
 ];
 
-const UPCOMING_JAAPS = [
-  {
-    id: 'uj1',
-    title: 'Hanuman Chalisa',
-    titleHi: 'हनुमान चालीसा',
-    mantraType: 'hanuman',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_hanuman.webp' },
-    allowedDays: [2, 6], // Tuesday, Saturday
-  },
-  {
-    id: 'uj2',
-    title: 'Gayatri Mantra',
-    titleHi: 'गायत्री मंत्र',
-    mantraType: 'gayatri',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_gayatri.webp' },
-    allowedDays: [0, 1, 2, 3, 4, 5, 6], // Daily
-  },
-  {
-    id: 'uj3',
-    title: 'Shiv Mantra',
-    titleHi: 'शिव मंत्र',
-    mantraType: 'shiva',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_shiva.webp' },
-    allowedDays: [1], // Monday
-  },
-  {
-    id: 'uj4',
-    title: 'Ganga Mantra',
-    titleHi: 'गंगा मंत्र',
-    mantraType: 'ganga',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_ganga.webp' },
-    allowedDays: [0], // Sunday
-  },
-  {
-    id: 'uj5',
-    title: 'Radha Rani Jaap',
-    titleHi: 'राधा रानी जाप',
-    mantraType: 'radha_rani',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_radha_rani.webp' },
-    allowedDays: [5], // Friday
-  },
-  {
-    id: 'uj6',
-    title: 'Durga Saptashati',
-    titleHi: 'दुर्गा सप्तशती',
-    mantraType: 'durga',
-    image: { uri: 'https://brahmandfeed23.b-cdn.net/assets/upcoming_durga.webp' },
-    allowedDays: [2], // Tuesday
-  },
-];
+
 
 
 const getMantraRoomName = (id: string) => {
@@ -280,11 +115,29 @@ export default function JaapLandingScreen() {
   const onJaapScrollTabBar = useScrollToHideTabBar();
   const [now, setNow] = useState(new Date());
 
+  const isNavigatingRef = useRef(false);
+  const safeNavigate = useCallback((action: () => void | Promise<void>, cooldown = 800) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    try {
+      action();
+    } finally {
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, cooldown);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      isNavigatingRef.current = false;
+    }
+  }, [isFocused]);
+
   const initialSection =
     params.tab === 'temple' || params.section === 'temple' ? 'temple' : 'jaap';
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>(initialSection);
   const sectionAnim = useRef(new Animated.Value(initialSection === 'temple' ? 1 : 0)).current;
-  const heroBannerIndex = 0;
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -343,16 +196,6 @@ export default function JaapLandingScreen() {
     };
   }, [isFocused, activeSection]);
 
-  const handleUpcomingCardPress = (jaap: any) => {
-    const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
-    Alert.alert(
-      t('language') === 'hi' ? '🙏 जल्द ही आ रहा है' : '🙏 Coming Soon',
-      t('language') === 'hi'
-        ? `${title} सेवा जल्द ही आ रही है। कृपया प्रतीक्षा करें!`
-        : `${title} is coming soon. Stay tuned!`
-    );
-  };
-
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -396,9 +239,6 @@ export default function JaapLandingScreen() {
     }, 4000);
     return () => clearInterval(autoScroll);
   }, [isFocused, appActive]);
-
-  const liveActive = isWithinGayatriMantraWindow(now);
-  const liveEnd = getCurrentGayatriEnd(now);
 
   const fetchTemplesData = async () => {
     try {
@@ -560,24 +400,6 @@ export default function JaapLandingScreen() {
     }
   }, [params.tab, params.section, switchSection, activeSection]);
 
-  const heroTitle = t('language') === 'hi'
-    ? (liveActive ? 'महामृत्युंजय मंत्र' : 'सायंकालीन गायत्री जाप')
-    : (liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting');
-  const heroTagline = t('language') === 'hi'
-    ? (liveActive
-      ? 'हम जाप करते हैं। हम ठीक होते हैं।\nहम एक साथ उठते हैं।'
-      : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
-    : (liveActive
-      ? 'We chant. We heal.\nWe rise together.'
-      : 'Connect with the divine light. Starting at 6:00 PM.');
-  const heroTimeLabel = t('language') === 'hi'
-    ? (liveActive
-      ? `शाम ${liveEnd ? formatTime(liveEnd) : '5:00'} बजे तक लाइव`
-      : 'अगला सत्र: आज शाम 6:00 बजे')
-    : (liveActive
-      ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
-      : 'Next Session: 6:00 PM Today');
-
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
@@ -646,119 +468,8 @@ export default function JaapLandingScreen() {
             bounces
             onScroll={onJaapScrollTabBar}
           >
-            <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
-              <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
-                <ImageBackground
-                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jaap_hero_shiva_final.webp' }}
-                  style={styles.heroBannerFill}
-                  imageStyle={styles.heroBannerImageStyle}
-                  resizeMode="cover"
-                >
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
-                    locations={[0, 0.38, 1]}
-                    style={StyleSheet.absoluteFill}
-                  />
-
-                  <View style={styles.bannerContent}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                          <Text style={{
-                            color: '#FFF',
-                            fontFamily: 'System',
-                            fontSize: 15,
-                            fontStyle: 'normal',
-                            fontWeight: '700',
-                            letterSpacing: 1,
-                            textShadowColor: 'rgba(0,0,0,0.9)',
-                            textShadowOffset: { width: 0, height: 1 },
-                            textShadowRadius: 6,
-                          }}>
-                            {heroTitle}
-                          </Text>
-                        </View>
-
-                        <Text style={{
-                          color: '#FFF',
-                          fontWeight: '600',
-                          opacity: 0.9,
-                          textShadowColor: 'rgba(0,0,0,0.8)',
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 4,
-                          marginLeft: 14,
-                          marginTop: 0,
-                          marginBottom: 2,
-                          fontSize: 13
-                        }}>
-                          {heroTagline}
-                        </Text>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                          <Ionicons name="time-outline" size={13} color="#FFF" />
-                          <Text style={{
-                            marginTop: 0,
-                            marginLeft: 4,
-                            color: '#FFF',
-                            fontWeight: '600',
-                            fontSize: 12
-                          }}>
-                            {heroTimeLabel}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={styles.bannerFooter}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.mockupJoinNowBtn,
-                          pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                        ]}
-                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/live-jaap-welcome',
-                            params: {
-                              mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
-                              title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
-                            },
-                          })
-                        }
-                      >
-                        <LinearGradient
-                          colors={['#FF6B00', '#FF8800']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={styles.mockupJoinGradient}
-                        >
-                          <MaterialCommunityIcons name="broadcast" size={17} color="#FFF" />
-                          <Text style={styles.mockupJoinJaapText}>
-                            {liveActive
-                              ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap')
-                              : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')}
-                          </Text>
-                          <Ionicons name="chevron-forward" size={15} color="#FFF" />
-                        </LinearGradient>
-                      </Pressable>
-
-                      <View style={styles.bannerDotsRow} pointerEvents="none">
-                        {Array.from({ length: HERO_DOT_COUNT }).map((_, index) => (
-                          <View
-                            key={`hero-dot-${index}`}
-                            style={[
-                              styles.bannerDot,
-                              index === heroBannerIndex && styles.bannerDotActive,
-                            ]}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </ImageBackground>
-              </View>
-            </View>
+            {/* Top Jaap Hero Banner */}
+            <JaapHeroBanner now={now} />
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>{t('moreLiveJaaps')}</Text>
@@ -768,7 +479,7 @@ export default function JaapLandingScreen() {
                   pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                 ]}
                 android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                onPress={() => router.push('/all-live-jaaps' as any)}
+                onPress={() => safeNavigate(() => router.push('/all-live-jaaps' as any))}
               >
                 <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
@@ -840,237 +551,33 @@ export default function JaapLandingScreen() {
                 }
 
                 return (
-                  <View
+                  <LiveJaapCard
                     key={jaap.id}
-                    style={[
-                      styles.jaapCardContainer,
-                      { backgroundColor: '#1A0A00' }
-                    ]}
-                  >
-                    <Image
-                      source={jaap.image}
-                      style={{ width: '100%', height: '100%', position: 'absolute' }}
-                      resizeMode="cover"
-                    />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.jaapCardOverlayExact}>
-                      <View style={styles.jaapCardTopRow}>
-                        <View style={[styles.exactLiveBadge, (!showLive) && styles.mockupScheduledBadge, { maxWidth: showLive ? '65%' : '100%', paddingHorizontal: 8 }]}>
-                          <Ionicons name={showLive ? "radio" : "time-outline"} size={10} color="#FFF" style={{ marginRight: 3 }} />
-                          <Text style={[styles.exactLiveText, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit>{liveLabel}</Text>
-                        </View>
-                        {showLive && (
-                          <View style={styles.exactCountBadge}>
-                            <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
-                            <Text style={styles.exactCountText}>
-                              {(activeCounts[getMantraRoomName(jaap.id)] || 0).toLocaleString()}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.jaapCardBottomArea}>
-                        <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
-                        <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <SubtleJoinButton
-                            style={{ flex: 1 }}
-                            onPress={() => router.push({
-                              pathname: '/live-jaap-welcome',
-                              params: {
-                                mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                                title: jaap.title.replace('\n', ' ')
-                              }
-                            })}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                              <Text style={styles.exactJoinText}>{t('join')}</Text>
-                              <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-                                <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00" />
-                              </Svg>
-                            </View>
-                          </SubtleJoinButton>
-                        </View>
-                      </View>
-                    </LinearGradient>
-                  </View>
+                    jaap={jaap}
+                    showLive={showLive}
+                    liveLabel={liveLabel}
+                    activeCount={activeCounts[getMantraRoomName(jaap.id)] || 0}
+                    translatedTitle={translatedTitle}
+                    joinText={t('join')}
+                    onJoin={() => safeNavigate(() => {
+                      router.push({
+                        pathname: '/live-jaap-welcome',
+                        params: {
+                          mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                          title: jaap.title.replace('\n', ' ')
+                        }
+                      });
+                    })}
+                  />
                 );
               })}
             </ScrollView>
 
-            {/* Animated Gold Devotional Title Component */}
-            {/* Stack: #1 Animated Gold Gradient + #4 Layered Text-Shadow Glow + #10 Breathing Animation + #8 Clamp Sizing */}
-
-            {/* Authentic Sacred Shravan Katha Section Header */}
-            <View style={styles.authenticKathaHeaderContainer}>
-              {/* Main Title Row with Authentic Brass/Gold Ornaments */}
-              <View style={styles.authenticTitleRow}>
-                {/* Left Brass Ornament Divider */}
-                <View style={styles.brassOrnamentSide}>
-                  <LinearGradient
-                    colors={['transparent', 'rgba(212, 175, 55, 0.3)', '#C5A059']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.brassOrnamentLine}
-                  />
-                  <Text style={styles.brassOrnamentSymbol}>❖</Text>
-                </View>
-
-                {/* Devotional Banner Title Stack: Gold Gradient + Glow + Breathing + Clamp Sizing */}
-                <AnimatedGoldKathaTitle title={t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'} />
-
-                {/* Right Brass Ornament Divider */}
-                <View style={styles.brassOrnamentSide}>
-                  <Text style={styles.brassOrnamentSymbol}>❖</Text>
-                  <LinearGradient
-                    colors={['#C5A059', 'rgba(212, 175, 55, 0.3)', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.brassOrnamentLine}
-                  />
-                </View>
-              </View>
-
-              {/* Subdued Authentic Status Bar (Live & 30 Days Info) */}
-              <View style={styles.authenticMetaNavRow}>
-                {/* Live Indicator Badge */}
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.authenticLiveBadge,
-                    pressed && Platform.OS === 'ios' && { opacity: 0.85 }
-                  ]}
-                  onPress={async () => {
-                    try {
-                      const res = await api.get('/katha/status');
-                      if (res.data && res.data.is_live) {
-                        router.push('/library/katha' as any);
-                        return;
-                      }
-                    } catch (_e) {}
-                    Alert.alert(
-                      '🔴 LIVE Katha Broadcast',
-                      'Shravan Live Katha starts daily at 8:00 AM IST & 8:00 PM IST.',
-                      [{ text: 'OK', style: 'default' }]
-                    );
-                  }}
-                >
-                  <View style={styles.authenticRedDot} />
-                  <Text style={styles.authenticLiveText}>LIVE</Text>
-                </Pressable>
-
-                <View style={styles.authenticMetaDivider} />
-
-                {/* 30 Days Info Badge (Navigation removed) */}
-                <View style={styles.authentic30DaysBtn}>
-                  <Ionicons name="calendar-outline" size={13} color="#8A5A2B" style={{ marginRight: 4 }} />
-                  <Text style={styles.authentic30DaysText}>
-                    {t('language') === 'hi' ? '30 दिवस' : '30 Days'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.bookCardKatha,
-                  pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] }
-                ]}
-                android_ripple={{ color: 'rgba(255, 107, 0, 0.22)', borderless: false }}
-                onPress={() => {
-                  router.push('/library/katha' as any);
-                }}
-              >
-                <View style={styles.coverBoxKatha}>
-                  <Image
-                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' }}
-                    style={styles.coverImgKatha}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.progressTrackKatha}>
-                    <View style={[styles.progressFillKatha, { width: '0%' }]} />
-                  </View>
-                </View>
-
-                <View style={styles.bookMetaKatha}>
-                  <Text style={styles.bookNameKatha}>Shamik Pathak Ji</Text>
-                  <Text style={styles.bookSubKatha}>Spiritual Guru • Astrologer • Panditji</Text>
-                </View>
-              </Pressable>
-            </View>
+            {/* Shravan Katha Devotional Section */}
+            <KathaSection onNavigate={safeNavigate} />
 
             {/* More Upcoming Jaaps Section */}
-            <View style={styles.sectionHeaderParity}>
-              <Text style={styles.sectionTitleText}>
-                {t('language') === 'hi' ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
-              </Text>
-              <Pressable
-                style={({ pressed }) => [
-                  { flexDirection: 'row', alignItems: 'center' },
-                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                ]}
-                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                onPress={() => router.push('/all-live-jaaps' as any)}
-              >
-                <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#FF6600" />
-              </Pressable>
-            </View>
-
-            <View style={styles.upcomingGridContainer}>
-              {UPCOMING_JAAPS.map((jaap) => {
-                const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
-                return (
-                  <Pressable
-                    key={jaap.id}
-                    style={({ pressed }) => [
-                      styles.upcomingCard,
-                      { width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT },
-                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
-                    onPress={() => handleUpcomingCardPress(jaap)}
-                  >
-                    <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
-                      <Image
-                        source={jaap.image}
-                        style={{ width: '100%', height: '100%', position: 'absolute' }}
-                        resizeMode="cover"
-                      />
-                      <LinearGradient
-                        colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
-                        locations={[0, 0.5, 1]}
-                        style={StyleSheet.absoluteFill}
-                      />
-
-                      <View style={styles.upcomingCardContent}>
-                        <Text style={styles.upcomingCardTitle} numberOfLines={2}>
-                          {displayName}
-                        </Text>
-
-                        <View style={[
-                          styles.upcomingReminderBtn,
-                          {
-                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                            borderColor: 'rgba(255, 255, 255, 0.4)',
-                            borderWidth: 1,
-                            elevation: 0,
-                            shadowOpacity: 0,
-                          }
-                        ]}>
-                          <Text style={{
-                            color: '#FFF',
-                            fontSize: 10,
-                            fontWeight: '700',
-                            letterSpacing: 0.5,
-                          }} numberOfLines={1}>
-                            {t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <UpcomingJaapsSection />
 
           </ScrollView>
         ) : (
@@ -1167,14 +674,16 @@ export default function JaapLandingScreen() {
                                 styles.mockupJoinNowBtn,
                                 pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                               ]}
-                              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                              android_ripple={{ color: 'rgba(255, 107, 0, 0.2)', borderless: false }}
                               onPress={() =>
-                                router.push({
-                                  pathname: '/temple/[id]',
-                                  params: {
-                                    id: 'jyotirling-somnath-temple-gujarat',
-                                    autoplayAarti: 'true',
-                                  },
+                                safeNavigate(() => {
+                                  router.push({
+                                    pathname: '/temple/[id]',
+                                    params: {
+                                      id: 'jyotirling-somnath-temple-gujarat',
+                                      autoplayAarti: 'true',
+                                    },
+                                  });
                                 })
                               }
                             >
@@ -1324,92 +833,13 @@ export default function JaapLandingScreen() {
             />
 
             {/* Char Dham Sub-Circuit Selection Modal */}
-            <Modal
+            <CharDhamModal
               visible={showCharDhamDropdown}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setShowCharDhamDropdown(false)}
-            >
-              <Pressable
-                style={styles.modalOverlay}
-                onPress={() => setShowCharDhamDropdown(false)}
-              >
-                <View style={styles.charDhamModalCard}>
-                  <View style={styles.modalHeaderRow}>
-                    <Text style={styles.modalTitle}>
-                      {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
-                    </Text>
-                    <Pressable onPress={() => setShowCharDhamDropdown(false)} hitSlop={10}>
-                      <Ionicons name="close-circle" size={24} color="#9CA3AF" />
-                    </Pressable>
-                  </View>
-
-                  {[
-                    {
-                      id: 'all',
-                      titleEn: 'All Char Dham',
-                      titleHi: 'सभी चार धाम',
-                      subtitleEn: '7 Unique Sacred Shrines',
-                      subtitleHi: '7 मुख्य पवित्र तीर्थ',
-                      count: 7,
-                    },
-                    {
-                      id: 'bada',
-                      titleEn: 'Bada Char Dham',
-                      titleHi: 'बड़ा चार धाम',
-                      subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
-                      subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
-                      count: 4,
-                    },
-                    {
-                      id: 'chota',
-                      titleEn: 'Chota Char Dham',
-                      titleHi: 'छोटा चार धाम',
-                      subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
-                      subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
-                      count: 4,
-                    },
-                  ].map((item) => {
-                    const isSelected = charDhamSubFilter === item.id;
-                    const title = t('language') === 'hi' ? item.titleHi : item.titleEn;
-                    const subtitle = t('language') === 'hi' ? item.subtitleHi : item.subtitleEn;
-
-                    return (
-                      <Pressable
-                        key={item.id}
-                        style={({ pressed }) => [
-                          styles.charDhamOptionRow,
-                          isSelected && styles.charDhamOptionRowSelected,
-                          pressed && { opacity: 0.85 }
-                        ]}
-                        onPress={() => {
-                          setCharDhamSubFilter(item.id as any);
-                          setShowCharDhamDropdown(false);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={[styles.charDhamOptionTitle, isSelected && styles.charDhamOptionTitleSelected]}>
-                              {title}
-                            </Text>
-                            <View style={styles.charDhamBadge}>
-                              <Text style={styles.charDhamBadgeText}>{item.count}</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.charDhamOptionSubtitle}>{subtitle}</Text>
-                        </View>
-
-                        <MaterialCommunityIcons
-                          name={isSelected ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}
-                          size={22}
-                          color={isSelected ? "#F97316" : "#D1D5DB"}
-                        />
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </Pressable>
-            </Modal>
+              onClose={() => setShowCharDhamDropdown(false)}
+              charDhamSubFilter={charDhamSubFilter}
+              setCharDhamSubFilter={setCharDhamSubFilter}
+              t={t}
+            />
           </>
         )}
       </View>
@@ -1421,7 +851,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   stickyTopTabsWrap: {
     zIndex: 100,
-    elevation: 10,
+    elevation: 0,
     backgroundColor: 'transparent',
     paddingBottom: 10,
   },
@@ -1624,27 +1054,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     flexShrink: 1,
   },
-  bannerDotsRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 6, // Moved dots lower
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    zIndex: 2,
-  },
-  bannerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-  },
-  bannerDotActive: {
-    width: 18,
-    backgroundColor: '#FF6600',
-  },
   mockupOmCircle: { backgroundColor: 'rgba(255,255,255,0.2)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   mockupOmIcon: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   mockupWaveformBox: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row' },
@@ -1842,271 +1251,10 @@ const styles = StyleSheet.create({
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },
   newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 6 },
-  newTempleCard: { backgroundColor: '#FFF', minHeight: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 6, flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' },
-  newTempleCardImg: { width: 80, height: 95, borderRadius: 12 },
-  newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  newTempleCardDeity: { color: '#FF6B35', fontSize: 11, fontWeight: '700', lineHeight: 15, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2, alignSelf: 'flex-start' },
-  newTempleCardName: { color: '#1C1C1E', fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 2 },
-  newTempleCardLoc: { color: 'rgba(0, 0, 0, 0.61)', fontSize: 13, fontWeight: '400', lineHeight: 18 },
   newTempleOpenBtn: { width: 190, height: 32, justifyContent: 'center', alignItems: 'center', borderRadius: 12, borderWidth: 2, borderColor: '#FF7B00', alignSelf: 'center' },
   newTempleOpenBtnText: { color: '#FF7B00', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   blueBadge: { position: 'absolute', top: -8, left: 12, backgroundColor: '#0084FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 10 },
   blueBadgeText: { color: '#FFF', fontSize: 9, fontFamily: 'Inter_700Bold' },
-  upcomingGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: UPCOMING_GRID_GAP,
-    paddingHorizontal: UPCOMING_GRID_PADDING,
-    marginBottom: 20,
-  },
-  upcomingCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#1A0A00',
-  },
-  upcomingCardContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    padding: 8,
-    paddingBottom: 10,
-  },
-  upcomingCardTitle: {
-    color: '#FFF',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 12.5,
-    fontStyle: 'normal',
-    fontWeight: '700',
-    marginBottom: 6,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    lineHeight: 16,
-  },
-  upcomingReminderBtn: {
-    backgroundColor: '#FFF',
-    height: 32,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  upcomingReminderBtnActive: {
-    backgroundColor: '#FF7B00',
-  },
-  upcomingReminderBtnText: {
-    color: '#FF7B00',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  upcomingReminderBtnTextActive: {
-    color: '#FFF',
-  },
-  upcomingDayBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    zIndex: 10,
-  },
-  upcomingDayBadgeActive: {
-    backgroundColor: '#FF6600',
-  },
-  upcomingDayBadgeText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  kathaSectionHeader: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 18,
-  },
-  authenticKathaHeaderContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 4,
-    paddingTop: 8,
-    paddingBottom: 4,
-    paddingHorizontal: 16,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  authenticMandalaWrapper: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    top: -30,
-    zIndex: 0,
-  },
-  authenticTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    zIndex: 1,
-  },
-  brassOrnamentSide: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  brassOrnamentLine: {
-    width: 32,
-    height: 1.5,
-  },
-  brassOrnamentSymbol: {
-    color: '#C5A059',
-    fontSize: 10,
-  },
-  authenticKathaTitleText: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#4A2511',
-    letterSpacing: 0.8,
-    textAlign: 'center',
-  },
-  authenticKathaSubtitleText: {
-    marginTop: 4,
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#8A5A2B',
-    textAlign: 'center',
-    letterSpacing: 0.4,
-    zIndex: 1,
-  },
-  authenticMetaNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-    gap: 12,
-    zIndex: 1,
-  },
-  authenticLiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  authenticRedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EB5757',
-  },
-  authenticLiveText: {
-    color: '#EB5757',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  authenticMetaDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(197, 160, 89, 0.4)',
-  },
-  authentic30DaysBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authentic30DaysText: {
-    color: '#8A5A2B',
-    fontSize: 11.5,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  kathaTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  kathaTitleLine: {
-    width: 32,
-    height: 1,
-  },
-  kathaTitleText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#5a3218',
-  },
-  kathaSubtitleText: {
-    marginTop: 5,
-    fontSize: 13,
-    color: '#8a735c',
-    textAlign: 'center',
-  },
-  bookCardKatha: {
-    width: 192,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  coverBoxKatha: {
-    width: '100%',
-    height: 250,
-    position: 'relative',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  coverImgKatha: {
-    width: '100%',
-    height: '100%',
-  },
-  progressTrackKatha: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    backgroundColor: 'rgba(160,65,0,0.20)',
-  },
-  progressFillKatha: {
-    height: '100%',
-    backgroundColor: '#FF6B00',
-    borderRadius: 2,
-  },
-  bookMetaKatha: {
-    paddingHorizontal: 4,
-    paddingTop: 10,
-    paddingBottom: 10,
-    alignItems: 'center',
-  },
-  bookNameKatha: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1B1C1C',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  bookSubKatha: {
-    fontSize: 12,
-    color: '#5A4136',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: 0.2,
-    flexWrap: 'wrap',
-    textAlign: 'center',
-  },
 
   // Premium Char Dham Pill & Modal Styles
   charDhamPillWrapper: {
@@ -2153,78 +1301,5 @@ const styles = StyleSheet.create({
   },
   charDhamPillSubTextActive: {
     color: '#F97316',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  charDhamModalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  charDhamOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  charDhamOptionRowSelected: {
-    backgroundColor: '#FFF7ED',
-    borderColor: '#FED7AA',
-  },
-  charDhamOptionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  charDhamOptionTitleSelected: {
-    color: '#F97316',
-  },
-  charDhamOptionSubtitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  charDhamBadge: {
-    backgroundColor: '#FFEDD5',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-  },
-  charDhamBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#C2410C',
   },
 });

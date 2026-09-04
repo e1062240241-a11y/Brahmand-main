@@ -1,0 +1,79 @@
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/android/applyPlugin.js b/node_modules/@react-native-firebase/app/plugin/build/android/applyPlugin.js
+index ffab65b..0f7fd12 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/android/applyPlugin.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/android/applyPlugin.js
+@@ -2,7 +2,7 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.withApplyGoogleServicesPlugin = void 0;
+ exports.applyPlugin = applyPlugin;
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ const constants_1 = require("./constants");
+ /**
+  * Update `app/build.gradle` by applying google-services plugin
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/android/buildscriptDependency.js b/node_modules/@react-native-firebase/app/plugin/build/android/buildscriptDependency.js
+index e52b064..fa8e276 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/android/buildscriptDependency.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/android/buildscriptDependency.js
+@@ -2,7 +2,7 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.withBuildscriptDependency = void 0;
+ exports.setBuildscriptDependency = setBuildscriptDependency;
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ const constants_1 = require("./constants");
+ /**
+  * Update `<project>/build.gradle` by adding google-services dependency to buildscript
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/android/copyGoogleServices.js b/node_modules/@react-native-firebase/app/plugin/build/android/copyGoogleServices.js
+index 85e84c5..b6fdbe2 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/android/copyGoogleServices.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/android/copyGoogleServices.js
+@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.withCopyAndroidGoogleServices = void 0;
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ const constants_1 = require("./constants");
+ const path_1 = __importDefault(require("path"));
+ const fs_1 = __importDefault(require("fs"));
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/index.js b/node_modules/@react-native-firebase/app/plugin/build/index.js
+index 2265783..b42aca3 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/index.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/index.js
+@@ -1,6 +1,6 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ const android_1 = require("./android");
+ const ios_1 = require("./ios");
+ /**
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/ios/appDelegate.js b/node_modules/@react-native-firebase/app/plugin/build/ios/appDelegate.js
+index 68bc955..ae20c36 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/ios/appDelegate.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/ios/appDelegate.js
+@@ -7,8 +7,8 @@ exports.withFirebaseAppDelegate = void 0;
+ exports.modifyObjcAppDelegate = modifyObjcAppDelegate;
+ exports.modifySwiftAppDelegate = modifySwiftAppDelegate;
+ exports.modifyAppDelegateAsync = modifyAppDelegateAsync;
+-const config_plugins_1 = require("@expo/config-plugins");
+-const generateCode_1 = require("@expo/config-plugins/build/utils/generateCode");
++const config_plugins_1 = require("expo/config-plugins");
++const generateCode_1 = require("expo/config-plugins").CodeGenerator;
+ const fs_1 = __importDefault(require("fs"));
+ function modifyObjcAppDelegate(contents) {
+     const methodInvocationBlock = `[FIRApp configure];`;
+diff --git a/node_modules/@react-native-firebase/app/plugin/build/ios/googleServicesPlist.js b/node_modules/@react-native-firebase/app/plugin/build/ios/googleServicesPlist.js
+index ed27fdb..f17536d 100644
+--- a/node_modules/@react-native-firebase/app/plugin/build/ios/googleServicesPlist.js
++++ b/node_modules/@react-native-firebase/app/plugin/build/ios/googleServicesPlist.js
+@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.withIosGoogleServicesFile = void 0;
+ exports.setGoogleServicesFile = setGoogleServicesFile;
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ const fs_1 = __importDefault(require("fs"));
+ const path_1 = __importDefault(require("path"));
+ const withIosGoogleServicesFile = config => {

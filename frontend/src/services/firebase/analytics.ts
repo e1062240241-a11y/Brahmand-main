@@ -2,31 +2,31 @@ import { Platform } from 'react-native';
 
 type Params = Record<string, any> | undefined;
 
-let nativeAnalyticsInstance: any = null;
+let nativeModule: any = null;
+let nativeInstance: any = null;
 let webAnalyticsInstance: any = null;
 
 /**
- * Get native @react-native-firebase/analytics instance for Android / iOS
+ * Get native @react-native-firebase/analytics modular module and instance
  */
 function getNativeAnalytics() {
-  if (Platform.OS === 'web') return null;
-  if (!nativeAnalyticsInstance) {
+  if (Platform.OS === 'web') return { mod: null, inst: null };
+  if (!nativeModule) {
     try {
-      const analyticsModule = require('@react-native-firebase/analytics');
-      const getInst = analyticsModule?.default || analyticsModule;
-      if (typeof getInst === 'function') {
-        nativeAnalyticsInstance = getInst();
-      } else if (getInst && typeof getInst.logEvent === 'function') {
-        nativeAnalyticsInstance = getInst;
+      nativeModule = require('@react-native-firebase/analytics');
+      if (typeof nativeModule.getAnalytics === 'function') {
+        nativeInstance = nativeModule.getAnalytics();
+      } else if (typeof nativeModule.default === 'function') {
+        nativeInstance = nativeModule.default();
+      } else {
+        nativeInstance = nativeModule;
       }
-    } catch (e) {
-      if (__DEV__) {
-        console.warn('[Analytics:Native] Module init error:', e);
-      }
-      nativeAnalyticsInstance = null;
+    } catch {
+      nativeModule = null;
+      nativeInstance = null;
     }
   }
-  return nativeAnalyticsInstance;
+  return { mod: nativeModule, inst: nativeInstance };
 }
 
 /**
@@ -92,17 +92,14 @@ function sanitizeParams(params?: Params): Record<string, any> {
  */
 export async function setAnalyticsCollectionEnabled(enabled: boolean = true) {
   try {
-    const native = getNativeAnalytics();
-    if (native && typeof native.setAnalyticsCollectionEnabled === 'function') {
-      await native.setAnalyticsCollectionEnabled(enabled);
-      if (__DEV__) {
-        console.log('[Analytics:Native] Collection enabled:', enabled);
-      }
+    const { mod, inst } = getNativeAnalytics();
+    if (mod && typeof mod.setAnalyticsCollectionEnabled === 'function' && inst) {
+      await mod.setAnalyticsCollectionEnabled(inst, enabled);
+    } else if (inst && typeof inst.setAnalyticsCollectionEnabled === 'function') {
+      await inst.setAnalyticsCollectionEnabled(enabled);
     }
-  } catch (e) {
-    if (__DEV__) {
-      console.warn('[Analytics:Native] setAnalyticsCollectionEnabled failed:', e);
-    }
+  } catch {
+    // Silent catch
   }
 }
 
@@ -116,10 +113,6 @@ export async function logEvent(name: string, params?: Params) {
   const safeName = sanitizeEventName(name);
   const safeParams = sanitizeParams(params);
 
-  if (__DEV__) {
-    console.log(`[Analytics:Native] Event: ${safeName}`, safeParams);
-  }
-
   try {
     if (Platform.OS === 'web') {
       const web = getWebAnalytics();
@@ -130,14 +123,14 @@ export async function logEvent(name: string, params?: Params) {
       return;
     }
 
-    const native = getNativeAnalytics();
-    if (native && typeof native.logEvent === 'function') {
-      return await native.logEvent(safeName, safeParams);
+    const { mod, inst } = getNativeAnalytics();
+    if (mod && typeof mod.logEvent === 'function' && inst) {
+      return await mod.logEvent(inst, safeName, safeParams);
+    } else if (inst && typeof inst.logEvent === 'function') {
+      return await inst.logEvent(safeName, safeParams);
     }
-  } catch (e) {
-    if (__DEV__) {
-      console.warn(`[Analytics:Native] Failed to log event ${safeName}:`, e);
-    }
+  } catch {
+    // Never crash or affect UI performance
   }
 }
 
@@ -154,47 +147,18 @@ function formatScreenName(name: string): string {
 
 /**
  * Log Screen View on Android / iOS with exact screen name
+ * Uses standard logEvent('screen_view') to comply with Firebase modular standard
  */
 export async function logScreenView(screenName: string, screenClass?: string) {
   const cleanScreen = formatScreenName(screenName);
   const cleanClass = screenClass || cleanScreen;
 
-  if (__DEV__) {
-    console.log(`[Analytics:Native] ScreenView: ${cleanScreen} (${cleanClass})`);
-  }
-
-  try {
-    if (Platform.OS === 'web') {
-      const web = getWebAnalytics();
-      if (web) {
-        const { logEvent: webLogEvent } = require('firebase/analytics');
-        return webLogEvent(web, 'screen_view', {
-          firebase_screen: cleanScreen,
-          firebase_screen_class: cleanClass,
-        });
-      }
-      return;
-    }
-
-    const native = getNativeAnalytics();
-    if (native) {
-      if (typeof native.logScreenView === 'function') {
-        return await native.logScreenView({
-          screen_name: cleanScreen,
-          screen_class: cleanClass,
-        });
-      } else if (typeof native.logEvent === 'function') {
-        return await native.logEvent('screen_view', {
-          screen_name: cleanScreen,
-          screen_class: cleanClass,
-        });
-      }
-    }
-  } catch (e) {
-    if (__DEV__) {
-      console.warn('[Analytics:Native] logScreenView failed:', e);
-    }
-  }
+  return await logEvent('screen_view', {
+    firebase_screen: cleanScreen,
+    firebase_screen_class: cleanClass,
+    screen_name: cleanScreen,
+    screen_class: cleanClass,
+  });
 }
 
 /**
@@ -202,10 +166,6 @@ export async function logScreenView(screenName: string, screenClass?: string) {
  */
 export async function setUserId(id: string | null) {
   const safeId = id ? String(id).slice(0, 100) : null;
-
-  if (__DEV__) {
-    console.log(`[Analytics:Native] SetUserId: ${safeId}`);
-  }
 
   try {
     if (Platform.OS === 'web') {
@@ -217,95 +177,50 @@ export async function setUserId(id: string | null) {
       return;
     }
 
-    const native = getNativeAnalytics();
-    if (native && typeof native.setUserId === 'function') {
-      return await native.setUserId(safeId);
+    const { mod, inst } = getNativeAnalytics();
+    if (mod && typeof mod.setUserId === 'function' && inst) {
+      return await mod.setUserId(inst, safeId);
+    } else if (inst && typeof inst.setUserId === 'function') {
+      return await inst.setUserId(safeId);
     }
   } catch (e) {
-    if (__DEV__) {
-      console.warn('[Analytics:Native] setUserId failed:', e);
-    }
+    // Silent catch
   }
 }
 
 /**
- * Log standard Login event
+ * Log standard Login event via logEvent
  */
 export async function logLogin(method: string = 'phone') {
-  if (__DEV__) {
-    console.log(`[Analytics:Native] Login: method=${method}`);
-  }
-  try {
-    const native = getNativeAnalytics();
-    if (native && typeof native.logLogin === 'function') {
-      return await native.logLogin({ method });
-    }
-    return await logEvent('login', { method });
-  } catch (e) {
-    return await logEvent('login', { method });
-  }
+  return await logEvent('login', { method });
 }
 
 /**
- * Log standard Sign Up event
+ * Log standard Sign Up event via logEvent
  */
 export async function logSignUp(method: string = 'phone') {
-  if (__DEV__) {
-    console.log(`[Analytics:Native] SignUp: method=${method}`);
-  }
-  try {
-    const native = getNativeAnalytics();
-    if (native && typeof native.logSignUp === 'function') {
-      return await native.logSignUp({ method });
-    }
-    return await logEvent('sign_up', { method });
-  } catch (e) {
-    return await logEvent('sign_up', { method });
-  }
+  return await logEvent('sign_up', { method });
 }
 
 /**
- * Log standard Content Selection (e.g. clicked a temple, post, community)
+ * Log standard Content Selection via logEvent
  */
 export async function logSelectContent(contentType: string, itemId: string) {
-  try {
-    const native = getNativeAnalytics();
-    if (native && typeof native.logSelectContent === 'function') {
-      return await native.logSelectContent({
-        content_type: contentType.slice(0, 40),
-        item_id: String(itemId).slice(0, 100),
-      });
-    }
-    return await logEvent('select_content', {
-      content_type: contentType,
-      item_id: String(itemId),
-    });
-  } catch (e) {
-    // Silent catch
-  }
+  return await logEvent('select_content', {
+    content_type: contentType.slice(0, 40),
+    item_id: String(itemId).slice(0, 100),
+  });
 }
 
 /**
- * Log standard Share event
+ * Log standard Share event via logEvent
  */
 export async function logShare(contentType: string, itemId: string, method: string = 'app_share') {
-  try {
-    const native = getNativeAnalytics();
-    if (native && typeof native.logShare === 'function') {
-      return await native.logShare({
-        content_type: contentType.slice(0, 40),
-        item_id: String(itemId).slice(0, 100),
-        method: method.slice(0, 40),
-      });
-    }
-    return await logEvent('share', {
-      content_type: contentType,
-      item_id: String(itemId),
-      method,
-    });
-  } catch (e) {
-    // Silent catch
-  }
+  return await logEvent('share', {
+    content_type: contentType.slice(0, 40),
+    item_id: String(itemId).slice(0, 100),
+    method: method.slice(0, 40),
+  });
 }
 
 /**
@@ -330,14 +245,14 @@ export async function setUserProperties(properties: Record<string, any>) {
       return;
     }
 
-    const native = getNativeAnalytics();
-    if (native && typeof native.setUserProperties === 'function') {
-      return await native.setUserProperties(sanitizedProps);
+    const { mod, inst } = getNativeAnalytics();
+    if (mod && typeof mod.setUserProperties === 'function' && inst) {
+      return await mod.setUserProperties(inst, sanitizedProps);
+    } else if (inst && typeof inst.setUserProperties === 'function') {
+      return await inst.setUserProperties(sanitizedProps);
     }
   } catch (e) {
-    if (__DEV__) {
-      console.warn('[Analytics:Native] setUserProperties failed:', e);
-    }
+    // Silent catch
   }
 }
 
