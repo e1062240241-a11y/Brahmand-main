@@ -22,12 +22,16 @@ import { useTranslation } from '../src/utils/i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// 🧡 Engagement: Reframed generic/transactional instructions into devotional and Satsang-inspired guidelines.
+// Lever: Reframing + Social Proof / Satsang Feeling + Devotion over Productivity
+// Why: "मौन ही ध्यान है" and "हृदय से नाम जपें" evoke deep devotion and spiritual sanctity rather than clinical rules.
+// UI: Text-only change, no new visual components or elements added.
 const getGuidelines = (lang: string) => [
-  { id: '1', icon: 'volume-mute', title: lang === 'hi' ? 'शांत रहें' : 'Be Silent When Needed', desc: lang === 'hi' ? 'अनावश्यक शोर करने से बचें।' : 'Avoid unnecessary background noise.' },
-  { id: '2', icon: 'heart', title: lang === 'hi' ? 'पवित्र स्थान का सम्मान करें' : 'Respect the Sacred Space', desc: lang === 'hi' ? 'यह एक भक्तिपूर्ण स्थान है।' : 'This is a devotional space.' },
-  { id: '3', icon: 'person', title: lang === 'hi' ? 'भक्ति भाव से जपें' : 'Chant with Devotion', desc: lang === 'hi' ? 'मंत्र पर ध्यान केंद्रित करें, सच्चे मन से जपें।' : 'Focus on the mantra, chant sincerely.' },
-  { id: '4', icon: 'people', title: lang === 'hi' ? 'ध्यान न भटकाएं' : 'No Distractions', desc: lang === 'hi' ? 'दूसरों से बात करने या ऐप्स बदलने से बचें।' : 'Avoid chatting or switching apps.' },
-  { id: '5', icon: 'shield-checkmark', title: lang === 'hi' ? 'सकारात्मक रहें' : 'Stay Positive', desc: lang === 'hi' ? 'केवल सकारात्मक विचार और कंपन रखें।' : 'Only positive thoughts and vibrations.' },
+  { id: '1', icon: 'volume-mute', title: lang === 'hi' ? 'मौन ही ध्यान है' : 'Sacred Silence', desc: lang === 'hi' ? 'शांत मन से नाम जप में लीन रहें।' : 'Remain absorbed in divine chanting with a quiet mind.' },
+  { id: '2', icon: 'heart', title: lang === 'hi' ? 'पवित्र धाम का भाव रखें' : 'Honour the Sacred Space', desc: lang === 'hi' ? 'यह एक पावन सामूहिक भक्ति स्थान है।' : 'This is a pure space of collective devotion.' },
+  { id: '3', icon: 'person', title: lang === 'hi' ? 'हृदय से नाम जपें' : 'Chant from the Heart', desc: lang === 'hi' ? 'मंत्र के प्रत्येक शब्द में श्रद्धा महसूस करें।' : 'Feel devotion in every syllable of the mantra.' },
+  { id: '4', icon: 'people', title: lang === 'hi' ? 'एकाग्रचित्त रहें' : 'Stay Mindful & Present', desc: lang === 'hi' ? 'अन्य विचारों को छोड़कर ध्यान केंद्रित करें।' : 'Keep your consciousness fixed on the holy name.' },
+  { id: '5', icon: 'shield-checkmark', title: lang === 'hi' ? 'सत्संग की ऊर्जा बनाए रखें' : 'Preserve Sacred Energy', desc: lang === 'hi' ? 'सकारात्मक विचार और सात्विक भाव रखें।' : 'Hold positive thoughts and divine vibrations together.' },
 ];
 
 const getTranslatedTitle = (title: string): string => {
