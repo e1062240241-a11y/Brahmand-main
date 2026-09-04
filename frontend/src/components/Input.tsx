@@ -40,7 +40,11 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
         onChangeText={handleChangeText}
       />
       {props.maxLength && (
-        <Text style={styles.charCount}>
+        <Text
+          style={styles.charCount}
+          accessibilityLabel={`${currentLength} of ${props.maxLength} characters used`}
+          accessibilityRole="text"
+        >
           {currentLength}/{props.maxLength}
         </Text>
       )}
