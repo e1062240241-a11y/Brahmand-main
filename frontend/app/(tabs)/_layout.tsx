@@ -38,10 +38,12 @@ export default function TabLayout() {
       <TabBarProvider>
         <Tabs
           initialRouteName="home"
+          detachInactiveScreens
           tabBar={(props) => <CustomTabBar {...props} />}
           screenOptions={{
             headerShown: false,
             lazy: true,
+            freezeOnBlur: true,
           }}
       >
       {/* 1. Home */}

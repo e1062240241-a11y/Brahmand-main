@@ -1,7 +1,11 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
+import { enableScreens, enableFreeze } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox, Alert as RNAlert, AppState } from 'react-native';
+
+enableScreens(true);
+enableFreeze(true);
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -1270,6 +1274,7 @@ export default function RootLayout() {
             animationMatchesGesture: true,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
+            freezeOnBlur: true,
             contentStyle: { backgroundColor: COLORS.background }
           }}>
             {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}

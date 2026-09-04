@@ -219,11 +219,16 @@ export default function JaapLandingScreen() {
   const [appActive, setAppActive] = useState(() => AppState.currentState === 'active');
 
   useEffect(() => {
+    if (!isFocused) {
+      setAppActive(false);
+      return;
+    }
+    setAppActive(AppState.currentState === 'active');
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       setAppActive(nextAppState === 'active');
     });
     return () => subscription.remove();
-  }, []);
+  }, [isFocused]);
 
   useEffect(() => {
     if (!isFocused || !appActive) return;

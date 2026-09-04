@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { API_URL } from './api';
 import { secureStorage } from '../utils/secureStorage';
 
@@ -10,8 +10,57 @@ class SocketService {
   private messageCallbacks: Map<string, (message: any) => void> = new Map();
   private eventCallbacks: Map<string, Set<(message: any) => void>> = new Map();
   private connectPromise: Promise<void> | null = null;
+  private joinedRooms: Map<string, string | undefined> = new Map();
+  private wantedConnection = false;
+  private suspended = false;
+
+  constructor() {
+    if (Platform.OS === 'web') return;
+    AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background') {
+        this.suspend();
+      } else if (nextAppState === 'active') {
+        this.resume();
+      }
+    });
+  }
+
+  private suspend() {
+    if (this.suspended) return;
+    this.suspended = true;
+    this.connectPromise = null;
+    if (!this.socket) return;
+    try {
+      this.socket.io.reconnection(false);
+    } catch (_e) {}
+    try {
+      this.socket.disconnect();
+    } catch (_e) {}
+  }
+
+  private async resume() {
+    if (!this.suspended) return;
+    this.suspended = false;
+    if (!this.wantedConnection) return;
+    if (this.socket) {
+      try {
+        this.socket.io.reconnection(true);
+      } catch (_e) {}
+    }
+    try {
+      await this.connect();
+    } catch (_e) {}
+    const rooms = Array.from(this.joinedRooms.entries());
+    for (const [room, peerId] of rooms) {
+      try {
+        await this.joinRoom(room, peerId);
+      } catch (_e) {}
+    }
+  }
 
   async connect() {
+    this.wantedConnection = true;
+    if (this.suspended) return;
     if (this.socket?.connected) return;
     if (this.connectPromise) return this.connectPromise;
 
@@ -105,6 +154,9 @@ class SocketService {
   }
 
   disconnect() {
+    this.wantedConnection = false;
+    this.suspended = false;
+    this.joinedRooms.clear();
     if (this.socket) {
       this.socket.removeAllListeners();
       this.socket.disconnect();
@@ -120,7 +172,8 @@ class SocketService {
   }
 
   joinRoom(room: string, peerId?: string) {
-    if (!this.socket) return Promise.reject(new Error('Socket not connected'));
+    this.joinedRooms.set(room, peerId);
+    if (this.suspended || !this.socket) return Promise.resolve();
 
     const payload: any = { room };
     if (peerId) payload.peerId = peerId;
@@ -151,6 +204,7 @@ class SocketService {
   }
 
   leaveRoom(room: string, peerId?: string) {
+    this.joinedRooms.delete(room);
     if (this.socket) {
       const payload: any = { room };
       if (peerId) payload.peerId = peerId;

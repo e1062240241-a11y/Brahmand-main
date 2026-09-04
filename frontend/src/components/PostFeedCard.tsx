@@ -341,6 +341,12 @@ const PostFeedCardComponent = ({
   }, []);
 
   const shouldPlay = Boolean(isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active');
+
+  useEffect(() => {
+    if (appState !== 'active') {
+      setIsVideoReady(false);
+    }
+  }, [appState]);
   const videoRef = useRef<any>(null);
 
   useEffect(() => {

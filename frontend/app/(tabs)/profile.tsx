@@ -24,7 +24,7 @@ import {
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect, useIsFocused } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -93,6 +93,7 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { user, logout, updateUser } = useAuthStore();
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
@@ -263,6 +264,7 @@ export default function ProfileScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
+    if (!isFocused) return;
     const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardHeight(e.endCoordinates.height);
       setKeyboardVisible(true);
@@ -275,7 +277,7 @@ export default function ProfileScreen() {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
+  }, [isFocused]);
 
   // Tab bar visibility control
   let showTabBar: (() => void) | undefined;
@@ -287,7 +289,7 @@ export default function ProfileScreen() {
   } catch (e) { }
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
+    if (Platform.OS !== 'android' || !isFocused) return;
 
     const backAction = () => {
       if (commentModalVisible) {
@@ -312,7 +314,7 @@ export default function ProfileScreen() {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  }, [postModalVisible, commentModalVisible, showLanguageModal, showSettingsModal]);
+  }, [isFocused, postModalVisible, commentModalVisible, showLanguageModal, showSettingsModal]);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
