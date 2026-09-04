@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from middleware.rate_limiter import auth_rate_limit
 from datetime import datetime, timedelta
 import random
 import os
@@ -17,7 +18,7 @@ def generate_otp() -> str:
     return str(random.randint(1000, 9999))
 
 @router.post("/auth/nettyfish/send")
-async def send_nettyfish_otp(request: OTPRequest):
+async def send_nettyfish_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
     """
     Generate and send a 4-digit OTP via Nettyfish.
     """
@@ -74,7 +75,7 @@ async def send_nettyfish_otp(request: OTPRequest):
     return {"status": "success", "message": "OTP sent successfully"}
 
 @router.post("/auth/nettyfish/verify")
-async def verify_nettyfish_otp(request: OTPVerify):
+async def verify_nettyfish_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
     """
     Verify the 4-digit Nettyfish OTP.
     """

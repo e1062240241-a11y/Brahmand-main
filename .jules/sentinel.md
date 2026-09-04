@@ -10,3 +10,7 @@
 **Vulnerability:** The backend was directly reflecting upstream API error responses (`response.text`) to the client when making external HTTP requests (e.g. to the Astrology API).
 **Learning:** Exposing raw 3rd-party response bodies in client-facing error payloads (e.g. `return {"error": f"Status {response.status_code}: {response.text}"}`) leaks external infrastructure details, potential API keys included in error messages, and upstream vulnerability signatures.
 **Prevention:** When handling errors from external APIs, log the raw `response.text` server-side for debugging, but always return a generic, static fallback message (e.g. `"An internal server error occurred while fetching data"`) to the client.
+## 2024-05-24 - Missing Rate Limits on Authentication Endpoints
+**Vulnerability:** The authentication endpoints for generating and verifying OTPs (`/auth/nettyfish/send` and `/auth/nettyfish/verify`) were missing rate limiting logic.
+**Learning:** These endpoints were introduced or refactored in a separate file (`backend/routes/nettyfish_auth_routes.py`) and did not inherit the `auth_rate_limit` dependency applied to the primary `auth_routes.py`, leaving them open to SMS spamming and OTP brute-forcing.
+**Prevention:** Ensure that all newly introduced authentication and OTP-related endpoints consistently implement the `Depends(auth_rate_limit)` dependency from `middleware.rate_limiter`.
