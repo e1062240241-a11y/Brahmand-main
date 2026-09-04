@@ -353,8 +353,11 @@ class FirebaseMessagingService:
         """Send message to circle"""
         db = await FirebaseMessagingService.get_db()
         
-        user = await db.get_document('users', user_id)
-        circle = await db.get_document('circles', circle_id)
+        # ⚡ Bolt Optimization: Batch fetch user and circle concurrently
+        user, circle = await asyncio.gather(
+            db.get_document('users', user_id),
+            db.get_document('circles', circle_id)
+        )
         
         if not circle or user_id not in circle.get('members', []):
             raise ValueError("Not a circle member")
