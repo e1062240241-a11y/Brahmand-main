@@ -325,9 +325,279 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       });
     }
 
-    // Ensure strictly 1 page
-    while (doc.getPageCount() > 1) {
-      doc.removePage(doc.getPageCount() - 1);
+    // ==========================================
+    // PAGE 2+: Sacred Katha Narrative Pages
+    // ==========================================
+    const margin = 36;
+    const contentWidth = pageWidth - margin * 2;
+    const bottomMargin = 40;
+
+    let storyPage = doc.addPage([pageWidth, pageHeight]);
+    let storyY = pageHeight - margin;
+
+    const drawPageBackground = (p: any) => {
+      // Soft cream parchment background
+      p.drawRectangle({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: pageHeight,
+        color: rgb(0.996, 0.988, 0.965),
+      });
+      // Double gold border
+      p.drawRectangle({
+        x: 16,
+        y: 16,
+        width: pageWidth - 32,
+        height: pageHeight - 32,
+        borderColor: rgb(0.85, 0.65, 0.25),
+        borderWidth: 1.5,
+      });
+      p.drawRectangle({
+        x: 20,
+        y: 20,
+        width: pageWidth - 40,
+        height: pageHeight - 40,
+        borderColor: rgb(0.92, 0.78, 0.45),
+        borderWidth: 0.6,
+      });
+    };
+
+    drawPageBackground(storyPage);
+
+    const drawHeader = (isFirstStoryPage: boolean) => {
+      if (isFirstStoryPage) {
+        // Branding Header
+        const brandText = 'B R A H M A N D';
+        const brandWidth = fontTimesBold.widthOfTextAtSize(brandText, 14);
+        storyPage.drawText(brandText, {
+          x: (pageWidth - brandWidth) / 2,
+          y: storyY - 10,
+          size: 14,
+          font: fontTimesBold,
+          color: rgb(0.77, 0.38, 0.06),
+        });
+
+        const subBrand = 'SANATAN DHARMA SACRED HERITAGE';
+        const subBrandWidth = fontHelveticaBold.widthOfTextAtSize(subBrand, 7.5);
+        storyPage.drawText(subBrand, {
+          x: (pageWidth - subBrandWidth) / 2,
+          y: storyY - 22,
+          size: 7.5,
+          font: fontHelveticaBold,
+          color: rgb(0.45, 0.25, 0.10),
+        });
+
+        // Gold divider line
+        storyPage.drawLine({
+          start: { x: margin + 40, y: storyY - 28 },
+          end: { x: pageWidth - margin - 40, y: storyY - 28 },
+          thickness: 0.8,
+          color: rgb(0.85, 0.65, 0.25),
+        });
+
+        // Festival Title Banner
+        const titleBannerY = storyY - 72;
+        storyPage.drawRectangle({
+          x: margin,
+          y: titleBannerY,
+          width: contentWidth,
+          height: 38,
+          color: rgb(0.98, 0.94, 0.88),
+          borderColor: rgb(0.85, 0.65, 0.25),
+          borderWidth: 1,
+        });
+
+        const storyTitle = `${cleanTextForPdf(data.festivalName).toUpperCase()} - SACRED VRAT KATHA`;
+        const titleW = fontTimesBold.widthOfTextAtSize(storyTitle, 13);
+        storyPage.drawText(storyTitle, {
+          x: (pageWidth - titleW) / 2,
+          y: titleBannerY + 22,
+          size: 13,
+          font: fontTimesBold,
+          color: rgb(0.12, 0.14, 0.17),
+        });
+
+        const subW = fontTimesItalic.widthOfTextAtSize(cleanTextForPdf(data.subtitle), 8.5);
+        storyPage.drawText(cleanTextForPdf(data.subtitle), {
+          x: (pageWidth - subW) / 2,
+          y: titleBannerY + 8,
+          size: 8.5,
+          font: fontTimesItalic,
+          color: rgb(0.45, 0.35, 0.20),
+        });
+
+        storyY -= 80;
+
+        // Metadata pill strip
+        storyPage.drawRectangle({
+          x: margin,
+          y: storyY - 22,
+          width: contentWidth,
+          height: 22,
+          color: rgb(0.12, 0.16, 0.22),
+        });
+
+        const metaText = `Date: ${data.date}   |   Deity: ${data.deity}   |   Tradition: ${data.tradition}`;
+        const metaW = fontHelveticaBold.widthOfTextAtSize(metaText, 7.8);
+        storyPage.drawText(metaText, {
+          x: (pageWidth - metaW) / 2,
+          y: storyY - 15,
+          size: 7.8,
+          font: fontHelveticaBold,
+          color: rgb(1, 1, 1),
+        });
+
+        storyY -= 32;
+      } else {
+        // Sub-page running header
+        const subHeader = `BRAHMAND  -  ${cleanTextForPdf(data.festivalName).toUpperCase()} SACRED KATHA`;
+        storyPage.drawText(subHeader, {
+          x: margin,
+          y: storyY - 10,
+          size: 8.5,
+          font: fontTimesBold,
+          color: rgb(0.75, 0.35, 0.08),
+        });
+        storyPage.drawLine({
+          start: { x: margin, y: storyY - 14 },
+          end: { x: margin + contentWidth, y: storyY - 14 },
+          thickness: 0.6,
+          color: rgb(0.85, 0.70, 0.40),
+        });
+        storyY -= 26;
+      }
+    };
+
+    drawHeader(true);
+
+    // Render Chapters
+    for (let i = 0; i < data.chapters.length; i++) {
+      const ch = data.chapters[i];
+      const chTitle = `Chapter ${i + 1}: ${cleanTextForPdf(ch.title).toUpperCase()}`;
+      const wrapped = wrapText(cleanTextForPdf(ch.content), fontTimes, 10, contentWidth - 28);
+      const boxHeight = 24 + (wrapped.length * 15) + 8;
+
+      if (storyY - boxHeight < bottomMargin + 40) {
+        storyPage = doc.addPage([pageWidth, pageHeight]);
+        drawPageBackground(storyPage);
+        storyY = pageHeight - margin;
+        drawHeader(false);
+      }
+
+      // Chapter card container
+      storyPage.drawRectangle({
+        x: margin,
+        y: storyY - boxHeight,
+        width: contentWidth,
+        height: boxHeight,
+        color: rgb(1, 1, 1),
+        borderColor: rgb(0.90, 0.82, 0.70),
+        borderWidth: 0.8,
+      });
+
+      // Saffron left accent bar
+      storyPage.drawRectangle({
+        x: margin,
+        y: storyY - boxHeight,
+        width: 4,
+        height: boxHeight,
+        color: rgb(0.85, 0.45, 0.10),
+      });
+
+      // Chapter Title
+      storyPage.drawText(chTitle, {
+        x: margin + 14,
+        y: storyY - 16,
+        size: 10,
+        font: fontTimesBold,
+        color: rgb(0.72, 0.32, 0.05),
+      });
+
+      // Narrative text
+      let textY = storyY - 32;
+      for (const line of wrapped) {
+        storyPage.drawText(line, {
+          x: margin + 14,
+          y: textY,
+          size: 10,
+          font: fontTimes,
+          color: rgb(0.18, 0.18, 0.20),
+        });
+        textY -= 15;
+      }
+
+      storyY -= (boxHeight + 10);
+    }
+
+    // Vedic Significance & Blessing Box
+    const blessingTitle = 'DHARMO RAKSHATI RAKSHITAH - VEDIC BLESSINGS';
+    const blessingLines = wrapText(cleanTextForPdf(data.blessing), fontTimesItalic, 9.5, contentWidth - 28);
+    const blessingBoxHeight = 24 + (blessingLines.length * 14) + 10;
+
+    if (storyY - blessingBoxHeight < bottomMargin + 40) {
+      storyPage = doc.addPage([pageWidth, pageHeight]);
+      drawPageBackground(storyPage);
+      storyY = pageHeight - margin;
+      drawHeader(false);
+    }
+
+    storyPage.drawRectangle({
+      x: margin,
+      y: storyY - blessingBoxHeight,
+      width: contentWidth,
+      height: blessingBoxHeight,
+      color: rgb(0.99, 0.97, 0.92),
+      borderColor: rgb(0.88, 0.72, 0.40),
+      borderWidth: 1,
+    });
+
+    storyPage.drawText(blessingTitle, {
+      x: margin + 14,
+      y: storyY - 16,
+      size: 9.5,
+      font: fontTimesBold,
+      color: rgb(0.68, 0.32, 0.05),
+    });
+
+    let bY = storyY - 32;
+    for (const line of blessingLines) {
+      storyPage.drawText(line, {
+        x: margin + 14,
+        y: bY,
+        size: 9.5,
+        font: fontTimesItalic,
+        color: rgb(0.35, 0.28, 0.18),
+      });
+      bY -= 14;
+    }
+
+    // Footers on all narrative pages
+    const totalPages = doc.getPageCount();
+    for (let p = 1; p < totalPages; p++) {
+      const curPage = doc.getPage(p);
+      curPage.drawLine({
+        start: { x: margin, y: bottomMargin },
+        end: { x: margin + contentWidth, y: bottomMargin },
+        thickness: 0.5,
+        color: rgb(0.85, 0.75, 0.60),
+      });
+
+      curPage.drawText('Brahmand App - Sanatan Lok', {
+        x: margin,
+        y: bottomMargin - 12,
+        size: 8,
+        font: fontHelveticaBold,
+        color: rgb(0.70, 0.35, 0.08),
+      });
+
+      curPage.drawText(`Page ${p} of ${totalPages - 1}`, {
+        x: margin + contentWidth - 56,
+        y: bottomMargin - 12,
+        size: 8,
+        font: fontHelvetica,
+        color: rgb(0.5, 0.5, 0.5),
+      });
     }
 
     // Save Strictly 1-Page PDF
