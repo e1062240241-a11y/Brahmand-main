@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePassportStore } from '../../../src/store/passportStore';
 import { useAuthStore } from '../../../src/store/authStore';
+import { useLanguageStore } from '../../../src/utils/i18n';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,6 +66,7 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
   const { badgeTitle } = useLocalSearchParams<{ badgeTitle?: string }>();
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const userName = useAuthStore((state) => state.user?.name || 'Sadhak');
+  const isHindi = useLanguageStore((state) => state.language === 'hi');
   const badges = observedBadges;
   
   const [menuVisible, setMenuVisible] = useState(false);
@@ -402,9 +404,15 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
                   </View>
                 )}
 
-                {/* Achievement Title */}
+                {/* 🧡 Engagement: Reframed badge modal headers from transactional English ("LOCKED ACHIEVEMENT" / "CERTIFICATE OF ACHIEVEMENT")
+                    to Hindi primary devotional offering ("अभी अप्राप्त साधना" / "प्रमाणपत्र — दिव्य सिद्धि").
+                    Lever: Reframing + Mother Tongue (Hindi Primary)
+                    Why: Turns rigid certificate labels into culturally rich devotional milestones (bhavna).
+                    UI: Text-only change, no structural or visual alterations. */}
                 <Text style={selectedBadge?.isLocked ? styles.certificateHeaderLocked : styles.certificateHeader}>
-                  {selectedBadge?.isLocked ? "LOCKED ACHIEVEMENT" : "CERTIFICATE OF ACHIEVEMENT"}
+                  {selectedBadge?.isLocked
+                    ? (isHindi ? "अभी अप्राप्त साधना" : "LOCKED ACHIEVEMENT")
+                    : (isHindi ? "प्रमाणपत्र — दिव्य सिद्धि" : "CERTIFICATE OF ACHIEVEMENT")}
                 </Text>
                 
                 <View style={styles.certificateDivider} />
