@@ -19,6 +19,7 @@ interface FestivalSectionDetailCardProps {
   festival: any;
   section: string;
   onBack: () => void;
+  onSharePdf?: () => void;
 }
 
 // Function to split raw long text into structured reading sections
@@ -58,7 +59,7 @@ const formatStructuredContent = (text: string, sectionTitle: string) => {
   };
 };
 
-const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailCardProps) => {
+const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSectionDetailCardProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const festivalName = festival.festival_name || festival.name || 'Festival';
@@ -457,6 +458,20 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
                   In the next chapter, {chapters[activeTab + 1].content}
                 </Text>
               </View>
+            )}
+
+            {onSharePdf && (
+              <TouchableOpacity
+                style={styles.storySharePdfButton}
+                onPress={onSharePdf}
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Share Sacred Story as PDF"
+              >
+                <Ionicons name="document-text-outline" size={17} color="#F6D269" style={{ marginRight: 8 }} />
+                <Text style={styles.storySharePdfButtonText}>Share Sacred Story as PDF</Text>
+              </TouchableOpacity>
             )}
           </View>
         </ScrollView>
@@ -1008,6 +1023,26 @@ const styles = StyleSheet.create({
       default: 'serif',
     }),
     fontStyle: 'italic',
+  },
+  storySharePdfButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(246, 210, 105, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(246, 210, 105, 0.35)',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 22,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  storySharePdfButtonText: {
+    color: '#F6D269',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   journeyCardContainerBottom: {
     paddingHorizontal: 14,

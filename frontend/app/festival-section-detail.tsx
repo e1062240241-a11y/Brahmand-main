@@ -11,6 +11,7 @@ import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCa
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
+import { shareFestivalStoryPdf } from '../src/utils/generateFestivalStoryPdf';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   console.log('[FestivalSectionDetail Debug] safeCaptureRef called');
@@ -75,6 +76,7 @@ const FestivalSectionDetailPage = () => {
 
   const section = (params.section as string) || 'Story';
   const festivalIndex = parseInt((params.festivalIndex as string) || (params.index as string) || '0', 10);
+  const isStorySection = decodeURIComponent(section) === 'Story';
 
   const [festival, setFestival] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -108,6 +110,12 @@ const FestivalSectionDetailPage = () => {
     try {
       setIsSharing(true);
       const festivalName = (festival.festival_name || festival.name || festival.title || 'Sacred Festival').toUpperCase();
+
+      // If viewing the Story page, share the authentic sacred katha as a PDF document
+      if (isStorySection) {
+        await shareFestivalStoryPdf(festival);
+        return;
+      }
 
       let imageUri: string | null = null;
       if (catalogRef.current) {
@@ -143,8 +151,6 @@ const FestivalSectionDetailPage = () => {
       </View>
     );
   }
-
-  const isStorySection = decodeURIComponent(section) === 'Story';
 
   return (
     <View style={{ flex: 1, backgroundColor: isStorySection ? '#030712' : '#FDF8F0' }}>
@@ -234,6 +240,7 @@ const FestivalSectionDetailPage = () => {
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
+            onSharePdf={handleShare}
           />
         ) : (
           <ScrollView
