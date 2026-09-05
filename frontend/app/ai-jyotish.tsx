@@ -145,10 +145,6 @@ export default function AIJyotishScreen() {
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
   useEffect(() => {
-    loadBirthDetails();
-  }, []);
-
-  useEffect(() => {
     if (storedDob && storedTob && storedPob) {
       const parsedDate = new Date(storedDob);
       setDate(isNaN(parsedDate.getTime()) ? null : parsedDate);
