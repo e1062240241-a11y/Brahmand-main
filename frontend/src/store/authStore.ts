@@ -9,6 +9,9 @@ import { secureStorage } from '../utils/secureStorage';
 
 const INVALID_STRINGS = ['nan', 'none', 'undefined'];
 
+let _nextProfileVersion = 0;
+export const getNextProfileVersion = () => ++_nextProfileVersion;
+
 export const sanitizeUserProfile = (user: any): any => {
   if (Platform.OS !== 'android' || !user) return user;
   const cleaned = { ...user };
@@ -81,15 +84,16 @@ interface AuthState {
   isAuthenticated: boolean;
   fcmToken: string | null;
   pendingDeepLink: string | null;
+  profileVersion: number;
   
-  setUser: (user: User | null) => void;
+  setUser: (user: User | null, version?: number) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
   setPendingDeepLink: (link: string | null) => void;
   login: (user: User, token: string) => Promise<void>;
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
-  updateUser: (updates: Partial<User>) => void;
+  updateUser: (updates: Partial<User>, version?: number) => void;
   initPushNotifications: () => Promise<string | null>;
 }
 
@@ -100,10 +104,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   fcmToken: null,
   pendingDeepLink: null,
+  profileVersion: 0,
 
-  setUser: (user) => {
+  setUser: (user, version) => {
+    const state = get();
+    if (version !== undefined && version < state.profileVersion) {
+      return;
+    }
+    const newVersion = version !== undefined ? version : getNextProfileVersion();
     const cleanedUser = Platform.OS === 'android' ? sanitizeUserProfile(user) : user;
-    set({ user: cleanedUser, isAuthenticated: !!cleanedUser });
+    set({ user: cleanedUser, isAuthenticated: !!cleanedUser, profileVersion: newVersion });
   },
   setToken: (token) => set({ token }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -344,6 +354,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // saved in a previous session that may not be in the local cache.
         try {
           const { getProfile, updateProfile } = require('../services/api');
+          const reqVer = getNextProfileVersion();
           const res = await getProfile();
 
           // E2EE Key check
@@ -360,7 +371,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const updatedUser = Platform.OS === 'android'
               ? mergeUserProfiles(user, res.data)
               : { ...user, ...res.data };
-            set({ user: updatedUser });
+            get().setUser(updatedUser, reqVer);
             secureStorage.setItem('user', JSON.stringify(updatedUser));
           }
         } catch (profileErr) {
@@ -376,13 +387,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  updateUser: (updates) => {
-    const currentUser = get().user;
+  updateUser: (updates, version) => {
+    const state = get();
+    if (version !== undefined && version < state.profileVersion) {
+      return;
+    }
+    const newVersion = version !== undefined ? version : getNextProfileVersion();
+    const currentUser = state.user;
     if (currentUser) {
       const updatedUser = Platform.OS === 'android'
         ? mergeUserProfiles(currentUser, updates)
         : { ...currentUser, ...updates };
-      set({ user: updatedUser });
+      set({ user: updatedUser, profileVersion: newVersion });
       secureStorage.setItem('user', JSON.stringify(updatedUser));
 
       try {

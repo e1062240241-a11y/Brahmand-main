@@ -25,7 +25,7 @@ import { SvgXml } from 'react-native-svg';
 
 import { getNakshatraReport, updateExtendedProfile, getProfile, forwardGeocode } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
-import { useAuthStore } from '../src/store/authStore';
+import { useAuthStore, getNextProfileVersion } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
@@ -183,9 +183,10 @@ export default function AstrologyScreen() {
       if (!hasBirthDetails(activeUser)) {
         try {
           setLoading(true);
+          const reqVer = getNextProfileVersion();
           const res = await getProfile();
           if (res?.data && isMountedRef.current) {
-            updateUser(res.data);
+            updateUser(res.data, reqVer);
             activeUser = { ...user, ...res.data } as typeof user;
           }
         } catch (err) {

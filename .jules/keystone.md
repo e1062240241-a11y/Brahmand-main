@@ -49,3 +49,7 @@ MISSING RATE LIMITS:
 MISSING INDEXES:
 
 FIRESTORE DOCUMENT STRUCTURE ISSUES:
+
+## 2026-09-05 - Request version tokens for race conditions
+**Learning:** When making asynchronous requests to fetch state that might be modified concurrently by other requests or components, responses from older requests resolving later can overwrite newer state.
+**Action:** Use a global, monotonically increasing request token variable (e.g. `_nextProfileVersion`). Capture the token before making the async request, and pass it to the state updater. The updater should ignore the payload if the token is older than the currently stored version.
