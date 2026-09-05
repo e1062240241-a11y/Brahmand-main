@@ -39,13 +39,12 @@ _LOCAL_GITA_DIR = (
     / "bhavykhatri DharmicData bhavykhatri-AddTransForGita SrimadBhagvadGita"
 )
 
-# Preferred English translators in order; first available value is used.
+# PONYTAIL FIX: Strictly prioritize Hindi/Devanagari translators to prevent English word-gloss leakage.
 _PREFERRED_TRANSLATORS = [
-    "swami gambirananda",
-    "swami tejomayananda",
-    "swami adidevananda",
     "swami ramsukhdas",
     "sri harikrishnadas goenka",
+    "swami tejomayananda",
+    # English translators removed from primary fallback
 ]
 
 # Cached flat list of all verses across all 18 chapters.

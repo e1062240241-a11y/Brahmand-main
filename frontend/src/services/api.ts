@@ -1099,11 +1099,14 @@ export const markAllNotificationsRead = () =>
 export const markNotificationRead = (notificationId: string) =>
   api.post(`/notifications/${notificationId}/mark-read`);
 
-export const aiChat = (messages: any[]) => api.post("/ai/chat", { messages });
+export const aiChat = (messages: any[], chatId: string = "slot_1") =>
+  api.post("/ai/chat", { messages, chat_id: chatId });
 
-export const getChatHistory = () => api.get("/ai/chat/history");
+export const getChatHistory = (chatId: string = "slot_1") =>
+  api.get(`/ai/chat/history?chat_id=${encodeURIComponent(chatId)}`);
 
-export const clearChatHistory = () => api.delete("/ai/chat/history");
+export const clearChatHistory = (chatId: string = "slot_1") =>
+  api.delete(`/ai/chat/history?chat_id=${encodeURIComponent(chatId)}`);
 
 const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
   const token = await secureStorage.getItem("auth_token");
@@ -1870,7 +1873,7 @@ export const askAstrologyAI = (data: {
 export const getUserHoroscope = () => api.get("/spiritual/horoscope");
 
 // Temple APIs
-export const getTemples = () => api.get("/temples");
+export const getTemples = (limit: number = 300) => api.get(`/temples?limit=${limit}`);
 
 export const getNearbyTemples = (lat?: number, lng?: number) =>
   api.get(`/temples/nearby${lat && lng ? `?lat=${lat}&lng=${lng}` : ""}`);

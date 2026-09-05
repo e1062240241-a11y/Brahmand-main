@@ -2,6 +2,7 @@ import { getTempleImageById, getTempleImageByName } from '../constants/templeIma
 import { CENTRALIZED_SACRED_PLACES_DATA } from './templeSacredPlacesData';
 import JYOTIRLINGA_JSON_DATA from './Nearby_Sacred_Temples_12_Jyotirlingas.json';
 import SHAKTI_PEETHAS_JSON_DATA from './Nearby_Sacred_Temples_Shakti_Peethas.json';
+import HEALING_ASHRAM_JSON_DATA from './Nearby_Sacred_Temples_Healing_Ashram.json';
 
 export interface SacredPlaceItem {
   id: string;
@@ -648,6 +649,85 @@ if (SHAKTI_PEETHAS_JSON_DATA && Array.isArray((SHAKTI_PEETHAS_JSON_DATA as any).
         for (const alias of aliases) {
           SHAKTI_PEETHA_SACRED_PLACES_DATA[alias] = places;
           SHAKTI_PEETHA_SACRED_PLACES_DATA[alias.toLowerCase()] = places;
+        }
+      }
+    }
+  }
+}
+
+const HEALING_ASHRAM_TEMPLE_ALIAS_MAP: Record<string, string[]> = {
+  'kainchi dham (neem karoli baba ashram)': ['kainchi-dham', 'hanuman-kainchi-dham-neem-karoli', 'neem-karoli-baba', 'kainchi-dham-ashram-nainital', 'kainchi-dham-ashram'],
+  'prasanthi nilayam (sri sathya sai baba ashram)': ['prasanthi-nilayam', 'puttaparthi', 'sathya-sai-baba', 'sri-sathya-sai-ashram', 'prasanthi-nilayam-puttaparthi'],
+  'akshardham temple': ['akshardham', 'akshardham-delhi', 'swaminarayan-akshardham', 'akshardham-temple-delhi'],
+  'shirdi sai baba temple (samadhi mandir)': ['shirdi-sai-baba', 'shirdi', 'sai-baba-shirdi', 'other-shirdi-sai-baba-temple-maharashtra', 'shirdi-sai-baba-temple-shirdi'],
+  'auroville matrimandir': ['auroville', 'matrimandir', 'auroville-matrimandir-puducherry'],
+  'iskcon temple (sri krishna balaram mandir)': ['iskcon-vrindavan', 'krishna-balaram-mandir', 'iskcon-temple-vrindavan', 'other-iskcon-temple-mumbai', 'other-iskcon-mira-road-thane', 'other-iskcon-temple-bangalore-karnataka'],
+  'art of living international center': ['art-of-living', 'sri-sri-ravishankar-ashram', 'aol-bangalore', 'art-of-living-bangalore'],
+  'arunachaleswarar temple (tiruvannamalai)': ['arunachaleswarar', 'tiruvannamalai', 'annamaliyar', 'arunachaleswara-temple'],
+  'sharada peeth': ['sharada-peeth', 'sharda-peeth-kashmir', 'shaktipeeth-sharda-peeth-kashmir', 'sharada-devi-temple-maihar'],
+  'chottanikara devi temple': ['chottanikkara', 'chottanikara', 'chottanikkara-devi', 'chottanikkara-temple-kochi'],
+  'kollur mookambika temple': ['mookambika', 'kollur-mookambika', 'kollur-mookambika-temple'],
+  'mehendipur balaji temple': ['mehendipur-balaji', 'mehandipur-balaji', 'mehendipur-balaji-temple-dausa'],
+  'dhanvantari temple (nelluvai sree dhanwanthari)': ['dhanvantari', 'nelluvai-dhanwanthari', 'dhanvantari-temple-nelluvai'],
+  'kukke subramanya temple': ['kukke-subramanya', 'subramanya', 'kukke-subramanya-temple'],
+  'ghati subramanya temple': ['ghati-subramanya', 'ghati-subramanya-temple'],
+  'suchindram thanumalayan temple': ['suchindram', 'thanumalayan', 'suchindram-thanumalaya-temple'],
+  'mangaladevi temple': ['mangaladevi', 'mangaladevi-mangaluru', 'mangaladevi-temple-mangaluru'],
+  'sri ramana ashram (ramanasramam)': ['ramana-ashram', 'ramanasramam', 'sri-ramana', 'ramana-maharshi-ashram'],
+  'dhyanalinga (isha yoga center)': ['dhyanalinga', 'isha-yoga-center', 'healing-dhyanalinga-isha-coimbatore', 'dhyanalinga-isha-yoga-center'],
+  'anandamayi ma ashram': ['anandamayi-ma-ashram', 'anandamayi-ashram', 'healing-anandamayi-ma-ashram-haridwar'],
+  'parmarth niketan ashram': ['parmarth-niketan', 'parmarth-niketan-rishikesh'],
+  'sri aurobindo ashram': ['sri-aurobindo-ashram', 'aurobindo-ashram', 'healing-sri-aurobindo-ashram-puducherry'],
+  'belur math (ramakrishna mission)': ['belur-math', 'sacred-belur-math-ramakrishna-mission', 'belur-math-howrah'],
+  'sarnath buddhist monastery': ['sarnath', 'sarnath-buddhist-monastery', 'healing-sarnath-buddhist-monastery'],
+  'mahabodhi temple (bodh gaya)': ['mahabodhi', 'mahabodhi-temple-bodh-gaya', 'bodh-gaya'],
+  'golden temple (sri harmandir sahib)': ['golden-temple', 'harmandir-sahib', 'amritsar-golden-temple', 'other-golden-temple-amritsar'],
+  'vaishno devi temple': ['vaishno-devi', 'vaishno-devi-temple-jammu-kashmir', 'other-vaishno-devi-temple-jammu-kashmir'],
+  'tirupati balaji (sri venkateswara swamy temple)': ['tirupati-balaji', 'venkateswara', 'vishnu-tirupati-balaji-temple-andhra-pradesh', 'other-tirupati-balaji-temple-andhra-pradesh', 'tirumala'],
+};
+
+export const HEALING_ASHRAM_SACRED_PLACES_DATA: Record<string, SacredPlaceItem[]> = {};
+
+if (HEALING_ASHRAM_JSON_DATA && Array.isArray((HEALING_ASHRAM_JSON_DATA as any).data)) {
+  for (const entry of (HEALING_ASHRAM_JSON_DATA as any).data) {
+    const rawName = String(entry.temple || '').toLowerCase().trim();
+    const cleanRawKey = rawName.replace(/\s*\(.*?\)/g, '').replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '-');
+    const locationStr = String(entry.location || '').trim();
+
+    if (Array.isArray(entry.nearby_sacred_temples)) {
+      const places: SacredPlaceItem[] = [];
+
+      for (let idx = 0; idx < entry.nearby_sacred_temples.length; idx++) {
+        const item = entry.nearby_sacred_temples[idx];
+        if (item.exists === false) continue;
+
+        const placeName = String(item.name || '').trim();
+        if (!placeName) continue;
+
+        const cleanDist = String(item.distance || '').replace('~', '').trim();
+        const dummyItem = { name: placeName, category: 'Shrine' as const } as SacredPlaceItem;
+        const normCategory = normalizeSacredPlaceCategory(dummyItem);
+
+        places.push({
+          id: `${cleanRawKey}_h_${idx + 1}`,
+          name: placeName,
+          category: normCategory,
+          distance: cleanDist || 'Nearby',
+          significance: String(item.significance || '').trim(),
+          locationQuery: `${placeName}, ${locationStr}`,
+        });
+      }
+
+      if (places.length > 0) {
+        HEALING_ASHRAM_SACRED_PLACES_DATA[rawName] = places;
+        if (cleanRawKey) {
+          HEALING_ASHRAM_SACRED_PLACES_DATA[cleanRawKey] = places;
+        }
+
+        const aliases = HEALING_ASHRAM_TEMPLE_ALIAS_MAP[rawName] || [];
+        for (const alias of aliases) {
+          HEALING_ASHRAM_SACRED_PLACES_DATA[alias] = places;
+          HEALING_ASHRAM_SACRED_PLACES_DATA[alias.toLowerCase()] = places;
         }
       }
     }
@@ -1671,7 +1751,10 @@ export function deduplicateTemples<T = any>(temples: T[]): T[] {
         const existing = dedupedMap.get(keyToUse) as any;
         const exId = getTempleId(existing);
         if (!exId.startsWith('jyotirling-') && rawId.startsWith('jyotirling-')) {
-          dedupedMap.set(keyToUse, rec);
+          dedupedMap.set(keyToUse, { ...existing, ...rec });
+        } else {
+          if ((rec as any).is_following !== undefined) existing.is_following = (rec as any).is_following;
+          if ((rec as any).follower_count !== undefined) existing.follower_count = (rec as any).follower_count;
         }
       }
     }
@@ -2018,7 +2101,15 @@ export function getExploreNearbyData(
     SHAKTI_PEETHA_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
     null;
 
-  const centralizedSacred =
+  const jsonHealingSacred =
+    HEALING_ASHRAM_SACRED_PLACES_DATA[cleanIdKey] ??
+    HEALING_ASHRAM_SACRED_PLACES_DATA[cleanNameSlug] ??
+    HEALING_ASHRAM_SACRED_PLACES_DATA[currentTempleKey] ??
+    HEALING_ASHRAM_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
+    HEALING_ASHRAM_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
+    null;
+
+  const rawCentralized =
     CENTRALIZED_SACRED_PLACES_DATA[templeId] ??
     CENTRALIZED_SACRED_PLACES_DATA[String(templeId).toLowerCase().trim()] ??
     CENTRALIZED_SACRED_PLACES_DATA[currentTempleKey] ??
@@ -2026,7 +2117,16 @@ export function getExploreNearbyData(
     CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
     [];
 
-  const initialSacredPlaces: SacredPlaceItem[] = curatedSacred ?? jsonSacred ?? jsonShaktiSacred ?? centralizedSacred;
+  // Reject synthetic boilerplate entries like "Sanctum Complex", "Heritage Bathing Ghat & Kund", "Ancient Meditation Hill"
+  const centralizedSacred = rawCentralized.filter((item) => {
+    const n = (item.name || '').toLowerCase();
+    const s = (item.significance || '').toLowerCase();
+    if (n.includes('sanctum complex') || n.includes('bathing ghat & kund') || n.includes('ancient meditation hill')) return false;
+    if (s.includes('main spiritual complex of') || s.includes('adjacent to') || s.includes('tranquil retreat and historical heritage point')) return false;
+    return true;
+  });
+
+  const initialSacredPlaces: SacredPlaceItem[] = curatedSacred ?? jsonSacred ?? jsonShaktiSacred ?? jsonHealingSacred ?? (centralizedSacred.length > 0 ? centralizedSacred : []);
   const rawSacredPlaces = initialSacredPlaces;
 
   // 2. Nearby Temples: Curated non-empty nearby temples OR Cached Coordinate-based Fallback

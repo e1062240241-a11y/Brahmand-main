@@ -69,7 +69,7 @@ async def seed_temples(
 
 @router.get("")
 async def get_temples(
-    limit: int = 50,
+    limit: int = 300,
     offset: int = 0,
     token_data: dict = Depends(optional_verify_token)
 ):

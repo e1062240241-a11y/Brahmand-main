@@ -160,21 +160,20 @@ function PassportInnerScreen({
   const signatureName = typeof localUser?.name === 'string' ? localUser.name.split(' ')[0] : 'Sanatani';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <LinearGradient
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Passport</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Passport</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -309,6 +308,7 @@ function PassportInnerScreen({
         </View>
       </ScrollView>
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 

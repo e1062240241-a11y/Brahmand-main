@@ -24,6 +24,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { resolveTempleImage } from '../../src/constants/templeImages';
+import templeDataDump from '../../src/constants/templeDataDump.json';
 import api, { getTemples } from '../../src/services/api';
 import {
   isJyotirlinga,
@@ -360,11 +361,12 @@ export default function JaapLandingScreen() {
   const jaapScrollDir = useRef(1); // 1 = forward, -1 = backward
   const CARD_WIDTH = JAAP_CARD_WIDTH + JAAP_CARD_MARGIN_RIGHT; // approx card width + gap
 
-  // Temple State
-  const [temples, setTemples] = useState<any[]>([]);
+  // Temple State — preloaded with all 258 curated temples (all 12 Jyotirlingas, Char Dham, Shakti Peethas)
+  const [temples, setTemples] = useState<any[]>(() => deduplicateTemples(templeDataDump as any[]));
   const [loadingTemples, setLoadingTemples] = useState(false);
   const [templeSearch, setTempleSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Shakti Peetha' | 'Bada Char Dham' | 'Chota Char Dham' | 'Char Dham' | 'Healing Temples' | 'Sacred'>('Bada Char Dham');
+  const hasFetchedTemples = useRef(false);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -403,9 +405,10 @@ export default function JaapLandingScreen() {
   const fetchTemplesData = async () => {
     try {
       setLoadingTemples(true);
-      const response = await getTemples();
-      if (response.data) {
-        const deduplicated = deduplicateTemples(response.data);
+      const response = await getTemples(300);
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const merged = [...response.data, ...(templeDataDump as any[])];
+        const deduplicated = deduplicateTemples(merged);
         setTemples(deduplicated);
         console.log('[TEMPLE SOURCE]', deduplicated.length, 'localDbCount: N/A', deduplicated.length);
       }
@@ -417,7 +420,8 @@ export default function JaapLandingScreen() {
   };
 
   useEffect(() => {
-    if (activeSection === 'temple' && temples.length === 0) {
+    if (activeSection === 'temple' && !hasFetchedTemples.current) {
+      hasFetchedTemples.current = true;
       fetchTemplesData();
     }
   }, [activeSection]);

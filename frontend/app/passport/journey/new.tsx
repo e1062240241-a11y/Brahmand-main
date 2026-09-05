@@ -1090,14 +1090,14 @@ export default function NewPassportJourneyScreen() {
 
   if (step === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-        <LinearGradient
-          colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-          locations={[0, 0.0913, 0.25]}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <ScrollView contentContainerStyle={styles.introScrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.introTopContainer}>
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.0913, 0.25]}
+        style={styles.container}
+      >
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+          <ScrollView contentContainerStyle={styles.introScrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.introTopContainer}>
             <View style={{ width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', marginBottom: 10 }}>
               <TouchableOpacity onPress={handleBack} style={{ marginRight: 24, marginTop: 4, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -1222,20 +1222,20 @@ export default function NewPassportJourneyScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+    </LinearGradient>
     );
   }
 
   const headerInfo = getHeader();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <LinearGradient
-        colors={['#FF8C32', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <KeyboardAwareScrollView ref={keyboardScrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        <KeyboardAwareScrollView ref={keyboardScrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentWrapper}>
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -1359,6 +1359,7 @@ export default function NewPassportJourneyScreen() {
         )
       )}
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 

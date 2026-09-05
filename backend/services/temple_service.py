@@ -79,7 +79,7 @@ class TempleService:
     @staticmethod
     async def get_temples(
         user_id: Optional[str] = None,
-        limit: int = 50,
+        limit: int = 300,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
         """Get temples with caching and pagination"""
@@ -98,7 +98,7 @@ class TempleService:
             
             await cache_manager.set_temples(cached)
         
-        safe_limit = max(1, min(limit, 100))
+        safe_limit = max(1, min(limit, 500))
         paginated_items = cached[offset:offset + safe_limit]
 
         result = []

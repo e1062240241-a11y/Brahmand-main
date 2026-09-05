@@ -296,14 +296,13 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Background Peach to Cream Gradient */}
-      <LinearGradient 
-        colors={['#FFB085', '#FFF7F2', '#FFFDFB']} 
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Header */}
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color="#000" />
@@ -469,6 +468,7 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 

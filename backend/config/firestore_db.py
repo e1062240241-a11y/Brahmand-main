@@ -182,35 +182,68 @@ class FirestoreDB:
             }
         ]
         
-        # Populate temples in mock db
-        for t in jyotirlingas:
-            doc_id = t["temple_id"]
-            # Fill out other default temple schema fields
+        # Populate temples in mock db from authentic JSON files
+        imported_temples = []
+        try:
+            import json
+            from pathlib import Path
+            base_dir = Path(__file__).resolve().parent.parent
+            import_file = base_dir / "data" / "temples_import.json"
+            dump_file = base_dir.parent / "frontend" / "src" / "constants" / "templeDataDump.json"
+            
+            seen_ids = set()
+            if import_file.exists():
+                with open(import_file, "r", encoding="utf-8") as f:
+                    for t in json.load(f):
+                        tid = t.get("temple_id") or t.get("id")
+                        if tid and tid not in seen_ids:
+                            seen_ids.add(tid)
+                            imported_temples.append(t)
+            
+            if dump_file.exists():
+                with open(dump_file, "r", encoding="utf-8") as f:
+                    for t in json.load(f):
+                        tid = t.get("temple_id") or t.get("id")
+                        if tid and tid not in seen_ids:
+                            seen_ids.add(tid)
+                            imported_temples.append(t)
+        except Exception as e:
+            logger.warning(f"Failed to load temples from json files: {e}")
+
+        # Fallback to hardcoded list if file load failed
+        source_temples = imported_temples if imported_temples else jyotirlingas
+
+        for t in source_temples:
+            doc_id = t.get("temple_id") or t.get("id")
+            if not doc_id:
+                continue
             temple_full = {
                 "id": doc_id,
                 "temple_id": doc_id,
-                "name": t["name"],
-                "location": t["location"],
-                "deity": t["deity"],
-                "category": t["category"],
-                "description": t["description"],
-                "image_url": t["image_url"],
-                "aarti_timings": {},
-                "guidance": "",
-                "youtube_url": "",
-                "coords": {},
-                "timings": {},
-                "contact": "",
-                "is_verified": True,
-                "images": [t["image_url"]],
+                "name": t.get("name", ""),
+                "location": t.get("location", {}),
+                "deity": t.get("deity", ""),
+                "category": t.get("category", "Temple"),
+                "description": t.get("description", ""),
+                "image_url": t.get("image_url", ""),
+                "aarti_timings": t.get("aarti_timings") or {},
+                "guidance": t.get("guidance", ""),
+                "youtube_url": t.get("youtube_url", ""),
+                "coords": t.get("coords") or {},
+                "timings": t.get("timings") or {},
+                "contact": t.get("contact", ""),
+                "is_verified": t.get("is_verified", True),
+                "images": t.get("images") or ([t.get("image_url")] if t.get("image_url") else []),
                 "admin_id": "admin",
                 "admins": ["admin"],
-                "followers": [],
-                "follower_count": 0,
+                "followers": t.get("followers", []),
+                "follower_count": t.get("follower_count", 0),
+                "special_rituals": t.get("special_rituals") or [],
+                "sacred_rituals": t.get("sacred_rituals") or [],
                 "posts": []
             }
             cls._mock_collections.setdefault("temples", {})[doc_id] = temple_full
-        logger.info(f"Seeded {len(jyotirlingas)} temples to mock database.")
+        logger.info(f"Seeded {len(source_temples)} temples to mock database.")
         
         # Seed default country-level community to satisfy location community resolution
         default_comm = {

@@ -13,6 +13,7 @@ import {
   resolveAuthenticTempleDetailsRule,
   resolveFacilitiesRule,
   resolveVisitorGuidelinesRule,
+  DEFAULT_FACILITIES,
   TempleMatchContext,
   VisitorGuideline,
 } from '../../src/data/temples';
@@ -48,49 +49,92 @@ const isWeb = Platform.OS === 'web';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const mapBackendResponseToFrontend = (backendData: any) => {
-  // Convert aarti_sessions array to aarti_timings object for legacy compatibility
+  if (!backendData) return null;
+
+  // Convert aarti_sessions array to aarti_timings object if present, OR preserve existing aarti_timings object
   const aarti_timings: Record<string, string> = {};
-  if (backendData.aarti_sessions) {
+  if (backendData.aarti_timings && typeof backendData.aarti_timings === 'object') {
+    Object.assign(aarti_timings, backendData.aarti_timings);
+  }
+  if (Array.isArray(backendData.aarti_sessions)) {
     backendData.aarti_sessions.forEach((s: any) => {
-      aarti_timings[s.title] = s.time_start;
+      if (s?.title && (s.time_start || s.time)) {
+        aarti_timings[s.title] = s.time_start || s.time;
+      }
     });
   }
 
   const loc = backendData.location || {};
-  const locationStr = [loc.area, loc.city, loc.state].filter(Boolean).join(', ');
+  const locationStr = typeof backendData.location === 'string'
+    ? backendData.location
+    : [loc.area, loc.city, loc.state, loc.country].filter(Boolean).join(', ');
+
+  const coords = backendData.coords || (loc.latitude ? { latitude: loc.latitude, longitude: loc.longitude } : null);
+
+  const timings = backendData.timings && Object.keys(backendData.timings).length > 0
+    ? backendData.timings
+    : backendData.darshan_details
+      ? {
+          opening: backendData.darshan_details.opening_time,
+          closing: backendData.darshan_details.closing_time,
+          generalDarshan: backendData.darshan_details.general_darshan,
+        }
+      : {};
+
+  const description = backendData.description || backendData.metadata?.about || backendData.short_summary || '';
+  const history = backendData.history || backendData.metadata?.history;
+  const architecture = backendData.architecture || backendData.metadata?.architecture;
+  const significance = backendData.significance || backendData.metadata?.mythological_significance;
+  const sacred_rituals = backendData.special_rituals || backendData.sacred_rituals || backendData.metadata?.sacred_rituals || [];
+  const circuit = backendData.circuit || backendData.pilgrimage_circuit || backendData.metadata?.pilgrimage_circuit;
+  const festivals = Array.isArray(backendData.festivals) && backendData.festivals.length > 0
+    ? backendData.festivals
+    : Array.isArray(backendData.metadata?.festivals)
+      ? backendData.metadata.festivals
+      : [];
+
+  const website = backendData.website || backendData.official_links?.websites?.[0] || null;
+  const contact = backendData.contact || backendData.official_links?.helplines?.[0] || null;
+  const imageUrl = backendData.image_url || backendData.imageUrl || backendData.media?.[0]?.url || null;
+  const youtubeUrl = backendData.youtube_url || backendData.youtubeUrl || backendData.media?.find((m: any) => m.media_type === 'live_stream' || m.media_type === 'video')?.url || null;
 
   return {
-    id: backendData.slug || backendData.id,
-    temple_id: backendData.slug || backendData.id,
+    ...backendData,
+    id: backendData.slug || backendData.temple_id || backendData.id,
+    temple_id: backendData.temple_id || backendData.slug || backendData.id,
     name: backendData.name,
     deity: backendData.deity,
     category: backendData.category,
-    description: backendData.metadata?.about || backendData.description || '',
+    description,
     guidance: backendData.guidance || '',
     location: locationStr,
-    coords: loc.latitude ? { latitude: loc.latitude, longitude: loc.longitude } : null,
+    coords,
     established_year: backendData.established_year,
     entry_fee: backendData.entry_fee,
     best_time_to_visit: backendData.best_time_to_visit,
-    website: backendData.official_links?.websites?.[0] || null,
-    contact: backendData.official_links?.helplines?.[0] || backendData.contact || null,
-    timings: backendData.darshan_details ? {
-      opening: backendData.darshan_details.opening_time,
-      closing: backendData.darshan_details.closing_time
-    } : {},
+    website,
+    contact,
+    timings,
     facilities: backendData.facilities || [],
-    festivals: backendData.metadata?.festivals || [],
-    history: backendData.metadata?.history,
-    architecture: backendData.metadata?.architecture,
-    significance: backendData.metadata?.mythological_significance,
-    sacred_rituals: backendData.metadata?.sacred_rituals,
-    pilgrimage_circuit: backendData.metadata?.pilgrimage_circuit,
-    aarti_timings: aarti_timings,
-    is_verified: backendData.is_verified || false,
-    is_following: false,
-    // Map media for images and YouTube live streams
-    image_url: backendData.media?.[0]?.url || null,
-    youtube_url: backendData.media?.find((m: any) => m.media_type === 'live_stream' || m.media_type === 'video')?.url || null,
+    festivals,
+    history,
+    architecture,
+    significance,
+    special_rituals: sacred_rituals,
+    sacred_rituals,
+    circuit,
+    pilgrimage_circuit: circuit,
+    aarti_timings,
+    is_verified: backendData.is_verified ?? true,
+    is_following: backendData.is_following ?? false,
+    image_url: imageUrl,
+    youtube_url: youtubeUrl,
+    pilgrimage_protocol: backendData.pilgrimage_protocol || [],
+    nearby_teerth: backendData.nearby_teerth || [],
+    famous_prasad: backendData.famous_prasad || '',
+    dress_code: backendData.dress_code || '',
+    travel_tips: backendData.travel_tips || '',
+    short_summary: backendData.short_summary || '',
   };
 };
 
@@ -165,21 +209,26 @@ export default function TempleDetailScreen() {
         const t = localTemples[0] as any;
         const realTempleId = t.templeId || t._raw?.temple_id || resolvedTempleId;
         // Protect remote API data from being overwritten if remote fetch already completed
-        setTemple((prev: any) => prev || {
-          id: realTempleId,
-          temple_id: realTempleId,
-          name: t.name,
-          location: t.location,
-          deity: t.deity,
-          category: t.category,
-          description: t.description,
-          guidance: t.guidance,
-          image_url: t.imageUrl,
-          youtube_url: t.youtubeUrl,
-          coords: t.coords ? JSON.parse(t.coords) : null,
-          aarti_timings: t.aartiTimings ? JSON.parse(t.aartiTimings) : null,
-          is_following: t.isFollowing,
-          is_verified: t.isVerified,
+        setTemple((prev: any) => {
+          if (prev && (prev.history || prev.description || (prev.facilities && prev.facilities.length > 0))) {
+            return prev;
+          }
+          return prev || {
+            id: realTempleId,
+            temple_id: realTempleId,
+            name: t.name,
+            location: t.location,
+            deity: t.deity,
+            category: t.category,
+            description: t.description,
+            guidance: t.guidance,
+            image_url: t.imageUrl,
+            youtube_url: t.youtubeUrl,
+            coords: t.coords ? JSON.parse(t.coords) : null,
+            aarti_timings: t.aartiTimings ? JSON.parse(t.aartiTimings) : null,
+            is_following: t.isFollowing,
+            is_verified: t.isVerified,
+          };
         });
       }
     } catch (error) {
@@ -191,18 +240,35 @@ export default function TempleDetailScreen() {
     let finalTempleData: any = null;
 
     try {
-      // 1. Search the rich JSON dump by Name, Slug, or ID
+      // 1. Search the rich JSON dump by temple_id, slug, id, or normalized name
       let localName = '';
       try {
-        const localRecord = await database.get('temples').find(resolvedTempleId).catch(() => null);
-        if (localRecord) localName = (localRecord as any)._raw.name || '';
+        const localRecords = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch().catch(() => []);
+        if (localRecords && localRecords.length > 0) {
+          localName = (localRecords[0] as any).name || (localRecords[0] as any)._raw?.name || '';
+        } else {
+          const rec = await database.get('temples').find(resolvedTempleId).catch(() => null);
+          if (rec) localName = (rec as any).name || (rec as any)._raw?.name || '';
+        }
       } catch (e) {}
 
-      const dumpedTemple = (templeDataDump as any[]).find((t: any) =>
-        (localName && t.name.toLowerCase() === localName.toLowerCase()) ||
-        t.slug === resolvedTempleId ||
-        t.id === resolvedTempleId
-      );
+      const cleanResolvedId = resolvedTempleId.toLowerCase().trim();
+      const cleanResolvedName = cleanResolvedId.replace(/[-_]/g, ' ');
+
+      const dumpedTemple = (templeDataDump as any[]).find((t: any) => {
+        const tTempleId = (t.temple_id || '').toLowerCase().trim();
+        const tSlug = (t.slug || '').toLowerCase().trim();
+        const tId = (t.id || '').toLowerCase().trim();
+        const tName = (t.name || '').toLowerCase().trim();
+
+        return (
+          (tTempleId && tTempleId === cleanResolvedId) ||
+          (tSlug && tSlug === cleanResolvedId) ||
+          (tId && tId === cleanResolvedId) ||
+          (localName && tName === localName.toLowerCase().trim()) ||
+          (tName && (tName === cleanResolvedName || cleanResolvedName.includes(tName) || tName.includes(cleanResolvedName)))
+        );
+      });
 
       if (dumpedTemple) {
         finalTempleData = mapBackendResponseToFrontend(dumpedTemple);
@@ -212,10 +278,10 @@ export default function TempleDetailScreen() {
       if (!finalTempleData) {
         const templeRes = await getTemple(resolvedTempleId).catch(() => null);
         if (templeRes?.data) {
-          finalTempleData = templeRes.data;
+          finalTempleData = mapBackendResponseToFrontend(templeRes.data);
         } else {
           const fallbackTemple = FALLBACK_TEMPLE_BY_ID[resolvedTempleId];
-          if (fallbackTemple) finalTempleData = fallbackTemple;
+          if (fallbackTemple) finalTempleData = mapBackendResponseToFrontend(fallbackTemple);
         }
       }
 
@@ -385,7 +451,14 @@ export default function TempleDetailScreen() {
     : (typeof (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo) === 'string' && (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo).startsWith('http'))
       ? [temple.image_url || temple.imageUrl || temple.image || temple.photo]
       : [templeImageSource];
-  const templeContact = temple?.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
+
+  const isFakeContact = (c?: string | null): boolean => {
+    if (!c || typeof c !== 'string') return true;
+    const clean = c.replace(/[^0-9]/g, '');
+    return clean.includes('12345678') || clean === '02212345678' || clean.length < 7;
+  };
+
+  const templeContact = temple?.contact && typeof temple.contact === 'string' && !isFakeContact(temple.contact) ? temple.contact.trim() : null;
 
 
 
@@ -952,8 +1025,15 @@ export default function TempleDetailScreen() {
   }, [matchCtx, templeContact]);
 
   const authenticFacilities = useMemo(() => {
-    return resolveFacilitiesRule(matchCtx)?.facilities || [];
-  }, [matchCtx]);
+    if (temple?.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0) {
+      return temple.facilities;
+    }
+    const matchedRule = resolveFacilitiesRule(matchCtx);
+    if (matchedRule?.facilities && matchedRule.facilities.length > 0) {
+      return matchedRule.facilities;
+    }
+    return DEFAULT_FACILITIES;
+  }, [matchCtx, temple?.facilities]);
 
   const authenticVisitorGuidelines = useMemo(() => {
     const res = resolveVisitorGuidelinesRule(matchCtx);
@@ -1040,10 +1120,47 @@ export default function TempleDetailScreen() {
   const resolvedShortSummary = getAuthenticShortSummary();
   const templeDescription = getTempleDescription();
   const templeGuidance = getTempleGuidance();
-  const templeHistory = authenticJyotirlingaDetails?.history || temple?.history;
-  const templeArchitecture = authenticJyotirlingaDetails?.architecture || temple?.architecture;
-  const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple?.significance;
-  const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple?.rituals || temple?.sacred_rituals;
+  const isBoilerplateSignificance = (str?: string): boolean => {
+    if (!str || typeof str !== 'string') return false;
+    const lower = str.toLowerCase();
+    return lower.includes('dedicated to divine grace, inner peace') || lower.includes('revered shrine in sanatana dharma dedicated to divine grace');
+  };
+
+  const isBoilerplateHistory = (str?: string): boolean => {
+    if (!str || typeof str !== 'string') return false;
+    const lower = str.toLowerCase();
+    return lower.includes('preserved through centuries of royal patronage') || lower.includes('patronage and community devotion across generations');
+  };
+
+  const isBoilerplateArchitecture = (str?: string): boolean => {
+    if (!str || typeof str !== 'string') return false;
+    const lower = str.toLowerCase();
+    return lower.includes('traditional indian temple architecture featuring carved mandapas') || lower.includes('carved mandapas, sanctum, and sacred spires');
+  };
+
+  const rawSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || (isBoilerplateSignificance(temple?.significance) ? null : temple?.significance);
+  const rawHistory = authenticJyotirlingaDetails?.history || (isBoilerplateHistory(temple?.history) ? null : temple?.history);
+  const rawArchitecture = authenticJyotirlingaDetails?.architecture || (isBoilerplateArchitecture(temple?.architecture) ? null : temple?.architecture);
+
+  const deityStrForStory = temple?.deity || 'the Divine';
+  const locStrForStory = locationStr && locationStr !== 'Unknown location' ? locationStr : '';
+
+  const templeSignificance = rawSignificance || (locStrForStory ? `Celebrated sacred shrine of ${deityStrForStory} in ${locStrForStory}, revered by devotees as a potent source of divine grace, spiritual blessings, and inner peace.` : `Sacred pilgrimage shrine of ${deityStrForStory}, deeply revered by devotees for its spiritual heritage.`);
+  const templeHistory = rawHistory || `Rooted in ancient Sanatana traditions, this holy shrine has served as an enduring center of worship and pilgrimage across generations.`;
+  const templeArchitecture = rawArchitecture || `Built in traditional Indian temple architectural style, featuring a sanctum sanctorum (Garbhagriha), devotional prayer halls, and sacred carved motifs.`;
+  const isGenericRitualList = (r: any): boolean => {
+    if (!r || !Array.isArray(r) || r.length === 0) return true;
+    if (r.length === 3 && r.includes('Morning Abhishekam') && r.includes('Mahamangal Aarti') && r.includes('Archana')) return true;
+    return false;
+  };
+  const templeRituals = authenticJyotirlingaDetails?.sacredRituals
+    || (!isGenericRitualList(temple?.rituals) ? temple?.rituals : null)
+    || (!isGenericRitualList(temple?.special_rituals) ? temple?.special_rituals : null)
+    || (!isGenericRitualList(temple?.sacred_rituals) ? temple?.sacred_rituals : null)
+    || authenticJyotirlingaDetails?.sacredRituals
+    || temple?.rituals
+    || temple?.special_rituals
+    || temple?.sacred_rituals;
   const templeFestivals = resolveTempleFestivals({ temple, authenticFestivals: authenticJyotirlingaDetails?.festivals });
   const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple?.pilgrimage_circuit || temple?.circuit;
 
@@ -1228,64 +1345,125 @@ export default function TempleDetailScreen() {
             })()}
 
             {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
-            <DarshanAartiTimeline
-              openingTime={authenticDarshanDetails?.opening || '4:00 AM'}
-              closingTime={authenticDarshanDetails?.closing || '9:00 PM'}
-              generalDarshanText={authenticDarshanDetails?.generalDarshan}
-              aartis={(() => {
-                const parseTimeString = (timeStr: string): { minutes: number; formatted: string } | null => {
-                  if (!timeStr) return null;
-                  const cleaned = timeStr.trim();
-                  const match = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-                  if (!match) return null;
-                  let hour = parseInt(match[1], 10);
-                  const minute = parseInt(match[2], 10);
-                  const period = match[3].toUpperCase();
-                  if (period === 'PM' && hour !== 12) hour += 12;
-                  if (period === 'AM' && hour === 12) hour = 0;
-                  const minutes = hour * 60 + minute;
-                  return { minutes, formatted: cleaned.toUpperCase() };
-                };
+            {(() => {
+              const parseTimeString = (timeStr: string): { minutes: number; formatted: string } | null => {
+                if (!timeStr) return null;
+                const cleaned = timeStr.trim();
+                const match = cleaned.match(/\b(\d{1,2})(?::(\d{2}))?\s*(AM|PM)\b/i);
+                if (!match) return null;
+                let hour = parseInt(match[1], 10);
+                const minute = match[2] ? parseInt(match[2], 10) : 0;
+                const period = match[3].toUpperCase();
+                if (period === 'PM' && hour !== 12) hour += 12;
+                if (period === 'AM' && hour === 12) hour = 0;
+                const minutes = hour * 60 + minute;
+                const displayMin = minute < 10 ? `0${minute}` : `${minute}`;
+                const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                return { minutes, formatted: `${displayHour}:${displayMin} ${period}` };
+              };
 
-                const openTimeObj = parseTimeString(authenticDarshanDetails?.opening || '4:00 AM') || { minutes: 240, formatted: '4:00 AM' };
-                const closeTimeObj = parseTimeString(authenticDarshanDetails?.closing || '9:00 PM') || { minutes: 1260, formatted: '9:00 PM' };
-                const startMins = openTimeObj.minutes;
-                const endMins = closeTimeObj.minutes > startMins ? closeTimeObj.minutes : closeTimeObj.minutes + 1440;
-                const totalSpan = Math.max(endMins - startMins, 60);
+              const hasValidClockTimes = (dict: Record<string, any> | undefined | null) => {
+                if (!dict || typeof dict !== 'object') return false;
+                const values = Object.values(dict);
+                if (values.length === 0) return false;
+                return values.some(v => parseTimeString(String(v)) !== null);
+              };
 
-                const palette = ['#2563EB', '#D97706', '#7C3AED', '#059669', '#DC2626', '#0891B2'];
-                const aartiSessions = authenticDarshanDetails?.aartis ? Object.entries(authenticDarshanDetails.aartis) : [];
+              const isGenericAarti = (dict: Record<string, any> | undefined | null): boolean => {
+                if (!dict || typeof dict !== 'object') return true;
+                const entries = Object.entries(dict);
+                if (entries.length === 0) return true;
+                if (entries.length === 2) {
+                  const keys = Object.keys(dict).map(k => k.toLowerCase().trim());
+                  const vals = Object.values(dict).map(v => String(v).toLowerCase().trim());
+                  const isM = keys.some(k => k.includes('morning')) && vals.some(v => v.includes('6:00 am') || v.includes('7:00 am'));
+                  const isE = keys.some(k => k.includes('evening')) && vals.some(v => v.includes('7:00 pm') || v.includes('6:00 pm') || v.includes('8:00 pm'));
+                  if (isM && isE) return true;
+                }
+                return false;
+              };
 
-                const formattedAartis = aartiSessions.map(([name, rawTime]: [string, any], idx: number) => {
-
-                  // If rawTime is a range like "4:00 AM - 5:00 AM", take start time
-                  const singleTime = rawTime.split('-')[0].trim();
-                  const parsed = parseTimeString(singleTime);
-                  let pos = 50;
-                  if (parsed) {
-                    let mins = parsed.minutes;
-                    if (mins < startMins && mins + 1440 <= endMins) {
-                      mins += 1440;
+              let resolvedOpening = authenticDarshanDetails?.opening;
+              let resolvedClosing = authenticDarshanDetails?.closing;
+              if (temple?.timings) {
+                if (temple.timings.opening && parseTimeString(temple.timings.opening)) {
+                  resolvedOpening = temple.timings.opening;
+                } else if (temple.timings.Darshan) {
+                  const parts = String(temple.timings.Darshan).split('-');
+                  if (parts[0] && parseTimeString(parts[0].trim())) {
+                    if (!resolvedOpening || !parseTimeString(resolvedOpening)) {
+                      resolvedOpening = parts[0].trim();
                     }
-                    pos = Math.round(((mins - startMins) / totalSpan) * 100);
-                  } else {
-                    // Fallback distribution if parsing fails
-                    pos = Math.round(((idx + 1) / (aartiSessions.length + 1)) * 100);
                   }
+                  if (parts[1] && parseTimeString(parts[1].trim())) {
+                    if (!resolvedClosing || !parseTimeString(resolvedClosing)) {
+                      resolvedClosing = parts[1].trim();
+                    }
+                  }
+                }
+              }
+              if (!resolvedClosing && temple?.timings?.closing) {
+                resolvedClosing = temple.timings.closing;
+              }
 
-                  return {
-                    id: `aarti-${idx}-${name}`,
-                    name,
-                    time: rawTime,
-                    color: palette[idx % palette.length],
-                    positionPercent: Math.min(Math.max(pos, 3), 94),
-                  };
-                });
+              const generalDarshan = authenticDarshanDetails?.generalDarshan || (temple?.timings?.Darshan ? String(temple.timings.Darshan) : (resolvedOpening && resolvedClosing ? `${resolvedOpening} – ${resolvedClosing}` : undefined));
 
-                return formattedAartis.length > 0 ? formattedAartis : undefined;
-              })()}
-              vipInfoText={authenticDarshanDetails?.vipDarshan || 'VIP / special darshan available'}
-            />
+              // Prioritize authentic curated rules if not generic, then authentic DB aartis, then fallbacks
+              const curatedAartis = (authenticDarshanDetails?.aartis && !isGenericAarti(authenticDarshanDetails.aartis) && hasValidClockTimes(authenticDarshanDetails.aartis))
+                ? Object.entries(authenticDarshanDetails.aartis)
+                : null;
+
+              const dbAartis = (temple?.aarti_timings && !isGenericAarti(temple.aarti_timings) && hasValidClockTimes(temple.aarti_timings))
+                ? Object.entries(temple.aarti_timings)
+                : null;
+
+              const aartiSessions = curatedAartis
+                || dbAartis
+                || (authenticDarshanDetails?.aartis && Object.keys(authenticDarshanDetails.aartis).length > 0 ? Object.entries(authenticDarshanDetails.aartis) : null)
+                || (temple?.aarti_timings && Object.keys(temple.aarti_timings).length > 0 ? Object.entries(temple.aarti_timings) : null)
+                || [];
+
+              const openTimeObj = parseTimeString(resolvedOpening || '') || { minutes: 360, formatted: '6:00 AM' };
+              const closeTimeObj = parseTimeString(resolvedClosing || '') || { minutes: 1260, formatted: '9:00 PM' };
+              const startMins = openTimeObj.minutes;
+              const endMins = closeTimeObj.minutes > startMins ? closeTimeObj.minutes : closeTimeObj.minutes + 1440;
+              const totalSpan = Math.max(endMins - startMins, 60);
+
+              const palette = ['#2563EB', '#D97706', '#7C3AED', '#059669', '#DC2626', '#0891B2'];
+
+              const formattedAartis = aartiSessions.map(([name, rawTime]: [string, any], idx: number) => {
+                const singleTime = String(rawTime).split('-')[0].trim();
+                const parsed = parseTimeString(singleTime) || parseTimeString(String(rawTime));
+                let pos = 50;
+                if (parsed) {
+                  let mins = parsed.minutes;
+                  if (mins < startMins && mins + 1440 <= endMins) {
+                    mins += 1440;
+                  }
+                  pos = Math.round(((mins - startMins) / totalSpan) * 100);
+                } else {
+                  pos = Math.round(((idx + 1) / (aartiSessions.length + 1)) * 100);
+                }
+
+                return {
+                  id: `aarti-${idx}-${name}`,
+                  name,
+                  time: parsed ? parsed.formatted : String(rawTime),
+                  color: palette[idx % palette.length],
+                  positionPercent: Math.min(Math.max(pos, 3), 94),
+                };
+              });
+
+              return (
+                <DarshanAartiTimeline
+                  openingTime={openTimeObj.formatted}
+                  closingTime={closeTimeObj.formatted}
+                  generalDarshanText={generalDarshan}
+                  aartis={formattedAartis.length > 0 ? formattedAartis : undefined}
+                  vipInfoText={authenticDarshanDetails?.vipDarshan || 'VIP / special darshan available'}
+                />
+              );
+            })()}
 
             {/* FACILITIES, AMENITIES & GOOD TO KNOW */}
             {(() => {
@@ -1304,7 +1482,7 @@ export default function TempleDetailScreen() {
                 };
               });
 
-              const hasTopShoeAmenity = authenticFacilities.some(f => f.includes('shoe') || f.includes('footwear'));
+              const hasTopShoeAmenity = authenticFacilities.some((f: string) => f.includes('shoe') || f.includes('footwear'));
 
               const formattedGuidelines = authenticVisitorGuidelines
                 .filter((g: any) => {
@@ -1361,10 +1539,6 @@ export default function TempleDetailScreen() {
                 />
               );
             })()}
-
-
-
-
 
             {/* 15. OFFICIAL LINKS & VERIFIED HELPLINES */}
             {(officialWebsiteUrl || officialHelplineNo) && (

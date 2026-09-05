@@ -9154,7 +9154,7 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 
 @api_router.get("/temples")
 async def get_temples(
-    limit: int = 50,
+    limit: int = 300,
     offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
@@ -10861,6 +10861,38 @@ async def send_shiv_katha_reminder_notification(
 
 
 
+import re
+
+def sanitize_krishna_response(response_text: str) -> str:
+    """
+    Hard firewall to strip out any English word-by-word meanings or commentary 
+    that might have leaked from the LLM or RAG context.
+    """
+    # 1. Remove blocks that look like "Word, English; is word, English;"
+    response_text = re.sub(r'[A-Za-z]+,\s*[A-Za-z]+;\s*(is|are|by|the|of|and)\s+[A-Za-z]+', '[REMOVED ENGLISH MEANING]', response_text, flags=re.IGNORECASE)
+    
+    # 2. Remove random English commentary questions like "In what form?" or "Why?"
+    response_text = re.sub(r'(In what form\?.*?)(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)', '', response_text, flags=re.IGNORECASE | re.DOTALL)
+    response_text = re.sub(r'(Again, having what.*?)(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)', '', response_text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 3. Ensure "Bhaavarth:" or "Arth:" is not followed by a long English block
+    response_text = re.sub(
+        r'(Bhaavarth:|Arth:)\s*[A-Za-z]{4,}.*?(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)',
+        'Arth: Bhagwan Krishna is shlok mein gahre gyaan aur margdarshan ki baat kar rahe hain.',
+        response_text,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+    
+    return response_text.strip()
+
+
+def _get_chat_doc_id(user_id: str, chat_id: str = "slot_1") -> str:
+    slot = (chat_id or "slot_1").strip().lower()
+    if slot in ("slot_1", "default", ""):
+        return user_id  # Preserves existing legacy chat history
+    return f"{user_id}_{slot}"
+
+
 @api_router.post("/ai/chat")
 async def ai_chat(
     data: dict,
@@ -10974,11 +11006,13 @@ IDENTITY RULES:
     new_session = False
     db_messages = []
     user_id = token_data["user_id"]
+    chat_id = data.get("chat_id") or data.get("chatId") or "slot_1"
+    chat_doc_id = _get_chat_doc_id(user_id, chat_id)
 
     try:
         from datetime import datetime, timezone
         db = await get_db()
-        chat_data = await db.get_document('krishna_chats', user_id)
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
         if chat_data:
             db_messages = chat_data.get("messages", [])
             profile = chat_data.get("profile", profile)
@@ -11116,15 +11150,22 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
                 from services.krishna_rag_service import retrieve_relevant_shlokas
                 shlokas = retrieve_relevant_shlokas(latest_user_msg, top_k=1)
                 if shlokas and len(shlokas) > 0:
+                    # PONYTAIL FIX: Fetch clean Hindi translation instead of raw English fallback
+                    from utils.krishna_gita_db import get_shloka_details
+
                     shloka_data = shlokas[0]
                     ch = shloka_data.get("chapter", "")
                     v = shloka_data.get("verse", "")
                     txt = shloka_data.get("text", "")
-                    trans = shloka_data.get("translation", "")
+
+                    # Get clean Hindi/Devanagari arth
+                    shloka_details = get_shloka_details(int(ch), int(v))
+                    clean_arth = shloka_details.get("hindi_translation", "Is shlok mein Bhagwan Krishna gahre gyaan aur margdarshan ki baat kar rahe hain.")
+
                     assistant_reply = (
                         f"Arre mere bhakta, Bhagavad Gita (Adhyay {ch}, Shlok {v}) mein kaha gaya hai:\n\n"
                         f"\"{txt}\"\n\n"
-                        f"Bhaavarth: {trans}\n\n"
+                        f"Arth: {clean_arth}\n\n"
                         f"Sadaiv dharma aur karma ke maarg par chalo. Jai Shri Krishna! 🙏"
                     )
             except Exception as rag_err:
@@ -11142,6 +11183,10 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         # Apply regex shloka replacement for any dynamic shloka references
         from utils.krishna_gita_db import replace_gita_references
         assistant_reply = replace_gita_references(assistant_reply)
+
+        # PONYTAIL FIX: Sanitize response before saving to Firestore or returning to client
+        if assistant_reply:
+            assistant_reply = sanitize_krishna_response(assistant_reply)
 
         # Save to Firebase Firestore
         try:
@@ -11181,13 +11226,13 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             # Limit history to save only the last 15 messages
             db_messages = db_messages[-15:]
 
-            await db.set_document('krishna_chats', user_id, {
+            await db.set_document('krishna_chats', chat_doc_id, {
                 "messages": db_messages,
                 "profile": profile,
                 "history_summaries": history_summaries,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
-            logger.info("[Chat] Successfully saved chat to Firestore for user %s (total messages: %d)", user_id, len(db_messages))
+            logger.info("[Chat] Successfully saved chat to Firestore for user %s (doc: %s, total messages: %d)", user_id, chat_doc_id, len(db_messages))
         except Exception as fs_err:
             logger.warning(f"Failed to save chat to Firestore: {fs_err}")
 
@@ -11206,12 +11251,16 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 
 
 @api_router.get("/ai/chat/history")
-async def get_chat_history(token_data: dict = Depends(verify_token)):
+async def get_chat_history(
+    chat_id: str = "slot_1",
+    token_data: dict = Depends(verify_token)
+):
     """Fetch stored Krishna chat history from Firestore."""
     try:
         db = await get_db()
         user_id = token_data["user_id"]
-        chat_data = await db.get_document('krishna_chats', user_id)
+        chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
         if chat_data:
             return {'messages': chat_data.get('messages', [])}
         return {"messages": []}
@@ -11221,12 +11270,16 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
 
 
 @api_router.delete("/ai/chat/history")
-async def delete_chat_history(token_data: dict = Depends(verify_token)):
+async def delete_chat_history(
+    chat_id: str = "slot_1",
+    token_data: dict = Depends(verify_token)
+):
     """Clear/delete Krishna chat history from Firestore."""
     try:
         db = await get_db()
         user_id = token_data["user_id"]
-        await db.delete_document('krishna_chats', user_id)
+        chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+        await db.delete_document('krishna_chats', chat_doc_id)
         return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)

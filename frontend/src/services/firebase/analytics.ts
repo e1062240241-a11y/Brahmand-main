@@ -164,32 +164,12 @@ export async function logScreenView(screenName: string, screenClass?: string) {
   }
 
   try {
-    if (Platform.OS === 'web') {
-      const web = getWebAnalytics();
-      if (web) {
-        const { logEvent: webLogEvent } = require('firebase/analytics');
-        return webLogEvent(web, 'screen_view', {
-          firebase_screen: cleanScreen,
-          firebase_screen_class: cleanClass,
-        });
-      }
-      return;
-    }
-
-    const native = getNativeAnalytics();
-    if (native) {
-      if (typeof native.logScreenView === 'function') {
-        return await native.logScreenView({
-          screen_name: cleanScreen,
-          screen_class: cleanClass,
-        });
-      } else if (typeof native.logEvent === 'function') {
-        return await native.logEvent('screen_view', {
-          screen_name: cleanScreen,
-          screen_class: cleanClass,
-        });
-      }
-    }
+    return await logEvent('screen_view', {
+      screen_name: cleanScreen,
+      screen_class: cleanClass,
+      firebase_screen: cleanScreen,
+      firebase_screen_class: cleanClass,
+    });
   } catch (e) {
     if (__DEV__) {
       console.warn('[Analytics:Native] logScreenView failed:', e);

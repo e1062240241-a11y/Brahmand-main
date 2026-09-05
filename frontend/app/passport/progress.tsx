@@ -9,6 +9,7 @@ import { database } from '../../src/database';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function PassportProgressScreen({
   observedBadges = [],
@@ -77,115 +78,118 @@ function PassportProgressScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Passport Progress</Text>
-      </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Passport Progress</Text>
+        </View>
 
-      <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.subtitle}>Update jaap, awards and reading achievements instantly.</Text>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Text style={styles.subtitle}>Update jaap, awards and reading achievements instantly.</Text>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{totalJaap}</Text>
-            <Text style={styles.statLabel}>Total Jaap</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{totalJaap}</Text>
+              <Text style={styles.statLabel}>Total Jaap</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{booksCompleted}</Text>
+              <Text style={styles.statLabel}>Books</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{badges.length}</Text>
+              <Text style={styles.statLabel}>Badges</Text>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{booksCompleted}</Text>
-            <Text style={styles.statLabel}>Books</Text>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Complete Jaap</Text>
+            <TextInput
+              style={styles.input}
+              value={jaapInput}
+              onChangeText={setJaapInput}
+              keyboardType="number-pad"
+              placeholder="108"
+              placeholderTextColor={COLORS.textSecondary}
+            />
+            <Button title="Add Jaap" onPress={handleAddJaap} />
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{badges.length}</Text>
-            <Text style={styles.statLabel}>Badges</Text>
+
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Complete Reading</Text>
+            <TextInput
+              style={styles.input}
+              value={bookName}
+              onChangeText={setBookName}
+              placeholder="Book name"
+              placeholderTextColor={COLORS.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              value={completionDays}
+              onChangeText={setCompletionDays}
+              keyboardType="number-pad"
+              placeholder="Completion days"
+              placeholderTextColor={COLORS.textSecondary}
+            />
+            <Button title="Create Certificate" onPress={handleCompleteBook} />
           </View>
-        </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Complete Jaap</Text>
-          <TextInput
-            style={styles.input}
-            value={jaapInput}
-            onChangeText={setJaapInput}
-            keyboardType="number-pad"
-            placeholder="108"
-            placeholderTextColor={COLORS.textSecondary}
-          />
-          <Button title="Add Jaap" onPress={handleAddJaap} />
-        </View>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Badges</Text>
+            {badges.length === 0 ? (
+              <Text style={styles.emptyText}>No badges yet. Complete your first journey, jaap milestone, or book.</Text>
+            ) : (
+              badges.map((badge) => (
+                <View key={badge.id} style={styles.badgeRow}>
+                  <Text style={styles.badgeTitle}>{badge.title}</Text>
+                  <Text style={styles.badgeDescription}>{badge.description}</Text>
+                </View>
+              ))
+            )}
+          </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Complete Reading</Text>
-          <TextInput
-            style={styles.input}
-            value={bookName}
-            onChangeText={setBookName}
-            placeholder="Book name"
-            placeholderTextColor={COLORS.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            value={completionDays}
-            onChangeText={setCompletionDays}
-            keyboardType="number-pad"
-            placeholder="Completion days"
-            placeholderTextColor={COLORS.textSecondary}
-          />
-          <Button title="Create Certificate" onPress={handleCompleteBook} />
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Badges</Text>
-          {badges.length === 0 ? (
-            <Text style={styles.emptyText}>No badges yet. Complete your first journey, jaap milestone, or book.</Text>
-          ) : (
-            badges.map((badge) => (
-              <View key={badge.id} style={styles.badgeRow}>
-                <Text style={styles.badgeTitle}>{badge.title}</Text>
-                <Text style={styles.badgeDescription}>{badge.description}</Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Certificates</Text>
-          {certificates.length === 0 ? (
-            <Text style={styles.emptyText}>No certificates yet. Complete a reading to generate one.</Text>
-          ) : (
-            certificates.map((certificate: any) => (
-              <TouchableOpacity 
-                key={certificate.id} 
-                style={styles.certificateRow}
-                activeOpacity={0.7}
-                onPress={() => router.push(`/passport/certificate/${certificate.id}` as any)}
-              >
-                <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
-                <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {certificate.date && !isNaN(new Date(certificate.date).getTime()) ? new Date(certificate.date).toDateString() : String(certificate.date || '')}</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Certificates</Text>
+            {certificates.length === 0 ? (
+              <Text style={styles.emptyText}>No certificates yet. Complete a reading to generate one.</Text>
+            ) : (
+              certificates.map((certificate: any) => (
+                <TouchableOpacity 
+                  key={certificate.id} 
+                  style={styles.certificateRow}
+                  activeOpacity={0.7}
+                  onPress={() => router.push(`/passport/certificate/${certificate.id}` as any)}
+                >
+                  <Text style={styles.certificateTitle}>{certificate.bookName || certificate.book_name}</Text>
+                  <Text style={styles.certificateMeta}>{(certificate.completionDays || certificate.completion_days)} days • {certificate.date && !isNaN(new Date(certificate.date).getTime()) ? new Date(certificate.date).toDateString() : String(certificate.date || '')}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
     height: 56,
-    borderBottomWidth: 0.8,
-    borderBottomColor: COLORS.surface,
   },
   backButton: {
     padding: 8,
@@ -194,7 +198,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#000',
     marginLeft: SPACING.sm,
   },
   content: {

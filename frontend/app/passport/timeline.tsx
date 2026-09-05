@@ -359,16 +359,14 @@ function PassportTimelineScreen({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Background Peachish Gradient */}
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
-      {/* Header */}
-      <View style={styles.header}>
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
@@ -685,6 +683,7 @@ function PassportTimelineScreen({
         </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 

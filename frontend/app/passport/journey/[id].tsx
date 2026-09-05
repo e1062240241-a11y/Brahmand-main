@@ -99,14 +99,20 @@ function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourne
 
   if (!journey) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Journey not found.</Text>
-          <TouchableOpacity style={styles.exitButton} onPress={() => router.push('/passport/timeline' as any)}>
-            <Text style={styles.exitButtonText}>Back to Timeline</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.0913, 0.25]}
+        style={styles.container}
+      >
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Journey not found.</Text>
+            <TouchableOpacity style={styles.exitButton} onPress={() => router.push('/passport/timeline' as any)}>
+              <Text style={styles.exitButtonText}>Back to Timeline</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -137,15 +143,13 @@ function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourne
     : (mainContentText && mainContentText.length > 150 ? `${mainContentText.substring(0, 150)}` : mainContentText || '');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Background Peachish Gradient */}
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5', '#FFFFFF']}
-        locations={[0, 0.0913, 0.25, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {justRecorded === 'true' ? (
           /* Success Header */
           <View style={styles.successHeader}>
@@ -290,6 +294,7 @@ function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourne
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 
