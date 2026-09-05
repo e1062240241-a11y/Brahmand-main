@@ -1,7 +1,3 @@
-## 2025-03-09 - Added accessibility properties to Help Request form submit button
-**Learning:** Found that custom `TouchableOpacity` buttons containing loading `ActivityIndicator` states in the application occasionally lacked explicit ARIA metadata. This affects screen readers which may not inherently understand that a generic view acts as a submit button or correctly announce its disabled/busy state during network requests.
-**Action:** When implementing custom buttons (e.g. `TouchableOpacity`) in React Native, particularly those with dynamic loading states, explicitly add `accessibilityRole="button"`, an appropriate `accessibilityLabel`, and `accessibilityState={{ disabled: loading, busy: loading }}` to ensure screen readers convey the button's intent and transient states.
-
-## 2026-09-04 - Add accessibility properties to character counter in Input component
-**Learning:** When displaying a character counter (e.g. `10/50`) for an input constraint, screen readers may read the raw string (like "ten slash fifty") without context, making it confusing for users relying on assistive technologies.
-**Action:** Always add an explicit `accessibilityLabel` to character counter text elements (e.g. `${currentLength} of ${maxLength} characters used`) and set `accessibilityRole="text"` to ensure screen readers provide meaningful context.
+## 2024-06-12 - Added Accessibility to SOS Flow Modal
+**Learning:** Found multiple `TouchableOpacity` elements in `SOSFlowModal.tsx` that acted as critical icon buttons (like "Start SOS", back arrows, "Cancel SOS") but lacked `accessibilityLabel` and `accessibilityRole`. This is a common pattern in custom React Native modal flows that creates a poor screen reader experience for critical safety features.
+**Action:** Always ensure that icon-only `TouchableOpacity` or custom buttons have both `accessibilityRole="button"` and explicitly defined `accessibilityLabel` strings describing their action.
