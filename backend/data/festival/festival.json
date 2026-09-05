@@ -7,7 +7,12 @@
     "importance": "Teaches gratitude, respect for nature, and highlights the role of agriculture in human life.",
     "celebration": "Kite flying, preparation of Pongal dish, holy river baths, charity, and community feasts.",
     "symbolism": "Sunlight represents knowledge, positivity, and removal of darkness.",
-    "summary": "A solar harvest festival celebrating gratitude to the Sun and nature."
+    "summary": "A solar harvest festival celebrating gratitude to the Sun and nature.",
+    "date_2027": "14 January 2027",
+    "dates": {
+      "2026": "14 January 2026",
+      "2027": "14 January 2027"
+    }
   },
   {
     "festival_name": "Magh Bihu",
@@ -17,7 +22,12 @@
     "importance": "Promotes unity, joy, and community bonding.",
     "celebration": "Bonfires (Meji), feasts with rice cakes (pitha), fish, meat, and traditional games.",
     "symbolism": "Bonfire represents purification and renewal; shared meals symbolize harmony.",
-    "summary": "Assam’s harvest festival of unity and abundance."
+    "summary": "Assam’s harvest festival of unity and abundance.",
+    "date_2027": "14 January 2027",
+    "dates": {
+      "2026": "14 January 2026",
+      "2027": "14 January 2027"
+    }
   },
   {
     "festival_name": "Vasant Panchami",
@@ -27,9 +37,13 @@
     "importance": "Encourages education, arts, and reverence for wisdom.",
     "celebration": "Wearing yellow clothes, Saraswati puja, initiation of children’s first lessons.",
     "symbolism": "Yellow represents energy, optimism, and vibrancy of spring.",
-    "summary": "Festival of knowledge and spring."
+    "summary": "Festival of knowledge and spring.",
+    "date_2027": "11 February 2027",
+    "dates": {
+      "2026": "23 January 2026",
+      "2027": "11 February 2027"
+    }
   },
-
   {
     "festival_name": "Thaipusam",
     "date": "1 February 2026",
@@ -37,7 +51,12 @@
     "purpose": "To celebrate the victory of good over evil and show deep devotion to Lord Murugan.",
     "importance": "Teaches devotion, self-discipline, surrender of ego, and spiritual purification.",
     "celebration": "Devotees observe fasting, carry Kavadi as a form of penance, and participate in processions with chanting and music. Some perform acts of extreme devotion like body piercings.",
-    "summary": "A devotional festival dedicated to Lord Murugan symbolizing faith, sacrifice, and victory of good over evil."
+    "summary": "A devotional festival dedicated to Lord Murugan symbolizing faith, sacrifice, and victory of good over evil.",
+    "date_2027": "22 January 2027",
+    "dates": {
+      "2026": "1 February 2026",
+      "2027": "22 January 2027"
+    }
   },
   {
     "festival_name": "Maha Shivaratri",
@@ -47,7 +66,12 @@
     "importance": "Promotes meditation, inner peace, self-control, and transformation of consciousness.",
     "celebration": "Devotees observe night-long fasting, perform Shiva puja every three hours, chant 'Om Namah Shivaya', and offer milk, honey, and bael leaves to Shiva Lingam.",
     "summary": "A sacred night of devotion and meditation dedicated to Lord Shiva.",
-    "mantra": "Om Namah Shivaya"
+    "mantra": "Om Namah Shivaya",
+    "date_2027": "6 March 2027",
+    "dates": {
+      "2026": "15 February 2026",
+      "2027": "6 March 2027"
+    }
   },
   {
     "festival_name": "Holika Dahan",
@@ -56,7 +80,12 @@
     "purpose": "To burn evil, negativity, and ego while celebrating the power of faith and truth.",
     "importance": "Represents the victory of devotion and righteousness over evil forces.",
     "celebration": "Large bonfires are lit, symbolic items are burned, and people perform rituals around the fire seeking protection and blessings.",
-    "summary": "A festival symbolizing the burning away of evil and negativity."
+    "summary": "A festival symbolizing the burning away of evil and negativity.",
+    "date_2027": "21 March 2027",
+    "dates": {
+      "2026": "3 March 2026",
+      "2027": "21 March 2027"
+    }
   },
   {
     "festival_name": "Holi",
@@ -65,107 +94,167 @@
     "purpose": "To celebrate joy, love, unity, and the arrival of spring.",
     "importance": "Promotes equality, forgiveness, social harmony, and breaking barriers between people.",
     "celebration": "People play with colors and water, sing and dance, enjoy sweets like gujiya and thandai, and visit friends and family.",
-    "summary": "A vibrant festival of colors symbolizing joy, love, and unity."
+    "summary": "A vibrant festival of colors symbolizing joy, love, and unity.",
+    "date_2027": "22 March 2027",
+    "dates": {
+      "2026": "4 March 2026",
+      "2027": "22 March 2027"
+    }
   },
-{
-"festival_name": "Chaitra Sukhladi / Cheti Chand / Ugadi / Gudi Padwa",
-"date": "19 March 2026",
-"origin": "This group of festivals marks the Hindu New Year in different regions of India. It is based on the beginning of the Chaitra month in the Hindu lunar calendar. Each region celebrates it differently: Ugadi in Andhra Pradesh and Karnataka, Gudi Padwa in Maharashtra, Cheti Chand for Sindhi community, and Chaitra Sukhladi in North India.",
-"purpose": "To celebrate new beginnings and welcome the Hindu New Year.",
-"importance": "Represents positivity, renewal, prosperity, and spiritual cleansing.",
-"celebration": "People clean and decorate homes, prepare festive foods, perform puja, and hoist symbolic flags like Gudi Padwa’s Gudi.",
-"summary": "Regional Hindu New Year celebrated with joy and new beginnings."
-},
-{
-"festival_name": "Ram Navami",
-"date": "26 March 2026",
-"origin": "Ram Navami celebrates the birth of Lord Rama, the seventh avatar of Lord Vishnu, born in Ayodhya to King Dasharatha and Queen Kaushalya.",
-"purpose": "To honor Lord Rama and celebrate righteousness, truth, and dharma.",
-"importance": "Teaches values of duty, honesty, courage, and ideal living (Maryada Purushottam).",
-"celebration": "Devotees observe fasting, chant prayers, read Ramayana, and visit temples. Processions of Lord Rama are also held.",
-"summary": "Festival celebrating the birth of Lord Rama and ideals of righteousness."
-},
-{
-"festival_name": "Hanuman Jayanti",
-"date": "2 April 2026",
-"origin": "Hanuman Jayanti marks the birth of Lord Hanuman, a devotee of Lord Rama, known for his strength, devotion, and courage.",
-"purpose": "To honor Lord Hanuman and seek strength, devotion, and protection.",
-"importance": "Represents loyalty, devotion, courage, and selfless service.",
-"celebration": "Devotees recite Hanuman Chalisa, visit temples, offer prayers, and observe fasting in many regions.",
-"summary": "Celebration of Lord Hanuman’s birth and devotion."
-},
-{
-"festival_name": "Hindi New Year",
-"date": "10 April 2026",
-"origin": "Based on the Vikram Samvat Hindu calendar, marking the beginning of a new year in some North Indian traditions.",
-"purpose": "To mark the beginning of a new year and new cycle of time.",
-"importance": "Symbolizes fresh start, hope, and renewal of life goals.",
-"celebration": "People perform prayers, visit temples, and seek blessings for prosperity and success.",
-"summary": "Traditional Hindu new year celebration in some regions."
-},
-{
-"festival_name": "Vaisakhi / Baisakhi / Vishu / Tamil New Year",
-"date": "14 April 2026",
-"origin": "This set of festivals marks harvest time and regional new year celebrations across India. Vaisakhi is important in Punjab, Vishu in Kerala, and Tamil New Year in Tamil Nadu.",
-"purpose": "To celebrate harvest, prosperity, and regional new year traditions.",
-"importance": "Represents gratitude for harvest, cultural unity, and prosperity.",
-"celebration": "People celebrate with traditional dances, special foods, temple visits, and community gatherings.",
-"summary": "Harvest and regional new year festivals celebrated across India."
-},
-{
-"festival_name": "Bengali New Year / Bohag Bihu / Vaisakhadi",
-"date": "15 April 2026",
-"origin": "These festivals mark regional new year celebrations in different parts of India. Pohela Boishakh is celebrated in Bengal, Bohag Bihu in Assam, and Vaisakhadi in parts of North India, based on solar and lunar calendar transitions.",
-"purpose": "To welcome the new year with hope, prosperity, and fresh beginnings.",
-"importance": "Represents cultural identity, renewal, and happiness in regional traditions.",
-"celebration": "People wear traditional clothes, prepare festive meals, perform dances, and visit family and friends.",
-"summary": "Regional new year celebrations marked with joy and cultural traditions."
-},
-{
-"festival_name": "Akshaya Tritiya",
-"date": "19 April 2026",
-"origin": "Akshaya Tritiya is considered an auspicious day in Hindu and Jain traditions. 'Akshaya' means eternal or never diminishing, and it is believed that any good deed performed on this day brings lasting prosperity.",
-"purpose": "To begin new ventures and attract prosperity and success.",
-"importance": "Symbol of eternal growth, good fortune, and spiritual merit.",
-"celebration": "People buy gold, donate to charity, perform puja, and start new business or investments.",
-"summary": "A highly auspicious day for prosperity and new beginnings."
-},
-{
-"festival_name": "Savitri Pooja",
-"date": "16 May 2026",
-"origin": "Based on the story of Savitri and Satyavan, where Savitri’s devotion and intelligence brought her husband back to life from Yama, the god of death.",
-"purpose": "To pray for the long life and well-being of one’s husband.",
-"importance": "Symbol of loyalty, devotion, love, and marital strength.",
-"celebration": "Married women observe fasting, wear traditional attire, and perform rituals under banyan trees.",
-"summary": "Festival of marital devotion and love."
-},
-{
-"festival_name": "Jagannath Rath Yatra",
-"date": "16 July 2026",
-"origin": "The Rath Yatra celebrates the annual journey of Lord Jagannath, along with his siblings Balabhadra and Subhadra, from the Jagannath Temple in Puri.",
-"purpose": "To allow devotees to have darshan of the deities outside the temple.",
-"importance": "Represents equality, unity, and devotion to God.",
-"celebration": "Massive chariot procession where devotees pull the sacred chariots through the streets of Puri.",
-"summary": "Grand chariot festival of Lord Jagannath."
-},
-{
-"festival_name": "Ashadhi Ekadashi",
-"date": "25 July 2026",
-"origin": "Dedicated to Lord Vitthal (a form of Lord Vishnu), especially worshipped in Maharashtra. It falls on the 11th day of the Ashadha month.",
-"purpose": "To observe fasting and deepen spiritual devotion.",
-"importance": "Symbolizes faith, discipline, and devotion.",
-"celebration": "Devotees fast, sing bhajans, and participate in pilgrimages like the Pandharpur Wari.",
-"summary": "A sacred day of fasting and devotion to Lord Vitthal."
-},
-{
-"festival_name": "Guru Purnima",
-"date": "29 July 2026",
-"origin": "Guru Purnima is dedicated to honoring teachers and gurus. It is traditionally linked to Maharishi Ved Vyasa, who compiled the Vedas and Mahabharata.",
-"purpose": "To express gratitude and respect to teachers and spiritual guides.",
-"importance": "Represents knowledge, wisdom, and guidance in life.",
-"celebration": "Students and devotees worship their gurus, offer gifts, and attend spiritual gatherings.",
-"summary": "A day to honor teachers and express gratitude."
-},
+  {
+    "festival_name": "Chaitra Sukhladi / Cheti Chand / Ugadi / Gudi Padwa",
+    "date": "19 March 2026",
+    "origin": "This group of festivals marks the Hindu New Year in different regions of India. It is based on the beginning of the Chaitra month in the Hindu lunar calendar. Each region celebrates it differently: Ugadi in Andhra Pradesh and Karnataka, Gudi Padwa in Maharashtra, Cheti Chand for Sindhi community, and Chaitra Sukhladi in North India.",
+    "purpose": "To celebrate new beginnings and welcome the Hindu New Year.",
+    "importance": "Represents positivity, renewal, prosperity, and spiritual cleansing.",
+    "celebration": "People clean and decorate homes, prepare festive foods, perform puja, and hoist symbolic flags like Gudi Padwa’s Gudi.",
+    "summary": "Regional Hindu New Year celebrated with joy and new beginnings.",
+    "date_2027": "7 April 2027",
+    "dates": {
+      "2026": "19 March 2026",
+      "2027": "7 April 2027"
+    }
+  },
+  {
+    "festival_name": "Ram Navami",
+    "date": "26 March 2026",
+    "origin": "Ram Navami celebrates the birth of Lord Rama, the seventh avatar of Lord Vishnu, born in Ayodhya to King Dasharatha and Queen Kaushalya.",
+    "purpose": "To honor Lord Rama and celebrate righteousness, truth, and dharma.",
+    "importance": "Teaches values of duty, honesty, courage, and ideal living (Maryada Purushottam).",
+    "celebration": "Devotees observe fasting, chant prayers, read Ramayana, and visit temples. Processions of Lord Rama are also held.",
+    "summary": "Festival celebrating the birth of Lord Rama and ideals of righteousness.",
+    "date_2027": "15 April 2027",
+    "dates": {
+      "2026": "26 March 2026",
+      "2027": "15 April 2027"
+    }
+  },
+  {
+    "festival_name": "Hanuman Jayanti",
+    "date": "2 April 2026",
+    "origin": "Hanuman Jayanti marks the birth of Lord Hanuman, a devotee of Lord Rama, known for his strength, devotion, and courage.",
+    "purpose": "To honor Lord Hanuman and seek strength, devotion, and protection.",
+    "importance": "Represents loyalty, devotion, courage, and selfless service.",
+    "celebration": "Devotees recite Hanuman Chalisa, visit temples, offer prayers, and observe fasting in many regions.",
+    "summary": "Celebration of Lord Hanuman’s birth and devotion.",
+    "date_2027": "21 April 2027",
+    "dates": {
+      "2026": "2 April 2026",
+      "2027": "21 April 2027"
+    }
+  },
+  {
+    "festival_name": "Hindi New Year",
+    "date": "10 April 2026",
+    "origin": "Based on the Vikram Samvat Hindu calendar, marking the beginning of a new year in some North Indian traditions.",
+    "purpose": "To mark the beginning of a new year and new cycle of time.",
+    "importance": "Symbolizes fresh start, hope, and renewal of life goals.",
+    "celebration": "People perform prayers, visit temples, and seek blessings for prosperity and success.",
+    "summary": "Traditional Hindu new year celebration in some regions.",
+    "date_2027": "7 April 2027",
+    "dates": {
+      "2026": "10 April 2026",
+      "2027": "7 April 2027"
+    }
+  },
+  {
+    "festival_name": "Vaisakhi / Baisakhi / Vishu / Tamil New Year",
+    "date": "14 April 2026",
+    "origin": "This set of festivals marks harvest time and regional new year celebrations across India. Vaisakhi is important in Punjab, Vishu in Kerala, and Tamil New Year in Tamil Nadu.",
+    "purpose": "To celebrate harvest, prosperity, and regional new year traditions.",
+    "importance": "Represents gratitude for harvest, cultural unity, and prosperity.",
+    "celebration": "People celebrate with traditional dances, special foods, temple visits, and community gatherings.",
+    "summary": "Harvest and regional new year festivals celebrated across India.",
+    "date_2027": "14 April 2027",
+    "dates": {
+      "2026": "14 April 2026",
+      "2027": "14 April 2027"
+    }
+  },
+  {
+    "festival_name": "Bengali New Year / Bohag Bihu / Vaisakhadi",
+    "date": "15 April 2026",
+    "origin": "These festivals mark regional new year celebrations in different parts of India. Pohela Boishakh is celebrated in Bengal, Bohag Bihu in Assam, and Vaisakhadi in parts of North India, based on solar and lunar calendar transitions.",
+    "purpose": "To welcome the new year with hope, prosperity, and fresh beginnings.",
+    "importance": "Represents cultural identity, renewal, and happiness in regional traditions.",
+    "celebration": "People wear traditional clothes, prepare festive meals, perform dances, and visit family and friends.",
+    "summary": "Regional new year celebrations marked with joy and cultural traditions.",
+    "date_2027": "15 April 2027",
+    "dates": {
+      "2026": "15 April 2026",
+      "2027": "15 April 2027"
+    }
+  },
+  {
+    "festival_name": "Akshaya Tritiya",
+    "date": "19 April 2026",
+    "origin": "Akshaya Tritiya is considered an auspicious day in Hindu and Jain traditions. 'Akshaya' means eternal or never diminishing, and it is believed that any good deed performed on this day brings lasting prosperity.",
+    "purpose": "To begin new ventures and attract prosperity and success.",
+    "importance": "Symbol of eternal growth, good fortune, and spiritual merit.",
+    "celebration": "People buy gold, donate to charity, perform puja, and start new business or investments.",
+    "summary": "A highly auspicious day for prosperity and new beginnings.",
+    "date_2027": "9 May 2027",
+    "dates": {
+      "2026": "19 April 2026",
+      "2027": "9 May 2027"
+    }
+  },
+  {
+    "festival_name": "Savitri Pooja",
+    "date": "16 May 2026",
+    "origin": "Based on the story of Savitri and Satyavan, where Savitri’s devotion and intelligence brought her husband back to life from Yama, the god of death.",
+    "purpose": "To pray for the long life and well-being of one’s husband.",
+    "importance": "Symbol of loyalty, devotion, love, and marital strength.",
+    "celebration": "Married women observe fasting, wear traditional attire, and perform rituals under banyan trees.",
+    "summary": "Festival of marital devotion and love.",
+    "date_2027": "4 June 2027",
+    "dates": {
+      "2026": "16 May 2026",
+      "2027": "4 June 2027"
+    }
+  },
+  {
+    "festival_name": "Jagannath Rath Yatra",
+    "date": "16 July 2026",
+    "origin": "The Rath Yatra celebrates the annual journey of Lord Jagannath, along with his siblings Balabhadra and Subhadra, from the Jagannath Temple in Puri.",
+    "purpose": "To allow devotees to have darshan of the deities outside the temple.",
+    "importance": "Represents equality, unity, and devotion to God.",
+    "celebration": "Massive chariot procession where devotees pull the sacred chariots through the streets of Puri.",
+    "summary": "Grand chariot festival of Lord Jagannath.",
+    "date_2027": "5 July 2027",
+    "dates": {
+      "2026": "16 July 2026",
+      "2027": "5 July 2027"
+    }
+  },
+  {
+    "festival_name": "Ashadhi Ekadashi",
+    "date": "25 July 2026",
+    "origin": "Dedicated to Lord Vitthal (a form of Lord Vishnu), especially worshipped in Maharashtra. It falls on the 11th day of the Ashadha month.",
+    "purpose": "To observe fasting and deepen spiritual devotion.",
+    "importance": "Symbolizes faith, discipline, and devotion.",
+    "celebration": "Devotees fast, sing bhajans, and participate in pilgrimages like the Pandharpur Wari.",
+    "summary": "A sacred day of fasting and devotion to Lord Vitthal.",
+    "date_2027": "15 July 2027",
+    "dates": {
+      "2026": "25 July 2026",
+      "2027": "15 July 2027"
+    }
+  },
+  {
+    "festival_name": "Guru Purnima",
+    "date": "29 July 2026",
+    "origin": "Guru Purnima is dedicated to honoring teachers and gurus. It is traditionally linked to Maharishi Ved Vyasa, who compiled the Vedas and Mahabharata.",
+    "purpose": "To express gratitude and respect to teachers and spiritual guides.",
+    "importance": "Represents knowledge, wisdom, and guidance in life.",
+    "celebration": "Students and devotees worship their gurus, offer gifts, and attend spiritual gatherings.",
+    "summary": "A day to honor teachers and express gratitude.",
+    "date_2027": "18 July 2027",
+    "dates": {
+      "2026": "29 July 2026",
+      "2027": "18 July 2027"
+    }
+  },
   {
     "festival_name": "Hariyali Teej",
     "date": "15 August 2026",
@@ -182,7 +271,12 @@
     "purpose": "Marital happiness.",
     "importance": "Love and faith.",
     "celebration": "Fasting, swings.",
-    "summary": "Monsoon festival for married women symbolizing devotion and love."
+    "summary": "Monsoon festival for married women symbolizing devotion and love.",
+    "date_2027": "5 August 2027",
+    "dates": {
+      "2026": "15 August 2026",
+      "2027": "5 August 2027"
+    }
   },
   {
     "festival_name": "Nag Panchami",
@@ -199,7 +293,12 @@
     "purpose": "Respect nature.",
     "importance": "Balance.",
     "celebration": "Milk offerings.",
-    "summary": "Festival honoring snakes and ecological balance."
+    "summary": "Festival honoring snakes and ecological balance.",
+    "date_2027": "7 August 2027",
+    "dates": {
+      "2026": "17 August 2026",
+      "2027": "7 August 2027"
+    }
   },
   {
     "festival_name": "Onam",
@@ -217,7 +316,12 @@
     "purpose": "Celebrate prosperity.",
     "importance": "Equality.",
     "celebration": "Feasts, rangoli.",
-    "summary": "Kerala harvest festival celebrating prosperity and King Mahabali’s return."
+    "summary": "Kerala harvest festival celebrating prosperity and King Mahabali’s return.",
+    "date_2027": "12 September 2027",
+    "dates": {
+      "2026": "26 August 2026",
+      "2027": "12 September 2027"
+    }
   },
   {
     "festival_name": "Raksha Bandhan / Varalakshmi Vrat",
@@ -235,7 +339,12 @@
     "purpose": "Protection and wealth.",
     "importance": "Family values.",
     "celebration": "Rakhi, fasting.",
-    "summary": "Festival of sibling protection and prosperity worship."
+    "summary": "Festival of sibling protection and prosperity worship.",
+    "date_2027": "17 August 2027",
+    "dates": {
+      "2026": "28 August 2026",
+      "2027": "17 August 2027"
+    }
   },
   {
     "festival_name": "Kajari Teej",
@@ -253,7 +362,12 @@
     "purpose": "Husband’s well-being.",
     "importance": "Devotion.",
     "celebration": "Fasting.",
-    "summary": "Monsoon fast observed by women for marital happiness."
+    "summary": "Monsoon fast observed by women for marital happiness.",
+    "date_2027": "20 August 2027",
+    "dates": {
+      "2026": "31 August 2026",
+      "2027": "20 August 2027"
+    }
   },
   {
     "festival_name": "Janmashtami",
@@ -272,7 +386,12 @@
     "importance": "Wisdom.",
     "celebration": "Dahi Handi.",
     "summary": "Festival celebrating the birth of Lord Krishna.",
-    "mantra": "Om Namo Bhagavate Vasudevaya"
+    "mantra": "Om Namo Bhagavate Vasudevaya",
+    "date_2027": "25 August 2027",
+    "dates": {
+      "2026": "4 September 2026",
+      "2027": "25 August 2027"
+    }
   },
   {
     "festival_name": "Ganesh Chaturthi",
@@ -291,9 +410,14 @@
     "importance": "Wisdom.",
     "celebration": "Idols, visarjan.",
     "summary": "Festival of Lord Ganesha’s birth and grand public celebration.",
-    "mantra": "Om Gam Ganapataye Namaha"
+    "mantra": "Om Gam Ganapataye Namaha",
+    "date_2027": "4 September 2027",
+    "dates": {
+      "2026": "14 September 2026",
+      "2027": "4 September 2027"
+    }
   },
-{
+  {
     "festival_name": "Vishwakarma Puja",
     "date": "17 September 2026",
     "origin": "Vishwakarma Puja is dedicated to Lord Vishwakarma, the divine architect and engineer of the universe in Hindu mythology.",
@@ -309,7 +433,12 @@
     "purpose": "Respect tools.",
     "importance": "Work value.",
     "celebration": "Tool puja.",
-    "summary": "Festival honoring work, tools, and craftsmanship."
+    "summary": "Festival honoring work, tools, and craftsmanship.",
+    "date_2027": "17 September 2027",
+    "dates": {
+      "2026": "17 September 2026",
+      "2027": "17 September 2027"
+    }
   },
   {
     "festival_name": "Anant Chaturdashi",
@@ -326,7 +455,12 @@
     "purpose": "Prosperity.",
     "importance": "Faith.",
     "celebration": "Thread ritual.",
-    "summary": "Festival of Lord Vishnu and immersion of Ganesha idols."
+    "summary": "Festival of Lord Vishnu and immersion of Ganesha idols.",
+    "date_2027": "14 September 2027",
+    "dates": {
+      "2026": "25 September 2026",
+      "2027": "14 September 2027"
+    }
   },
   {
     "festival_name": "Mahalaya Amavasya",
@@ -343,7 +477,12 @@
     "purpose": "Honor ancestors.",
     "importance": "Respect.",
     "celebration": "Tarpan.",
-    "summary": "Day of ancestor remembrance and start of Durga Puja season."
+    "summary": "Day of ancestor remembrance and start of Durga Puja season.",
+    "date_2027": "29 September 2027",
+    "dates": {
+      "2026": "10 October 2026",
+      "2027": "29 September 2027"
+    }
   },
   {
     "festival_name": "Sharad Navratri",
@@ -360,7 +499,12 @@
     "purpose": "Good over evil.",
     "importance": "Strength.",
     "celebration": "Garba.",
-    "summary": "Nine-night festival of Goddess Durga."
+    "summary": "Nine-night festival of Goddess Durga.",
+    "date_2027": "30 September 2027",
+    "dates": {
+      "2026": "11 October 2026",
+      "2027": "30 September 2027"
+    }
   },
   {
     "festival_name": "Maha Saptami",
@@ -377,7 +521,12 @@
     "purpose": "Worship goddess.",
     "importance": "Devotion.",
     "celebration": "Puja.",
-    "summary": "Seventh day of Durga Puja rituals."
+    "summary": "Seventh day of Durga Puja rituals.",
+    "date_2027": "7 October 2027",
+    "dates": {
+      "2026": "17 October 2026",
+      "2027": "7 October 2027"
+    }
   },
   {
     "festival_name": "Durga Ashtami",
@@ -394,7 +543,12 @@
     "purpose": "Destroy evil.",
     "importance": "Power.",
     "celebration": "Kanya puja.",
-    "summary": "Day of divine feminine power worship."
+    "summary": "Day of divine feminine power worship.",
+    "date_2027": "8 October 2027",
+    "dates": {
+      "2026": "18 October 2026",
+      "2027": "8 October 2027"
+    }
   },
   {
     "festival_name": "Maha Navami",
@@ -411,7 +565,12 @@
     "purpose": "Victory prayer.",
     "importance": "Faith.",
     "celebration": "Puja.",
-    "summary": "Final worship day of Navratri."
+    "summary": "Final worship day of Navratri.",
+    "date_2027": "9 October 2027",
+    "dates": {
+      "2026": "19 October 2026",
+      "2027": "9 October 2027"
+    }
   },
   {
     "festival_name": "Dussehra / Vijayadashami",
@@ -428,7 +587,12 @@
     "purpose": "Good wins.",
     "importance": "Truth.",
     "celebration": "Effigy burning.",
-    "summary": "Festival of victory of good over evil."
+    "summary": "Festival of victory of good over evil.",
+    "date_2027": "10 October 2027",
+    "dates": {
+      "2026": "20 October 2026",
+      "2027": "10 October 2027"
+    }
   },
   {
     "festival_name": "Sharad Purnima",
@@ -445,7 +609,12 @@
     "purpose": "Health and peace.",
     "importance": "Nature.",
     "celebration": "Moonlight rituals.",
-    "summary": "Full moon festival of blessings and healing."
+    "summary": "Full moon festival of blessings and healing.",
+    "date_2027": "15 October 2027",
+    "dates": {
+      "2026": "25 October 2026",
+      "2027": "15 October 2027"
+    }
   },
   {
     "festival_name": "Karva Chauth",
@@ -462,7 +631,12 @@
     "purpose": "Husband’s life.",
     "importance": "Love.",
     "celebration": "Fasting.",
-    "summary": "Festival of marital devotion and fasting."
+    "summary": "Festival of marital devotion and fasting.",
+    "date_2027": "19 October 2027",
+    "dates": {
+      "2026": "29 October 2026",
+      "2027": "19 October 2027"
+    }
   },
   {
     "festival_name": "Maharishi Valmiki Jayanti",
@@ -479,7 +653,12 @@
     "purpose": "Honor Ramayana writer.",
     "importance": "Knowledge.",
     "celebration": "Prayers.",
-    "summary": "Festival honoring Maharishi Valmiki."
+    "summary": "Festival honoring Maharishi Valmiki.",
+    "date_2027": "15 October 2027",
+    "dates": {
+      "2026": "31 October 2026",
+      "2027": "15 October 2027"
+    }
   },
   {
     "festival_name": "Dhanteras",
@@ -496,7 +675,12 @@
     "purpose": "Health and wealth.",
     "importance": "Prosperity.",
     "celebration": "Buying gold.",
-    "summary": "Festival of wealth, health, and prosperity."
+    "summary": "Festival of wealth, health, and prosperity.",
+    "date_2027": "27 October 2027",
+    "dates": {
+      "2026": "6 November 2026",
+      "2027": "27 October 2027"
+    }
   },
   {
     "festival_name": "Diwali / Naraka Chaturdashi",
@@ -515,7 +699,12 @@
     "importance": "Hope.",
     "celebration": "Diyas, sweets.",
     "summary": "Festival of lights symbolizing victory of good over evil.",
-    "mantra": "Om Shreem Hreem Shreem Kamale Kamalalaye Praseed Praseed Shreem Hreem Shreem Om Mahalakshmaye Namah"
+    "mantra": "Om Shreem Hreem Shreem Kamale Kamalalaye Praseed Praseed Shreem Hreem Shreem Om Mahalakshmaye Namah",
+    "date_2027": "29 October 2027",
+    "dates": {
+      "2026": "8 November 2026",
+      "2027": "29 October 2027"
+    }
   },
   {
     "festival_name": "Govardhan Puja",
@@ -532,7 +721,12 @@
     "purpose": "Nature worship.",
     "importance": "Faith.",
     "celebration": "Food offering.",
-    "summary": "Festival honoring Krishna’s protection and nature worship."
+    "summary": "Festival honoring Krishna’s protection and nature worship.",
+    "date_2027": "30 October 2027",
+    "dates": {
+      "2026": "9 November 2026",
+      "2027": "30 October 2027"
+    }
   },
   {
     "festival_name": "Bhai Dooj",
@@ -549,7 +743,12 @@
     "purpose": "Love.",
     "importance": "Family.",
     "celebration": "Tilak.",
-    "summary": "Festival celebrating brother-sister bond."
+    "summary": "Festival celebrating brother-sister bond.",
+    "date_2027": "31 October 2027",
+    "dates": {
+      "2026": "11 November 2026",
+      "2027": "31 October 2027"
+    }
   },
   {
     "festival_name": "Chhath Puja",
@@ -566,7 +765,12 @@
     "purpose": "Gratitude.",
     "importance": "Discipline.",
     "celebration": "Fasting, river rituals.",
-    "summary": "Strict sun worship festival of devotion and purity."
+    "summary": "Strict sun worship festival of devotion and purity.",
+    "date_2027": "4 November 2027",
+    "dates": {
+      "2026": "15 November 2026",
+      "2027": "4 November 2027"
+    }
   },
   {
     "festival_name": "Kartik Purnima",
@@ -583,7 +787,12 @@
     "purpose": "Spiritual merit.",
     "importance": "Purity.",
     "celebration": "Bathing, lamps.",
-    "summary": "Sacred full moon festival of purification."
+    "summary": "Sacred full moon festival of purification.",
+    "date_2027": "13 November 2027",
+    "dates": {
+      "2026": "24 November 2026",
+      "2027": "13 November 2027"
+    }
   },
   {
     "festival_name": "Dhanu Sankranti",
@@ -600,7 +809,12 @@
     "purpose": "Religious start.",
     "importance": "Spirituality.",
     "celebration": "Offerings.",
-    "summary": "Festival marking Sun’s zodiac transition."
+    "summary": "Festival marking Sun’s zodiac transition.",
+    "date_2027": "16 December 2027",
+    "dates": {
+      "2026": "16 December 2026",
+      "2027": "16 December 2027"
+    }
   },
   {
     "festival_name": "Geeta Jayanti",
@@ -617,6 +831,11 @@
     "purpose": "Wisdom.",
     "importance": "Life guidance.",
     "celebration": "Reading Gita.",
-    "summary": "Day celebrating divine knowledge of Bhagavad Gita."
+    "summary": "Day celebrating divine knowledge of Bhagavad Gita.",
+    "date_2027": "9 December 2027",
+    "dates": {
+      "2026": "20 December 2026",
+      "2027": "9 December 2027"
+    }
   }
 ]

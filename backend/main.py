@@ -14777,20 +14777,189 @@ def load_festival_json():
         return []
 
 
+FESTIVAL_YEAR_DATES = {
+    2026: {
+        "makar sankranti": "14 January 2026",
+        "pongal": "14 January 2026",
+        "magh bihu": "14 January 2026",
+        "thaipusam": "1 February 2026",
+        "vasant panchami": "23 January 2026",
+        "maha shivaratri": "15 February 2026",
+        "holika dahan": "3 March 2026",
+        "holi": "4 March 2026",
+        "chaitra sukhladi": "19 March 2026",
+        "ugadi": "19 March 2026",
+        "gudi padwa": "19 March 2026",
+        "cheti chand": "19 March 2026",
+        "ram navami": "26 March 2026",
+        "hanuman jayanti": "2 April 2026",
+        "hindi new year": "10 April 2026",
+        "vaisakhi": "14 April 2026",
+        "baisakhi": "14 April 2026",
+        "vishu": "14 April 2026",
+        "tamil new year": "14 April 2026",
+        "bengali new year": "15 April 2026",
+        "bohag bihu": "15 April 2026",
+        "vaisakhadi": "15 April 2026",
+        "akshaya tritiya": "19 April 2026",
+        "savitri pooja": "16 May 2026",
+        "buddha purnima": "31 May 2026",
+        "jagannath rath yatra": "16 July 2026",
+        "ashadhi ekadashi": "25 July 2026",
+        "guru purnima": "29 July 2026",
+        "hariyali teej": "15 August 2026",
+        "nag panchami": "17 August 2026",
+        "onam": "26 August 2026",
+        "raksha bandhan": "28 August 2026",
+        "varalakshmi vrat": "28 August 2026",
+        "kajari teej": "31 August 2026",
+        "janmashtami": "4 September 2026",
+        "ganesh chaturthi": "14 September 2026",
+        "vishwakarma puja": "17 September 2026",
+        "anant chaturdashi": "25 September 2026",
+        "mahalaya amavasya": "10 October 2026",
+        "sharad navratri": "11 October 2026",
+        "maha saptami": "17 October 2026",
+        "durga ashtami": "18 October 2026",
+        "maha navami": "19 October 2026",
+        "dussehra": "20 October 2026",
+        "vijayadashami": "20 October 2026",
+        "sharad purnima": "25 October 2026",
+        "karva chauth": "29 October 2026",
+        "karwa chauth": "29 October 2026",
+        "maharishi valmiki jayanti": "31 October 2026",
+        "valmiki jayanti": "31 October 2026",
+        "dhanteras": "6 November 2026",
+        "diwali": "8 November 2026",
+        "deepavali": "8 November 2026",
+        "naraka chaturdashi": "8 November 2026",
+        "govardhan puja": "9 November 2026",
+        "bhai dooj": "11 November 2026",
+        "chhath puja": "15 November 2026",
+        "dev uthani ekadashi": "20 November 2026",
+        "tulsi vivah": "21 November 2026",
+        "kartik purnima": "24 November 2026",
+        "dhanu sankranti": "16 December 2026",
+        "geeta jayanti": "20 December 2026",
+    },
+    2027: {
+        "makar sankranti": "14 January 2027",
+        "pongal": "14 January 2027",
+        "magh bihu": "14 January 2027",
+        "thaipusam": "22 January 2027",
+        "vasant panchami": "11 February 2027",
+        "maha shivaratri": "6 March 2027",
+        "holika dahan": "21 March 2027",
+        "holi": "22 March 2027",
+        "chaitra sukhladi": "7 April 2027",
+        "ugadi": "7 April 2027",
+        "gudi padwa": "7 April 2027",
+        "cheti chand": "7 April 2027",
+        "hindi new year": "7 April 2027",
+        "ram navami": "15 April 2027",
+        "hanuman jayanti": "21 April 2027",
+        "vaisakhi": "14 April 2027",
+        "baisakhi": "14 April 2027",
+        "vishu": "14 April 2027",
+        "tamil new year": "14 April 2027",
+        "bengali new year": "15 April 2027",
+        "bohag bihu": "15 April 2027",
+        "vaisakhadi": "15 April 2027",
+        "akshaya tritiya": "9 May 2027",
+        "buddha purnima": "20 May 2027",
+        "savitri pooja": "4 June 2027",
+        "jagannath rath yatra": "5 July 2027",
+        "ashadhi ekadashi": "15 July 2027",
+        "guru purnima": "18 July 2027",
+        "hariyali teej": "5 August 2027",
+        "nag panchami": "7 August 2027",
+        "varalakshmi vrat": "13 August 2027",
+        "raksha bandhan": "17 August 2027",
+        "kajari teej": "20 August 2027",
+        "janmashtami": "25 August 2027",
+        "ganesh chaturthi": "4 September 2027",
+        "onam": "12 September 2027",
+        "anant chaturdashi": "14 September 2027",
+        "vishwakarma puja": "17 September 2027",
+        "mahalaya amavasya": "29 September 2027",
+        "sharad navratri": "30 September 2027",
+        "maha saptami": "7 October 2027",
+        "durga ashtami": "8 October 2027",
+        "maha navami": "9 October 2027",
+        "dussehra": "10 October 2027",
+        "vijayadashami": "10 October 2027",
+        "sharad purnima": "15 October 2027",
+        "maharishi valmiki jayanti": "15 October 2027",
+        "valmiki jayanti": "15 October 2027",
+        "karva chauth": "19 October 2027",
+        "karwa chauth": "19 October 2027",
+        "dhanteras": "27 October 2027",
+        "diwali": "29 October 2027",
+        "deepavali": "29 October 2027",
+        "naraka chaturdashi": "29 October 2027",
+        "govardhan puja": "30 October 2027",
+        "bhai dooj": "31 October 2027",
+        "chhath puja": "4 November 2027",
+        "dev uthani ekadashi": "9 November 2027",
+        "tulsi vivah": "10 November 2027",
+        "kartik purnima": "13 November 2027",
+        "dhanu sankranti": "16 December 2027",
+        "geeta jayanti": "9 December 2027",
+    }
+}
+
+
 def _parse_festival_date(festival: dict, year: int) -> Optional[datetime]:
-    if not festival or 'date' not in festival:
+    if not festival:
         return None
 
-    try:
-        parsed = datetime.strptime(festival['date'], '%d %B %Y')
-        return parsed.replace(year=year)
-    except Exception:
+    # 1. Check if festival object has specific year in dates dict or date_{year}
+    dates_map = festival.get("dates")
+    if isinstance(dates_map, dict) and str(year) in dates_map:
         try:
-            # fallback if year is missing in date string
-            parsed = datetime.strptime(festival['date'], '%d %B')
+            return datetime.strptime(dates_map[str(year)], "%d %B %Y")
+        except Exception:
+            pass
+
+    date_key = f"date_{year}"
+    if date_key in festival and festival[date_key]:
+        try:
+            return datetime.strptime(festival[date_key], "%d %B %Y")
+        except Exception:
+            pass
+
+    # 2. Check FESTIVAL_YEAR_DATES dictionary for lunar accurate date
+    name = (festival.get("festival_name") or festival.get("name") or "").lower().strip()
+    year_map = FESTIVAL_YEAR_DATES.get(year)
+    if year_map and name:
+        if name in year_map:
+            try:
+                return datetime.strptime(year_map[name], "%d %B %Y")
+            except Exception:
+                pass
+        for key, dstr in year_map.items():
+            if key in name or name in key:
+                try:
+                    return datetime.strptime(dstr, "%d %B %Y")
+                except Exception:
+                    pass
+
+    # 3. Fallback to festival['date'] if present
+    if 'date' in festival and festival['date']:
+        try:
+            date_str = festival['date']
+            if str(year) in date_str:
+                return datetime.strptime(date_str, '%d %B %Y')
+            parsed = datetime.strptime(date_str, '%d %B %Y')
             return parsed.replace(year=year)
         except Exception:
-            return None
+            try:
+                parsed = datetime.strptime(festival['date'], '%d %B')
+                return parsed.replace(year=year)
+            except Exception:
+                return None
+
+    return None
 
 
 # Rashis (Zodiac Signs) for horoscope
@@ -14966,92 +15135,29 @@ async def get_detailed_panchang(
 @api_router.get("/spiritual/festivals")
 async def get_upcoming_festivals(limit: int = 5):
     """Get upcoming festivals"""
-    today = datetime.utcnow()
-    current_month = today.month
-    current_day = today.day
-    
-    upcoming = []
-    for festival in FESTIVALS:
-        # Check if festival is upcoming
-        if (festival["month"] > current_month or 
-            (festival["month"] == current_month and festival["day"] >= current_day)):
-            festival_date = datetime(today.year, festival["month"], festival["day"])
-            days_until = (festival_date - today).days
-            upcoming.append({
-                **festival,
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until
-            })
-    
-    # If we're late in the year, add next year's festivals
-    if len(upcoming) < limit:
-        for festival in FESTIVALS:
-            if festival["month"] < current_month:
-                festival_date = datetime(today.year + 1, festival["month"], festival["day"])
-                days_until = (festival_date - today).days
-                upcoming.append({
-                    **festival,
-                    "date": festival_date.strftime("%Y-%m-%d"),
-                    "days_until": days_until
-                })
-                if len(upcoming) >= limit:
-                    break
-    
-    return sorted(upcoming, key=lambda x: x["days_until"])[:limit]
+    all_festivals = await get_all_festivals()
+    return all_festivals[:limit]
 
 
 @api_router.get('/spiritual/festival/next')
 async def get_next_festival():
     """Get the next festival from the festival JSON file"""
-    today = datetime.utcnow()
-    festivals = load_festival_json()
-    candidates = []
-
-    for festival in festivals:
-        festival_date = _parse_festival_date(festival, today.year)
-        if festival_date is None:
-            continue
-        if festival_date.date() >= today.date():
-            days_until = (festival_date.date() - today.date()).days
-            candidates.append({
-                **festival,
-                "name": festival.get("festival_name", festival.get("name")),
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until,
-            })
-
-    if not candidates:
-        for festival in festivals:
-            festival_date = _parse_festival_date(festival, today.year + 1)
-            if festival_date is None:
-                continue
-            days_until = (festival_date.date() - today.date()).days
-            candidates.append({
-                **festival,
-                "name": festival.get("festival_name", festival.get("name")),
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until,
-            })
-
-    if not candidates:
+    all_festivals = await get_all_festivals()
+    if not all_festivals:
         raise HTTPException(status_code=404, detail="No festival data available")
-
-    next_festival = min(candidates, key=lambda item: item["days_until"])
-    return next_festival
+    return all_festivals[0]
 
 
 @api_router.get('/spiritual/festivals/all')
 async def get_all_festivals():
-    """Get full festival list from JSON data"""
+    """Get full festival list from JSON data with accurate multi-year Panchang dates"""
     today = datetime.utcnow()
     festivals = load_festival_json()
     response_items = []
 
     for festival in festivals:
         festival_date = _parse_festival_date(festival, today.year)
-        if festival_date is None:
-            continue
-        if festival_date.date() < today.date():
+        if festival_date is None or festival_date.date() < today.date():
             festival_date = _parse_festival_date(festival, today.year + 1)
             if festival_date is None:
                 continue
