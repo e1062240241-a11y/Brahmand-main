@@ -12,7 +12,7 @@ import { useRouter , useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
-import { useAuthStore } from '../../src/store/authStore';
+import { useAuthStore, getNextProfileVersion } from '../../src/store/authStore';
 import { getProfile } from '../../src/services/api';
 import { useTranslation } from '../../src/utils/i18n';
 
@@ -28,9 +28,10 @@ export default function PersonalitySuccessScreen() {
     React.useCallback(() => {
       const refreshProfile = async () => {
         try {
+          const reqVer = getNextProfileVersion();
           const res = await getProfile();
           if (res.data) {
-            setUser(res.data);
+            setUser(res.data, reqVer);
           }
         } catch (err) {
           console.error('Failed to refresh profile:', err);
