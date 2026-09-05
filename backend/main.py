@@ -11909,7 +11909,7 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
 
-    normalized_categories = [str(category).strip() for category in (data.categories or []) if str(category).strip()]
+    normalized_categories = list(set([str(category).strip().title() for category in (data.categories or []) if str(category).strip()]))
     owner_name = (data.owner_name or (user or {}).get('name') or 'Vendor Owner').strip()
     full_address = (data.full_address or '').strip()
     phone_number = (data.phone_number or (user or {}).get('phone') or '').strip()
@@ -11919,19 +11919,6 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     existing = await db.find_one('vendors', [('owner_id', '==', user_id)])
     if existing:
         raise HTTPException(status_code=400, detail="You already have a registered business")
-    
-    # Add new categories to global category list in parallel
-    async def process_category(cat):
-        existing_cat = await db.find_one('vendor_categories', [('name', '==', cat)])
-        if not existing_cat:
-            await db.create_document('vendor_categories', {'name': cat, 'count': 1})
-        else:
-            await db.update_document('vendor_categories', existing_cat['id'], {
-                'count': existing_cat.get('count', 0) + 1
-            })
-
-    if normalized_categories:
-        await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
     
     req_lat = data.latitude
     req_lng = data.longitude
@@ -11976,8 +11963,23 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "kyc_review_note": None,
     }
 
-    vendor_id = await db.create_document('vendors', vendor_data)
+    vendor_id = user_id
+    try:
+        await db.create_document('vendors', vendor_data, doc_id=vendor_id, overwrite=False)
+    except Exception:
+        raise HTTPException(status_code=400, detail="You already have a registered business")
     vendor_data['id'] = vendor_id
+
+    # Add new categories to global category list in parallel AFTER vendor is successfully created
+    async def process_category(cat):
+        cat_id = cat.lower().replace(' ', '_')
+        try:
+            await db.create_document('vendor_categories', {'name': cat, 'count': 1}, doc_id=cat_id, overwrite=False)
+        except Exception:
+            await db.increment_field('vendor_categories', cat_id, 'count', 1)
+
+    if normalized_categories:
+        await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
 
     # Update user to mark as vendor while preserving existing KYC status
     user_is_verified = bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified'
