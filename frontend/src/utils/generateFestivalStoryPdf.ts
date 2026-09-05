@@ -1,4 +1,7 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, PDFString, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import qrcode from 'qrcode-generator';
+import util from 'tweetnacl-util';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Share as RNShare, Platform } from 'react-native';
@@ -179,17 +182,25 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
       { id: 5, title: 'Moksha & Spiritual Liberation', content: 'Devotees break their fast after sunrise, blessed with deep inner serenity, self-realization, liberation (Moksha), and the eradication of negative karma.' }
     ];
   } else {
-    // Dynamic authentic fallback
+    subtitle = `Sacred Katha & Divine Significance • ${festivalName}`;
+    deity = festival?.deity || 'The Supreme Divine';
+    tradition = festival?.tradition || 'Vedic Chanting, Fasting & Community Prayers';
+    const s1 = sentences[0] || `${festivalName} is one of the most revered observances in Sanatan Dharma, celebrating divine cosmic harmony.`;
+    const s2 = sentences[1] || 'Ancient scriptures detail how devotees across generations have performed disciplined tapasya, prayers, and charity.';
+    const s3 = sentences[2] || 'The sacred day marks the triumph of righteousness, purity, and universal cosmic order over darkness.';
+    const s4 = sentences[3] || 'Families prepare traditional prasadam, offer holy lamps (aarti), and invoke celestial blessings for harmony.';
+    const s5 = sentences[4] || 'By participating in these timeless traditions, spiritual seekers awaken devotion, inner clarity, and peace.';
+
     chapters = [
-      { id: 1, title: 'Sacred Origin', content: sentences.slice(0, 2).join(' ') || storyText || `${festivalName} has been celebrated since Vedic antiquity to honor divine cosmic forces and righteous living.` },
-      { id: 2, title: 'Mythological Legend', content: sentences.slice(2, 4).join(' ') || storyText || `Ancient scriptures narrate the triumph of virtue, devotion, and divine intervention associated with ${festivalName}.` },
-      { id: 3, title: 'Sacred Rituals', content: sentences.slice(4, 6).join(' ') || storyText || `Devotees observe traditional vows, prepare sacred offerings, chant hymns, and invoke divine blessings for peace and prosperity.` },
-      { id: 4, title: 'Spiritual Teachings', content: sentences.slice(6, 8).join(' ') || storyText || `The celebration teaches humility, detachment from ego, compassion for all living beings, and unwavering faith in Dharma.` },
-      { id: 5, title: 'Community & Joy', content: sentences.slice(8).join(' ') || storyText || `Families and communities unite in joyous harmony, sharing prasadam, singing devotional songs, and preserving Sanatan heritage.` }
+      { id: 1, title: 'Spiritual Origin', content: s1.trim() },
+      { id: 2, title: 'Divine Penance & Grace', content: s2.trim() },
+      { id: 3, title: 'Triumph of Dharma', content: s3.trim() },
+      { id: 4, title: 'Sacred Rituals & Offerings', content: s4.trim() },
+      { id: 5, title: 'Eternal Blessings', content: s5.trim() }
     ];
   }
 
-  const blessing = 'Dharmo Rakshati Rakshitah - Dharma protects those who protect Dharma. May the auspicious grace and divine blessings of this sacred festival bring peace, prosperity, good health, and spiritual enlightenment to you and your family.';
+  const blessing = `May the divine grace of ${deity} bestow health, happiness, prosperity, and spiritual liberation upon you and your loved ones.`;
 
   return {
     festivalName,
@@ -203,7 +214,8 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
 }
 
 /**
- * Builds and shares a high-quality PDF document of the festival story.
+ * Builds and shares a high-quality strictly 1-page PDF document of the festival story.
+ * Includes Cinzel font branding, scannable QR code to download Brahmand App, and clickable links.
  */
 export async function shareFestivalStoryPdf(festival: any, sectionValue?: string): Promise<{ success: boolean; uri?: string; error?: string }> {
   try {
@@ -219,72 +231,30 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
     const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
     const fontOblique = await doc.embedFont(StandardFonts.HelveticaOblique);
 
+    // Register fontkit & embed Cinzel Font
+    let cinzelFont = fontBold;
+    try {
+      doc.registerFontkit(fontkit);
+      const cinzelAsset = Asset.fromModule(require('../../assets/fonts/Cinzel-Regular.ttf'));
+      await cinzelAsset.downloadAsync();
+      const fontUri = cinzelAsset.localUri || cinzelAsset.uri;
+      if (fontUri) {
+        const fontBase64 = await FileSystem.readAsStringAsync(fontUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const fontBytes = util.decodeBase64(fontBase64);
+        cinzelFont = await doc.embedFont(fontBytes);
+      }
+    } catch (fontErr) {
+      console.warn('[PDF] Cinzel font embedding fallback to fontBold:', fontErr);
+    }
+
     const pageWidth = 595.28; // Standard A4 width
     const pageHeight = 841.89; // Standard A4 height
-    const margin = 36;
-    const contentWidth = pageWidth - margin * 2;
-    const bottomMargin = 45;
-
-    let hasCoverPage = false;
-    const isHariyaliTeej = data.festivalName.toLowerCase().includes('hariyali');
-    if (isHariyaliTeej) {
-      try {
-        const coverAsset = require('../../assets/images/hariyali_teej_pdf_card.jpg');
-        const asset = Asset.fromModule(coverAsset);
-        await asset.downloadAsync();
-        const fileUriToRead = asset.localUri || asset.uri;
-        if (fileUriToRead) {
-          const base64Cover = await FileSystem.readAsStringAsync(fileUriToRead, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          if (base64Cover) {
-            const embeddedCover = await doc.embedJpg(base64Cover);
-            const coverPage = doc.addPage([pageWidth, pageHeight]);
-            coverPage.drawImage(embeddedCover, {
-              x: 0,
-              y: 0,
-              width: pageWidth,
-              height: pageHeight,
-            });
-            hasCoverPage = true;
-          }
-        }
-      } catch (coverErr) {
-        console.warn('[PDF] Could not embed Hariyali Teej cover into PDF:', coverErr);
-      }
-    }
-
-    // If visual single-page cover card is loaded, directly export strictly 1-page PDF
-    if (hasCoverPage) {
-      const base64Pdf = await doc.saveAsBase64();
-      const sanitizedName = data.festivalName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-      const filename = `${sanitizedName}_story.pdf`;
-      const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-      const fileUri = `${targetDir}${filename}`;
-
-      await FileSystem.writeAsStringAsync(fileUri, base64Pdf, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Share ${data.festivalName} Story (PDF)`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        await RNShare.share({
-          title: `${data.festivalName} Sacred Story`,
-          message: `${data.festivalName} - Sacred Story on Brahmand App.`,
-        });
-      }
-
-      return { success: true, uri: fileUri };
-    }
-
-    // STRICTLY SINGLE-PAGE A4 VECTOR LAYOUT
     const singleMargin = 28;
     const sContentWidth = pageWidth - singleMargin * 2;
+
+    // STRICTLY SINGLE-PAGE A4 VECTOR LAYOUT
     const page = doc.addPage([pageWidth, pageHeight]);
 
     // 1. Royal Outer Double Gold Border
@@ -306,10 +276,10 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       borderWidth: 0.8,
     });
 
-    let y = pageHeight - singleMargin - 8;
+    let y = pageHeight - singleMargin - 6;
 
-    // 2. Header Banner
-    const headerHeight = 76;
+    // 2. Header Banner with Cinzel Font for BRAHMAND
+    const headerHeight = 84;
     page.drawRectangle({
       x: singleMargin,
       y: y - headerHeight,
@@ -320,18 +290,27 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       borderWidth: 1.2,
     });
 
-    page.drawText('BRAHMAND   |   SANATAN DHARMA HERITAGE', {
+    // Top Cinzel title: "B R A H M A N D"
+    page.drawText('B R A H M A N D', {
       x: singleMargin + 16,
-      y: y - 20,
-      size: 8.5,
-      font: fontBold,
+      y: y - 22,
+      size: 13,
+      font: cinzelFont,
       color: rgb(0.75, 0.28, 0.05),
+    });
+
+    page.drawText('SANATAN DHARMA HERITAGE', {
+      x: singleMargin + 165,
+      y: y - 20,
+      size: 7.5,
+      font: fontBold,
+      color: rgb(0.55, 0.35, 0.15),
     });
 
     const greetingTitle = `HAPPY ${cleanTextForPdf(data.festivalName).toUpperCase()}`;
     page.drawText(greetingTitle, {
       x: singleMargin + 16,
-      y: y - 44,
+      y: y - 48,
       size: 18,
       font: fontBold,
       color: rgb(0.12, 0.14, 0.18),
@@ -339,16 +318,16 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
 
     page.drawText(cleanTextForPdf(data.subtitle), {
       x: singleMargin + 16,
-      y: y - 64,
-      size: 9.5,
+      y: y - 69,
+      size: 9.2,
       font: fontOblique,
       color: rgb(0.42, 0.32, 0.18),
     });
 
-    y -= (headerHeight + 10);
+    y -= (headerHeight + 8);
 
     // 3. Metadata Strip
-    const metaHeight = 24;
+    const metaHeight = 22;
     page.drawRectangle({
       x: singleMargin,
       y: y - metaHeight,
@@ -361,54 +340,54 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
 
     page.drawText(`Date: ${cleanTextForPdf(data.date)}`, {
       x: singleMargin + 14,
-      y: y - 16,
-      size: 8.8,
+      y: y - 15,
+      size: 8.5,
       font: fontBold,
       color: rgb(0.2, 0.2, 0.2),
     });
 
     page.drawText(`Deity: ${cleanTextForPdf(data.deity)}`, {
       x: singleMargin + 175,
-      y: y - 16,
-      size: 8.8,
+      y: y - 15,
+      size: 8.5,
       font: fontBold,
       color: rgb(0.2, 0.2, 0.2),
     });
 
     page.drawText(`Tradition: ${cleanTextForPdf(data.tradition).slice(0, 36)}`, {
       x: singleMargin + 340,
-      y: y - 16,
-      size: 8.8,
+      y: y - 15,
+      size: 8.5,
       font: fontBold,
       color: rgb(0.2, 0.2, 0.2),
     });
 
-    y -= (metaHeight + 14);
+    y -= (metaHeight + 12);
 
     // 4. Section Title: 5 Sacred Chapters
     page.drawText('THE 5 SACRED KATHA CHAPTERS', {
       x: singleMargin + 2,
       y: y,
-      size: 10,
+      size: 9.5,
       font: fontBold,
       color: rgb(0.75, 0.28, 0.05),
     });
 
     page.drawLine({
-      start: { x: singleMargin + 185, y: y + 3 },
+      start: { x: singleMargin + 175, y: y + 3 },
       end: { x: singleMargin + sContentWidth, y: y + 3 },
       thickness: 0.8,
       color: rgb(0.88, 0.78, 0.55),
     });
 
-    y -= 14;
+    y -= 12;
 
     // Render 5 Chapters in compact elegant cards
     for (let i = 0; i < data.chapters.length; i++) {
       const ch = data.chapters[i];
       const chTitle = `${i + 1}. ${cleanTextForPdf(ch.title).toUpperCase()}`;
-      const wrapped = wrapText(cleanTextForPdf(ch.content), fontRegular, 8.8, sContentWidth - 28);
-      const boxHeight = 16 + (wrapped.length * 12.5) + 6;
+      const wrapped = wrapText(cleanTextForPdf(ch.content), fontRegular, 8.5, sContentWidth - 28);
+      const boxHeight = 15 + (wrapped.length * 11.5) + 5;
 
       page.drawRectangle({
         x: singleMargin,
@@ -430,31 +409,31 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
 
       page.drawText(chTitle, {
         x: singleMargin + 14,
-        y: y - 13,
-        size: 9,
+        y: y - 12,
+        size: 8.5,
         font: fontBold,
         color: rgb(0.75, 0.28, 0.05),
       });
 
-      let textY = y - 27;
+      let textY = y - 24;
       for (const line of wrapped) {
         page.drawText(line, {
           x: singleMargin + 14,
           y: textY,
-          size: 8.8,
+          size: 8.5,
           font: fontRegular,
           color: rgb(0.2, 0.22, 0.26),
         });
-        textY -= 12.5;
+        textY -= 11.5;
       }
 
-      y -= (boxHeight + 7);
+      y -= (boxHeight + 5);
     }
 
-    y -= 4;
+    y -= 2;
 
     // 5. Dharmo Rakshati Rakshitah Frame
-    const blessingHeight = 56;
+    const blessingHeight = 50;
     page.drawRectangle({
       x: singleMargin,
       y: y - blessingHeight,
@@ -467,64 +446,171 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
 
     page.drawText('Dharmo Rakshati Rakshitah', {
       x: singleMargin + (sContentWidth / 2) - 78,
-      y: y - 17,
-      size: 11,
+      y: y - 15,
+      size: 10.5,
       font: fontBold,
       color: rgb(0.65, 0.32, 0.05),
     });
 
     page.drawText('Peace   *   Prosperity   *   Health   *   Wisdom', {
       x: singleMargin + (sContentWidth / 2) - 95,
-      y: y - 32,
-      size: 9,
+      y: y - 29,
+      size: 8.5,
       font: fontBold,
       color: rgb(0.5, 0.4, 0.2),
     });
 
     page.drawText('Dharma protects those who uphold righteousness. May divine grace illuminate your path.', {
-      x: singleMargin + (sContentWidth / 2) - 185,
-      y: y - 46,
-      size: 8.2,
+      x: singleMargin + (sContentWidth / 2) - 180,
+      y: y - 42,
+      size: 7.8,
       font: fontOblique,
       color: rgb(0.4, 0.35, 0.25),
     });
 
-    y -= (blessingHeight + 10);
+    y -= (blessingHeight + 8);
 
-    // 6. Marketing Section & App Store Footer
-    const footerHeight = 44;
+    // 6. Marketing Section with Working Vector QR Code & Clickable Download Link
+    const appUrl = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
+    const qrObj = qrcode(0, 'M');
+    qrObj.addData(appUrl);
+    qrObj.make();
+    const moduleCount = qrObj.getModuleCount();
+
+    const footerHeight = 62;
     page.drawRectangle({
       x: singleMargin,
       y: y - footerHeight,
       width: sContentWidth,
       height: footerHeight,
-      color: rgb(0.96, 0.96, 0.97),
-      borderColor: rgb(0.88, 0.88, 0.90),
-      borderWidth: 0.75,
+      color: rgb(0.97, 0.97, 0.98),
+      borderColor: rgb(0.86, 0.86, 0.89),
+      borderWidth: 0.8,
     });
 
-    page.drawText('Discover the Full Divine Story on Brahmand', {
-      x: singleMargin + 14,
-      y: y - 18,
+    // Render Real Vector QR Code
+    const qrSize = 48;
+    const qrX = singleMargin + 8;
+    const qrY = y - footerHeight + 7;
+    const cellSize = qrSize / moduleCount;
+
+    // White QR background box
+    page.drawRectangle({
+      x: qrX - 2,
+      y: qrY - 2,
+      width: qrSize + 4,
+      height: qrSize + 4,
+      color: rgb(1, 1, 1),
+      borderColor: rgb(0.85, 0.85, 0.85),
+      borderWidth: 0.5,
+    });
+
+    for (let r = 0; r < moduleCount; r++) {
+      for (let c = 0; c < moduleCount; c++) {
+        if (qrObj.isDark(r, c)) {
+          page.drawRectangle({
+            x: qrX + c * cellSize,
+            y: qrY + (moduleCount - 1 - r) * cellSize,
+            width: cellSize,
+            height: cellSize,
+            color: rgb(0.08, 0.08, 0.08),
+          });
+        }
+      }
+    }
+
+    // QR Clickable Annotation
+    try {
+      const qrLinkAnnot = doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [qrX - 2, qrY - 2, qrX + qrSize + 2, qrY + qrSize + 2],
+        Border: [0, 0, 0],
+        C: [0, 0, 0],
+        A: {
+          Type: 'Action',
+          S: 'URI',
+          URI: PDFString.of(appUrl),
+        },
+      });
+      page.node.addAnnot(doc.context.register(qrLinkAnnot));
+    } catch (annotErr) {
+      console.warn('[PDF] QR Link annotation error:', annotErr);
+    }
+
+    // Clear message beside QR
+    page.drawText('Scan QR or Tap to Download Brahmand App', {
+      x: qrX + qrSize + 14,
+      y: y - 20,
       size: 9.5,
       font: fontBold,
-      color: rgb(0.15, 0.15, 0.15),
+      color: rgb(0.12, 0.14, 0.18),
     });
 
-    page.drawText('Download on App Store & Google Play', {
-      x: singleMargin + 14,
-      y: y - 33,
-      size: 8,
+    page.drawText('Download Brahmand - Sanatan Lok to explore the complete sacred stories, audio katha & daily rituals', {
+      x: qrX + qrSize + 14,
+      y: y - 34,
+      size: 7.6,
       font: fontRegular,
-      color: rgb(0.45, 0.45, 0.45),
+      color: rgb(0.4, 0.42, 0.46),
     });
 
-    page.drawText('Brahmand App - Sanatan Lok', {
-      x: singleMargin + sContentWidth - 170,
-      y: y - 24,
-      size: 9.5,
+    // Clickable "Download Brahmand App" Button Badge
+    const btnX = qrX + qrSize + 14;
+    const btnY = y - 55;
+    const btnW = 160;
+    const btnH = 17;
+
+    page.drawRectangle({
+      x: btnX,
+      y: btnY,
+      width: btnW,
+      height: btnH,
+      color: rgb(0.85, 0.42, 0.08),
+    });
+
+    page.drawText('TAP TO DOWNLOAD APP ->', {
+      x: btnX + 14,
+      y: btnY + 4.5,
+      size: 7.5,
       font: fontBold,
+      color: rgb(1, 1, 1),
+    });
+
+    // Clickable button annotation
+    try {
+      const btnLinkAnnot = doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [btnX, btnY, btnX + btnW, btnY + btnH],
+        Border: [0, 0, 0],
+        C: [0, 0, 0],
+        A: {
+          Type: 'Action',
+          S: 'URI',
+          URI: PDFString.of(appUrl),
+        },
+      });
+      page.node.addAnnot(doc.context.register(btnLinkAnnot));
+    } catch (btnAnnotErr) {
+      console.warn('[PDF] Button Link annotation error:', btnAnnotErr);
+    }
+
+    // Right side branding with Cinzel Font
+    page.drawText('Brahmand - Sanatan Lok', {
+      x: singleMargin + sContentWidth - 145,
+      y: y - 25,
+      size: 9,
+      font: cinzelFont,
       color: rgb(0.75, 0.28, 0.05),
+    });
+
+    page.drawText('Google Play & App Store', {
+      x: singleMargin + sContentWidth - 145,
+      y: y - 40,
+      size: 7.5,
+      font: fontRegular,
+      color: rgb(0.5, 0.5, 0.5),
     });
 
     // Save Strictly 1-Page PDF
