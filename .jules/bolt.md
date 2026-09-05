@@ -12,3 +12,7 @@
 ## 2026-09-05 - Request version tokens for race conditions
 **Learning:** When making asynchronous requests to fetch state that might be modified concurrently by other requests or components, responses from older requests resolving later can overwrite newer state.
 **Action:** Use a global, monotonically increasing request token variable (e.g. `_nextProfileVersion`). Capture the token before making the async request, and pass it to the state updater. The updater should ignore the payload if the token is older than the currently stored version.
+
+## 2026-09-05 - Avoid new Set() array allocations in state updaters
+**Learning:** Recreating sets from arrays (e.g., `new Set([...prev, id])`) or chaining `.map().filter()` inside `new Set()` allocates intermediate arrays that increase garbage collection overhead in the React Native frontend.
+**Action:** Use native `.add()` or `.delete()` methods on cloned sets (`new Set(prevSet)`), or use manual `for` loops to populate sets efficiently in a single pass without extra allocations.
