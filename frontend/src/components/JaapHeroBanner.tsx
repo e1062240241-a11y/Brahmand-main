@@ -52,13 +52,18 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
     ? (liveActive ? 'महामृत्युंजय मंत्र' : 'सायंकालीन गायत्री जाप')
     : (liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting');
 
+  // 🧡 Engagement: Reframed inactive session tagline from generic notification ("दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।")
+  // to a devotional call to action ("सामूहिक साधना का संकल्प लें। शाम 6:00 बजे से आरंभ।").
+  // Lever: Reframing + Sanskara/Sankalpa (Cultural Devotion over Utility)
+  // Why: "संकल्प" (Sacred Vow) and "सामूहिक साधना" (Collective Spiritual Practice) evoke deep Sanatan cultural responsibility and habit formation.
+  // UI: Text-only change, no visual components or layout structure altered.
   const heroTagline = t('language') === 'hi'
     ? (liveActive
       ? 'हम जाप करते हैं। हम ठीक होते हैं।\nहम एक साथ उठते हैं।'
-      : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
+      : 'सामूहिक साधना का संकल्प लें। शाम 6:00 बजे से आरंभ।')
     : (liveActive
       ? 'We chant. We heal.\nWe rise together.'
-      : 'Connect with the divine light. Starting at 6:00 PM.');
+      : 'Take a sacred vow of collective devotion. Starting at 6:00 PM.');
 
   const heroTimeLabel = t('language') === 'hi'
     ? (liveActive
