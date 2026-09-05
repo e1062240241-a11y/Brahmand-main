@@ -29,15 +29,23 @@ async def create_event(
 
 
 @router.get("")
-async def get_events(token_data: dict = Depends(verify_token)):
-    """Get upcoming events"""
-    return await EventService.get_events()
+async def get_events(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get upcoming events with pagination"""
+    return await EventService.get_events(limit=limit, offset=offset)
 
 
 @router.get("/nearby")
-async def get_nearby_events(token_data: dict = Depends(verify_token)):
-    """Get events near user's location"""
-    return await EventService.get_nearby_events(token_data["user_id"])
+async def get_nearby_events(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get events near user's location with pagination"""
+    return await EventService.get_nearby_events(token_data["user_id"], limit=limit, offset=offset)
 
 
 @router.get("/{event_id}")
