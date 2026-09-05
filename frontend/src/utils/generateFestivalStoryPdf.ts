@@ -205,524 +205,130 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
     // STRICTLY SINGLE-PAGE A4 MASTER TEMPLATE FOR ALL FESTIVALS
     const page = doc.addPage([pageWidth, pageHeight]);
 
-    // 0. Delicate Cream & Warm Saffron Parchment Background
-    page.drawRectangle({
-      x: 0,
-      y: 0,
-      width: pageWidth,
-      height: pageHeight,
-      color: rgb(0.996, 0.988, 0.965),
-    });
-
-    // Faint Sacred Mandala Watermarks
-    const drawMandala = (cx: number, cy: number, maxRadius: number) => {
-      const mandalaColor = rgb(0.94, 0.89, 0.80);
-      for (let r = 22; r <= maxRadius; r += 26) {
-        page.drawCircle({
-          x: cx,
-          y: cy,
-          size: r,
-          borderColor: mandalaColor,
-          borderWidth: 0.5,
+    // 1. Load and embed the master visual card artwork
+    let embeddedArtwork = false;
+    try {
+      const cardAsset = require('../../assets/images/festival_master_pdf_card.jpg');
+      const asset = Asset.fromModule(cardAsset);
+      await asset.downloadAsync();
+      const fileUriToRead = asset.localUri || asset.uri;
+      if (fileUriToRead) {
+        const base64Cover = await FileSystem.readAsStringAsync(fileUriToRead, {
+          encoding: FileSystem.EncodingType.Base64,
         });
+        if (base64Cover) {
+          const embeddedBg = await doc.embedJpg(base64Cover);
+          page.drawImage(embeddedBg, {
+            x: 0,
+            y: 0,
+            width: pageWidth,
+            height: pageHeight,
+          });
+          embeddedArtwork = true;
+        }
       }
-      for (let angle = 0; angle < 360; angle += 22.5) {
-        const rad = (angle * Math.PI) / 180;
-        page.drawLine({
-          start: { x: cx + Math.cos(rad) * 15, y: cy + Math.sin(rad) * 15 },
-          end: { x: cx + Math.cos(rad) * maxRadius, y: cy + Math.sin(rad) * maxRadius },
-          color: mandalaColor,
-          thickness: 0.4,
-        });
-      }
-    };
-
-    drawMandala(pageWidth / 2, pageHeight - 160, 140);
-    drawMandala(pageWidth / 2, 420, 160);
-    drawMandala(pageWidth / 2, 130, 130);
-
-    // 1. Royal Outer Double Gold Border
-    page.drawRectangle({
-      x: 14,
-      y: 14,
-      width: pageWidth - 28,
-      height: pageHeight - 28,
-      borderColor: rgb(0.85, 0.65, 0.25),
-      borderWidth: 2,
-    });
-
-    page.drawRectangle({
-      x: 18,
-      y: 18,
-      width: pageWidth - 36,
-      height: pageHeight - 36,
-      borderColor: rgb(0.92, 0.78, 0.45),
-      borderWidth: 0.8,
-    });
-
-    // Corner floral embellishments
-    const drawCorner = (cx: number, cy: number, flipX: number, flipY: number) => {
-      const gold = rgb(0.85, 0.65, 0.25);
-      const size = 20;
-      page.drawLine({
-        start: { x: cx, y: cy },
-        end: { x: cx + flipX * size, y: cy },
-        thickness: 1.5,
-        color: gold,
-      });
-      page.drawLine({
-        start: { x: cx, y: cy },
-        end: { x: cx + flipY * size, y: cy },
-        thickness: 1.5,
-        color: gold,
-      });
-      page.drawCircle({
-        x: cx + flipX * 7,
-        y: cy + flipY * 7,
-        size: 2.5,
-        color: gold,
-      });
-    };
-
-    drawCorner(24, pageHeight - 24, 1, -1);
-    drawCorner(pageWidth - 24, pageHeight - 24, -1, -1);
-    drawCorner(24, 24, 1, 1);
-    drawCorner(pageWidth - 24, 24, -1, 1);
-
-    const contentMargin = 26;
-    const contentWidth = pageWidth - contentMargin * 2; // 543.28 pt
-
-    let y = pageHeight - 44;
-
-    // ==========================================
-    // TOP 40%: Header, 3D Gold Title, Poetic Wish
-    // ==========================================
-    // 2. Brand Header: 'BRAHMAND' in saffron + 'SANATAN DHARMA SACRED HERITAGE'
-    const brandText = 'BRAHMAND';
-    const brandWidth = fontHelveticaBold.widthOfTextAtSize(brandText, 20);
-    page.drawText(brandText, {
-      x: (pageWidth - brandWidth) / 2,
-      y,
-      size: 20,
-      font: fontHelveticaBold,
-      color: rgb(0.85, 0.40, 0.05), // Saffron
-    });
-
-    y -= 18;
-    const tagText = 'SANATAN DHARMA SACRED HERITAGE';
-    const tagWidth = fontHelveticaBold.widthOfTextAtSize(tagText, 9.5);
-    page.drawText(tagText, {
-      x: (pageWidth - tagWidth) / 2,
-      y,
-      size: 9.5,
-      font: fontHelveticaBold,
-      color: rgb(0.38, 0.30, 0.22),
-    });
-
-    // Delicate filigree line with golden center jewel
-    y -= 14;
-    page.drawLine({
-      start: { x: pageWidth / 2 - 130, y },
-      end: { x: pageWidth / 2 - 14, y },
-      thickness: 0.8,
-      color: rgb(0.85, 0.68, 0.35),
-    });
-    page.drawCircle({ x: pageWidth / 2, y, size: 2.8, color: rgb(0.85, 0.40, 0.05) });
-    page.drawLine({
-      start: { x: pageWidth / 2 + 14, y },
-      end: { x: pageWidth / 2 + 130, y },
-      thickness: 0.8,
-      color: rgb(0.85, 0.68, 0.35),
-    });
-
-    // 3. Massive Embossed 3D Gold Typography reads [FESTIVAL_NAME]
-    y -= 48;
-    let festivalTitle = cleanTextForPdf(data.festivalName).toUpperCase();
-    if (!festivalTitle.startsWith('HAPPY') && !festivalTitle.startsWith('MAHA') && !festivalTitle.startsWith('SHREE') && !festivalTitle.startsWith('SHUBH')) {
-      festivalTitle = `HAPPY ${festivalTitle}`;
-    }
-    const titleSize = festivalTitle.length > 22 ? 24 : 30;
-    const titleWidth = fontHelveticaBold.widthOfTextAtSize(festivalTitle, titleSize);
-    const titleX = (pageWidth - titleWidth) / 2;
-
-    // 3D Shadow layer
-    page.drawText(festivalTitle, {
-      x: titleX + 2,
-      y: y - 2,
-      size: titleSize,
-      font: fontHelveticaBold,
-      color: rgb(0.45, 0.28, 0.08),
-    });
-    // Highlight layer
-    page.drawText(festivalTitle, {
-      x: titleX - 1,
-      y: y + 1,
-      size: titleSize,
-      font: fontHelveticaBold,
-      color: rgb(0.98, 0.92, 0.62),
-    });
-    // Main Gold layer
-    page.drawText(festivalTitle, {
-      x: titleX,
-      y,
-      size: titleSize,
-      font: fontHelveticaBold,
-      color: rgb(0.82, 0.58, 0.16),
-    });
-
-    // 4. Elegant Dark Brown Serif Text reads [POETIC_BLESSING]
-    y -= 28;
-    const wrappedBlessing = wrapText(cleanTextForPdf(data.poeticBlessing), fontTimesItalic, 11.2, contentWidth - 30);
-    for (const line of wrappedBlessing) {
-      const lineWidth = fontTimesItalic.widthOfTextAtSize(line, 11.2);
-      page.drawText(line, {
-        x: (pageWidth - lineWidth) / 2,
-        y,
-        size: 11.2,
-        font: fontTimesItalic,
-        color: rgb(0.30, 0.18, 0.10), // Dark brown
-      });
-      y -= 17;
+    } catch (assetErr) {
+      console.warn('[PDF] Could not embed festival master card template:', assetErr);
     }
 
-    y -= 12;
+    if (embeddedArtwork) {
+      // Dynamic 3D Embossed Gold Typography for ANY Festival Title
+      const rawTitle = (data.festivalName || 'Sacred Festival').toUpperCase().trim();
+      let words = rawTitle.split(/\s+/);
+      if (!rawTitle.startsWith('HAPPY') && !rawTitle.startsWith('MAHA') && !rawTitle.startsWith('SHREE') && !rawTitle.startsWith('SHUBH')) {
+        words = ['HAPPY', ...words];
+      }
 
-    // ==========================================
-    // MIDDLE 30%: Dark Slate Badge & 5 Chapters
-    // ==========================================
-    // 5. Sleek Dark Slate Pill-Shaped Badge reads [METADATA_STR]
-    const pillHeight = 30;
-    const pillWidth = contentWidth - 10;
-    const pillX = (pageWidth - pillWidth) / 2;
-    page.drawRectangle({
-      x: pillX,
-      y: y - pillHeight,
-      width: pillWidth,
-      height: pillHeight,
-      color: rgb(0.10, 0.14, 0.20),
-      borderColor: rgb(0.82, 0.65, 0.30),
-      borderWidth: 1.2,
-    });
-
-    const metaText = `Date: ${cleanTextForPdf(data.date)}  |  Deity: ${cleanTextForPdf(data.deity)}  |  Tradition: ${cleanTextForPdf(data.tradition).slice(0, 36)}`;
-    const metaWidth = fontHelveticaBold.widthOfTextAtSize(metaText, 8.8);
-    page.drawText(metaText, {
-      x: (pageWidth - metaWidth) / 2,
-      y: y - 19.5,
-      size: 8.8,
-      font: fontHelveticaBold,
-      color: rgb(0.96, 0.96, 0.98),
-    });
-
-    y -= (pillHeight + 18);
-
-    // Section Header: 5 Sacred Chapters
-    page.drawText('THE 5 SACRED CHAPTERS', {
-      x: contentMargin + 8,
-      y,
-      size: 10,
-      font: fontHelveticaBold,
-      color: rgb(0.85, 0.40, 0.05),
-    });
-    page.drawLine({
-      start: { x: contentMargin + 155, y: y + 3 },
-      end: { x: pageWidth - contentMargin - 8, y: y + 3 },
-      thickness: 0.8,
-      color: rgb(0.88, 0.78, 0.55),
-    });
-
-    y -= 15;
-
-    // 6. Horizontal Row of 5 Rectangular Cards with Saffron Top-Borders (GENEROUS HEIGHT = 180 pt)
-    const cardCount = 5;
-    const cardGap = 8;
-    const totalGaps = cardGap * (cardCount - 1);
-    const cardWidth = (contentWidth - totalGaps) / cardCount; // ~102.2 pt
-    const cardHeight = 180; // Full generous height
-    const cardStartY = y - cardHeight;
-
-    for (let i = 0; i < cardCount; i++) {
-      const cardX = contentMargin + i * (cardWidth + cardGap);
-      const ch = data.chapters[i] || { title: `Chapter ${i + 1}`, content: '', icon: 'lotus' };
-
-      // Card Background & Subtle Border
-      page.drawRectangle({
-        x: cardX,
-        y: cardStartY,
-        width: cardWidth,
-        height: cardHeight,
-        color: rgb(1, 1, 1),
-        borderColor: rgb(0.86, 0.82, 0.76),
-        borderWidth: 0.8,
-      });
-
-      // Saffron Top-Border
-      page.drawRectangle({
-        x: cardX,
-        y: cardStartY + cardHeight - 4,
-        width: cardWidth,
-        height: 4,
-        color: rgb(0.85, 0.40, 0.05),
-      });
-
-      // Icon halo and drawing: lotus, diya, star, hands, swing
-      const iconCenterY = cardStartY + cardHeight - 28;
-      const iconCenterX = cardX + cardWidth / 2;
-
-      // Soft circle halo behind icon
-      page.drawCircle({
-        x: iconCenterX,
-        y: iconCenterY,
-        size: 15,
-        color: rgb(0.99, 0.96, 0.90),
-        borderColor: rgb(0.92, 0.82, 0.65),
-        borderWidth: 0.5,
-      });
-
-      if (ch.icon === 'lotus' || i === 0) {
-        page.drawCircle({ x: iconCenterX, y: iconCenterY, size: 6.5, color: rgb(0.92, 0.55, 0.18) });
-        page.drawCircle({ x: iconCenterX - 6.5, y: iconCenterY - 2, size: 4.2, color: rgb(0.95, 0.65, 0.22) });
-        page.drawCircle({ x: iconCenterX + 6.5, y: iconCenterY - 2, size: 4.2, color: rgb(0.95, 0.65, 0.22) });
-      } else if (ch.icon === 'diya' || i === 1) {
-        page.drawCircle({ x: iconCenterX, y: iconCenterY + 4, size: 3.8, color: rgb(0.98, 0.75, 0.15) }); // Flame
-        page.drawRectangle({ x: iconCenterX - 7.5, y: iconCenterY - 5.5, width: 15, height: 5.5, color: rgb(0.75, 0.42, 0.15) }); // Base
-      } else if (ch.icon === 'star' || i === 2) {
-        page.drawCircle({ x: iconCenterX, y: iconCenterY, size: 4.8, color: rgb(0.92, 0.72, 0.15) });
-        page.drawLine({ start: { x: iconCenterX - 8.5, y: iconCenterY }, end: { x: iconCenterX + 8.5, y: iconCenterY }, color: rgb(0.92, 0.72, 0.15), thickness: 1.8 });
-        page.drawLine({ start: { x: iconCenterX, y: iconCenterY - 8.5 }, end: { x: iconCenterX + 8.5, y: iconCenterY + 8.5 }, color: rgb(0.92, 0.72, 0.15), thickness: 1.8 });
-      } else if (ch.icon === 'hands' || i === 3) {
-        page.drawCircle({ x: iconCenterX, y: iconCenterY + 4.5, size: 4.2, color: rgb(0.85, 0.50, 0.15) });
-        page.drawRectangle({ x: iconCenterX - 4.5, y: iconCenterY - 6.5, width: 9, height: 9, color: rgb(0.85, 0.50, 0.15) });
+      let lines: string[] = [];
+      if (words.length > 2 && (words[0] === 'HAPPY' || words[0] === 'SHUBH' || words[0] === 'MAHA' || words[0] === 'SHREE')) {
+        lines.push(words[0]);
+        lines.push(words.slice(1).join(' '));
+      } else if (words.join(' ').length > 18) {
+        const mid = Math.ceil(words.length / 2);
+        lines.push(words.slice(0, mid).join(' '));
+        lines.push(words.slice(mid).join(' '));
       } else {
-        page.drawLine({ start: { x: iconCenterX - 8.5, y: iconCenterY + 5.5 }, end: { x: iconCenterX + 8.5, y: iconCenterY + 5.5 }, color: rgb(0.65, 0.45, 0.20), thickness: 1.8 });
-        page.drawLine({ start: { x: iconCenterX - 6.5, y: iconCenterY + 5.5 }, end: { x: iconCenterX - 5.5, y: iconCenterY - 5.5 }, color: rgb(0.75, 0.55, 0.25), thickness: 1.2 });
-        page.drawLine({ start: { x: iconCenterX + 6.5, y: iconCenterY + 5.5 }, end: { x: iconCenterX + 5.5, y: iconCenterY - 5.5 }, color: rgb(0.75, 0.55, 0.25), thickness: 1.2 });
-        page.drawRectangle({ x: iconCenterX - 6.5, y: iconCenterY - 6.5, width: 13, height: 2.8, color: rgb(0.85, 0.45, 0.15) });
+        lines.push(words.join(' '));
       }
 
-      // Chapter Title
-      const titleLines = wrapText(cleanTextForPdf(ch.title), fontHelveticaBold, 8.5, cardWidth - 10);
-      let titleY = cardStartY + cardHeight - 52;
-      for (const tline of titleLines) {
-        const tw = fontHelveticaBold.widthOfTextAtSize(tline, 8.5);
-        page.drawText(tline, {
-          x: cardX + (cardWidth - tw) / 2,
-          y: titleY,
-          size: 8.5,
-          font: fontHelveticaBold,
-          color: rgb(0.18, 0.18, 0.18),
+      const fontSize = lines.length > 1 ? 32 : 30;
+      const lineSpacing = 36;
+      const startY = lines.length > 1 ? 655 : 640;
+
+      lines.forEach((line, idx) => {
+        const textY = startY - idx * lineSpacing;
+        const textWidth = fontTimesBold.widthOfTextAtSize(line, fontSize);
+        const textX = (pageWidth - textWidth) / 2;
+
+        // 4-layer 3D Embossed Gold Typography
+        // Layer 1: Dark bronze bottom-right drop shadow
+        page.drawText(line, {
+          x: textX + 2.5,
+          y: textY - 2.5,
+          size: fontSize,
+          font: fontTimesBold,
+          color: rgb(0.38, 0.22, 0.06),
         });
-        titleY -= 11;
-      }
 
-      // Thin separator
-      page.drawLine({
-        start: { x: cardX + 10, y: titleY + 3 },
-        end: { x: cardX + cardWidth - 10, y: titleY + 3 },
-        thickness: 0.5,
-        color: rgb(0.88, 0.82, 0.74),
+        // Layer 2: Warm ambient shadow
+        page.drawText(line, {
+          x: textX + 1.2,
+          y: textY - 1.2,
+          size: fontSize,
+          font: fontTimesBold,
+          color: rgb(0.55, 0.35, 0.10),
+        });
+
+        // Layer 3: Top-left light golden reflection highlight
+        page.drawText(line, {
+          x: textX - 1.0,
+          y: textY + 1.0,
+          size: fontSize,
+          font: fontTimesBold,
+          color: rgb(0.99, 0.95, 0.75),
+        });
+
+        // Layer 4: Radiant Metallic Gold Main Face
+        page.drawText(line, {
+          x: textX,
+          y: textY,
+          size: fontSize,
+          font: fontTimesBold,
+          color: rgb(0.78, 0.52, 0.12),
+        });
       });
-
-      // Chapter Excerpt
-      const summaryLines = wrapText(cleanTextForPdf(ch.content), fontHelvetica, 7.3, cardWidth - 12);
-      let sumY = titleY - 9;
-      for (const sline of summaryLines) {
-        const sw = fontHelvetica.widthOfTextAtSize(sline, 7.3);
-        page.drawText(sline, {
-          x: cardX + (cardWidth - sw) / 2,
-          y: sumY,
-          size: 7.3,
-          font: fontHelvetica,
-          color: rgb(0.35, 0.38, 0.42),
-        });
-        sumY -= 10.5;
-      }
+    } else {
+      // Clean fallback if image asset is unavailable
+      page.drawRectangle({
+        x: 0,
+        y: 0,
+        width: pageWidth,
+        height: pageHeight,
+        color: rgb(0.996, 0.988, 0.965),
+      });
+      page.drawRectangle({
+        x: 16,
+        y: 16,
+        width: pageWidth - 32,
+        height: pageHeight - 32,
+        borderColor: rgb(0.85, 0.65, 0.25),
+        borderWidth: 2,
+      });
+      const title = data.festivalName.toUpperCase();
+      const titleWidth = fontTimesBold.widthOfTextAtSize(title, 26);
+      page.drawText(title, {
+        x: (pageWidth - titleWidth) / 2,
+        y: pageHeight - 120,
+        size: 26,
+        font: fontTimesBold,
+        color: rgb(0.78, 0.52, 0.12),
+      });
     }
 
-    y = cardStartY - 20;
-
-    // ==========================================
-    // BOTTOM 30%: Frame, Marketing Section, Footer
-    // ==========================================
-    // 7. Ornate Intricate Golden Floral Frame 'Dharmo Rakshati Rakshitah'
-    const frameHeight = 88;
-    const frameY = y - frameHeight;
-
-    page.drawRectangle({
-      x: contentMargin,
-      y: frameY,
-      width: contentWidth,
-      height: frameHeight,
-      color: rgb(0.99, 0.98, 0.93),
-      borderColor: rgb(0.85, 0.65, 0.25),
-      borderWidth: 1.5,
-    });
-
-    page.drawRectangle({
-      x: contentMargin + 3.5,
-      y: frameY + 3.5,
-      width: contentWidth - 7,
-      height: frameHeight - 7,
-      borderColor: rgb(0.92, 0.80, 0.50),
-      borderWidth: 0.7,
-    });
-
-    const dharmoTitle = 'Dharmo Rakshati Rakshitah';
-    const dharmoWidth = fontTimesBold.widthOfTextAtSize(dharmoTitle, 15);
-    page.drawText(dharmoTitle, {
-      x: (pageWidth - dharmoWidth) / 2,
-      y: frameY + frameHeight - 24,
-      size: 15,
-      font: fontTimesBold,
-      color: rgb(0.65, 0.32, 0.05),
-    });
-
-    const virtuesText = 'Peace   *   Prosperity   *   Health   *   Wisdom';
-    const virtuesWidth = fontHelveticaBold.widthOfTextAtSize(virtuesText, 10);
-    page.drawText(virtuesText, {
-      x: (pageWidth - virtuesWidth) / 2,
-      y: frameY + frameHeight - 46,
-      size: 10,
-      font: fontHelveticaBold,
-      color: rgb(0.50, 0.40, 0.20),
-    });
-
-    const dharmoSub = 'Dharma protects those who uphold righteousness. May divine grace illuminate your path.';
-    const dharmoSubWidth = fontTimesItalic.widthOfTextAtSize(dharmoSub, 9);
-    page.drawText(dharmoSub, {
-      x: (pageWidth - dharmoSubWidth) / 2,
-      y: frameY + frameHeight - 66,
-      size: 9,
-      font: fontTimesItalic,
-      color: rgb(0.42, 0.36, 0.28),
-    });
-
-    y = frameY - 18;
-
-    // 8. Modern Marketing Card (STRICTLY NO QR CODE, Promotes Brahmand App)
-    const mktCardHeight = 115;
-    const mktY = y - mktCardHeight;
-
-    page.drawRectangle({
-      x: contentMargin,
-      y: mktY,
-      width: contentWidth,
-      height: mktCardHeight,
-      color: rgb(0.965, 0.96, 0.94),
-      borderColor: rgb(0.88, 0.82, 0.72),
-      borderWidth: 1,
-    });
-
-    // Top banner tag inside marketing card
-    page.drawRectangle({
-      x: contentMargin,
-      y: mktY + mktCardHeight - 20,
-      width: contentWidth,
-      height: 20,
-      color: rgb(0.93, 0.88, 0.80),
-    });
-    const mktTag = 'EXPERIENCE SANATAN DHARMA ON BRAHMAND';
-    const mktTagWidth = fontHelveticaBold.widthOfTextAtSize(mktTag, 8.5);
-    page.drawText(mktTag, {
-      x: (pageWidth - mktTagWidth) / 2,
-      y: mktY + mktCardHeight - 14,
-      size: 8.5,
-      font: fontHelveticaBold,
-      color: rgb(0.75, 0.32, 0.05),
-    });
-
-    const promoTitle = 'Discover the Full Divine Story, Rituals & Audio Katha';
-    const promoWidth = fontHelveticaBold.widthOfTextAtSize(promoTitle, 12);
-    page.drawText(promoTitle, {
-      x: (pageWidth - promoWidth) / 2,
-      y: mktY + mktCardHeight - 40,
-      size: 12,
-      font: fontHelveticaBold,
-      color: rgb(0.14, 0.14, 0.16),
-    });
-
-    const appTagline = 'Daily Vedic Panchang  •  100+ Sacred Katha  •  Audio Chants  •  Live Temple Darshans';
-    const appTaglineWidth = fontHelvetica.widthOfTextAtSize(appTagline, 8.8);
-    page.drawText(appTagline, {
-      x: (pageWidth - appTaglineWidth) / 2,
-      y: mktY + mktCardHeight - 56,
-      size: 8.8,
-      font: fontHelvetica,
-      color: rgb(0.42, 0.42, 0.46),
-    });
-
-    const webLink = 'brahmand.app';
-    const webWidth = fontHelveticaBold.widthOfTextAtSize(webLink, 11);
-    page.drawText(webLink, {
-      x: (pageWidth - webWidth) / 2,
-      y: mktY + mktCardHeight - 74,
-      size: 11,
-      font: fontHelveticaBold,
-      color: rgb(0.85, 0.40, 0.05),
-    });
-
-    // App Store & Google Play Badges
-    const badgeW = 125;
-    const badgeH = 22;
-    const totalBadgesW = badgeW * 2 + 16;
-    const badge1X = (pageWidth - totalBadgesW) / 2;
-    const badge2X = badge1X + badgeW + 16;
-    const badgeY = mktY + 10;
-
-    // App Store Badge
-    page.drawRectangle({
-      x: badge1X,
-      y: badgeY,
-      width: badgeW,
-      height: badgeH,
-      color: rgb(0.10, 0.12, 0.16),
-    });
-    const asText = 'Download on App Store';
-    const asWidth = fontHelveticaBold.widthOfTextAtSize(asText, 8);
-    page.drawText(asText, {
-      x: badge1X + (badgeW - asWidth) / 2,
-      y: badgeY + 6.5,
-      size: 8,
-      font: fontHelveticaBold,
-      color: rgb(1, 1, 1),
-    });
-
-    // Google Play Badge
-    page.drawRectangle({
-      x: badge2X,
-      y: badgeY,
-      width: badgeW,
-      height: badgeH,
-      color: rgb(0.10, 0.12, 0.16),
-    });
-    const gpText = 'GET IT ON Google Play';
-    const gpWidth = fontHelveticaBold.widthOfTextAtSize(gpText, 8);
-    page.drawText(gpText, {
-      x: badge2X + (badgeW - gpWidth) / 2,
-      y: badgeY + 6.5,
-      size: 8,
-      font: fontHelveticaBold,
-      color: rgb(1, 1, 1),
-    });
-
-    // 9. Footer: Brahmand App - Sanatan Lok
-    const footerLineY = 42;
-    page.drawLine({
-      start: { x: contentMargin + 40, y: footerLineY },
-      end: { x: pageWidth - contentMargin - 40, y: footerLineY },
-      thickness: 0.6,
-      color: rgb(0.88, 0.78, 0.55),
-    });
-
-    const footerText = 'Brahmand App  •  Sanatan Lok  •  Connecting 100,000+ Devotees Worldwide';
-    const footerWidth = fontHelveticaBold.widthOfTextAtSize(footerText, 8.8);
-    page.drawText(footerText, {
-      x: (pageWidth - footerWidth) / 2,
-      y: 26,
-      size: 8.8,
-      font: fontHelveticaBold,
-      color: rgb(0.75, 0.35, 0.08),
-    });
+    // Ensure strictly 1 page
+    while (doc.getPageCount() > 1) {
+      doc.removePage(doc.getPageCount() - 1);
+    }
 
     // Save Strictly 1-Page PDF
     const base64Pdf = await doc.saveAsBase64();
