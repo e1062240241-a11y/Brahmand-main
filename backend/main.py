@@ -2896,8 +2896,10 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
     }
     await db.set_document('user_blocks', doc_id, block_data)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{user_id}")
+    )
 
     
     # Also unfollow each other if they follow each other!
@@ -2947,8 +2949,10 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     doc_id = f"{current_user_id}_{user_id}"
     await db.delete_document('user_blocks', doc_id)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{user_id}")
+    )
 
     return {'message': 'User unblocked successfully', 'user_id': user_id}
 
@@ -3074,12 +3078,16 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
 
     # Atomic counter increments — avoids the read-then-write race where two
     # concurrent follows both read the same count and clobber each other.
-    await db.increment_field('users', user_id, 'followers_count', 1)
-    await db.increment_field('users', current_user_id, 'following_count', 1)
+    await asyncio.gather(
+        db.increment_field('users', user_id, 'followers_count', 1),
+        db.increment_field('users', current_user_id, 'following_count', 1)
+    )
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.invalidate_user(current_user_id)
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.invalidate_user(current_user_id)
+    )
 
     # Backfill creator's latest 10 posts into follower's following_inbox
     try:
@@ -3107,12 +3115,16 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     # Atomic decrements only if an edge actually existed — avoids double-decrement
     # when unfollow is called on a non-followed user.
     if edge_existed:
-        await db.increment_field('users', user_id, 'followers_count', -1)
-        await db.increment_field('users', current_user_id, 'following_count', -1)
+        await asyncio.gather(
+            db.increment_field('users', user_id, 'followers_count', -1),
+            db.increment_field('users', current_user_id, 'following_count', -1)
+        )
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.invalidate_user(current_user_id)
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.invalidate_user(current_user_id)
+    )
 
     # Clean unfollowed creator's posts from follower's following_inbox
     try:
@@ -3138,8 +3150,10 @@ async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_
         'createdAt': datetime.utcnow()
     })
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{target_user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{target_user_id}")
+    )
 
     return {'message': 'User blocked successfully', 'blocked_user_id': target_user_id}
 
@@ -3152,8 +3166,10 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
     doc_id = f"{current_user_id}_{target_user_id}"
     await db.delete_document('user_blocks', doc_id)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{target_user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{target_user_id}")
+    )
 
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
 
@@ -8793,8 +8809,10 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
         raise HTTPException(status_code=404, detail="Join request not found")
     
     # Add member to circle
-    await db.array_union_update('circles', circle_id, 'members', [request_user_id])
-    await db.array_union_update('users', request_user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_union_update('circles', circle_id, 'members', [request_user_id]),
+        db.array_union_update('users', request_user_id, 'circles', [circle_id])
+    )
     
     # Update request status
     await db.update_document('circle_requests', request['id'], {'status': 'approved'})
@@ -8906,8 +8924,10 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
         raise HTTPException(status_code=400, detail="User is already a member")
     
     # Add directly (invitation = direct add)
-    await db.array_union_update('circles', circle_id, 'members', [target_user_id])
-    await db.array_union_update('users', target_user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_union_update('circles', circle_id, 'members', [target_user_id]),
+        db.array_union_update('users', target_user_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {target_user_id} invited to circle {circle_id}")
     
@@ -8964,8 +8984,10 @@ async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token))
         await db.update_document('circles', circle_id, update_payload)
     
     # Remove from circle
-    await db.array_remove_update('circles', circle_id, 'members', [user_id])
-    await db.array_remove_update('users', user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_remove_update('circles', circle_id, 'members', [user_id]),
+        db.array_remove_update('users', user_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {user_id} left circle {circle_id}")
     return {"message": "Left circle successfully"}
@@ -9029,8 +9051,10 @@ async def remove_circle_member(circle_id: str, member_id: str, token_data: dict 
         await db.update_document('circles', circle_id, update_payload)
     
     # Remove member
-    await db.array_remove_update('circles', circle_id, 'members', [member_id])
-    await db.array_remove_update('users', member_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_remove_update('circles', circle_id, 'members', [member_id]),
+        db.array_remove_update('users', member_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {member_id} removed from circle {circle_id}")
     return {"message": "Member removed successfully"}
@@ -11923,8 +11947,10 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
 
     # ponytail: invalidate cached user profile to force KYC verification prompt
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.delete(f"vendor:user:{user_id}")
+    )
 
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -13135,8 +13161,10 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         pass
     
     # ponytail: invalidate cached user profile to reflect vendor deletion
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.delete(f"vendor:user:{user_id}")
+    )
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
