@@ -254,244 +254,280 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       }
     }
 
-    let page = doc.addPage([pageWidth, pageHeight]);
-    let y = pageHeight - margin;
+    // If visual single-page cover card is loaded, directly export strictly 1-page PDF
+    if (hasCoverPage) {
+      const base64Pdf = await doc.saveAsBase64();
+      const sanitizedName = data.festivalName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+      const filename = `${sanitizedName}_story.pdf`;
+      const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+      const fileUri = `${targetDir}${filename}`;
 
-    const drawHeader = (isFirstPage: boolean) => {
-      if (isFirstPage) {
-        // First page banner
-        page.drawRectangle({
-          x: margin,
-          y: y - 72,
-          width: contentWidth,
-          height: 72,
-          color: rgb(0.98, 0.94, 0.88),
-          borderColor: rgb(0.85, 0.45, 0.1),
-          borderWidth: 1.5,
-        });
-
-        // App Tagline
-        page.drawText('BRAHMAND  |  SANATAN DHARMA SACRED HERITAGE', {
-          x: margin + 14,
-          y: y - 18,
-          size: 8.5,
-          font: fontBold,
-          color: rgb(0.75, 0.25, 0.05),
-        });
-
-        // Festival Title
-        const titleText = `${cleanTextForPdf(data.festivalName).toUpperCase()} - SACRED VRAT KATHA`;
-        page.drawText(titleText, {
-          x: margin + 14,
-          y: y - 40,
-          size: 15,
-          font: fontBold,
-          color: rgb(0.12, 0.14, 0.17),
-        });
-
-        // Subtitle
-        page.drawText(cleanTextForPdf(data.subtitle), {
-          x: margin + 14,
-          y: y - 58,
-          size: 9.5,
-          font: fontOblique,
-          color: rgb(0.4, 0.3, 0.2),
-        });
-
-        y -= 84;
-      } else {
-        // Sub-page running header
-        page.drawText(`BRAHMAND  -  ${cleanTextForPdf(data.festivalName).toUpperCase()} KATHA`, {
-          x: margin,
-          y: y - 10,
-          size: 8,
-          font: fontBold,
-          color: rgb(0.75, 0.25, 0.05),
-        });
-        page.drawLine({
-          start: { x: margin, y: y - 14 },
-          end: { x: margin + contentWidth, y: y - 14 },
-          thickness: 0.5,
-          color: rgb(0.8, 0.8, 0.8),
-        });
-        y -= 26;
-      }
-    };
-
-    drawHeader(true);
-
-    // Metadata strip
-    page.drawRectangle({
-      x: margin,
-      y: y - 24,
-      width: contentWidth,
-      height: 24,
-      color: rgb(0.96, 0.96, 0.97),
-      borderColor: rgb(0.88, 0.88, 0.90),
-      borderWidth: 0.75,
-    });
-
-    const dateStr = cleanTextForPdf(`Date: ${data.date}`);
-    const deityStr = cleanTextForPdf(`Deity: ${data.deity}`);
-    const traditionStr = cleanTextForPdf(`Tradition: ${data.tradition}`);
-
-    page.drawText(dateStr, {
-      x: margin + 10,
-      y: y - 16,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    page.drawText(deityStr, {
-      x: margin + 175,
-      y: y - 16,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    page.drawText(traditionStr.slice(0, 36), {
-      x: margin + 355,
-      y: y - 16,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    y -= 36;
-
-    // Render Chapters
-    for (let i = 0; i < data.chapters.length; i++) {
-      const ch = data.chapters[i];
-      const chTitle = `Chapter ${i + 1}: ${cleanTextForPdf(ch.title).toUpperCase()}`;
-      const wrapped = wrapText(cleanTextForPdf(ch.content), fontRegular, 9.5, contentWidth - 20);
-      const boxHeight = 22 + (wrapped.length * 14) + 8;
-
-      if (y - boxHeight < bottomMargin + 40) {
-        page = doc.addPage([pageWidth, pageHeight]);
-        y = pageHeight - margin;
-        drawHeader(false);
-      }
-
-      // Chapter card container
-      page.drawRectangle({
-        x: margin,
-        y: y - boxHeight,
-        width: contentWidth,
-        height: boxHeight,
-        color: rgb(1, 1, 1),
-        borderColor: rgb(0.9, 0.9, 0.92),
-        borderWidth: 0.8,
+      await FileSystem.writeAsStringAsync(fileUri, base64Pdf, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Saffron left accent bar
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Share ${data.festivalName} Story (PDF)`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        await RNShare.share({
+          title: `${data.festivalName} Sacred Story`,
+          message: `${data.festivalName} - Sacred Story on Brahmand App.`,
+        });
+      }
+
+      return { success: true, uri: fileUri };
+    }
+
+    // STRICTLY SINGLE-PAGE A4 VECTOR LAYOUT
+    const singleMargin = 28;
+    const sContentWidth = pageWidth - singleMargin * 2;
+    const page = doc.addPage([pageWidth, pageHeight]);
+
+    // 1. Royal Outer Double Gold Border
+    page.drawRectangle({
+      x: 14,
+      y: 14,
+      width: pageWidth - 28,
+      height: pageHeight - 28,
+      borderColor: rgb(0.85, 0.65, 0.25),
+      borderWidth: 2,
+    });
+
+    page.drawRectangle({
+      x: 18,
+      y: 18,
+      width: pageWidth - 36,
+      height: pageHeight - 36,
+      borderColor: rgb(0.92, 0.78, 0.45),
+      borderWidth: 0.8,
+    });
+
+    let y = pageHeight - singleMargin - 8;
+
+    // 2. Header Banner
+    const headerHeight = 76;
+    page.drawRectangle({
+      x: singleMargin,
+      y: y - headerHeight,
+      width: sContentWidth,
+      height: headerHeight,
+      color: rgb(0.99, 0.96, 0.90),
+      borderColor: rgb(0.85, 0.55, 0.15),
+      borderWidth: 1.2,
+    });
+
+    page.drawText('BRAHMAND   |   SANATAN DHARMA HERITAGE', {
+      x: singleMargin + 16,
+      y: y - 20,
+      size: 8.5,
+      font: fontBold,
+      color: rgb(0.75, 0.28, 0.05),
+    });
+
+    const greetingTitle = `HAPPY ${cleanTextForPdf(data.festivalName).toUpperCase()}`;
+    page.drawText(greetingTitle, {
+      x: singleMargin + 16,
+      y: y - 44,
+      size: 18,
+      font: fontBold,
+      color: rgb(0.12, 0.14, 0.18),
+    });
+
+    page.drawText(cleanTextForPdf(data.subtitle), {
+      x: singleMargin + 16,
+      y: y - 64,
+      size: 9.5,
+      font: fontOblique,
+      color: rgb(0.42, 0.32, 0.18),
+    });
+
+    y -= (headerHeight + 10);
+
+    // 3. Metadata Strip
+    const metaHeight = 24;
+    page.drawRectangle({
+      x: singleMargin,
+      y: y - metaHeight,
+      width: sContentWidth,
+      height: metaHeight,
+      color: rgb(0.97, 0.97, 0.98),
+      borderColor: rgb(0.88, 0.88, 0.90),
+      borderWidth: 0.8,
+    });
+
+    page.drawText(`Date: ${cleanTextForPdf(data.date)}`, {
+      x: singleMargin + 14,
+      y: y - 16,
+      size: 8.8,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    page.drawText(`Deity: ${cleanTextForPdf(data.deity)}`, {
+      x: singleMargin + 175,
+      y: y - 16,
+      size: 8.8,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    page.drawText(`Tradition: ${cleanTextForPdf(data.tradition).slice(0, 36)}`, {
+      x: singleMargin + 340,
+      y: y - 16,
+      size: 8.8,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+
+    y -= (metaHeight + 14);
+
+    // 4. Section Title: 5 Sacred Chapters
+    page.drawText('THE 5 SACRED KATHA CHAPTERS', {
+      x: singleMargin + 2,
+      y: y,
+      size: 10,
+      font: fontBold,
+      color: rgb(0.75, 0.28, 0.05),
+    });
+
+    page.drawLine({
+      start: { x: singleMargin + 185, y: y + 3 },
+      end: { x: singleMargin + sContentWidth, y: y + 3 },
+      thickness: 0.8,
+      color: rgb(0.88, 0.78, 0.55),
+    });
+
+    y -= 14;
+
+    // Render 5 Chapters in compact elegant cards
+    for (let i = 0; i < data.chapters.length; i++) {
+      const ch = data.chapters[i];
+      const chTitle = `${i + 1}. ${cleanTextForPdf(ch.title).toUpperCase()}`;
+      const wrapped = wrapText(cleanTextForPdf(ch.content), fontRegular, 8.8, sContentWidth - 28);
+      const boxHeight = 16 + (wrapped.length * 12.5) + 6;
+
       page.drawRectangle({
-        x: margin,
+        x: singleMargin,
+        y: y - boxHeight,
+        width: sContentWidth,
+        height: boxHeight,
+        color: rgb(1, 1, 1),
+        borderColor: rgb(0.90, 0.90, 0.92),
+        borderWidth: 0.75,
+      });
+
+      page.drawRectangle({
+        x: singleMargin,
         y: y - boxHeight,
         width: 4,
         height: boxHeight,
         color: rgb(0.85, 0.45, 0.1),
       });
 
-      // Chapter Title
       page.drawText(chTitle, {
-        x: margin + 14,
-        y: y - 16,
-        size: 9.5,
+        x: singleMargin + 14,
+        y: y - 13,
+        size: 9,
         font: fontBold,
-        color: rgb(0.75, 0.25, 0.05),
+        color: rgb(0.75, 0.28, 0.05),
       });
 
-      // Narrative text
-      let textY = y - 32;
+      let textY = y - 27;
       for (const line of wrapped) {
         page.drawText(line, {
-          x: margin + 14,
+          x: singleMargin + 14,
           y: textY,
-          size: 9.5,
+          size: 8.8,
           font: fontRegular,
           color: rgb(0.2, 0.22, 0.26),
         });
-        textY -= 14;
+        textY -= 12.5;
       }
 
-      y -= (boxHeight + 10);
+      y -= (boxHeight + 7);
     }
 
-    // Vedic Significance & Blessing Box
-    const blessingTitle = 'VEDIC SIGNIFICANCE & DIVINE BLESSINGS';
-    const blessingLines = wrapText(cleanTextForPdf(data.blessing), fontRegular, 9, contentWidth - 24);
-    const blessingBoxHeight = 20 + (blessingLines.length * 13) + 10;
+    y -= 4;
 
-    if (y - blessingBoxHeight < bottomMargin) {
-      page = doc.addPage([pageWidth, pageHeight]);
-      y = pageHeight - margin;
-      drawHeader(false);
-    }
-
+    // 5. Dharmo Rakshati Rakshitah Frame
+    const blessingHeight = 56;
     page.drawRectangle({
-      x: margin,
-      y: y - blessingBoxHeight,
-      width: contentWidth,
-      height: blessingBoxHeight,
-      color: rgb(0.99, 0.97, 0.92),
-      borderColor: rgb(0.92, 0.75, 0.4),
-      borderWidth: 1,
+      x: singleMargin,
+      y: y - blessingHeight,
+      width: sContentWidth,
+      height: blessingHeight,
+      color: rgb(0.99, 0.98, 0.94),
+      borderColor: rgb(0.85, 0.65, 0.25),
+      borderWidth: 1.2,
     });
 
-    page.drawText(blessingTitle, {
-      x: margin + 12,
-      y: y - 14,
-      size: 8.5,
+    page.drawText('Dharmo Rakshati Rakshitah', {
+      x: singleMargin + (sContentWidth / 2) - 78,
+      y: y - 17,
+      size: 11,
       font: fontBold,
-      color: rgb(0.65, 0.35, 0.05),
+      color: rgb(0.65, 0.32, 0.05),
     });
 
-    let bY = y - 28;
-    for (const line of blessingLines) {
-      page.drawText(line, {
-        x: margin + 12,
-        y: bY,
-        size: 9,
-        font: fontOblique,
-        color: rgb(0.3, 0.25, 0.15),
-      });
-      bY -= 13;
-    }
+    page.drawText('Peace   *   Prosperity   *   Health   *   Wisdom', {
+      x: singleMargin + (sContentWidth / 2) - 95,
+      y: y - 32,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.5, 0.4, 0.2),
+    });
 
-    // Footers on all narrative pages
-    const totalPages = doc.getPageCount();
-    const startPage = hasCoverPage ? 1 : 0;
-    const contentPagesCount = hasCoverPage ? totalPages - 1 : totalPages;
-    for (let p = startPage; p < totalPages; p++) {
-      const curPage = doc.getPage(p);
-      curPage.drawLine({
-        start: { x: margin, y: bottomMargin },
-        end: { x: margin + contentWidth, y: bottomMargin },
-        thickness: 0.5,
-        color: rgb(0.85, 0.85, 0.85),
-      });
+    page.drawText('Dharma protects those who uphold righteousness. May divine grace illuminate your path.', {
+      x: singleMargin + (sContentWidth / 2) - 185,
+      y: y - 46,
+      size: 8.2,
+      font: fontOblique,
+      color: rgb(0.4, 0.35, 0.25),
+    });
 
-      curPage.drawText('Brahmand App - Sanatan Lok', {
-        x: margin,
-        y: bottomMargin - 12,
-        size: 7.5,
-        font: fontRegular,
-        color: rgb(0.5, 0.5, 0.5),
-      });
+    y -= (blessingHeight + 10);
 
-      const displayPageNum = hasCoverPage ? p : p + 1;
-      curPage.drawText(`Page ${displayPageNum} of ${contentPagesCount}`, {
-        x: margin + contentWidth - 56,
-        y: bottomMargin - 12,
-        size: 7.5,
-        font: fontRegular,
-        color: rgb(0.5, 0.5, 0.5),
-      });
-    }
+    // 6. Marketing Section & App Store Footer
+    const footerHeight = 44;
+    page.drawRectangle({
+      x: singleMargin,
+      y: y - footerHeight,
+      width: sContentWidth,
+      height: footerHeight,
+      color: rgb(0.96, 0.96, 0.97),
+      borderColor: rgb(0.88, 0.88, 0.90),
+      borderWidth: 0.75,
+    });
 
-    // Save PDF
+    page.drawText('Discover the Full Divine Story on Brahmand', {
+      x: singleMargin + 14,
+      y: y - 18,
+      size: 9.5,
+      font: fontBold,
+      color: rgb(0.15, 0.15, 0.15),
+    });
+
+    page.drawText('Download on App Store & Google Play', {
+      x: singleMargin + 14,
+      y: y - 33,
+      size: 8,
+      font: fontRegular,
+      color: rgb(0.45, 0.45, 0.45),
+    });
+
+    page.drawText('Brahmand App - Sanatan Lok', {
+      x: singleMargin + sContentWidth - 170,
+      y: y - 24,
+      size: 9.5,
+      font: fontBold,
+      color: rgb(0.75, 0.28, 0.05),
+    });
+
+    // Save Strictly 1-Page PDF
     const base64Pdf = await doc.saveAsBase64();
     const sanitizedName = data.festivalName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
     const filename = `${sanitizedName}_katha.pdf`;
