@@ -45,8 +45,15 @@ async def send_community_message(
         error_msg = str(e)
         if error_msg in ["Not a community member", "Only verified members can post in State & National community groups"]:
             raise HTTPException(status_code=403, detail="Forbidden")
-        # Moderation reasons or other validation errors
-        raise HTTPException(status_code=400, detail=error_msg)
+        allowed_public_messages = {
+            "Not a community member",
+            "Only verified members can post in State & National community groups",
+            "Offensive content detected",
+            "Invalid message type",
+            "Content too long",
+        }
+        clean_msg = error_msg if error_msg in allowed_public_messages else "Invalid request data"
+        raise HTTPException(status_code=400, detail=clean_msg)
 
 
 @router.get("/community/{community_id}/{subgroup_type}")
@@ -89,7 +96,14 @@ async def send_circle_message(
         error_msg = str(e)
         if error_msg == "Not a circle member":
             raise HTTPException(status_code=403, detail="Forbidden")
-        raise HTTPException(status_code=400, detail=error_msg)
+        allowed_public_messages = {
+            "Not a circle member",
+            "Offensive content detected",
+            "Invalid message type",
+            "Content too long",
+        }
+        clean_msg = error_msg if error_msg in allowed_public_messages else "Invalid request data"
+        raise HTTPException(status_code=400, detail=clean_msg)
 
 
 @router.get("/circle/{circle_id}")
@@ -128,7 +142,14 @@ async def send_direct_message(
         error_msg = str(e)
         if error_msg == "User not found":
             raise HTTPException(status_code=404, detail="Resource not found")
-        raise HTTPException(status_code=400, detail=error_msg)
+        allowed_public_messages = {
+            "User not found",
+            "Offensive content detected",
+            "Invalid message type",
+            "Content too long",
+        }
+        clean_msg = error_msg if error_msg in allowed_public_messages else "Invalid request data"
+        raise HTTPException(status_code=400, detail=clean_msg)
 
 
 @router.get("/dm/conversations")

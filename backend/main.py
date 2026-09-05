@@ -2537,10 +2537,9 @@ async def get_users_batch(
     result = []
     # ⚡ Bolt Optimization: Replace db.get_documents_batch with asyncio.gather
     # to avoid threadpool exhaustion and ensure safe hydration
-    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids))
-    
+    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids), return_exceptions=True)
     for user in users:
-        if user:
+        if user and not isinstance(user, Exception):
             result.append({
                 "id": user.get('id'),
                 "name": user.get('name'),
@@ -13482,6 +13481,20 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     """Create a community request (help, blood, medical, financial, petition)"""
     db = await get_db()
     user_id = token_data["user_id"]
+
+    from datetime import timedelta, timezone
+    recent_threshold = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
+    try:
+        recent_requests = await db.query_documents(
+            'community_requests',
+            filters=[('user_id', '==', user_id), ('title', '==', data.title)]
+        )
+        if recent_requests:
+            recent_requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+            if str(recent_requests[0].get('created_at', '')) >= recent_threshold:
+                return recent_requests[0]
+    except Exception as dup_err:
+        logger.warning(f"Error checking duplicate community requests: {dup_err}")
     user = (await db.get_document('users', user_id)) or {}
     
     # Get user location info for visibility matching
@@ -16122,10 +16135,10 @@ async def home_init(request: Request, seen_ids: str = '', token_data: dict = Dep
     )
     
     return {
-        "feed": feed if not isinstance(feed, Exception) else {"items": [], "has_more": False},
-        "community_requests": requests if not isinstance(requests, Exception) else [],
-        "communities": communities if not isinstance(communities, Exception) else [],
-        "unread_count": unread.get("unread_count", 0) if isinstance(unread, dict) else 0,
+        "feed": feed if (not isinstance(feed, Exception) and isinstance(feed, dict)) else {"items": [], "has_more": False},
+        "community_requests": requests if (not isinstance(requests, Exception) and isinstance(requests, list)) else [],
+        "communities": communities if (not isinstance(communities, Exception) and isinstance(communities, list)) else [],
+        "unread_count": unread.get("unread_count", 0) if (not isinstance(unread, Exception) and isinstance(unread, dict)) else 0,
         "next_festival": festival if not isinstance(festival, Exception) else None
     }
 
@@ -16449,6 +16462,14 @@ async def handle_send_dm_socket(sid, data):
                 )
             except Exception as e:
                 logger.error(f"Background DM save error: {e}")
+                try:
+                    await sio.emit('dm_failed', {
+                        'temp_id': response_msg['id'],
+                        'chat_id': chat_id,
+                        'error': 'Message persistence failed'
+                    }, room=f"user_{sender_id}")
+                except Exception as emit_err:
+                    logger.warning(f"Failed to emit dm_failed socket event: {emit_err}")
 
         asyncio.create_task(_save_dm_background())
             

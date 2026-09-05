@@ -614,14 +614,11 @@ api.interceptors.response.use(
 
     // If backend is temporarily unavailable, return a graceful fallback only for read requests.
     if (RETRYABLE_STATUS_CODES.has(status) && RETRYABLE_METHODS.has(method)) {
-      console.warn(
-        "[API] Backend unavailable, returning fallback payload for 503/502",
-      );
       return Promise.resolve({
-        data: null,
-        status: error.response.status,
-        statusText: error.response.statusText,
-        headers: error.response.headers,
+        data: [],
+        status: error.response?.status || 503,
+        statusText: error.response?.statusText || "Service Unavailable",
+        headers: error.response?.headers || {},
         config: config,
       });
     }
