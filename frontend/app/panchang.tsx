@@ -435,7 +435,13 @@ export default function PanchangScreen() {
         }
       >
         {loading ? (
-          <BrandedLoading message="Fetching Cosmic Calculations..." />
+          <BrandedLoading
+            message={
+              language === 'hi'
+                ? 'पंचांग की गणना की जा रही है...'
+                : 'Fetching Cosmic Calculations...'
+            }
+          />
         ) : error ? (
           <Text style={styles.emptyText}>{error}</Text>
         ) : (
