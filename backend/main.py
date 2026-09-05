@@ -10655,15 +10655,23 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 # =================== EVENTS ===================
 
 @api_router.get("/events")
-async def get_events(token_data: dict = Depends(verify_token)):
+async def get_events(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('events', limit=20)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+    docs = await db.query_documents('events', limit=fetch_limit)
+    return docs[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.get("/events/nearby")
-async def get_nearby_events(token_data: dict = Depends(verify_token)):
+async def get_nearby_events(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('events', limit=10)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+    docs = await db.query_documents('events', limit=fetch_limit)
+    return docs[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/events/{event_id}/attend")

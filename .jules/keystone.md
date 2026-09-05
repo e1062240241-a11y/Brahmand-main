@@ -53,3 +53,18 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-05 - Request version tokens for race conditions
 **Learning:** When making asynchronous requests to fetch state that might be modified concurrently by other requests or components, responses from older requests resolving later can overwrite newer state.
 **Action:** Use a global, monotonically increasing request token variable (e.g. `_nextProfileVersion`). Capture the token before making the async request, and pass it to the state updater. The updater should ignore the payload if the token is older than the currently stored version.
+
+## 2026-09-06 - Limit-offset bounds for Event query endpoints
+**Learning:** Hardcoded query limits on `/events` and `/events/nearby` caused static batch sizes (20 or 10 events) without pagination support. As events accumulate at 1 lakh+ scale, clients cannot fetch subsequent pages of events.
+**Action:** Added optional `limit` (default 20, max 100) and `offset` (default 0) query parameters to `EventService.get_events`, `EventService.get_nearby_events`, `event_routes.py`, and `main.py`, bounding Firestore reads to `fetch_limit = safe_offset + safe_limit` and slicing the returned dataset accordingly.
+
+CODEBASE MAP:
+ENDPOINTS NEEDING PAGINATION:
+- `/temples` — loads all temples — FIXED
+- `/temples/nearby` — loads all temples before slice — FIXED
+- `/notifications` — loads all historical user notifications — FIXED
+- `/help-requests/my` — loads all historical user help requests — FIXED
+- `/community-requests/my` — loads all historical user community requests — FIXED
+- `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
+- `/events` — hardcoded limit without offset pagination — FIXED
+- `/events/nearby` — hardcoded limit without offset pagination — FIXED
