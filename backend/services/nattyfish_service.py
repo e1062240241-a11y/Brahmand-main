@@ -113,7 +113,7 @@ class NattyFishService:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await client.get(NattyFishService.ENDPOINT, params=params)
 
-            logger.info(f"[NattyFish] SMS Response Status: {response.status_code}, Body: {response.text}")
+            logger.info(f"[NattyFish] SMS Response Status: {response.status_code}, Body: {response.text[:200]}")
 
             if response.status_code == 200:
                 try:
@@ -140,7 +140,7 @@ class NattyFishService:
                         detail="SMS gateway returned an unexpected response."
                     )
             else:
-                logger.error(f"[NattyFish] HTTP {response.status_code}: {response.text}")
+                logger.error(f"[NattyFish] HTTP {response.status_code}: {response.text[:200]}")
                 raise HTTPException(
                     status_code=502,
                     detail="SMS gateway HTTP error"
