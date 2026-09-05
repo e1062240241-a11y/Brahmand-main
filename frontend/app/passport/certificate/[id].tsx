@@ -941,7 +941,9 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Certificates</Text>
           <View style={{ width: 40 }} />
-      {!chariotUri ? (
+        </View>
+
+        {!chariotUri ? (
         <View style={styles.webView} />
       ) : Platform.OS === 'web' ? (
         <iframe
