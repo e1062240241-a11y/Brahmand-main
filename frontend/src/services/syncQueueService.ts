@@ -74,10 +74,13 @@ export async function queueRequest(url: string, method: string, data: any) {
     _sync_payload: serialized
   });
 
+  const MAX_QUEUE_SIZE = 50;
   if (Platform.OS === 'web') {
-    // Web fallback using local storage
     try {
-      const queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
+      let queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
+      if (queue.length >= MAX_QUEUE_SIZE) {
+        queue = queue.slice(queue.length - (MAX_QUEUE_SIZE - 1));
+      }
       queue.push({ url, method, payload: wrappedPayload, created_at: Date.now() });
       localStorage.setItem('brahmand_sync_queue', JSON.stringify(queue));
     } catch (e) {
