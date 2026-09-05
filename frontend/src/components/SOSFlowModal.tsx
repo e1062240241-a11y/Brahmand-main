@@ -264,7 +264,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         </View>
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(2)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(2)} accessibilityRole="button" accessibilityLabel="Start SOS">
         <View style={styles.buttonIconContainer}>
           <Text style={styles.exclamationMark}>!</Text>
         </View>
@@ -280,7 +280,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep2 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() => setStep(1)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(1)} style={styles.headerIconButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -301,6 +301,8 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         ].map((t) => (
           <TouchableOpacity
             key={t.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Select ${t.label} emergency`}
             style={[styles.typeButton, emergencyType === t.id && styles.typeButtonActive]}
             onPress={() => {
               setEmergencyType(t.id);
@@ -324,11 +326,11 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         ))}
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(3)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(3)} accessibilityRole="button" accessibilityLabel="Continue">
         <Text style={styles.mainButtonText}>CONTINUE</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onClose} style={styles.cancelLink}>
+      <TouchableOpacity onPress={onClose} style={styles.cancelLink} accessibilityRole="button" accessibilityLabel="Cancel SOS">
         <Text style={styles.cancelLinkText}>Cancel SOS</Text>
       </TouchableOpacity>
     </View>
@@ -337,7 +339,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep3 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() => setStep(2)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(2)} style={styles.headerIconButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -391,11 +393,11 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         <Ionicons name="lock-closed" size={18} color="#999" />
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(4)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(4)} accessibilityRole="button" accessibilityLabel="Create SOS">
         <Text style={styles.mainButtonText}>CREATE SOS</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setStep(2)} style={styles.cancelLink}>
+      <TouchableOpacity onPress={() => setStep(2)} style={styles.cancelLink} accessibilityRole="button" accessibilityLabel="Go back">
         <Text style={styles.cancelLinkText}>Back</Text>
       </TouchableOpacity>
     </View>
@@ -404,7 +406,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep4 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() => setStep(3)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(3)} style={styles.headerIconButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -428,6 +430,8 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
       <TouchableOpacity 
         style={[styles.mainButton, styles.cancelButton]} 
         onPress={() => setStep(3)}
+        accessibilityRole="button"
+        accessibilityLabel="Cancel"
       >
         <Text style={styles.cancelButtonText}>CANCEL SOS</Text>
       </TouchableOpacity>
@@ -446,7 +450,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         <View style={styles.overlay}>
           <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.sheetHandle} />
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close modal">
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
 
