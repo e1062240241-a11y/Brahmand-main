@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../constants/theme';
 import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
+import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 
 interface RelatedFestival {
   id?: string;
@@ -380,7 +381,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const rawPurpose = enrichment?.purpose || festival.purpose;
   const rawImportance = enrichment?.importance || festival.importance;
   const rawCelebration = enrichment?.celebration || festival.celebration;
-  const rawPujaVidhi = festival.puja_vidhi || (festival.rituals ? (Array.isArray(festival.rituals) ? festival.rituals.join('. ') : festival.rituals) : null);
+  const rawPujaVidhi = festival.puja_vidhi || (festival.rituals ? (Array.isArray(festival.rituals) ? festival.rituals.join('. ') : festival.rituals) : null) || getFestivalPujaVidhi(festivalName, festival).title;
   const rawMantra = enrichment?.mantra || festival.mantra;
 
   const funFacts: string[] = enrichment?.fun_facts ?? festival.funFacts ?? festival.fun_facts ?? [];
