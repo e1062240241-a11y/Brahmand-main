@@ -26,6 +26,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { scheduleDailyScriptureNotifications } from '../../src/services/pushNotifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -127,6 +128,7 @@ const BOOK_COVERS: Record<string, any> = {
 function LibraryPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const language = useLanguageStore((state) => state.language);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [saved, setSaved] = useState<Set<string>>(new Set());
@@ -291,10 +293,15 @@ function LibraryPage() {
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {recentBooks.length > 0 && (
               <View style={[styles.sectionWrapper, { marginTop: 16 }]}>
+                {/* 🧡 Engagement: Reframed transactional reading section title to devotional Swadhyaya (स्वाध्याय)
+                    Lever: Reframing (Transactional -> Devotional)
+                    Why: "पठन जारी रखें" directly connects with language preferences while keeping UI light. */}
                 <View style={styles.sectionHead}>
                   <View style={styles.headLeft}>
                     <View style={styles.accentBar} />
-                    <Text style={styles.sectionTitle}>Continue Reading</Text>
+                    <Text style={styles.sectionTitle}>
+                      {language === 'hi' ? '📖 पठन जारी रखें' : '📖 Continue Reading'}
+                    </Text>
                   </View>
                 </View>
                 
@@ -320,7 +327,14 @@ function LibraryPage() {
                             <View style={[styles.gitaProgressBarFill, { width: `${Math.max(book.progressPercent, 5)}%` }]} />
                           </View>
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={styles.gitaProgressText}>{Math.round(book.progressPercent)}% Completed</Text>
+                            {/* 🧡 Engagement: Reframed transactional "% Completed" to devotional "% स्वाध्याय पूर्ण"
+                                Lever: Reframing + Cultivating Sanskara (Self-study habit)
+                                Why: "स्वाध्याय" frame encourages sacred daily reading habit over task completion. */}
+                            <Text style={styles.gitaProgressText}>
+                              {language === 'hi'
+                                ? `${Math.round(book.progressPercent)}% स्वाध्याय पूर्ण`
+                                : `${Math.round(book.progressPercent)}% Studied`}
+                            </Text>
                             <Text style={[styles.gitaProgressText, { opacity: 0.6 }]}>{timeString}</Text>
                           </View>
                         </View>
