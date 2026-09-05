@@ -40,6 +40,7 @@ export interface StoryChapter {
   id: number;
   title: string;
   content: string;
+  icon?: 'lotus' | 'diya' | 'star' | 'hands' | 'swing';
 }
 
 export function getFestivalChapters(festival: any, sectionValue?: string): {
@@ -50,6 +51,7 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
   tradition: string;
   chapters: StoryChapter[];
   blessing: string;
+  poeticBlessing: string;
 } {
   const festivalName = (festival?.festival_name || festival?.name || festival?.title || 'Sacred Festival').trim();
   const lowerName = festivalName.toLowerCase();
@@ -76,6 +78,7 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
   let deity = festival?.deity || festival?.deities || 'The Supreme Divine';
   let date = festival?.date || festival?.start_date || 'Auspicious Sanatan Calendar';
   let tradition = festival?.tradition || festival?.significance || 'Pooja, Vrat & Vedic Mantras';
+  let poeticBlessing = '';
 
   let chapters: StoryChapter[] = [];
 
@@ -83,109 +86,83 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
     subtitle = 'The Divine Union of Shiva & Parvati • Shravan Shukla Tritiya';
     deity = 'Lord Shiva & Goddess Parvati';
     tradition = 'Nirjala Fast, Green Attire & Sawan Swings';
+    poeticBlessing = 'May the sacred monsoon blessings of Hariyali Teej fill your home with lush joy, eternal love, and divine harmony. As Goddess Parvati and Lord Shiva unite in celestial grace, may your life be endlessly blessed with prosperity, health, and spiritual fulfillment.';
     chapters = [
-      { id: 1, title: 'The Sacred Longing', content: 'Long ago, Goddess Parvati desired Lord Shiva as her divine consort. Shiva, immersed in deep samadhi on Mount Kailash, remained detached from worldly desires. Parvati realized that only supreme, selfless devotion and austere penance could awaken his cosmic grace.' },
-      { id: 2, title: '108 Lifetimes of Tapasya', content: 'Goddess Parvati embarked on severe austerities spanning 108 lifetimes across rugged mountain caves and dense Shravan forests. Renouncing all comfort, food, and water, she meditated amidst scorching summer heat, torrential monsoon rains, and freezing snows.' },
-      { id: 3, title: 'Divine Reunion', content: 'Moved by her unyielding love and penance, Lord Shiva manifested before her on the third day (Tritiya) of Shravan. He accepted Parvati as his eternal divine consort, filling the universe with cosmic celebration and monsoon blooms.' },
-      { id: 4, title: 'Akhand Saubhagya Blessings', content: 'Goddess Parvati decreed that any devotee observing fasts, wearing festive green bangles, and offering prayers on this holy day will be blessed with lifelong marital harmony, prosperity, and unbroken grace.' },
-      { id: 5, title: 'Sawan Celebration', content: 'Women gather in courtyards wearing green and red attire, apply intricate mehndi on palms, swing on flower-decked jhulas, sing Teej folk songs, and share traditional sweets like Ghevar.' }
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'Long ago, Goddess Parvati desired Lord Shiva as her divine consort, awakening his cosmic grace through selfless devotion.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Goddess Parvati embarked on severe austerities spanning 108 lifetimes across rugged mountain caves and dense Shravan forests.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'Moved by her unyielding penance, Lord Shiva manifested on Shravan Tritiya and accepted Parvati as his eternal consort.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Devotees observing Teej fasts and prayers receive Akhand Saubhagya, lifelong marital harmony, and celestial blessings.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'Women gather in green attire, apply mehndi on palms, swing on floral jhulas, and celebrate with sweet Ghevar.' }
     ];
-  } else if (isKajariTeej) {
-    subtitle = 'Neem Mata Vrat, Sattu Offerings & Moon Worship • Bhadrapada';
-    deity = 'Lord Shiva, Goddess Parvati & Neem Mata';
-    tradition = 'Sattu Offering, Arghya to Moon & Fasting';
+  } else if (isShivratri) {
+    subtitle = 'Anand Tandava & Cosmic Light of Shivling • Phalguna Krishna Chaturdashi';
+    deity = 'Lord Shiva & Maa Parvati';
+    tradition = 'All-Night Vigil, Belpatra Abhishekam & Fasting';
+    poeticBlessing = 'May the infinite light of Mahadev and the sacred grace of Goddess Parvati illuminate your spiritual journey with timeless peace, inner strength, and supreme liberation.';
     chapters = [
-      { id: 1, title: 'The Devoted Son', content: 'Kajari Teej (Badi Teej) falls in Bhadrapada month during dark monsoon clouds (Kajari). Legend narrates the tale of a poor Brahmin family who had no food for the sacred Teej fast. The young son risked his life at midnight to fetch Sattu (roasted flour dough) for his mother’s Neem Mata worship.' },
-      { id: 2, title: 'Sacred Sattu Reward', content: 'When caught by temple guards, the poor Brahmin lad explained his mother’s holy vow to worship Neem Mata and break fast only with Sattu. Touched by his filial piety and pure devotion, the King rewarded the family with golden vessels and sattu for a lifetime.' },
-      { id: 3, title: 'Moonlight Offering', content: 'On Kajari Teej evening, married women worship Neem tree branches decorated with cucumber and lamps, offering Arghya (water libation) to the rising Moon after spotting its divine glow through a sieve.' },
-      { id: 4, title: 'Marital Grace & Fasting', content: 'Women observe strict Nirjala fast (without water) for the longevity of their husbands and family prosperity, breaking their fast by eating special Sattu laddus after moonrise.' },
-      { id: 5, title: 'Kajari Songs & Tradition', content: 'Villages across Rajasthan, UP, and MP resonate with soulful Kajari folk songs describing monsoon rains, swings, and devotion to Goddess Parvati under starry skies.' }
-    ];
-  } else if (isNagPanchami) {
-    subtitle = 'Serpent Reverence, Samudra Manthan & Shiva Grace • Shravan';
-    deity = 'Nag Devta (Vasuki, Sheshnaag) & Lord Shiva';
-    tradition = 'Milk Libation, Turmeric Drawings & Protection';
-    chapters = [
-      { id: 1, title: 'Serpent Reverence', content: 'Nag Panchami is dedicated to Nag Devta (serpent deities) like Vasuki, Sheshnaag, and Kaliya. Legend says a farmer accidentally disturbed a serpent nest while plowing. The mother serpent spared his daughter who offered fresh milk and prayers with pure devotion.' },
-      { id: 2, title: 'Samudra Manthan & Vasuki', content: 'During the cosmic churning of the ocean (Samudra Manthan), deadly Halahala poison emerged. Lord Shiva drank the poison to save the cosmos, and King Vasuki aided in holding the cosmic churn. Shiva adorned snakes as sacred ornaments, blessing them with divine protection forever.' },
-      { id: 3, title: 'Kaliya Mardan', content: 'On Nag Panchami day, Lord Krishna conquered the venomous serpent Kaliya who poisoned the Yamuna river. Krishna danced upon Kaliya’s hoods and blessed him, restoring purity and life to Vrindavan waters.' },
-      { id: 4, title: 'Protective Rituals', content: 'Devotees offer milk, rice, turmeric, and flowers at snake idols or Shivlings to seek protection from venomous bites, negative energies, and Kaal Sarp Dosh.' },
-      { id: 5, title: 'Monsoon Traditions', content: 'Families draw snake figures with turmeric paste at doorstep entrances, cook sweet dishes, and offer prayers in Shiva temples across the nation during Shravan month.' }
-    ];
-  } else if (isRakshaBandhan) {
-    subtitle = 'Sacred Thread of Sibling Protection & Krishna Grace • Shravana Purnima';
-    deity = 'Lord Krishna, Draupadi & Lord Yama';
-    tradition = 'Tying Rakhi Thread, Tilak & Protection Pledge';
-    chapters = [
-      { id: 1, title: 'Draupadi & Krishna', content: 'The most famous mythological story of Raksha Bandhan comes from the Mahabharata. When Lord Krishna cut his finger on the Sudarshan Chakra during the battle with Shishupala, Draupadi immediately tore a strip of silk cloth from her saree and wrapped it securely around Krishna’s bleeding wound.' },
-      { id: 2, title: 'Eternal Divine Vow', content: 'Deeply moved by Draupadi’s selfless sisterly love, Lord Krishna vowed to protect her dignity and honor whenever she called upon him. He fulfilled this vow during the infamous cheer-haran in the Kaurava court, supplying an endless ream of divine silk saree.' },
-      { id: 3, title: 'Queen Karnavati of Chittor', content: 'In historical folklore, Rani Karnavati of Mewar sent a sacred Rakhi thread to Mughal Emperor Humayun when facing attack from Bahadur Shah. Humayun immediately honored the sacred thread and marched his troops to defend her honour.' },
-      { id: 4, title: 'The Sacred Thread Ceremony', content: 'Sisters tie decorative Rakhi threads around their brothers’ wrists, apply auspicious sandalwood tilak, offer sweets, and pray for their longevity. Brothers present gifts and pledge lifelong protection.' },
-      { id: 5, title: 'Bond of Universal Affection', content: 'Raksha Bandhan transcends biological ties; it symbolizes mutual respect, unconditional support, and the sanctity of protective relationships throughout society.' }
-    ];
-  } else if (isJanmashtami) {
-    subtitle = 'Divine Nativity of Lord Krishna & Vrindavan Leelas • Bhadrapada';
-    deity = 'Lord Sri Krishna & Devaki-Vasudeva';
-    tradition = 'Midnight Vigil (Nishita Puja), Fasting & Dahi Handi';
-    chapters = [
-      { id: 1, title: 'Divine Birth in Mathura', content: 'Janmashtami celebrates the divine manifestation of Lord Krishna, the eighth avatar of Lord Vishnu, born in a dark dungeon in Mathura at midnight during torrential monsoon rain to overthrow the cruel tyrant King Kamsa.' },
-      { id: 2, title: 'Crossing the Yamuna', content: 'Vasudeva miraculously carried baby Krishna across the raging, swollen Yamuna river in a wicker basket, shielded by the multi-hooded Sheshnaag, safely delivering him to Nanda and Yashoda in Gokul.' },
-      { id: 3, title: 'Childhood Leelas of Makhan Chor', content: 'Little Krishna enchanted Vrindavan with his divine flute melodies, stole freshly churned butter (Makhan) with his gopa companions, and vanquished demons sent by Kamsa like Putana and Trinavarta.' },
-      { id: 4, title: 'Flute, Devotion & Midnight Puja', content: 'Devotees observe fasts until midnight, decorate home temples with fresh flowers and peacock feathers, sing devotional bhajans, and rock baby Krishna in ornate silver cradles.' },
-      { id: 5, title: 'Dahi Handi Festivities', content: 'Youth groups form multi-tier human pyramids across cities during Dahi Handi competitions to break earthen pots filled with curd and butter suspended high in the air, echoing Krishna’s joyful childhood.' }
-    ];
-  } else if (isGaneshChaturthi) {
-    subtitle = 'Manifestation of Ganesha & Wisdom of Modaks • Bhadrapada';
-    deity = 'Lord Ganesha (Vighnaharta)';
-    tradition = 'Ganesh Sthapana, 21 Modaks, Durva Grass & Visarjan';
-    chapters = [
-      { id: 1, title: 'Divine Manifestation', content: 'Goddess Parvati created Ganesha from turmeric paste while preparing for her bath and infused life into him. When he dutifully guarded her doorway against Lord Shiva, Shiva in divine wrath severed his head, later restoring him with an elephant head.' },
-      { id: 2, title: 'Prathama Pujya Boon', content: 'To settle a race around the cosmos between Ganesha and Kartikeya, Ganesha wisely circumambulated his divine parents Shiva and Parvati, declaring them as the entire universe. He earned the supreme boon of Prathama Pujya (first worshipped deity before all auspicious beginnings).' },
-      { id: 3, title: 'Modak & Cosmic Wisdom', content: 'Ganesha’s fondness for sweet Modaks represents the supreme joy of spiritual enlightenment. As the Divine Scribe, he wrote the epic Mahabharata dictated by Sage Vyasa with his broken tusk without pausing.' },
-      { id: 4, title: 'Ganesh Sthapana & Aarti', content: 'Devotees welcome clay idols of Bappa into homes and pandals with dhol beats, performing daily Aarti, chanting the Atharvashirsha, and offering 21 Modaks and fresh Durva grass.' },
-      { id: 5, title: 'Visarjan & Eternal Blessing', content: 'On Anant Chaturdashi, grand Visarjan processions immerse Bappa in sacred water bodies with resounding chants of "Ganpati Bappa Morya, Pudhchya Varshi Lavkar Ya!", praying for the removal of all obstacles.' }
-    ];
-  } else if (isNavratri) {
-    subtitle = 'Cosmic Shakti & Goddess Durga Triumph over Mahishasura • Ashwin / Chaitra';
-    deity = 'Maa Durga & Navadurga';
-    tradition = '9 Nights Fasting, Garba/Dandiya & Kanya Pujan';
-    chapters = [
-      { id: 1, title: 'Cosmic Manifestation of Shakti', content: 'Navratri honors Goddess Durga’s victory over Mahishasura. The combined cosmic energies of Brahma, Vishnu, and Shiva manifested the ten-armed Mother Goddess armed with celestial weapons to vanquish demonic oppression.' },
-      { id: 2, title: 'The Nine Divine Manifestations', content: 'Devotees worship the Navadurga—Shailaputri, Brahmacharini, Chandraghanta, Kushmanda, Skandamata, Katyayani, Kalaratri, Mahagauri, and Siddhidatri—over nine auspicious nights.' },
-      { id: 3, title: 'Mahishasura Mardini', content: 'On Vijayadashami (Dussehra), Goddess Durga annihilated the buffalo demon Mahishasura after an intense 9-day battle, re-establishing righteous cosmic order and peace across all realms.' },
-      { id: 4, title: 'Garba, Dandiya & Durga Saptashati', content: 'Communities perform Garba and Dandiya Raas in vibrant traditional attire, observing sacred fasts and chanting the sacred Durga Saptashati hymns.' },
-      { id: 5, title: 'Kanya Pujan & Divine Grace', content: 'On Ashtami and Navami, young girls are worshipped as living embodiments of Goddess Durga, offered Halwa, Puri, and gifts to invoke boundless health, wisdom, and prosperity.' }
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'Lord Shiva manifested as Lingodbhava, an infinite pillar of cosmic light with neither beginning nor end, surpassing all ego.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'During Samudra Manthan, Shiva drank the deadly Halahala poison to protect all beings, earning the name Neelkanth.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'The holy wedding night of Shiva and Parvati, uniting Purusha (Cosmic Consciousness) and Prakriti (Nature).' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Devotees offer sacred Belpatra and water in four-prahara Abhishekam, purifying the mind and washing away all sins.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'All-night Jagran, soulful Shiva Tandava chants, meditation, and breaking fast at dawn with inner tranquility.' }
     ];
   } else if (isDiwali) {
     subtitle = 'Return of Lord Rama & Worship of Goddess Lakshmi • Kartik Amavasya';
     deity = 'Lord Rama, Goddess Lakshmi & Lord Ganesha';
-    tradition = 'Lighting Diyas, Rangoli, Lakshmi Puja & Family Feasts';
+    tradition = 'Lighting Diyas, Rangoli & Lakshmi Pujan';
+    poeticBlessing = 'May the divine radiance of millions of earthen diyas illuminate your home with eternal joy, supreme prosperity, and the boundless grace of Goddess Lakshmi and Lord Ganesha.';
     chapters = [
-      { id: 1, title: 'Triumphant Return to Ayodhya', content: 'Diwali marks Lord Rama’s glorious return to Ayodhya with Sita and Lakshman after 14 years of exile and his victory over the demon king Ravana. The joyous citizens illuminated Ayodhya with millions of earthen oil diyas.' },
-      { id: 2, title: 'Manifestation of Goddess Lakshmi', content: 'Goddess Lakshmi, the deity of prosperity and auspiciousness, emerged during the cosmic churning of the milk ocean (Samudra Manthan) and chose Lord Vishnu as her divine consort on Kartik Amavasya.' },
-      { id: 3, title: 'Five Days of Celebration', content: 'Diwali festivities span 5 holy days: Dhanteras (wealth and health), Naraka Chaturdashi (victory over darkness), Lakshmi Pujan (auspicious invocation), Govardhan Puja (nature gratitude), and Bhai Dooj (sibling bonds).' },
-      { id: 4, title: 'Lighting Diyas & Prosperity', content: 'Homes are thoroughly cleaned, decorated with colorful Rangoli patterns, and lit up with earthen lamps to welcome Goddess Lakshmi and dispel all inner darkness.' },
-      { id: 5, title: 'Joyful Reconnections & Charity', content: 'Families exchange sweets, wear new garments, distribute food to the less fortunate, and celebrate the eternal victory of light over darkness and good over evil.' }
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'Lord Rama triumphantly returned to Ayodhya after 14 years of exile and victory over darkness, welcomed with glowing lamps.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Goddess Lakshmi emerged from the cosmic milk ocean (Samudra Manthan) on Kartik Amavasya, choosing Lord Vishnu.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'Light triumphs eternally over darkness, truth over deception, and righteous dharma over all demonic ignorance.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Families perform Lakshmi and Ganesha Puja, invoking wealth, intellect, pure thoughts, and auspicious fortune.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'Decorating homes with vibrant Rangoli, lighting clay diyas, exchanging sweet delicacies, and sharing joy.' }
     ];
-  } else if (isShivratri) {
-    subtitle = 'Anand Tandava & Cosmic Light of Shivling • Phalguna Krishna Chaturdashi';
-    deity = 'Lord Shiva (Mahadev) & Goddess Parvati';
-    tradition = 'All-Night Vigil (Jagran), Abhishekam with Belpatra & Fasting';
+  } else if (isJanmashtami) {
+    subtitle = 'Divine Nativity of Lord Krishna & Vrindavan Leelas • Bhadrapada';
+    deity = 'Lord Sri Krishna & Devaki-Vasudeva';
+    tradition = 'Midnight Vigil, Fasting & Dahi Handi';
+    poeticBlessing = 'May the enchanting melodies and celestial presence of Lord Sri Krishna fill your soul with unconditional devotion, divine wisdom, joy, and righteous courage.';
     chapters = [
-      { id: 1, title: 'The Infinite Pillar of Light', content: 'Maha Shivratri commemorates the cosmic night Lord Shiva manifested as Lingodbhava—an infinite pillar of cosmic light with neither beginning nor end—surpassing the pride of Brahma and Vishnu.' },
-      { id: 2, title: 'Shiva-Parvati Divine Wedding', content: 'Maha Shivratri is also celebrated as the holy wedding night of Lord Shiva and Goddess Parvati, symbolizing the eternal union of Purusha (Cosmic Consciousness) and Prakriti (Nature).' },
-      { id: 3, title: 'Neelkanth & Samudra Manthan', content: 'During Samudra Manthan, Shiva held the deadly Halahala poison in his throat to save all living beings from destruction, earning the revered title of Neelkanth (The Blue-Throated Lord).' },
-      { id: 4, title: 'Maha Abhishekam & Belpatra', content: 'Devotees observe an all-night vigil (Jagran), performing continuous four-prahara Abhishekam on the Shivling with milk, honey, yogurt, Ganga water, and sacred Belpatra leaves.' },
-      { id: 5, title: 'Moksha & Spiritual Liberation', content: 'Devotees break their fast after sunrise, blessed with deep inner serenity, self-realization, liberation (Moksha), and the eradication of negative karma.' }
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'Lord Krishna manifested at midnight in a Mathura dungeon during torrential monsoon rains to vanquish tyrant Kamsa.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Vasudeva bravely crossed the raging Yamuna shielded by Sheshnaag to safely deliver baby Krishna to Gokul.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'Young Krishna performed miraculous leelas in Vrindavan, defeating fearsome demons and playing his divine flute.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Devotees observe midnight Nishita fast, rocking baby Krishna in silver cradles and chanting sacred hymns.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'Youth form human pyramids to break butter-filled Dahi Handi pots, singing and dancing in supreme spiritual bliss.' }
+    ];
+  } else if (isGaneshChaturthi) {
+    subtitle = 'Manifestation of Ganesha & Wisdom of Modaks • Bhadrapada';
+    deity = 'Lord Ganesha (Vighnaharta)';
+    tradition = 'Ganesh Sthapana, 21 Modaks & Visarjan';
+    poeticBlessing = 'May Lord Vighnaharta remove all obstacles from your path, blessing you and your loved ones with auspicious beginnings, deep intellect, peace, and eternal fulfillment.';
+    chapters = [
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'Mother Parvati created Ganesha from turmeric paste, infusing him with life to guard her sacred sanctum.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Ganesha circumambulated his divine parents Shiva and Parvati as the entire cosmos, earning Prathama Pujya boon.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'As the Divine Scribe with supreme intellect, Ganesha penned the entire Mahabharata with his broken tusk.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Offering 21 sweet modaks and fresh Durva grass, devotees invoke blessings to overcome every life obstacle.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'Grand Visarjan processions with dhol beats and chants of "Ganpati Bappa Morya", celebrating divine presence.' }
+    ];
+  } else if (isNavratri) {
+    subtitle = 'Cosmic Shakti & Goddess Durga Triumph • Ashwin / Chaitra';
+    deity = 'Maa Durga & Navadurga';
+    tradition = '9 Nights Fasting, Garba & Kanya Pujan';
+    poeticBlessing = 'May the supreme nine manifestations of Maa Durga bless you with boundless courage, spiritual illumination, and righteous victory over all life’s challenges.';
+    chapters = [
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: 'The combined cosmic radiance of the Trinity manifested ten-armed Goddess Durga armed with celestial weapons.' },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Nine nights of intense tapasya worshipping the Navadurga embodiments of purity, wisdom, and cosmic valor.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'On Vijayadashami, Maa Durga vanquished Mahishasura, re-establishing cosmic harmony and righteous order.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: 'Devotees observe sacred fasts, chant Durga Saptashati, and perform Kanya Pujan honoring the divine feminine.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: 'Vibrant Garba and Dandiya Raas in traditional attire, uniting communities in devotion and spiritual joy.' }
     ];
   } else {
     // Dynamic authentic fallback
+    poeticBlessing = `May the divine blessings and sacred grace of ${cleanTextForPdf(festivalName)} fill your home with lush joy, eternal peace, righteous wisdom, and spiritual fulfillment.`;
     chapters = [
-      { id: 1, title: 'Sacred Origin', content: sentences.slice(0, 2).join(' ') || storyText || `${festivalName} has been celebrated since Vedic antiquity to honor divine cosmic forces and righteous living.` },
-      { id: 2, title: 'Mythological Legend', content: sentences.slice(2, 4).join(' ') || storyText || `Ancient scriptures narrate the triumph of virtue, devotion, and divine intervention associated with ${festivalName}.` },
-      { id: 3, title: 'Sacred Rituals', content: sentences.slice(4, 6).join(' ') || storyText || `Devotees observe traditional vows, prepare sacred offerings, chant hymns, and invoke divine blessings for peace and prosperity.` },
-      { id: 4, title: 'Spiritual Teachings', content: sentences.slice(6, 8).join(' ') || storyText || `The celebration teaches humility, detachment from ego, compassion for all living beings, and unwavering faith in Dharma.` },
-      { id: 5, title: 'Community & Joy', content: sentences.slice(8).join(' ') || storyText || `Families and communities unite in joyous harmony, sharing prasadam, singing devotional songs, and preserving Sanatan heritage.` }
+      { id: 1, title: 'The Sacred Genesis', icon: 'lotus', content: sentences[0] || `${festivalName} has been celebrated since antiquity to honor divine cosmic harmony and righteous living.` },
+      { id: 2, title: 'The Divine Resolve', icon: 'diya', content: sentences[1] || 'Ancient scriptures detail how devotees across generations have performed disciplined prayers and vows.' },
+      { id: 3, title: 'The Celestial Triumph', icon: 'star', content: sentences[2] || 'The sacred festival marks the eternal triumph of righteousness, purity, and universal cosmic truth.' },
+      { id: 4, title: 'The Grace of Blessings', icon: 'hands', content: sentences[3] || 'Families offer holy prayers, invoke celestial deities, and receive lifelong protection and prosperity.' },
+      { id: 5, title: 'The Joyous Heritage', icon: 'swing', content: sentences[4] || 'Communities unite in joyous harmony, sharing prasadam, singing devotional hymns, and preserving Dharma.' }
     ];
   }
 
@@ -199,6 +176,7 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
     tradition,
     chapters,
     blessing,
+    poeticBlessing,
   };
 }
 
@@ -215,15 +193,14 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
     doc.setSubject(`Sacred Story and Vrat Katha of ${data.festivalName}`);
     doc.setCreator('Brahmand Vedic Platform');
 
-    const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-    const fontOblique = await doc.embedFont(StandardFonts.HelveticaOblique);
+    const fontHelvetica = await doc.embedFont(StandardFonts.Helvetica);
+    const fontHelveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const fontTimes = await doc.embedFont(StandardFonts.TimesRoman);
+    const fontTimesBold = await doc.embedFont(StandardFonts.TimesRomanBold);
+    const fontTimesItalic = await doc.embedFont(StandardFonts.TimesRomanItalic);
 
     const pageWidth = 595.28; // Standard A4 width
     const pageHeight = 841.89; // Standard A4 height
-    const margin = 36;
-    const contentWidth = pageWidth - margin * 2;
-    const bottomMargin = 45;
 
     let hasCoverPage = false;
     const isHariyaliTeej = data.festivalName.toLowerCase().includes('hariyali');
@@ -282,10 +259,45 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       return { success: true, uri: fileUri };
     }
 
-    // STRICTLY SINGLE-PAGE A4 VECTOR LAYOUT
+    // STRICTLY SINGLE-PAGE A4 MASTER VECTOR LAYOUT
     const singleMargin = 28;
-    const sContentWidth = pageWidth - singleMargin * 2;
+    const sContentWidth = pageWidth - singleMargin * 2; // 539.28 pt
     const page = doc.addPage([pageWidth, pageHeight]);
+
+    // 0. Delicate Cream & Warm Saffron Parchment Background
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      color: rgb(0.995, 0.985, 0.96),
+    });
+
+    // Faint Sacred Mandala Watermarks (vector concentric circles & star rays)
+    const drawMandala = (cx: number, cy: number, maxRadius: number) => {
+      const mandalaColor = rgb(0.94, 0.90, 0.82);
+      for (let r = 16; r <= maxRadius; r += 20) {
+        page.drawCircle({
+          x: cx,
+          y: cy,
+          size: r,
+          borderColor: mandalaColor,
+          borderWidth: 0.5,
+        });
+      }
+      for (let angle = 0; angle < 360; angle += 30) {
+        const rad = (angle * Math.PI) / 180;
+        page.drawLine({
+          start: { x: cx + Math.cos(rad) * 12, y: cy + Math.sin(rad) * 12 },
+          end: { x: cx + Math.cos(rad) * maxRadius, y: cy + Math.sin(rad) * maxRadius },
+          color: mandalaColor,
+          thickness: 0.4,
+        });
+      }
+    };
+
+    drawMandala(pageWidth / 2, pageHeight - 165, 125);
+    drawMandala(pageWidth / 2, 230, 135);
 
     // 1. Royal Outer Double Gold Border
     page.drawRectangle({
@@ -306,225 +318,362 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       borderWidth: 0.8,
     });
 
-    let y = pageHeight - singleMargin - 8;
+    let y = pageHeight - 38;
 
-    // 2. Header Banner
-    const headerHeight = 76;
-    page.drawRectangle({
-      x: singleMargin,
-      y: y - headerHeight,
-      width: sContentWidth,
-      height: headerHeight,
-      color: rgb(0.99, 0.96, 0.90),
-      borderColor: rgb(0.85, 0.55, 0.15),
-      borderWidth: 1.2,
+    // TOP 40%
+    // 2. Brand Header: 'BRAHMAND' in saffron + 'SANATAN DHARMA SACRED HERITAGE'
+    const brandText = 'BRAHMAND';
+    const brandWidth = fontHelveticaBold.widthOfTextAtSize(brandText, 16);
+    page.drawText(brandText, {
+      x: (pageWidth - brandWidth) / 2,
+      y,
+      size: 16,
+      font: fontHelveticaBold,
+      color: rgb(0.85, 0.42, 0.08), // Saffron
     });
 
-    page.drawText('BRAHMAND   |   SANATAN DHARMA HERITAGE', {
-      x: singleMargin + 16,
-      y: y - 20,
+    y -= 15;
+    const tagText = 'SANATAN DHARMA SACRED HERITAGE';
+    const tagWidth = fontHelveticaBold.widthOfTextAtSize(tagText, 8.5);
+    page.drawText(tagText, {
+      x: (pageWidth - tagWidth) / 2,
+      y,
       size: 8.5,
-      font: fontBold,
-      color: rgb(0.75, 0.28, 0.05),
+      font: fontHelveticaBold,
+      color: rgb(0.38, 0.32, 0.25),
     });
 
-    const greetingTitle = `HAPPY ${cleanTextForPdf(data.festivalName).toUpperCase()}`;
-    page.drawText(greetingTitle, {
-      x: singleMargin + 16,
-      y: y - 44,
-      size: 18,
-      font: fontBold,
-      color: rgb(0.12, 0.14, 0.18),
-    });
-
-    page.drawText(cleanTextForPdf(data.subtitle), {
-      x: singleMargin + 16,
-      y: y - 64,
-      size: 9.5,
-      font: fontOblique,
-      color: rgb(0.42, 0.32, 0.18),
-    });
-
-    y -= (headerHeight + 10);
-
-    // 3. Metadata Strip
-    const metaHeight = 24;
-    page.drawRectangle({
-      x: singleMargin,
-      y: y - metaHeight,
-      width: sContentWidth,
-      height: metaHeight,
-      color: rgb(0.97, 0.97, 0.98),
-      borderColor: rgb(0.88, 0.88, 0.90),
-      borderWidth: 0.8,
-    });
-
-    page.drawText(`Date: ${cleanTextForPdf(data.date)}`, {
-      x: singleMargin + 14,
-      y: y - 16,
-      size: 8.8,
-      font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    page.drawText(`Deity: ${cleanTextForPdf(data.deity)}`, {
-      x: singleMargin + 175,
-      y: y - 16,
-      size: 8.8,
-      font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    page.drawText(`Tradition: ${cleanTextForPdf(data.tradition).slice(0, 36)}`, {
-      x: singleMargin + 340,
-      y: y - 16,
-      size: 8.8,
-      font: fontBold,
-      color: rgb(0.2, 0.2, 0.2),
-    });
-
-    y -= (metaHeight + 14);
-
-    // 4. Section Title: 5 Sacred Chapters
-    page.drawText('THE 5 SACRED KATHA CHAPTERS', {
-      x: singleMargin + 2,
-      y: y,
-      size: 10,
-      font: fontBold,
-      color: rgb(0.75, 0.28, 0.05),
-    });
-
+    // Small ornate divider line
+    y -= 12;
     page.drawLine({
-      start: { x: singleMargin + 185, y: y + 3 },
-      end: { x: singleMargin + sContentWidth, y: y + 3 },
+      start: { x: pageWidth / 2 - 80, y },
+      end: { x: pageWidth / 2 + 80, y },
+      thickness: 0.8,
+      color: rgb(0.85, 0.68, 0.35),
+    });
+
+    // 3. Massive Embossed 3D Gold Typography reads [FESTIVAL_NAME]
+    y -= 38;
+    const festivalTitle = cleanTextForPdf(data.festivalName).toUpperCase();
+    const titleSize = festivalTitle.length > 20 ? 21 : 25;
+    const titleWidth = fontHelveticaBold.widthOfTextAtSize(festivalTitle, titleSize);
+    const titleX = (pageWidth - titleWidth) / 2;
+
+    // 3D Shadow layer
+    page.drawText(festivalTitle, {
+      x: titleX + 1.5,
+      y: y - 1.5,
+      size: titleSize,
+      font: fontHelveticaBold,
+      color: rgb(0.48, 0.32, 0.12),
+    });
+    // Highlight layer
+    page.drawText(festivalTitle, {
+      x: titleX - 0.5,
+      y: y + 0.5,
+      size: titleSize,
+      font: fontHelveticaBold,
+      color: rgb(0.98, 0.90, 0.60),
+    });
+    // Main Gold layer
+    page.drawText(festivalTitle, {
+      x: titleX,
+      y,
+      size: titleSize,
+      font: fontHelveticaBold,
+      color: rgb(0.82, 0.60, 0.18),
+    });
+
+    // 4. Elegant Dark Brown Serif Text reads [POETIC_BLESSING]
+    y -= 22;
+    const wrappedBlessing = wrapText(cleanTextForPdf(data.poeticBlessing), fontTimesItalic, 10, sContentWidth - 40);
+    for (const line of wrappedBlessing) {
+      const lineWidth = fontTimesItalic.widthOfTextAtSize(line, 10);
+      page.drawText(line, {
+        x: (pageWidth - lineWidth) / 2,
+        y,
+        size: 10,
+        font: fontTimesItalic,
+        color: rgb(0.32, 0.20, 0.12), // Dark brown
+      });
+      y -= 14;
+    }
+
+    y -= 8;
+
+    // MIDDLE 30%
+    // 5. Sleek Dark Slate Pill-Shaped Badge reads [METADATA_STR]
+    const pillHeight = 24;
+    const pillWidth = sContentWidth - 20;
+    const pillX = (pageWidth - pillWidth) / 2;
+    page.drawRectangle({
+      x: pillX,
+      y: y - pillHeight,
+      width: pillWidth,
+      height: pillHeight,
+      color: rgb(0.12, 0.16, 0.22),
+      borderColor: rgb(0.82, 0.65, 0.30),
+      borderWidth: 1,
+    });
+
+    const metaText = `Date: ${cleanTextForPdf(data.date)}  |  Deity: ${cleanTextForPdf(data.deity)}  |  Tradition: ${cleanTextForPdf(data.tradition).slice(0, 36)}`;
+    const metaWidth = fontHelveticaBold.widthOfTextAtSize(metaText, 8.2);
+    page.drawText(metaText, {
+      x: (pageWidth - metaWidth) / 2,
+      y: y - 16,
+      size: 8.2,
+      font: fontHelveticaBold,
+      color: rgb(0.96, 0.96, 0.98),
+    });
+
+    y -= (pillHeight + 16);
+
+    // Section Header: 5 Sacred Chapters
+    page.drawText('THE 5 SACRED CHAPTERS', {
+      x: singleMargin + 6,
+      y,
+      size: 9.5,
+      font: fontHelveticaBold,
+      color: rgb(0.85, 0.42, 0.08),
+    });
+    page.drawLine({
+      start: { x: singleMargin + 145, y: y + 3 },
+      end: { x: pageWidth - singleMargin - 6, y: y + 3 },
       thickness: 0.8,
       color: rgb(0.88, 0.78, 0.55),
     });
 
     y -= 14;
 
-    // Render 5 Chapters in compact elegant cards
-    for (let i = 0; i < data.chapters.length; i++) {
-      const ch = data.chapters[i];
-      const chTitle = `${i + 1}. ${cleanTextForPdf(ch.title).toUpperCase()}`;
-      const wrapped = wrapText(cleanTextForPdf(ch.content), fontRegular, 8.8, sContentWidth - 28);
-      const boxHeight = 16 + (wrapped.length * 12.5) + 6;
+    // 6. Horizontal Row of 5 Minimalist Rectangular Icon Cards with Saffron Top-Borders
+    const cardCount = 5;
+    const cardGap = 8;
+    const totalGaps = cardGap * (cardCount - 1);
+    const cardWidth = (sContentWidth - totalGaps) / cardCount; // ~101.4 pt
+    const cardHeight = 118;
+    const cardStartY = y - cardHeight;
 
+    for (let i = 0; i < cardCount; i++) {
+      const cardX = singleMargin + i * (cardWidth + cardGap);
+      const ch = data.chapters[i] || { title: `Chapter ${i + 1}`, content: '', icon: 'lotus' };
+
+      // Card Background & Subtle Border
       page.drawRectangle({
-        x: singleMargin,
-        y: y - boxHeight,
-        width: sContentWidth,
-        height: boxHeight,
+        x: cardX,
+        y: cardStartY,
+        width: cardWidth,
+        height: cardHeight,
         color: rgb(1, 1, 1),
-        borderColor: rgb(0.90, 0.90, 0.92),
-        borderWidth: 0.75,
+        borderColor: rgb(0.88, 0.85, 0.80),
+        borderWidth: 0.8,
       });
 
+      // Saffron Top-Border
       page.drawRectangle({
-        x: singleMargin,
-        y: y - boxHeight,
-        width: 4,
-        height: boxHeight,
-        color: rgb(0.85, 0.45, 0.1),
+        x: cardX,
+        y: cardStartY + cardHeight - 3.5,
+        width: cardWidth,
+        height: 3.5,
+        color: rgb(0.85, 0.42, 0.08),
       });
 
-      page.drawText(chTitle, {
-        x: singleMargin + 14,
-        y: y - 13,
-        size: 9,
-        font: fontBold,
-        color: rgb(0.75, 0.28, 0.05),
-      });
+      // Icon drawing: lotus, diya, star, hands, swing
+      const iconCenterY = cardStartY + cardHeight - 20;
+      const iconCenterX = cardX + cardWidth / 2;
 
-      let textY = y - 27;
-      for (const line of wrapped) {
-        page.drawText(line, {
-          x: singleMargin + 14,
-          y: textY,
-          size: 8.8,
-          font: fontRegular,
-          color: rgb(0.2, 0.22, 0.26),
-        });
-        textY -= 12.5;
+      if (ch.icon === 'lotus' || i === 0) {
+        page.drawCircle({ x: iconCenterX, y: iconCenterY, size: 5, color: rgb(0.92, 0.55, 0.20) });
+        page.drawCircle({ x: iconCenterX - 5, y: iconCenterY - 2, size: 3.5, color: rgb(0.94, 0.65, 0.25) });
+        page.drawCircle({ x: iconCenterX + 5, y: iconCenterY - 2, size: 3.5, color: rgb(0.94, 0.65, 0.25) });
+      } else if (ch.icon === 'diya' || i === 1) {
+        page.drawCircle({ x: iconCenterX, y: iconCenterY + 3, size: 3, color: rgb(0.98, 0.75, 0.15) }); // Flame
+        page.drawRectangle({ x: iconCenterX - 6, y: iconCenterY - 4, width: 12, height: 4, color: rgb(0.75, 0.45, 0.18) }); // Base
+      } else if (ch.icon === 'star' || i === 2) {
+        page.drawCircle({ x: iconCenterX, y: iconCenterY, size: 4, color: rgb(0.92, 0.72, 0.15) });
+        page.drawLine({ start: { x: iconCenterX - 7, y: iconCenterY }, end: { x: iconCenterX + 7, y: iconCenterY }, color: rgb(0.92, 0.72, 0.15), thickness: 1.5 });
+        page.drawLine({ start: { x: iconCenterX, y: iconCenterY - 7 }, end: { x: iconCenterX, y: iconCenterY + 7 }, color: rgb(0.92, 0.72, 0.15), thickness: 1.5 });
+      } else if (ch.icon === 'hands' || i === 3) {
+        page.drawCircle({ x: iconCenterX, y: iconCenterY + 3, size: 3.5, color: rgb(0.85, 0.52, 0.18) });
+        page.drawRectangle({ x: iconCenterX - 3.5, y: iconCenterY - 5, width: 7, height: 6, color: rgb(0.85, 0.52, 0.18) });
+      } else {
+        page.drawLine({ start: { x: iconCenterX - 7, y: iconCenterY + 4 }, end: { x: iconCenterX + 7, y: iconCenterY + 4 }, color: rgb(0.65, 0.45, 0.20), thickness: 1.5 });
+        page.drawLine({ start: { x: iconCenterX - 5, y: iconCenterY + 4 }, end: { x: iconCenterX - 4, y: iconCenterY - 4 }, color: rgb(0.75, 0.55, 0.25), thickness: 1 });
+        page.drawLine({ start: { x: iconCenterX + 5, y: iconCenterY + 4 }, end: { x: iconCenterX + 4, y: iconCenterY - 4 }, color: rgb(0.75, 0.55, 0.25), thickness: 1 });
+        page.drawRectangle({ x: iconCenterX - 5, y: iconCenterY - 5, width: 10, height: 2, color: rgb(0.85, 0.45, 0.15) });
       }
 
-      y -= (boxHeight + 7);
+      // Chapter Title
+      const titleLines = wrapText(cleanTextForPdf(ch.title), fontHelveticaBold, 7.8, cardWidth - 10);
+      let titleY = cardStartY + cardHeight - 38;
+      for (const tline of titleLines) {
+        const tw = fontHelveticaBold.widthOfTextAtSize(tline, 7.8);
+        page.drawText(tline, {
+          x: cardX + (cardWidth - tw) / 2,
+          y: titleY,
+          size: 7.8,
+          font: fontHelveticaBold,
+          color: rgb(0.18, 0.18, 0.18),
+        });
+        titleY -= 9.5;
+      }
+
+      // Thin separator
+      page.drawLine({
+        start: { x: cardX + 10, y: titleY + 3 },
+        end: { x: cardX + cardWidth - 10, y: titleY + 3 },
+        thickness: 0.5,
+        color: rgb(0.90, 0.85, 0.78),
+      });
+
+      // Chapter Excerpt
+      const summaryLines = wrapText(cleanTextForPdf(ch.content), fontHelvetica, 6.8, cardWidth - 12);
+      let sumY = titleY - 8;
+      for (const sline of summaryLines.slice(0, 5)) {
+        const sw = fontHelvetica.widthOfTextAtSize(sline, 6.8);
+        page.drawText(sline, {
+          x: cardX + (cardWidth - sw) / 2,
+          y: sumY,
+          size: 6.8,
+          font: fontHelvetica,
+          color: rgb(0.38, 0.40, 0.44),
+        });
+        sumY -= 8.5;
+      }
     }
 
-    y -= 4;
+    y = cardStartY - 14;
 
-    // 5. Dharmo Rakshati Rakshitah Frame
-    const blessingHeight = 56;
+    // BOTTOM 30%
+    // 7. Ornate Intricate Golden Floral Frame 'Dharmo Rakshati Rakshitah'
+    const frameHeight = 64;
+    const frameY = y - frameHeight;
+
     page.drawRectangle({
       x: singleMargin,
-      y: y - blessingHeight,
+      y: frameY,
       width: sContentWidth,
-      height: blessingHeight,
+      height: frameHeight,
       color: rgb(0.99, 0.98, 0.94),
       borderColor: rgb(0.85, 0.65, 0.25),
       borderWidth: 1.2,
     });
 
-    page.drawText('Dharmo Rakshati Rakshitah', {
-      x: singleMargin + (sContentWidth / 2) - 78,
-      y: y - 17,
-      size: 11,
-      font: fontBold,
+    page.drawRectangle({
+      x: singleMargin + 3,
+      y: frameY + 3,
+      width: sContentWidth - 6,
+      height: frameHeight - 6,
+      borderColor: rgb(0.92, 0.80, 0.50),
+      borderWidth: 0.6,
+    });
+
+    const dharmoTitle = 'Dharmo Rakshati Rakshitah';
+    const dharmoWidth = fontTimesBold.widthOfTextAtSize(dharmoTitle, 12);
+    page.drawText(dharmoTitle, {
+      x: (pageWidth - dharmoWidth) / 2,
+      y: frameY + frameHeight - 18,
+      size: 12,
+      font: fontTimesBold,
       color: rgb(0.65, 0.32, 0.05),
     });
 
-    page.drawText('Peace   *   Prosperity   *   Health   *   Wisdom', {
-      x: singleMargin + (sContentWidth / 2) - 95,
-      y: y - 32,
-      size: 9,
-      font: fontBold,
-      color: rgb(0.5, 0.4, 0.2),
+    const virtuesText = 'Peace   *   Prosperity   *   Health   *   Wisdom';
+    const virtuesWidth = fontHelveticaBold.widthOfTextAtSize(virtuesText, 8.5);
+    page.drawText(virtuesText, {
+      x: (pageWidth - virtuesWidth) / 2,
+      y: frameY + frameHeight - 34,
+      size: 8.5,
+      font: fontHelveticaBold,
+      color: rgb(0.50, 0.40, 0.20),
     });
 
-    page.drawText('Dharma protects those who uphold righteousness. May divine grace illuminate your path.', {
-      x: singleMargin + (sContentWidth / 2) - 185,
-      y: y - 46,
-      size: 8.2,
-      font: fontOblique,
-      color: rgb(0.4, 0.35, 0.25),
+    const dharmoSub = 'Dharma protects those who uphold righteousness. May divine grace illuminate your path.';
+    const dharmoSubWidth = fontTimesItalic.widthOfTextAtSize(dharmoSub, 8);
+    page.drawText(dharmoSub, {
+      x: (pageWidth - dharmoSubWidth) / 2,
+      y: frameY + frameHeight - 49,
+      size: 8,
+      font: fontTimesItalic,
+      color: rgb(0.42, 0.36, 0.28),
     });
 
-    y -= (blessingHeight + 10);
+    y = frameY - 14;
 
-    // 6. Marketing Section & App Store Footer
-    const footerHeight = 44;
-    page.drawRectangle({
-      x: singleMargin,
-      y: y - footerHeight,
-      width: sContentWidth,
-      height: footerHeight,
-      color: rgb(0.96, 0.96, 0.97),
-      borderColor: rgb(0.88, 0.88, 0.90),
-      borderWidth: 0.75,
-    });
-
-    page.drawText('Discover the Full Divine Story on Brahmand  •  brahmand.app', {
-      x: singleMargin + 14,
-      y: y - 18,
-      size: 9.5,
-      font: fontBold,
+    // 8. Modern Marketing Section (STRICTLY NO QR CODE)
+    const promoTitle = 'Discover the Full Divine Story on Brahmand';
+    const promoWidth = fontHelveticaBold.widthOfTextAtSize(promoTitle, 10);
+    page.drawText(promoTitle, {
+      x: (pageWidth - promoWidth) / 2,
+      y,
+      size: 10,
+      font: fontHelveticaBold,
       color: rgb(0.15, 0.15, 0.15),
     });
 
-    page.drawText('Download on App Store & Google Play', {
-      x: singleMargin + 14,
-      y: y - 33,
-      size: 8,
-      font: fontRegular,
-      color: rgb(0.45, 0.45, 0.45),
+    y -= 14;
+    const webLink = 'brahmand.app';
+    const webWidth = fontHelveticaBold.widthOfTextAtSize(webLink, 9.5);
+    page.drawText(webLink, {
+      x: (pageWidth - webWidth) / 2,
+      y,
+      size: 9.5,
+      font: fontHelveticaBold,
+      color: rgb(0.85, 0.42, 0.08),
     });
 
-    page.drawText('Brahmand App - Sanatan Lok', {
-      x: singleMargin + sContentWidth - 170,
-      y: y - 24,
-      size: 9.5,
-      font: fontBold,
-      color: rgb(0.75, 0.28, 0.05),
+    // App Store & Google Play Badges
+    y -= 20;
+    const badgeW = 95;
+    const badgeH = 18;
+    const totalBadgesW = badgeW * 2 + 12;
+    const badge1X = (pageWidth - totalBadgesW) / 2;
+    const badge2X = badge1X + badgeW + 12;
+
+    // App Store Badge
+    page.drawRectangle({
+      x: badge1X,
+      y,
+      width: badgeW,
+      height: badgeH,
+      color: rgb(0.10, 0.12, 0.16),
+    });
+    const asText = 'App Store';
+    const asWidth = fontHelveticaBold.widthOfTextAtSize(asText, 7.5);
+    page.drawText(asText, {
+      x: badge1X + (badgeW - asWidth) / 2,
+      y: y + 5,
+      size: 7.5,
+      font: fontHelveticaBold,
+      color: rgb(1, 1, 1),
+    });
+
+    // Google Play Badge
+    page.drawRectangle({
+      x: badge2X,
+      y,
+      width: badgeW,
+      height: badgeH,
+      color: rgb(0.10, 0.12, 0.16),
+    });
+    const gpText = 'Google Play';
+    const gpWidth = fontHelveticaBold.widthOfTextAtSize(gpText, 7.5);
+    page.drawText(gpText, {
+      x: badge2X + (badgeW - gpWidth) / 2,
+      y: y + 5,
+      size: 7.5,
+      font: fontHelveticaBold,
+      color: rgb(1, 1, 1),
+    });
+
+    // 9. Footer: Brahmand App - Sanatan Lok
+    const footerText = 'Brahmand App - Sanatan Lok';
+    const footerWidth = fontHelveticaBold.widthOfTextAtSize(footerText, 8.5);
+    page.drawText(footerText, {
+      x: (pageWidth - footerWidth) / 2,
+      y: 28,
+      size: 8.5,
+      font: fontHelveticaBold,
+      color: rgb(0.75, 0.35, 0.08),
     });
 
     // Save Strictly 1-Page PDF
