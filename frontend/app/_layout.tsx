@@ -3,7 +3,6 @@ import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
 import { enableScreens, enableFreeze } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox, Alert as RNAlert, AppState } from 'react-native';
-
 enableScreens(true);
 enableFreeze(true);
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -759,8 +758,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (pathname) {
       try {
-        const { logScreenView, startScreenTime, endScreenTime } = require('../src/services/firebase/analytics');
-        logScreenView(pathname);
+        const { logEvent, startScreenTime, endScreenTime } = require('../src/services/firebase/analytics');
+        logEvent('screen_view', {
+          screen_name: pathname,
+          screen_class: pathname,
+        });
 
         let currentTracked: string | null = null;
         if (pathname === '/home' || pathname === '/(tabs)/home' || pathname === '/') {

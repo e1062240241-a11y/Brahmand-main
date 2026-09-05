@@ -527,28 +527,24 @@ export default function MyKrishnaChat() {
     const thought = SHUBH_VICHAR_LIST[index];
 
     let greeting = '';
-    let colors: [string, string, string] = ['#FF8D57', '#EA9B76', '#FFEEE5'];
+    // PONYTAIL FIX: Removed unused `colors` variable assignments; gradientColors is static below
 
     if (hours >= 4 && hours < 12) {
       greeting = t('language') === 'hi'
         ? `जय श्री कृष्ण, ${displayName} ✨`
         : `Jai Shri Krishna, ${displayName} ✨`;
-      colors = ['#FF9E6C', '#FFC3A0', '#FFF5EE'];
     } else if (hours >= 12 && hours < 17) {
       greeting = t('language') === 'hi'
         ? `कहो ${displayName}, मन में क्या विचार है?`
         : `Tell me ${displayName}, what's on your mind?`;
-      colors = ['#FF8D57', '#EA9B76', '#FFEEE5'];
     } else if (hours >= 17 && hours < 22) {
       greeting = t('language') === 'hi'
         ? `संध्या वंदन, ${displayName} 🪔`
         : `Peace be with you, ${displayName} 🪔`;
-      colors = ['#F07B42', '#D88A6E', '#FDEEE6'];
     } else {
       greeting = t('language') === 'hi'
         ? `मन शांत करो, ${displayName} 🌙`
         : `Rest your thoughts, ${displayName} 🌙`;
-      colors = ['#D96B36', '#B2765E', '#F7E8E0'];
     }
 
     return {
@@ -558,7 +554,31 @@ export default function MyKrishnaChat() {
     };
   }, [displayName, t]);
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  // PONYTAIL FIX: Step 2 - Dual-Slot State Architecture
+  const [chat1Messages, setChat1Messages] = useState<Message[]>([]);
+  const [chat2Messages, setChat2Messages] = useState<Message[]>([]);
+  const [activeChatId, setActiveChatId] = useState<'slot_1' | 'slot_2'>('slot_1');
+
+  const activeMessages = activeChatId === 'slot_1' ? chat1Messages : chat2Messages;
+  const setActiveMessages = useCallback(
+    (updater: Message[] | ((prev: Message[]) => Message[])) => {
+      if (activeChatId === 'slot_1') {
+        setChat1Messages(updater);
+      } else {
+        setChat2Messages(updater);
+      }
+    },
+    [activeChatId]
+  );
+
+  // PONYTAIL FIX: Step 2 - Critical Limit Logic: count ONLY messages where role === 'user'
+  const userMessageCount = useMemo(() => {
+    return activeMessages.filter((m) => m.role === 'user').length;
+  }, [activeMessages]);
+
+  const isChatFull = userMessageCount >= 15;
+  const showWarningBanner = userMessageCount >= 13 && userMessageCount < 15;
+
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -575,10 +595,73 @@ export default function MyKrishnaChat() {
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // PONYTAIL FIX: messagesRef completely removed; state is reactive and separated by slot
 
-  const messagesRef = useRef<Message[]>([]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  // PONYTAIL FIX: Step 3 - Alert when active chat reaches 15 user messages
+  const handleChatFullAlert = useCallback(() => {
+    const otherChatId = activeChatId === 'slot_1' ? 'slot_2' : 'slot_1';
+    const otherChatName = otherChatId === 'slot_1' ? 'Chat 1' : 'Chat 2';
+    const otherMessages = activeChatId === 'slot_1' ? chat2Messages : chat1Messages;
+    const otherUserCount = otherMessages.filter((m) => m.role === 'user').length;
+    const isOtherFull = otherUserCount >= 15;
+
+    if (isOtherFull) {
+      Alert.alert(
+        'Both Divine Scrolls Are Full',
+        'Both Divine Scrolls Are Full. Please clear one chat to continue your spiritual dialogue.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Clear Current Chat',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                await clearChatHistory(activeChatId);
+                setActiveMessages([]);
+                setShowLandingView(true);
+              } catch (err) {
+                console.error('Failed to clear chat:', err);
+              } finally {
+                setIsLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Divine Scroll Full',
+        `This divine scroll has reached its 15-message dialogue limit. Would you like to switch to ${otherChatName} or clear this chat?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Clear This Chat',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                await clearChatHistory(activeChatId);
+                setActiveMessages([]);
+                setShowLandingView(true);
+              } catch (err) {
+                console.error('Failed to clear chat:', err);
+              } finally {
+                setIsLoading(false);
+              }
+            },
+          },
+          {
+            text: `Switch to ${otherChatName}`,
+            onPress: () => {
+              setActiveChatId(otherChatId);
+              setShowLandingView(otherMessages.length === 0);
+            },
+          },
+        ]
+      );
+    }
+  }, [activeChatId, chat1Messages, chat2Messages, setActiveMessages]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
@@ -617,41 +700,54 @@ export default function MyKrishnaChat() {
     };
   }, [scrollToBottom]);
 
-  // Load chat history from Firestore on mount
+  // PONYTAIL FIX: Step 5 - Concurrent Dual-Slot Fetch & Smart Auto-Routing on Mount
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
     const fetchHistory = async () => {
       try {
-        const response = await getChatHistory();
-        if (response.data?.messages && response.data.messages.length > 0) {
-          const rawMsgs = response.data.messages.slice(-15);
-          const formatted: Message[] = rawMsgs.map((m: any, idx: number) => ({
-            id: `msg_${idx}`,
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-          }));
-          setMessages(formatted);
+        const [res1, res2] = await Promise.all([
+          getChatHistory('slot_1'),
+          getChatHistory('slot_2'),
+        ]);
 
-          if (formatted.length >= 15) {
-            // 15 messages stored -> limit reached -> show chat screen directly
-            setShowLandingView(false);
-          } else {
-            // < 15 messages stored -> limit available -> show new landing screen on entry
-            setShowLandingView(true);
+        const formatSlot = (data: any, slotPrefix: string): Message[] => {
+          if (data?.messages && data.messages.length > 0) {
+            return data.messages.map((m: any, idx: number) => ({
+              id: `${slotPrefix}_${idx}`,
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            }));
           }
+          return [];
+        };
+
+        const msgs1 = formatSlot(res1.data, 'slot1');
+        const msgs2 = formatSlot(res2.data, 'slot2');
+
+        setChat1Messages(msgs1);
+        setChat2Messages(msgs2);
+
+        // PONYTAIL FIX: Step 5 - Count user messages in each slot for smart auto-routing
+        const userCount1 = msgs1.filter((m) => m.role === 'user').length;
+        const userCount2 = msgs2.filter((m) => m.role === 'user').length;
+
+        let chosenSlot: 'slot_1' | 'slot_2' = 'slot_1';
+        if (userCount1 >= 15 && userCount2 < 15) {
+          chosenSlot = 'slot_2';
+        } else if (userCount2 >= 15 && userCount1 < 15) {
+          chosenSlot = 'slot_1';
         } else {
-          setMessages([]);
-          setShowLandingView(true);
+          chosenSlot = 'slot_1';
         }
+
+        setActiveChatId(chosenSlot);
+        const chosenMsgs = chosenSlot === 'slot_1' ? msgs1 : msgs2;
+        setShowLandingView(chosenMsgs.length === 0);
       } catch (error) {
         console.error('Failed to load chat history:', error);
-        setMessages([]);
+        setChat1Messages([]);
+        setChat2Messages([]);
+        setActiveChatId('slot_1');
         setShowLandingView(true);
       } finally {
         setHistoryLoading(false);
@@ -662,9 +758,16 @@ export default function MyKrishnaChat() {
     fetchHistory();
   }, [scrollToBottom]);
 
+  // PONYTAIL FIX: Step 4 - Refactored sendMessage with dual-slot targeting and 15-user-message limit
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
+
+      // PONYTAIL FIX: Step 4.1 - Block send if 15-user-message limit is reached
+      if (isChatFull) {
+        handleChatFullAlert();
+        return;
+      }
 
       setShowLandingView(false);
 
@@ -675,19 +778,19 @@ export default function MyKrishnaChat() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMsg].slice(-15));
+      // PONYTAIL FIX: Step 4.2 - Append userMsg to activeMessages state directly
+      const currentSlot = activeChatId;
+      const updatedMessages = [...activeMessages, userMsg];
+      setActiveMessages(updatedMessages);
+
       setInputText('');
       setIsLoading(true);
       scrollToBottom();
 
       try {
-        // Send history context to LLM
-        const apiMessages = messagesRef.current
-          .map((m) => ({ role: m.role, content: m.content }));
-
-        apiMessages.push({ role: userMsg.role, content: userMsg.content });
-
-        const response = await aiChat(apiMessages);
+        // PONYTAIL FIX: Step 4.3 - Build apiMessages and pass activeChatId to aiChat
+        const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
+        const response = await aiChat(apiMessages, currentSlot);
 
         if (response.data?.choices?.[0]?.message) {
           const assistantMsg: Message = {
@@ -697,7 +800,12 @@ export default function MyKrishnaChat() {
             timestamp: new Date(),
           };
           setStreamingMsgId(assistantMsg.id);
-          setMessages((prev) => [...prev, assistantMsg].slice(-15));
+          // PONYTAIL FIX: Step 4.4 - Append assistantMsg to current slot state
+          if (currentSlot === 'slot_1') {
+            setChat1Messages((prev) => [...prev, assistantMsg]);
+          } else {
+            setChat2Messages((prev) => [...prev, assistantMsg]);
+          }
         } else {
           throw new Error('Invalid API response');
         }
@@ -709,13 +817,17 @@ export default function MyKrishnaChat() {
           content: 'Koi connection issue hai abhi. Thodi der mein dobara try karein. 🙏',
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, errMsg].slice(-15));
+        if (currentSlot === 'slot_1') {
+          setChat1Messages((prev) => [...prev, errMsg]);
+        } else {
+          setChat2Messages((prev) => [...prev, errMsg]);
+        }
       } finally {
         setIsLoading(false);
         scrollToBottom();
       }
     },
-    [isLoading, scrollToBottom]
+    [isLoading, isChatFull, handleChatFullAlert, activeChatId, activeMessages, setActiveMessages, scrollToBottom]
   );
 
   const handleSend = () => sendMessage(inputText);
@@ -738,9 +850,10 @@ export default function MyKrishnaChat() {
 
   const handleClearChat = () => {
     setMenuVisible(false);
+    const slotLabel = activeChatId === 'slot_1' ? 'Chat 1' : 'Chat 2';
     Alert.alert(
-      'Clear All Chat History',
-      'Kya aap Krishna ke sath apni poori chat history delete karna chahte hain?',
+      `Clear ${slotLabel} History`,
+      `Kya aap Krishna ke sath ${slotLabel} ki poori chat history delete karna chahte hain?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -749,8 +862,8 @@ export default function MyKrishnaChat() {
           onPress: async () => {
             try {
               setIsLoading(true);
-              await clearChatHistory();
-              setMessages([]);
+              await clearChatHistory(activeChatId);
+              setActiveMessages([]);
               setShowLandingView(true);
               setHistoryModalVisible(false);
             } catch (err) {
@@ -768,20 +881,20 @@ export default function MyKrishnaChat() {
   // Group messages for Chat History view
   const historyUserQueries = useMemo(() => {
     const list: { query: string; answer?: string; timestamp: Date; id: string }[] = [];
-    for (let i = 0; i < messages.length; i++) {
-      if (messages[i].role === 'user') {
-        const query = messages[i].content;
-        const answer = messages[i + 1]?.role === 'assistant' ? messages[i + 1].content : undefined;
+    for (let i = 0; i < activeMessages.length; i++) {
+      if (activeMessages[i].role === 'user') {
+        const query = activeMessages[i].content;
+        const answer = activeMessages[i + 1]?.role === 'assistant' ? activeMessages[i + 1].content : undefined;
         list.push({
           query,
           answer,
-          timestamp: messages[i].timestamp,
-          id: messages[i].id,
+          timestamp: activeMessages[i].timestamp,
+          id: activeMessages[i].id,
         });
       }
     }
     return list.reverse();
-  }, [messages]);
+  }, [activeMessages]);
 
   const filteredHistory = useMemo(() => {
     if (!historySearchTerm.trim()) return historyUserQueries;
@@ -801,7 +914,7 @@ export default function MyKrishnaChat() {
       showDateDivider = true;
       dateLabel = getMessageDateLabel(item.timestamp);
     } else {
-      const prevMessage = messages[index - 1];
+      const prevMessage = activeMessages[index - 1];
       if (prevMessage) {
         const currentDateStr = new Date(item.timestamp).toDateString();
         const prevDateStr = new Date(prevMessage.timestamp).toDateString();
@@ -819,11 +932,11 @@ export default function MyKrishnaChat() {
             <Text style={styles.dateDividerText}>{dateLabel}</Text>
           </View>
         )}
-        <Animated.View
+        {/* PONYTAIL FIX: Removed Animated.View and no-op fadeAnim overhead */}
+        <View
           style={[
             styles.messageRow,
             isUser ? styles.userRow : styles.assistantRow,
-            { opacity: fadeAnim },
           ]}
         >
           {!isUser && (
@@ -872,7 +985,7 @@ export default function MyKrishnaChat() {
               </Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
       </View>
     );
   };
@@ -905,7 +1018,9 @@ export default function MyKrishnaChat() {
                   source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/my_krishna_avatar.webp' }}
                   style={styles.headerAvatar}
                 />
-                <Text style={styles.headerTitleText}>My Krishn</Text>
+                <Text style={styles.headerTitleText}>
+                  My Krishn
+                </Text>
               </View>
             </View>
           </View>
@@ -929,6 +1044,24 @@ export default function MyKrishnaChat() {
           <>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuVisible(false)} />
             <View style={[styles.menuDropdown, { top: insets.top + 52 }]}>
+              {/* PONYTAIL FIX: Step 6.2 - Switch Chat Slot */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuVisible(false);
+                  const nextSlot = activeChatId === 'slot_1' ? 'slot_2' : 'slot_1';
+                  setActiveChatId(nextSlot);
+                  const targetMsgs = nextSlot === 'slot_1' ? chat1Messages : chat2Messages;
+                  setShowLandingView(targetMsgs.length === 0);
+                }}
+              >
+                <Ionicons name="swap-horizontal-outline" size={18} color="#4A3B32" />
+                <Text style={styles.menuItemText}>
+                  Switch to {activeChatId === 'slot_1' ? 'Chat 2' : 'Chat 1'}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 activeOpacity={0.7}
@@ -989,17 +1122,39 @@ export default function MyKrishnaChat() {
             </ScrollView>
           ) : (
             /* ── Active Conversation Stream ── */
-            <FlatList
-              ref={flatListRef}
-              style={{ flex: 1 }}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContent}
-              onContentSizeChange={scrollToBottom}
-              showsVerticalScrollIndicator={false}
-              ListFooterComponent={isLoading ? <GeminiTypingIndicator /> : null}
-            />
+            <>
+              {/* PONYTAIL FIX: Step 6.3 - Warning Banner (userMessageCount >= 13 && < 15) */}
+              {showWarningBanner && (
+                <View style={styles.limitWarningBanner}>
+                  <Ionicons name="information-circle-outline" size={16} color="#EA580C" />
+                  <Text style={styles.limitWarningText}>
+                    This divine scroll is almost full.{' '}
+                    <Text
+                      style={styles.limitWarningLink}
+                      onPress={() => {
+                        const nextSlot = activeChatId === 'slot_1' ? 'slot_2' : 'slot_1';
+                        setActiveChatId(nextSlot);
+                        const targetMsgs = nextSlot === 'slot_1' ? chat1Messages : chat2Messages;
+                        setShowLandingView(targetMsgs.length === 0);
+                      }}
+                    >
+                      Switch to {activeChatId === 'slot_1' ? 'Chat 2' : 'Chat 1'}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+              <FlatList
+                ref={flatListRef}
+                style={{ flex: 1 }}
+                data={activeMessages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContent}
+                onContentSizeChange={scrollToBottom}
+                showsVerticalScrollIndicator={false}
+                ListFooterComponent={isLoading ? <GeminiTypingIndicator /> : null}
+              />
+            </>
           )}
 
           {/* ── Gemini Frosted Floating Input Bar ── */}
@@ -1266,21 +1421,7 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bold,
     fontWeight: '700',
   },
-  geminiSparkleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(234, 88, 12, 0.10)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  geminiSparkleText: {
-    fontSize: 10.5,
-    color: '#EA580C',
-    fontWeight: '700',
-    fontFamily: FONTS.medium,
-  },
+  // PONYTAIL FIX: Removed unused geminiSparkleBadge and geminiSparkleText
 
   // Gemini Dropdown Menu
   menuDropdown: {
@@ -1434,6 +1575,33 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     color: '#2E2219',
     lineHeight: 17,
+  },
+  // PONYTAIL FIX: Step 6.4 - Limit Warning Banner Styles
+  limitWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF1EB',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    gap: 8,
+  },
+  limitWarningText: {
+    flex: 1,
+    fontSize: 12.5,
+    fontFamily: FONTS.regular,
+    color: '#9A3412',
+    lineHeight: 18,
+  },
+  limitWarningLink: {
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#EA580C',
+    textDecorationLine: 'underline',
   },
 
   // Messages Stream
@@ -1641,9 +1809,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     minHeight: 52,
   },
-  inputLeftIcon: {
-    marginRight: 8,
-  },
+  // PONYTAIL FIX: Removed unused inputLeftIcon
   krishnaLogoImage: {
     width: 28,
     height: 28,

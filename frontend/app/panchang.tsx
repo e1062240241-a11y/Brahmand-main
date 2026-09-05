@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -109,7 +109,6 @@ const getPlanetsSource = (
 
 export default function PanchangScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const language = useLanguageStore((state) => state.language);
 
@@ -347,17 +346,15 @@ export default function PanchangScreen() {
   const dateLabel = formatDateLabel(selectedDate);
 
   return (
-    <View style={styles.container}>
-      {/* Premium Peach-Pinkish Background Gradient matching Figma */}
-      <LinearGradient
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Main Top Header with integrated navigation & tabs */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.headerTopRow}>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Main Top Header with integrated navigation & tabs */}
+        <View style={styles.header}>
+          <View style={styles.headerTopRow}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.back()}
@@ -423,7 +420,7 @@ export default function PanchangScreen() {
       {/* Main Content Area */}
       <KeyboardAwareScrollView
         ref={mainScrollRef}
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: 'transparent' }}
         contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -435,7 +432,13 @@ export default function PanchangScreen() {
         }
       >
         {loading ? (
-          <BrandedLoading message="Fetching Cosmic Calculations..." />
+          <BrandedLoading
+            message={
+              language === 'hi'
+                ? 'पंचांग की गणना की जा रही है...'
+                : 'Fetching Cosmic Calculations...'
+            }
+          />
         ) : error ? (
           <Text style={styles.emptyText}>{error}</Text>
         ) : (
@@ -473,6 +476,7 @@ export default function PanchangScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
-    </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }

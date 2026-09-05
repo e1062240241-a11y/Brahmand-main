@@ -32,7 +32,13 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
     payload?.sources?.advanced_panchang || payload?.sources?.panchang_advanced;
 
   if (!advanced && !payload?.overview?.length) {
-    return <Text style={styles.emptyText}>No data available for this date</Text>;
+    return (
+      <Text style={styles.emptyText}>
+        {language === 'hi'
+          ? 'इस तिथि के लिए पंचांग उपलब्ध नहीं है। कृपया अन्य तिथि चुनें ✨'
+          : 'Panchang is not available for this date. Please select another date ✨'}
+      </Text>
+    );
   }
 
   return (

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+const INVALID_STRINGS = ['nan', 'none', 'undefined'];
+
 interface JyotishState {
   dob: string | null;
   tob: string | null;
@@ -16,10 +18,9 @@ export const useJyotishStore = create<JyotishState>((set) => ({
   pob: null,
   setBirthDetails: async (dob, tob, pob) => {
     if (Platform.OS === 'android') {
-      const invalidStrings = new Set(['nan', 'none', 'undefined']);
       const cleanInput = (val: string) => {
         if (!val) return '';
-        if (invalidStrings.has(val.toLowerCase().trim())) return '';
+        if (INVALID_STRINGS.includes(val.toLowerCase().trim())) return '';
         return val;
       };
       dob = cleanInput(dob);
@@ -98,8 +99,7 @@ export const useJyotishStore = create<JyotishState>((set) => ({
 
       const clean = (val: any) => {
         if (!val || typeof val !== 'string') return null;
-        const invalidStrings = new Set(['nan', 'none', 'undefined']);
-        if (invalidStrings.has(val.toLowerCase().trim())) return null;
+        if (INVALID_STRINGS.includes(val.toLowerCase().trim())) return null;
         return val;
       };
 

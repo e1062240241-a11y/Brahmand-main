@@ -189,6 +189,11 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const onTabPress = (route: any, isFocused: boolean) => {
     const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
     if (!isFocused && !event.defaultPrevented) {
+      try {
+        const { logEvent, logSelectContent } = require('../services/firebase/analytics');
+        logEvent('screen_view', { screen_name: route.name, screen_class: 'BottomTabBar' });
+        logSelectContent('bottom_tab', route.name);
+      } catch (err) {}
       navigation.navigate(route.name);
     }
   };

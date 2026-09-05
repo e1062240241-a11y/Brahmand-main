@@ -57,43 +57,42 @@ export default function PassportCoverScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Background Peach to Cream Gradient */}
-      <LinearGradient 
-        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-        locations={[0, 0.0913, 0.25]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>BRAHMAND PASSPORT</Text>
-      </View>
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>BRAHMAND PASSPORT</Text>
+        </View>
 
-      {/* Main Content Area */}
-      <View style={styles.content}>
-        <TouchableOpacity 
-          activeOpacity={0.9}
-          onPress={handleOpenPassport}
-          disabled={isOpening}
-        >
-          <View style={styles.cardContainer}>
-            <Image 
-              source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/pass.webp' }}
-              style={styles.passportImage}
-              contentFit="contain"
-            />
-            <View style={styles.textOverlay}>
-              <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
-              <Text style={styles.subText}>Your Sanatani Passport</Text>
+        {/* Main Content Area */}
+        <View style={styles.content}>
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={handleOpenPassport}
+            disabled={isOpening}
+          >
+            <View style={styles.cardContainer}>
+              <Image 
+                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/pass.webp' }}
+                style={styles.passportImage}
+                contentFit="contain"
+              />
+              <View style={styles.textOverlay}>
+                <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
+                <Text style={styles.subText}>Your Sanatani Passport</Text>
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 

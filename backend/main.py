@@ -9168,7 +9168,7 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 
 @api_router.get("/temples")
 async def get_temples(
-    limit: int = 50,
+    limit: int = 300,
     offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
@@ -10874,6 +10874,38 @@ async def send_shiv_katha_reminder_notification(
 
 
 
+import re
+
+def sanitize_krishna_response(response_text: str) -> str:
+    """
+    Hard firewall to strip out any English word-by-word meanings or commentary 
+    that might have leaked from the LLM or RAG context.
+    """
+    # 1. Remove blocks that look like "Word, English; is word, English;"
+    response_text = re.sub(r'[A-Za-z]+,\s*[A-Za-z]+;\s*(is|are|by|the|of|and)\s+[A-Za-z]+', '[REMOVED ENGLISH MEANING]', response_text, flags=re.IGNORECASE)
+    
+    # 2. Remove random English commentary questions like "In what form?" or "Why?"
+    response_text = re.sub(r'(In what form\?.*?)(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)', '', response_text, flags=re.IGNORECASE | re.DOTALL)
+    response_text = re.sub(r'(Again, having what.*?)(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)', '', response_text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 3. Ensure "Bhaavarth:" or "Arth:" is not followed by a long English block
+    response_text = re.sub(
+        r'(Bhaavarth:|Arth:)\s*[A-Za-z]{4,}.*?(?=\n\n|Sadaiv|Main hoon na|Jai Shri Krishna)',
+        'Arth: Bhagwan Krishna is shlok mein gahre gyaan aur margdarshan ki baat kar rahe hain.',
+        response_text,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+    
+    return response_text.strip()
+
+
+def _get_chat_doc_id(user_id: str, chat_id: str = "slot_1") -> str:
+    slot = (chat_id or "slot_1").strip().lower()
+    if slot in ("slot_1", "default", ""):
+        return user_id  # Preserves existing legacy chat history
+    return f"{user_id}_{slot}"
+
+
 @api_router.post("/ai/chat")
 async def ai_chat(
     data: dict,
@@ -10987,11 +11019,13 @@ IDENTITY RULES:
     new_session = False
     db_messages = []
     user_id = token_data["user_id"]
+    chat_id = data.get("chat_id") or data.get("chatId") or "slot_1"
+    chat_doc_id = _get_chat_doc_id(user_id, chat_id)
 
     try:
         from datetime import datetime, timezone
         db = await get_db()
-        chat_data = await db.get_document('krishna_chats', user_id)
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
         if chat_data:
             db_messages = chat_data.get("messages", [])
             profile = chat_data.get("profile", profile)
@@ -11119,15 +11153,22 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
                 from services.krishna_rag_service import retrieve_relevant_shlokas
                 shlokas = retrieve_relevant_shlokas(latest_user_msg, top_k=1)
                 if shlokas and len(shlokas) > 0:
+                    # PONYTAIL FIX: Fetch clean Hindi translation instead of raw English fallback
+                    from utils.krishna_gita_db import get_shloka_details
+
                     shloka_data = shlokas[0]
                     ch = shloka_data.get("chapter", "")
                     v = shloka_data.get("verse", "")
                     txt = shloka_data.get("text", "")
-                    trans = shloka_data.get("translation", "")
+
+                    # Get clean Hindi/Devanagari arth
+                    shloka_details = get_shloka_details(int(ch), int(v))
+                    clean_arth = shloka_details.get("hindi_translation", "Is shlok mein Bhagwan Krishna gahre gyaan aur margdarshan ki baat kar rahe hain.")
+
                     assistant_reply = (
                         f"Arre mere bhakta, Bhagavad Gita (Adhyay {ch}, Shlok {v}) mein kaha gaya hai:\n\n"
                         f"\"{txt}\"\n\n"
-                        f"Bhaavarth: {trans}\n\n"
+                        f"Arth: {clean_arth}\n\n"
                         f"Sadaiv dharma aur karma ke maarg par chalo. Jai Shri Krishna! 🙏"
                     )
             except Exception as rag_err:
@@ -11145,6 +11186,10 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         # Apply regex shloka replacement for any dynamic shloka references
         from utils.krishna_gita_db import replace_gita_references
         assistant_reply = replace_gita_references(assistant_reply)
+
+        # PONYTAIL FIX: Sanitize response before saving to Firestore or returning to client
+        if assistant_reply:
+            assistant_reply = sanitize_krishna_response(assistant_reply)
 
         # Save to Firebase Firestore
         try:
@@ -11184,13 +11229,13 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             # Limit history to save only the last 15 messages
             db_messages = db_messages[-15:]
 
-            await db.set_document('krishna_chats', user_id, {
+            await db.set_document('krishna_chats', chat_doc_id, {
                 "messages": db_messages,
                 "profile": profile,
                 "history_summaries": history_summaries,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             })
-            logger.info("[Chat] Successfully saved chat to Firestore for user %s (total messages: %d)", user_id, len(db_messages))
+            logger.info("[Chat] Successfully saved chat to Firestore for user %s (doc: %s, total messages: %d)", user_id, chat_doc_id, len(db_messages))
         except Exception as fs_err:
             logger.warning(f"Failed to save chat to Firestore: {fs_err}")
 
@@ -11209,12 +11254,16 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 
 
 @api_router.get("/ai/chat/history")
-async def get_chat_history(token_data: dict = Depends(verify_token)):
+async def get_chat_history(
+    chat_id: str = "slot_1",
+    token_data: dict = Depends(verify_token)
+):
     """Fetch stored Krishna chat history from Firestore."""
     try:
         db = await get_db()
         user_id = token_data["user_id"]
-        chat_data = await db.get_document('krishna_chats', user_id)
+        chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
         if chat_data:
             return {'messages': chat_data.get('messages', [])}
         return {"messages": []}
@@ -11224,12 +11273,16 @@ async def get_chat_history(token_data: dict = Depends(verify_token)):
 
 
 @api_router.delete("/ai/chat/history")
-async def delete_chat_history(token_data: dict = Depends(verify_token)):
+async def delete_chat_history(
+    chat_id: str = "slot_1",
+    token_data: dict = Depends(verify_token)
+):
     """Clear/delete Krishna chat history from Firestore."""
     try:
         db = await get_db()
         user_id = token_data["user_id"]
-        await db.delete_document('krishna_chats', user_id)
+        chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+        await db.delete_document('krishna_chats', chat_doc_id)
         return {"status": "success", "message": "Chat history cleared successfully"}
     except Exception as e:
         logger.error(f"Internal error: {e}", exc_info=True)
@@ -14726,20 +14779,189 @@ def load_festival_json():
         return []
 
 
+FESTIVAL_YEAR_DATES = {
+    2026: {
+        "makar sankranti": "14 January 2026",
+        "pongal": "14 January 2026",
+        "magh bihu": "14 January 2026",
+        "thaipusam": "1 February 2026",
+        "vasant panchami": "23 January 2026",
+        "maha shivaratri": "15 February 2026",
+        "holika dahan": "3 March 2026",
+        "holi": "4 March 2026",
+        "chaitra sukhladi": "19 March 2026",
+        "ugadi": "19 March 2026",
+        "gudi padwa": "19 March 2026",
+        "cheti chand": "19 March 2026",
+        "ram navami": "26 March 2026",
+        "hanuman jayanti": "2 April 2026",
+        "hindi new year": "10 April 2026",
+        "vaisakhi": "14 April 2026",
+        "baisakhi": "14 April 2026",
+        "vishu": "14 April 2026",
+        "tamil new year": "14 April 2026",
+        "bengali new year": "15 April 2026",
+        "bohag bihu": "15 April 2026",
+        "vaisakhadi": "15 April 2026",
+        "akshaya tritiya": "19 April 2026",
+        "savitri pooja": "16 May 2026",
+        "buddha purnima": "31 May 2026",
+        "jagannath rath yatra": "16 July 2026",
+        "ashadhi ekadashi": "25 July 2026",
+        "guru purnima": "29 July 2026",
+        "hariyali teej": "15 August 2026",
+        "nag panchami": "17 August 2026",
+        "onam": "26 August 2026",
+        "raksha bandhan": "28 August 2026",
+        "varalakshmi vrat": "28 August 2026",
+        "kajari teej": "31 August 2026",
+        "janmashtami": "4 September 2026",
+        "ganesh chaturthi": "14 September 2026",
+        "vishwakarma puja": "17 September 2026",
+        "anant chaturdashi": "25 September 2026",
+        "mahalaya amavasya": "10 October 2026",
+        "sharad navratri": "11 October 2026",
+        "maha saptami": "17 October 2026",
+        "durga ashtami": "18 October 2026",
+        "maha navami": "19 October 2026",
+        "dussehra": "20 October 2026",
+        "vijayadashami": "20 October 2026",
+        "sharad purnima": "25 October 2026",
+        "karva chauth": "29 October 2026",
+        "karwa chauth": "29 October 2026",
+        "maharishi valmiki jayanti": "31 October 2026",
+        "valmiki jayanti": "31 October 2026",
+        "dhanteras": "6 November 2026",
+        "diwali": "8 November 2026",
+        "deepavali": "8 November 2026",
+        "naraka chaturdashi": "8 November 2026",
+        "govardhan puja": "9 November 2026",
+        "bhai dooj": "11 November 2026",
+        "chhath puja": "15 November 2026",
+        "dev uthani ekadashi": "20 November 2026",
+        "tulsi vivah": "21 November 2026",
+        "kartik purnima": "24 November 2026",
+        "dhanu sankranti": "16 December 2026",
+        "geeta jayanti": "20 December 2026",
+    },
+    2027: {
+        "makar sankranti": "14 January 2027",
+        "pongal": "14 January 2027",
+        "magh bihu": "14 January 2027",
+        "thaipusam": "22 January 2027",
+        "vasant panchami": "11 February 2027",
+        "maha shivaratri": "6 March 2027",
+        "holika dahan": "21 March 2027",
+        "holi": "22 March 2027",
+        "chaitra sukhladi": "7 April 2027",
+        "ugadi": "7 April 2027",
+        "gudi padwa": "7 April 2027",
+        "cheti chand": "7 April 2027",
+        "hindi new year": "7 April 2027",
+        "ram navami": "15 April 2027",
+        "hanuman jayanti": "21 April 2027",
+        "vaisakhi": "14 April 2027",
+        "baisakhi": "14 April 2027",
+        "vishu": "14 April 2027",
+        "tamil new year": "14 April 2027",
+        "bengali new year": "15 April 2027",
+        "bohag bihu": "15 April 2027",
+        "vaisakhadi": "15 April 2027",
+        "akshaya tritiya": "9 May 2027",
+        "buddha purnima": "20 May 2027",
+        "savitri pooja": "4 June 2027",
+        "jagannath rath yatra": "5 July 2027",
+        "ashadhi ekadashi": "15 July 2027",
+        "guru purnima": "18 July 2027",
+        "hariyali teej": "5 August 2027",
+        "nag panchami": "7 August 2027",
+        "varalakshmi vrat": "13 August 2027",
+        "raksha bandhan": "17 August 2027",
+        "kajari teej": "20 August 2027",
+        "janmashtami": "25 August 2027",
+        "ganesh chaturthi": "4 September 2027",
+        "onam": "12 September 2027",
+        "anant chaturdashi": "14 September 2027",
+        "vishwakarma puja": "17 September 2027",
+        "mahalaya amavasya": "29 September 2027",
+        "sharad navratri": "30 September 2027",
+        "maha saptami": "7 October 2027",
+        "durga ashtami": "8 October 2027",
+        "maha navami": "9 October 2027",
+        "dussehra": "10 October 2027",
+        "vijayadashami": "10 October 2027",
+        "sharad purnima": "15 October 2027",
+        "maharishi valmiki jayanti": "15 October 2027",
+        "valmiki jayanti": "15 October 2027",
+        "karva chauth": "19 October 2027",
+        "karwa chauth": "19 October 2027",
+        "dhanteras": "27 October 2027",
+        "diwali": "29 October 2027",
+        "deepavali": "29 October 2027",
+        "naraka chaturdashi": "29 October 2027",
+        "govardhan puja": "30 October 2027",
+        "bhai dooj": "31 October 2027",
+        "chhath puja": "4 November 2027",
+        "dev uthani ekadashi": "9 November 2027",
+        "tulsi vivah": "10 November 2027",
+        "kartik purnima": "13 November 2027",
+        "dhanu sankranti": "16 December 2027",
+        "geeta jayanti": "9 December 2027",
+    }
+}
+
+
 def _parse_festival_date(festival: dict, year: int) -> Optional[datetime]:
-    if not festival or 'date' not in festival:
+    if not festival:
         return None
 
-    try:
-        parsed = datetime.strptime(festival['date'], '%d %B %Y')
-        return parsed.replace(year=year)
-    except Exception:
+    # 1. Check if festival object has specific year in dates dict or date_{year}
+    dates_map = festival.get("dates")
+    if isinstance(dates_map, dict) and str(year) in dates_map:
         try:
-            # fallback if year is missing in date string
-            parsed = datetime.strptime(festival['date'], '%d %B')
+            return datetime.strptime(dates_map[str(year)], "%d %B %Y")
+        except Exception:
+            pass
+
+    date_key = f"date_{year}"
+    if date_key in festival and festival[date_key]:
+        try:
+            return datetime.strptime(festival[date_key], "%d %B %Y")
+        except Exception:
+            pass
+
+    # 2. Check FESTIVAL_YEAR_DATES dictionary for lunar accurate date
+    name = (festival.get("festival_name") or festival.get("name") or "").lower().strip()
+    year_map = FESTIVAL_YEAR_DATES.get(year)
+    if year_map and name:
+        if name in year_map:
+            try:
+                return datetime.strptime(year_map[name], "%d %B %Y")
+            except Exception:
+                pass
+        for key, dstr in year_map.items():
+            if key in name or name in key:
+                try:
+                    return datetime.strptime(dstr, "%d %B %Y")
+                except Exception:
+                    pass
+
+    # 3. Fallback to festival['date'] if present
+    if 'date' in festival and festival['date']:
+        try:
+            date_str = festival['date']
+            if str(year) in date_str:
+                return datetime.strptime(date_str, '%d %B %Y')
+            parsed = datetime.strptime(date_str, '%d %B %Y')
             return parsed.replace(year=year)
         except Exception:
-            return None
+            try:
+                parsed = datetime.strptime(festival['date'], '%d %B')
+                return parsed.replace(year=year)
+            except Exception:
+                return None
+
+    return None
 
 
 # Rashis (Zodiac Signs) for horoscope
@@ -14915,92 +15137,29 @@ async def get_detailed_panchang(
 @api_router.get("/spiritual/festivals")
 async def get_upcoming_festivals(limit: int = 5):
     """Get upcoming festivals"""
-    today = datetime.utcnow()
-    current_month = today.month
-    current_day = today.day
-    
-    upcoming = []
-    for festival in FESTIVALS:
-        # Check if festival is upcoming
-        if (festival["month"] > current_month or 
-            (festival["month"] == current_month and festival["day"] >= current_day)):
-            festival_date = datetime(today.year, festival["month"], festival["day"])
-            days_until = (festival_date - today).days
-            upcoming.append({
-                **festival,
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until
-            })
-    
-    # If we're late in the year, add next year's festivals
-    if len(upcoming) < limit:
-        for festival in FESTIVALS:
-            if festival["month"] < current_month:
-                festival_date = datetime(today.year + 1, festival["month"], festival["day"])
-                days_until = (festival_date - today).days
-                upcoming.append({
-                    **festival,
-                    "date": festival_date.strftime("%Y-%m-%d"),
-                    "days_until": days_until
-                })
-                if len(upcoming) >= limit:
-                    break
-    
-    return sorted(upcoming, key=lambda x: x["days_until"])[:limit]
+    all_festivals = await get_all_festivals()
+    return all_festivals[:limit]
 
 
 @api_router.get('/spiritual/festival/next')
 async def get_next_festival():
     """Get the next festival from the festival JSON file"""
-    today = datetime.utcnow()
-    festivals = load_festival_json()
-    candidates = []
-
-    for festival in festivals:
-        festival_date = _parse_festival_date(festival, today.year)
-        if festival_date is None:
-            continue
-        if festival_date.date() >= today.date():
-            days_until = (festival_date.date() - today.date()).days
-            candidates.append({
-                **festival,
-                "name": festival.get("festival_name", festival.get("name")),
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until,
-            })
-
-    if not candidates:
-        for festival in festivals:
-            festival_date = _parse_festival_date(festival, today.year + 1)
-            if festival_date is None:
-                continue
-            days_until = (festival_date.date() - today.date()).days
-            candidates.append({
-                **festival,
-                "name": festival.get("festival_name", festival.get("name")),
-                "date": festival_date.strftime("%Y-%m-%d"),
-                "days_until": days_until,
-            })
-
-    if not candidates:
+    all_festivals = await get_all_festivals()
+    if not all_festivals:
         raise HTTPException(status_code=404, detail="No festival data available")
-
-    next_festival = min(candidates, key=lambda item: item["days_until"])
-    return next_festival
+    return all_festivals[0]
 
 
 @api_router.get('/spiritual/festivals/all')
 async def get_all_festivals():
-    """Get full festival list from JSON data"""
+    """Get full festival list from JSON data with accurate multi-year Panchang dates"""
     today = datetime.utcnow()
     festivals = load_festival_json()
     response_items = []
 
     for festival in festivals:
         festival_date = _parse_festival_date(festival, today.year)
-        if festival_date is None:
-            continue
-        if festival_date.date() < today.date():
+        if festival_date is None or festival_date.date() < today.date():
             festival_date = _parse_festival_date(festival, today.year + 1)
             if festival_date is None:
                 continue

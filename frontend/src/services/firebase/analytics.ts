@@ -153,12 +153,22 @@ export async function logScreenView(screenName: string, screenClass?: string) {
   const cleanScreen = formatScreenName(screenName);
   const cleanClass = screenClass || cleanScreen;
 
-  return await logEvent('screen_view', {
-    firebase_screen: cleanScreen,
-    firebase_screen_class: cleanClass,
-    screen_name: cleanScreen,
-    screen_class: cleanClass,
-  });
+  if (__DEV__) {
+    console.log(`[Analytics:Native] ScreenView: ${cleanScreen} (${cleanClass})`);
+  }
+
+  try {
+    return await logEvent('screen_view', {
+      screen_name: cleanScreen,
+      screen_class: cleanClass,
+      firebase_screen: cleanScreen,
+      firebase_screen_class: cleanClass,
+    });
+  } catch (e) {
+    if (__DEV__) {
+      console.warn('[Analytics:Native] logScreenView failed:', e);
+    }
+  }
 }
 
 /**

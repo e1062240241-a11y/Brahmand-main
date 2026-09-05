@@ -40,8 +40,7 @@ const AartiRow: React.FC<{
   index: number;
   isLast: boolean;
   accentColor: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-}> = ({ item, index, isLast, accentColor, iconName }) => {
+}> = ({ item, index, isLast, accentColor }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -69,9 +68,6 @@ const AartiRow: React.FC<{
       >
         <Animated.View style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, animatedStyle]}>
           <View style={styles.aartiLeft}>
-            <View style={[styles.aartiIconBox, { backgroundColor: `${accentColor}15` }]}>
-              <Ionicons name={iconName} size={18} color={accentColor} />
-            </View>
             <Text style={styles.aartiNameText}>{item.name}</Text>
           </View>
 
@@ -160,24 +156,6 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
   aartis = DEFAULT_AARTIS,
   vipInfoText = 'VIP / Special Darshan Available',
 }) => {
-  const getAartiIcon = (name: string, idx: number): keyof typeof Ionicons.glyphMap => {
-    const lower = name.toLowerCase();
-    if (lower.includes('mangala') || lower.includes('mangal') || lower.includes('kakar') || lower.includes('suprabhatam')) {
-      return 'sunny-outline';
-    }
-    if (lower.includes('bhog') || lower.includes('rajbhog') || lower.includes('noon') || lower.includes('madhyan')) {
-      return 'restaurant-outline';
-    }
-    if (lower.includes('sandhya') || lower.includes('evening')) {
-      return 'flame-outline';
-    }
-    if (lower.includes('shayan') || lower.includes('sayan') || lower.includes('night') || lower.includes('ekantha')) {
-      return 'moon-outline';
-    }
-    const icons: (keyof typeof Ionicons.glyphMap)[] = ['flame-outline', 'sparkles-outline', 'time-outline'];
-    return icons[idx % icons.length];
-  };
-
   return (
     <View style={styles.container}>
       {/* SECTION TITLE */}
@@ -207,7 +185,6 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
 
         <View style={styles.aartiList}>
           {aartis.map((item, index) => {
-            const iconName = getAartiIcon(item.name, index);
             const isLast = index === aartis.length - 1;
             const accentColor = item.color || '#D97706';
 
@@ -218,7 +195,6 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
                 index={index}
                 isLast={isLast}
                 accentColor={accentColor}
-                iconName={iconName}
               />
             );
           })}
@@ -390,20 +366,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   aartiLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-  },
-  aartiIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
   aartiNameText: {
     fontSize: 14,

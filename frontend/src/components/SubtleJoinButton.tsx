@@ -66,7 +66,7 @@ export const SubtleJoinButton = React.memo(({ onPress, style, children }: Subtle
       >
         <View
           pointerEvents="none"
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+          style={styles.contentContainer}
         >
           {children}
         </View>
@@ -85,6 +85,12 @@ const styles = StyleSheet.create({
     elevation: 2,
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  contentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
 });
 

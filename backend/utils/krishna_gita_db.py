@@ -721,25 +721,22 @@ def get_shloka_details(chapter: int, verse: int) -> dict:
 # ──────────────────────────────────────────────────────────────
 
 def replace_gita_references(text: str) -> str:
-    """Replace (Gita Chapter.Verse) with actual shlok"""
-    pattern = r"\(Gita\s+(\d+)\.(\d+)\)"
+    """Replace (Gita X.Y) or (Adhyay X, Shlok Y) with actual shlok"""
+    # PONYTAIL FIX: Expanded regex to catch both formats
+    pattern = r"(?:\(Gita\s+(\d+)\.(\d+)\)|\(Adhyay\s+(\d+),\s+Shlok\s+(\d+)\))"
     
-    def replace_match(match):
-        chapter = int(match.group(1))
-        verse = int(match.group(2))
-        shloka = get_shloka_details(chapter, verse)
+    def replacer(match):
+        # Handle both capture group formats
+        ch = match.group(1) or match.group(3)
+        v = match.group(2) or match.group(4)
         
-        parts = [f"(Gita {chapter}.{verse})"]
-        if shloka and shloka.get("sanskrit"):
-            parts.append(shloka["sanskrit"])
-        if shloka and shloka.get("hindi_translation"):
-            parts.append(f"अर्थ: {shloka['hindi_translation']}")
-            
-        if len(parts) > 1:
-            return "\n".join(parts)
-        return match.group(0)
+        details = get_shloka_details(int(ch), int(v))
+        sanskrit = details.get("sanskrit", "")
+        hindi = details.get("hindi_translation", "")
         
-    return re.sub(pattern, replace_match, text)
+        return f"\n{sanskrit}\n\nअर्थ: {hindi}"
+
+    return re.sub(pattern, replacer, text)
 
 
 # ──────────────────────────────────────────────────────────────

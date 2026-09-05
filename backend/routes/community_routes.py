@@ -15,7 +15,7 @@ async def get_user_communities(token_data: dict = Depends(verify_token)):
     """Get all communities user belongs to"""
     try:
         return await CommunityService.get_user_communities(token_data["user_id"])
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
@@ -30,7 +30,7 @@ async def create_community(
             token_data["user_id"],
             data.dict()
         )
-    except Exception as e:
+    except Exception:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -55,7 +55,7 @@ async def get_community(
     """Get community details"""
     try:
         return await CommunityService.get_community(community_id)
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 
@@ -70,7 +70,7 @@ async def join_community_by_code(
             token_data["user_id"],
             data.get("code", "")
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
 
 

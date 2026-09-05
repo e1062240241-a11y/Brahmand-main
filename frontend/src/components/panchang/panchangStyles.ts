@@ -3,10 +3,11 @@ import { Dimensions, Platform, StyleSheet } from 'react-native';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFEEE5' },
+  container: { flex: 1 },
   header: {
     display: 'flex',
     width: '100%',
+    paddingTop: 8,
     paddingBottom: 0,
     flexDirection: 'column',
     alignItems: 'flex-start',
@@ -111,7 +112,7 @@ export const styles = StyleSheet.create({
   },
 
   // Dynamic Tabs styling
-  tabContent: { paddingTop: 8 },
+  tabContent: { paddingTop: 8, backgroundColor: 'transparent' },
   sectionHeader: { 
     color: '#311303',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
@@ -611,6 +612,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
+    backgroundColor: 'transparent',
   },
   planetCardNew: {
     backgroundColor: '#FFFFFF',

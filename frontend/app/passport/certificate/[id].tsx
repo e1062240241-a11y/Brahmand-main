@@ -7,6 +7,7 @@ import { useAuthStore } from '../../../src/store/authStore';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../../src/database';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -927,17 +928,22 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
   `;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Certificates</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Certificates</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-      {!chariotUri ? (
+        {!chariotUri ? (
         <View style={styles.webView} />
       ) : Platform.OS === 'web' ? (
         <iframe
@@ -959,13 +965,13 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
         />
       )}
     </SafeAreaView>
+  </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FF8D57',
   },
   header: {
     flexDirection: 'row',
@@ -973,9 +979,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     height: 56,
-    backgroundColor: '#FF8D57',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e6783e',
   },
   backButton: {
     padding: 8,
@@ -984,7 +987,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffffff',
+    color: '#000',
     letterSpacing: 0.5,
     textAlign: 'center',
   },

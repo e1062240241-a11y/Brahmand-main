@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { SPACING, BORDER_RADIUS } from '../constants/theme';
 import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
+import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -575,6 +576,8 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
 
   // Dedicated Puja Vidhi Renderer
   if (section === 'Puja Vidhi') {
+    const pujaData = getFestivalPujaVidhi(festivalName, festival);
+
     return (
       <View style={styles.page}>
         <View style={styles.mandalaWatermark} pointerEvents="none">
@@ -587,66 +590,54 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
             <Text style={[styles.sectionBadgeText, { color: '#C2410C' }]}>SIMPLE RITUAL GUIDE (PUJA VIDHI)</Text>
           </View>
 
-          <Text style={styles.blockTitle}>Step-by-Step Puja Rituals</Text>
+          <Text style={styles.blockTitle}>{pujaData.title}</Text>
 
           {/* Items Needed Checklist */}
-          <View style={styles.sectionBlock}>
-            <View style={styles.blockTitleRow}>
-              <Ionicons name="basket-outline" size={18} color="#C2410C" />
-              <Text style={styles.blockTitle}>Essential Puja Samagri (Items Needed)</Text>
+          {pujaData.items && pujaData.items.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <View style={styles.blockTitleRow}>
+                <Ionicons name="basket-outline" size={18} color="#C2410C" />
+                <Text style={styles.blockTitle}>Essential Puja Samagri (Items Needed)</Text>
+              </View>
+              <View style={styles.itemsGrid}>
+                {pujaData.items.map((item, idx) => (
+                  <View key={idx} style={styles.itemChip}>
+                    <Text style={styles.itemChipText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.itemsGrid}>
-              {[
-                '🌸 Fresh flowers & bel leaves',
-                '👗 Green saree or red attire',
-                '💚 Green glass bangles & mehndi',
-                '🔱 Shiva-Parvati idol/picture',
-                '🪔 Ghee diya & incense sticks',
-                '🍯 Sweets (Ghevar / Kheer)',
-                '🥛 Milk, honey & Gangajal',
-                '🥭 Fresh seasonal fruits'
-              ].map((item, idx) => (
-                <View key={idx} style={styles.itemChip}>
-                  <Text style={styles.itemChipText}>{item}</Text>
+          )}
+
+          {/* Numbered Steps */}
+          {pujaData.steps && pujaData.steps.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <View style={styles.blockTitleRow}>
+                <Ionicons name="list" size={18} color="#C2410C" />
+                <Text style={styles.blockTitle}>{pujaData.steps.length} Step Ritual Guide</Text>
+              </View>
+
+              {pujaData.steps.map((st) => (
+                <View key={st.step} style={styles.stepCard}>
+                  <View style={styles.stepNumberBadge}>
+                    <Text style={styles.stepNumberText}>{st.step}</Text>
+                  </View>
+                  <View style={styles.stepTextContent}>
+                    <Text style={styles.stepTitleText}>{st.title}</Text>
+                    <Text style={styles.stepDescText}>{st.desc}</Text>
+                  </View>
                 </View>
               ))}
             </View>
-          </View>
-
-          {/* Numbered Steps */}
-          <View style={styles.sectionBlock}>
-            <View style={styles.blockTitleRow}>
-              <Ionicons name="list" size={18} color="#C2410C" />
-              <Text style={styles.blockTitle}>6 Step Ritual Guide</Text>
-            </View>
-
-            {[
-              { step: 1, title: 'Clean & Decorate', desc: 'Clean the puja room, adorn the altar with fresh flowers and light a ghee diya.', icon: 'sparkles' },
-              { step: 2, title: 'Adorn Yourself', desc: 'Wear green/red attire, put on green glass bangles and apply intricate henna.', icon: 'shirt' },
-              { step: 3, title: 'Install Idols', desc: 'Place Shiva-Parvati idols on a clean cloth and perform abhishek with milk & water.', icon: 'flower' },
-              { step: 4, title: 'Chant & Offer', desc: 'Offer bel leaves, flowers, and sweets while chanting "Om Umamaheshwarabhyam Namah".', icon: 'musical-notes' },
-              { step: 5, title: 'Sing & Swing', desc: 'Join family or neighbors on decorated jhulas (swings) singing Teej folk songs.', icon: 'happy' },
-              { step: 6, title: 'Aarti & Fast Break', desc: 'Perform evening aarti, seek elders’ blessings and break your fast with family.', icon: 'flame' },
-            ].map((st) => (
-              <View key={st.step} style={styles.stepCard}>
-                <View style={styles.stepNumberBadge}>
-                  <Text style={styles.stepNumberText}>{st.step}</Text>
-                </View>
-                <View style={styles.stepTextContent}>
-                  <Text style={styles.stepTitleText}>{st.title}</Text>
-                  <Text style={styles.stepDescText}>{st.desc}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+          )}
 
           {/* Note Box */}
-          <View style={styles.noteBox}>
-            <Ionicons name="information-circle" size={18} color="#D97706" />
-            <Text style={styles.noteText}>
-              Note for Beginners: If full Nirjala fast is difficult, you can observe Phalahar (fruit) fast while offering sincere prayers.
-            </Text>
-          </View>
+          {!!pujaData.note && (
+            <View style={styles.noteBox}>
+              <Ionicons name="information-circle" size={18} color="#D97706" />
+              <Text style={styles.noteText}>{pujaData.note}</Text>
+            </View>
+          )}
         </View>
       </View>
     );
