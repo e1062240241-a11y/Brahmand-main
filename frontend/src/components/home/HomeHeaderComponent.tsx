@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVideoPlayer, VideoView as ExpoVideoView } from 'expo-video';
+import { VideoView as ExpoVideoView } from 'expo-video';
+import { useSafeVideoPlayer, isPlayerValid } from '../SafeVideoView';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -20,9 +21,11 @@ import { scheduleShravanKatha15MinReminder } from '../../services/pushNotificati
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
     targetLiveTime,
+    isFocused = true,
 }: {
     eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed';
     targetLiveTime?: Date;
+    isFocused?: boolean;
 }) {
     const isLive = eventStatus === 'live';
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
@@ -41,16 +44,16 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
         }
     }, [eventStatus]);
 
-    // Force real-time recalculation on App Background -> Foreground transition
     const [, setAppStateTick] = React.useState(0);
     React.useEffect(() => {
+        if (!isFocused) return;
         const subscription = AppState.addEventListener('change', (nextAppState) => {
             if (nextAppState === 'active') {
                 setAppStateTick((prev) => prev + 1);
             }
         });
         return () => subscription.remove();
-    }, []);
+    }, [isFocused]);
 
     // Real-time Countdown Interval for upcoming / starting_soon / between_streams states
     React.useEffect(() => {
@@ -96,12 +99,12 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             }
         };
 
-        if (AppState.currentState === 'active') {
+        if (isFocused && AppState.currentState === 'active') {
             startTimer();
         }
 
         const subscription = AppState.addEventListener('change', (nextAppState) => {
-            if (nextAppState === 'active') {
+            if (nextAppState === 'active' && isFocused) {
                 startTimer();
             } else {
                 stopTimer();
@@ -112,7 +115,7 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             stopTimer();
             subscription.remove();
         };
-    }, [eventStatus, isLive, targetLiveTime]);
+    }, [eventStatus, isLive, targetLiveTime, isFocused]);
 
     // Live Pulse Animation Loop
     React.useEffect(() => {
@@ -362,7 +365,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     const featuredItems = quickAccessItems && quickAccessItems.length > 0 ? quickAccessItems : baseQuickAccess;
     const [videoError, setVideoError] = React.useState(false);
 
-    const achPlayer = useVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
+    const achPlayer = useSafeVideoPlayer('https://brahmandfeed23.b-cdn.net/assets/ACH.mp4', (player) => {
         player.loop = true;
         player.muted = true;
         try {
@@ -371,7 +374,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     });
 
     React.useEffect(() => {
-        if (!achPlayer) return;
+        if (!isPlayerValid(achPlayer)) return;
 
         const statusSubscription = achPlayer.addListener('statusChange', (payload: any) => {
             const status = typeof payload === 'string' ? payload : payload?.status;
@@ -390,10 +393,11 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     }, [achPlayer]);
 
     React.useEffect(() => {
-        if (!achPlayer) return;
+        if (!isPlayerValid(achPlayer)) return;
         const activeFocused = isFocused !== false;
 
         const updatePlayback = (appState: string = AppState.currentState) => {
+            if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
             const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === 0;
             if (shouldPlay) {
@@ -420,7 +424,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         return () => {
             subscription.remove();
             try {
-                achPlayer.pause();
+                if (isPlayerValid(achPlayer)) achPlayer.pause();
             } catch (_e) { }
         };
     }, [achPlayer, isFocused, videoError, activeBannerIndex]);
@@ -980,7 +984,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 resizeMode="cover"
                                             />
 
-                                            {!videoError && (
+                                            {!videoError && isPlayerValid(achPlayer) && (
                                                 <ExpoVideoView
                                                     player={achPlayer}
                                                     style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
@@ -1303,7 +1307,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 }}
                                                             />
                                                         )}
-                                                        <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
+                                                        <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} isFocused={isFocused} />
                                                     </View>
                                                 </View>
                                             </View>

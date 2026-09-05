@@ -5,7 +5,7 @@ import os
 import re
 from uuid import uuid4
 from urllib.parse import quote
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from config.firebase_config import get_firestore
@@ -540,7 +540,6 @@ class FirebaseCommunityService:
         community = await db.get_document('communities', community_id)
         
         # Count recent messages
-        yesterday = datetime.utcnow() - timedelta(hours=24)
         
         stats = {
             "community_id": community_id,

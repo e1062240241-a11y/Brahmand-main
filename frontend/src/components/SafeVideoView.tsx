@@ -29,14 +29,25 @@ export const isPlayerValid = (player: any): boolean => {
  */
 const DEFERRED_RELEASE_MS = 500;
 
+const actuallyReleasePlayer = (p: any) => {
+  if (!p) return;
+  try {
+    if (isPlayerValid(p)) {
+      try { p.pause(); } catch (_e) {}
+      try {
+        if (typeof p.replaceAsync === 'function') p.replaceAsync(null);
+        else if (typeof p.replace === 'function') p.replace(null);
+      } catch (_e) {}
+    }
+  } catch (_e) {}
+  try {
+    if (typeof p.release === 'function') p.release();
+    else if (typeof p.destroy === 'function') p.destroy();
+  } catch (_e) {}
+};
+
 const safeReleasePlayer = (p: any, delayMs = 0) => {
-  const doRelease = () => {
-    try {
-      if (isPlayerValid(p)) {
-        p.pause();
-      }
-    } catch (_e) {}
-  };
+  const doRelease = () => actuallyReleasePlayer(p);
   if (delayMs > 0) {
     setTimeout(doRelease, delayMs);
   } else {
@@ -50,18 +61,27 @@ export const useSafeVideoPlayer = (
 ) => {
   const [player, setPlayer] = useState<any>(null);
   const playerRef = useRef<any>(null);
-  // Track pending release timers so we can cancel them if needed
   const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekTimeRef = useRef(0);
+  const [appActive, setAppActive] = useState(() => AppState.currentState === 'active');
+  const sourceKey = typeof source === 'string' ? source : JSON.stringify(source);
+  const prevSourceKeyRef = useRef(sourceKey);
 
-  // Synchronously pause player when app transitions to background or inactive
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState !== 'active' && playerRef.current) {
-        try {
-          if (isPlayerValid(playerRef.current)) {
-            playerRef.current.pause();
-          }
-        } catch (_e) {}
+      if (nextAppState === 'background') {
+        const p = playerRef.current;
+        if (p) {
+          try {
+            if (isPlayerValid(p) && typeof p.currentTime === 'number') {
+              seekTimeRef.current = p.currentTime;
+            }
+          } catch (_e) {}
+        }
+        setAppActive(false);
+      } else if (nextAppState === 'active') {
+        setAppActive(true);
       }
     });
     return () => subscription.remove();
@@ -70,14 +90,12 @@ export const useSafeVideoPlayer = (
   useEffect(() => {
     if (!ExpoVideoModule) return;
 
-    if (!source) {
-      // Null source: pause + deferred release current player
-      if (playerRef.current) {
-        const stale = playerRef.current;
-        playerRef.current = null;
-        setPlayer(null);
-        safeReleasePlayer(stale, DEFERRED_RELEASE_MS);
-      }
+    if (prevSourceKeyRef.current !== sourceKey) {
+      seekTimeRef.current = 0;
+      prevSourceKeyRef.current = sourceKey;
+    }
+
+    if (!source || !appActive) {
       return;
     }
 
@@ -98,7 +116,6 @@ export const useSafeVideoPlayer = (
       newPlayer.staysActiveInBackground = false;
     } catch (_e) {}
 
-    // Run setup (mute/loop/play) on the new player
     if (setup) {
       try { setup(newPlayer); } catch (e) {
         console.warn('[useSafeVideoPlayer] Error running setup:', e);
@@ -109,7 +126,16 @@ export const useSafeVideoPlayer = (
       newPlayer.staysActiveInBackground = false;
     } catch (_e) {}
 
-    // Swap ref: deferred-release the old player AFTER React commits new player
+    if (seekTimeRef.current > 0.25) {
+      try {
+        newPlayer.currentTime = seekTimeRef.current;
+      } catch (_e) {
+        try {
+          if (typeof newPlayer.seekTo === 'function') newPlayer.seekTo(seekTimeRef.current);
+        } catch (_e2) {}
+      }
+    }
+
     const stalePlayer = playerRef.current;
     playerRef.current = newPlayer;
     setPlayer(newPlayer);
@@ -118,18 +144,23 @@ export const useSafeVideoPlayer = (
       safeReleasePlayer(stalePlayer, DEFERRED_RELEASE_MS);
     }
 
-    // Cleanup on unmount or source change: deferred release
     return () => {
       if (releaseTimerRef.current) {
         clearTimeout(releaseTimerRef.current);
         releaseTimerRef.current = null;
       }
       if (newPlayer) {
+        try {
+          if (isPlayerValid(newPlayer) && typeof newPlayer.currentTime === 'number') {
+            seekTimeRef.current = newPlayer.currentTime;
+          }
+        } catch (_e) {}
         playerRef.current = null;
+        setPlayer(null);
         safeReleasePlayer(newPlayer, DEFERRED_RELEASE_MS);
       }
     };
-  }, [typeof source === 'string' ? source : JSON.stringify(source)]);
+  }, [sourceKey, appActive]);
 
   return player;
 };

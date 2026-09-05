@@ -1,6 +1,6 @@
 import { formatDateIST } from '../../../src/utils/dateUtils';
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Share, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Share, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../../src/store/authStore';
@@ -11,7 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { chariotBase64 } from '../../../src/constants/chariotBase64';
+import { Asset } from 'expo-asset';
+import { chariotImage } from '../../../src/constants/chariotBase64';
 
 function CertificateDetailScreen({ observedCertificates = [] }: { observedCertificates?: any[] }) {
   const router = useRouter();
@@ -29,6 +30,29 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
   const userName = user?.name || 'Arjun Sharma';
   const bookName = certificate.bookName || certificate.book_name || 'BHAGAVAD GITA';
   const formattedDate = formatDateIST(certificate.date || new Date().toISOString());
+  const [chariotUri, setChariotUri] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (Platform.OS === 'web') {
+          const resolved = Image.resolveAssetSource(chariotImage);
+          if (!cancelled) setChariotUri(resolved?.uri || '');
+          return;
+        }
+        const asset = Asset.fromModule(chariotImage);
+        await asset.downloadAsync();
+        if (!cancelled) setChariotUri(asset.localUri || asset.uri || '');
+      } catch (_e) {
+        const resolved = Image.resolveAssetSource(chariotImage);
+        if (!cancelled) setChariotUri(resolved?.uri || '');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -858,7 +882,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     appRoot.innerHTML = \`
       <div class="certificate-card" id="certificateForDownload">
         <div class="certificate-inner">
-          <img src="${chariotBase64}" class="certificate-bg-image" alt="background" />
+          <img src="${chariotUri}" class="certificate-bg-image" alt="background" />
           
           <div class="certificate-content">
             <div class="brand-header">
@@ -917,29 +941,29 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Certificates</Text>
           <View style={{ width: 40 }} />
-        </View>
-
-        {Platform.OS === 'web' ? (
-          <iframe
-            srcDoc={htmlContent}
-            style={styles.webFrame}
-            title="Divine Certificate"
-          />
-        ) : (
-          <WebView
-            originWhitelist={['*']}
-            source={{ html: htmlContent }}
-            style={styles.webView}
-            onMessage={handleMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            allowFileAccess={true}
-            allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
-            mixedContentMode={Platform.OS === 'android' ? 'always' : undefined}
-          />
-        )}
-      </SafeAreaView>
-    </LinearGradient>
+      {!chariotUri ? (
+        <View style={styles.webView} />
+      ) : Platform.OS === 'web' ? (
+        <iframe
+          srcDoc={htmlContent}
+          style={styles.webFrame}
+          title="Divine Certificate"
+        />
+      ) : (
+        <WebView
+          originWhitelist={['*']}
+          source={{ html: htmlContent, baseUrl: chariotUri }}
+          style={styles.webView}
+          onMessage={handleMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          allowFileAccess={true}
+          allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
+          mixedContentMode={Platform.OS === 'android' ? 'always' : undefined}
+        />
+      )}
+    </SafeAreaView>
+  </LinearGradient>
   );
 }
 

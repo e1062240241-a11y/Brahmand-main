@@ -1814,7 +1814,7 @@ async def login_anonymous(request: AnonymousLoginRequest):
             photo=request.photo,
             language=request.language,
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=400, detail="Validation error")
     except Exception as e:
         logger.exception(f"/auth/login-anonymous failed for phone={request.phone}: {e}")
@@ -2111,7 +2111,7 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
 
     try:
         mobile = _normalize_phone(phone)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
 
     def _verify_otp_sync():
@@ -2305,11 +2305,6 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     if user and user.get('anonymous_account'):
         raise HTTPException(status_code=403, detail="Anonymous accounts cannot update dual location")
         
-    is_verified = False
-    verification_level = 'state'
-    if user:
-        is_verified = user.get('is_verified', False)
-        verification_level = user.get('verification_level', 'state')
         
     # Get user's currently joined communities to find old location-based ones
     current_communities = (user.get('communities', []) if user else []) or []
@@ -2811,15 +2806,17 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
 
     blocked_ids = set()
     try:
-        # Users blocked by user_id
-        blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+        # ⚡ Bolt Optimization: Use asyncio.gather for concurrent DB queries to reduce latency.
+        blocks_by_me, blocks_of_me = await asyncio.gather(
+            db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)]),
+            db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+        )
+
         for b in blocks_by_me:
             b_uid = b.get('blockedUid')
             if b_uid:
                 blocked_ids.add(b_uid)
         
-        # Users who blocked user_id
-        blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
         for b in blocks_of_me:
             b_uid = b.get('blockerUid')
             if b_uid:
@@ -2899,8 +2896,10 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
     }
     await db.set_document('user_blocks', doc_id, block_data)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{user_id}")
+    )
 
     
     # Also unfollow each other if they follow each other!
@@ -2950,8 +2949,10 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     doc_id = f"{current_user_id}_{user_id}"
     await db.delete_document('user_blocks', doc_id)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{user_id}")
+    )
 
     return {'message': 'User unblocked successfully', 'user_id': user_id}
 
@@ -3000,10 +3001,13 @@ async def check_user_blocked_endpoint(user_id: str, token_data: dict = Depends(v
     db = await get_db()
     current_user_id = token_data['user_id']
     doc_id = f"{current_user_id}_{user_id}"
-    block_doc = await db.get_document('user_blocks', doc_id)
-    # Check reverse block too
     doc_id_reverse = f"{user_id}_{current_user_id}"
-    block_doc_reverse = await db.get_document('user_blocks', doc_id_reverse)
+
+    # ⚡ Bolt Optimization: Batch fetch block documents concurrently
+    block_doc, block_doc_reverse = await asyncio.gather(
+        db.get_document('user_blocks', doc_id),
+        db.get_document('user_blocks', doc_id_reverse)
+    )
     
     is_blocked = (block_doc is not None) or (block_doc_reverse is not None)
     return {'is_blocked': is_blocked}
@@ -3074,12 +3078,16 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
 
     # Atomic counter increments — avoids the read-then-write race where two
     # concurrent follows both read the same count and clobber each other.
-    await db.increment_field('users', user_id, 'followers_count', 1)
-    await db.increment_field('users', current_user_id, 'following_count', 1)
+    await asyncio.gather(
+        db.increment_field('users', user_id, 'followers_count', 1),
+        db.increment_field('users', current_user_id, 'following_count', 1)
+    )
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.invalidate_user(current_user_id)
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.invalidate_user(current_user_id)
+    )
 
     # Backfill creator's latest 10 posts into follower's following_inbox
     try:
@@ -3107,12 +3115,16 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     # Atomic decrements only if an edge actually existed — avoids double-decrement
     # when unfollow is called on a non-followed user.
     if edge_existed:
-        await db.increment_field('users', user_id, 'followers_count', -1)
-        await db.increment_field('users', current_user_id, 'following_count', -1)
+        await asyncio.gather(
+            db.increment_field('users', user_id, 'followers_count', -1),
+            db.increment_field('users', current_user_id, 'following_count', -1)
+        )
 
     # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.invalidate_user(current_user_id)
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.invalidate_user(current_user_id)
+    )
 
     # Clean unfollowed creator's posts from follower's following_inbox
     try:
@@ -3138,8 +3150,10 @@ async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_
         'createdAt': datetime.utcnow()
     })
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{target_user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{target_user_id}")
+    )
 
     return {'message': 'User blocked successfully', 'blocked_user_id': target_user_id}
 
@@ -3152,8 +3166,10 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
     doc_id = f"{current_user_id}_{target_user_id}"
     await db.delete_document('user_blocks', doc_id)
     # Invalidate block caches
-    await cache_manager.delete(f"blocked_users:{current_user_id}")
-    await cache_manager.delete(f"blocked_users:{target_user_id}")
+    await asyncio.gather(
+        cache_manager.delete(f"blocked_users:{current_user_id}"),
+        cache_manager.delete(f"blocked_users:{target_user_id}")
+    )
 
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
 
@@ -3546,7 +3562,7 @@ async def _upload_post_impl(
                     media_url, object_path = video_res
                     thumbnail_url, _ = thumb_res
                     logger.info("Uploaded video and thumbnail to Bunny.net successfully")
-                except Exception as exc:
+                except Exception:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
                     raise HTTPException(status_code=500, detail="An internal server error occurred")
             else:
@@ -3561,7 +3577,7 @@ async def _upload_post_impl(
                         base_url
                     )
                     logger.info("Uploaded raw video to Bunny.net successfully")
-                except Exception as exc:
+                except Exception:
                     logger.exception('Post raw video upload failed for user_id=%s', user_id)
                     raise HTTPException(status_code=500, detail="An internal server error occurred")
         else:
@@ -3588,7 +3604,7 @@ async def _upload_post_impl(
                 temp_thumb_file = None
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Upload processing failed")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
     finally:
@@ -3605,7 +3621,7 @@ async def _upload_post_impl(
         try:
             media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
             logger.info("Uploaded image to Bunny.net successfully")
-        except Exception as exc:
+        except Exception:
             logger.exception('Post media upload failed for user_id=%s', user_id)
             raise HTTPException(status_code=500, detail="An internal server error occurred")
     
@@ -3827,13 +3843,6 @@ async def _upload_post_from_storage_impl(
     if not storage_path.startswith('raw-post-videos/'):
         raise HTTPException(status_code=400, detail='Invalid storage path')
 
-    content_type = 'video/mp4'
-    if storage_path.lower().endswith('.mov'):
-        content_type = 'video/quicktime'
-    elif storage_path.lower().endswith('.webm'):
-        content_type = 'video/webm'
-    elif storage_path.lower().endswith('.mkv'):
-        content_type = 'video/x-matroska'
 
     has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
 
@@ -3929,7 +3938,7 @@ async def _upload_post_from_storage_impl(
             video_res, thumbnail_url = await asyncio.gather(upload_video(), upload_thumbnail())
             media_url, object_path = video_res
             logger.info("Uploaded processed video from storage to Bunny.net successfully")
-        except Exception as exc:
+        except Exception:
             logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
             raise HTTPException(status_code=500, detail="An internal server error occurred")
         finally:
@@ -4518,7 +4527,6 @@ async def get_posts_feed(
             
             # Keep only required fields for feed to reduce payload size
             # Remove heavy fields that are not needed in feed view
-            full_media_url = post.get('media_url')
             
             liked_by = post.get('liked_by', []) or []
             post['likes_count'] = post.get('likes_count', len(liked_by))
@@ -6577,7 +6585,6 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     
     user_comm_ids = set(user.get('communities', []) or [])
     seen_ids = set()
-    missing_user_comm_ids = []
 
     if user_comm_ids:
         try:
@@ -7065,7 +7072,7 @@ async def join_community_by_code(
             token_data["user_id"],
             data.get("code", "")
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=404, detail="Resource not found")
     except Exception as e:
         logger.error(f"Error joining community: {e}")
@@ -8485,7 +8492,6 @@ async def get_circles(token_data: dict = Depends(verify_token)):
 
             for circle in fetched_circles:
                 if circle:
-                    cid = circle['id']
                     # Check if this is a cultural group
                     is_cultural = (
                         circle.get('type') == 'cultural' or
@@ -8803,8 +8809,10 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
         raise HTTPException(status_code=404, detail="Join request not found")
     
     # Add member to circle
-    await db.array_union_update('circles', circle_id, 'members', [request_user_id])
-    await db.array_union_update('users', request_user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_union_update('circles', circle_id, 'members', [request_user_id]),
+        db.array_union_update('users', request_user_id, 'circles', [circle_id])
+    )
     
     # Update request status
     await db.update_document('circle_requests', request['id'], {'status': 'approved'})
@@ -8916,8 +8924,10 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
         raise HTTPException(status_code=400, detail="User is already a member")
     
     # Add directly (invitation = direct add)
-    await db.array_union_update('circles', circle_id, 'members', [target_user_id])
-    await db.array_union_update('users', target_user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_union_update('circles', circle_id, 'members', [target_user_id]),
+        db.array_union_update('users', target_user_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {target_user_id} invited to circle {circle_id}")
     
@@ -8974,8 +8984,10 @@ async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token))
         await db.update_document('circles', circle_id, update_payload)
     
     # Remove from circle
-    await db.array_remove_update('circles', circle_id, 'members', [user_id])
-    await db.array_remove_update('users', user_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_remove_update('circles', circle_id, 'members', [user_id]),
+        db.array_remove_update('users', user_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {user_id} left circle {circle_id}")
     return {"message": "Left circle successfully"}
@@ -9039,8 +9051,10 @@ async def remove_circle_member(circle_id: str, member_id: str, token_data: dict 
         await db.update_document('circles', circle_id, update_payload)
     
     # Remove member
-    await db.array_remove_update('circles', circle_id, 'members', [member_id])
-    await db.array_remove_update('users', member_id, 'circles', [circle_id])
+    await asyncio.gather(
+        db.array_remove_update('circles', circle_id, 'members', [member_id]),
+        db.array_remove_update('users', member_id, 'circles', [circle_id])
+    )
     
     logger.info(f"User {member_id} removed from circle {circle_id}")
     return {"message": "Member removed successfully"}
@@ -9582,7 +9596,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
-        otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
         has_id_photo = bool(data.get('id_photo'))
         if not otp_verified and not user_phone.startswith("+919999") and not has_id_photo:
             raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
@@ -11021,16 +11034,6 @@ IDENTITY RULES:
     except Exception as fs_err:
         logger.warning(f"Failed to fetch profile/history from Firestore: {fs_err}")
 
-    # Fetch user's name from Firestore for personalization
-    user_name = "mere bhakta"
-    try:
-        user_data = await db.get_document('users', user_id)
-        if user_data:
-            name_val = user_data.get('name')
-            if name_val and name_val.strip():
-                user_name = name_val.strip()
-    except Exception as fs_name_err:
-        logger.warning(f"Failed to fetch user name from Firestore: {fs_name_err}")
 
 
     try:
@@ -11433,11 +11436,9 @@ async def ask_astrology_question(
         raise HTTPException(status_code=404, detail="User not found")
 
     request_payload = body.get("astrology")
-    payload_kind = None
     grounded_payload = request_payload
 
     if isinstance(request_payload, dict) and request_payload.get("kind") == "panchang":
-        payload_kind = "panchang"
         grounded_payload = request_payload.get("payload")
 
     if not isinstance(grounded_payload, dict) or not grounded_payload:
@@ -11474,7 +11475,7 @@ async def send_blood_request_otp(request: OTPRequest):
     from services.nattyfish_service import _normalize_phone
     try:
         mobile = _normalize_phone(phone)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
@@ -11588,7 +11589,7 @@ async def verify_blood_request_otp(request: OTPVerify):
     from services.nattyfish_service import _normalize_phone
     try:
         mobile = _normalize_phone(phone)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
         
     now = datetime.now(timezone.utc)
@@ -11683,7 +11684,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
         from services.nattyfish_service import _normalize_phone
         try:
             contact_mobile = _normalize_phone(contact_number)
-        except Exception as exc:
+        except Exception:
             raise HTTPException(status_code=400, detail="Invalid contact number")
             
         # Retrieve verification record (bypass cache)
@@ -11777,8 +11778,6 @@ async def get_help_requests(
 ):
     """Get help requests visible to the user"""
     db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
     filters = [('status', '==', status)]
     
@@ -11793,16 +11792,36 @@ async def get_help_requests(
 
 
 @api_router.get("/help-requests/my")
-async def get_my_help_requests(token_data: dict = Depends(verify_token)):
-    """Get current user's help requests"""
+async def get_my_help_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get current user's help requests with pagination"""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    requests = await db.query_documents('help_requests', filters=[
-        ('creator_id', '==', user_id)
-    ], order_by='created_at', order_direction='DESCENDING')
-    
-    return requests
+
+    safe_limit = max(1, min(limit, 50))
+    fetch_limit = offset + safe_limit + 1
+
+    try:
+        requests = await db.query_documents(
+            'help_requests',
+            filters=[('creator_id', '==', user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(f"Fallback query for get_my_help_requests: {query_err}")
+        requests = await db.query_documents(
+            'help_requests',
+            filters=[('creator_id', '==', user_id)],
+            limit=fetch_limit
+        )
+        requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+
+    return requests[offset:offset + safe_limit]
 
 
 @api_router.get("/help-requests/active")
@@ -11981,8 +12000,10 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
 
     # ponytail: invalidate cached user profile to force KYC verification prompt
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.delete(f"vendor:user:{user_id}")
+    )
 
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -12689,7 +12710,7 @@ async def extract_kyc_text_from_image(
             data = resp.json()
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
-                err = vision_resp.get('error', {})
+                pass
                 logger.exception("An internal server error occurred")
                 raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12721,7 +12742,7 @@ async def extract_kyc_text_from_image(
             }
         except HTTPException:
             raise
-        except Exception as exc:
+        except Exception:
             logger.exception("An internal server error occurred")
             raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12764,7 +12785,7 @@ async def extract_kyc_text_from_image(
             "annotations": annotations,
             "total_annotations": len(annotations),
         }
-    except Exception as exc:
+    except Exception:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12818,7 +12839,7 @@ async def extract_user_kyc_text_from_image(
             data = resp.json()
             vision_resp = data.get('responses', [{}])[0]
             if 'error' in vision_resp:
-                err = vision_resp.get('error', {})
+                pass
                 logger.exception("An internal server error occurred")
                 raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12850,7 +12871,7 @@ async def extract_user_kyc_text_from_image(
             }
         except HTTPException:
             raise
-        except Exception as exc:
+        except Exception:
             logger.exception("An internal server error occurred")
             raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12893,7 +12914,7 @@ async def extract_user_kyc_text_from_image(
             "annotations": annotations,
             "total_annotations": len(annotations),
         }
-    except Exception as exc:
+    except Exception:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -12932,7 +12953,7 @@ async def _get_sandbox_headers() -> dict:
                     return requests.post(auth_url, headers=auth_headers, timeout=20)
                 auth_resp = await asyncio.to_thread(_auth)
                 auth_data = auth_resp.json() if auth_resp.content else {}
-            except Exception as exc:
+            except Exception:
                 logger.exception("An internal server error occurred")
                 raise HTTPException(status_code=500, detail="An internal server error occurred")
 
@@ -13164,7 +13185,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
             await db._run_sync(_delete_doc)
         else:
             raise HTTPException(status_code=400, detail="Invalid OTP")
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=400, detail="Validation error")
 
     await db.delete_document('vendors', vendor_id)
@@ -13193,8 +13214,10 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         pass
     
     # ponytail: invalidate cached user profile to reflect vendor deletion
-    await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await asyncio.gather(
+        cache_manager.invalidate_user(user_id),
+        cache_manager.delete(f"vendor:user:{user_id}")
+    )
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
@@ -13791,16 +13814,36 @@ async def get_community_requests(
 
 
 @api_router.get("/community-requests/my")
-async def get_my_community_requests(token_data: dict = Depends(verify_token)):
-    """Get current user's community requests"""
+async def get_my_community_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get current user's community requests with pagination"""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    requests = await db.query_documents('community_requests', filters=[
-        ('user_id', '==', user_id)
-    ])
-    
-    return requests
+
+    safe_limit = max(1, min(limit, 50))
+    fetch_limit = offset + safe_limit + 1
+
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=[('user_id', '==', user_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(f"Fallback query for get_my_community_requests: {query_err}")
+        requests = await db.query_documents(
+            'community_requests',
+            filters=[('user_id', '==', user_id)],
+            limit=fetch_limit
+        )
+        requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+
+    return requests[offset:offset + safe_limit]
 
 
 @api_router.post("/community-requests/{request_id}/resolve")
@@ -15925,7 +15968,6 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
 @api_router.get('/home/init')
 async def home_init(request: Request, seen_ids: str = '', token_data: dict = Depends(verify_token)):
     db = await get_db()
-    user_id = token_data['user_id']
 
     async def _get_feed():
         try:
@@ -16469,21 +16511,35 @@ async def get_jaap_reminder_stats(
 ):
     """
     Get total registered user count and active status for a specific mantra_type.
+    Uses O(1) server-side count aggregation and point check to avoid loading
+    all registered user documents into memory.
     """
     db = await get_db()
     user_id = token_data["user_id"]
 
-    all_reminders = await db.query_documents(
-        "jaap_reminders",
-        filters=[
-            ("mantra_type", "==", mantra_type),
-            ("active", "==", True)
-        ]
+    # Each registered user has 4 session documents created together (Morning, Afternoon, Evening, Night).
+    # Counting 'Morning' session documents gives the exact unique user count without fetching all docs.
+    total_count, user_reminders = await asyncio.gather(
+        db.count_documents(
+            "jaap_reminders",
+            filters=[
+                ("mantra_type", "==", mantra_type),
+                ("session_name", "==", "Morning"),
+                ("active", "==", True)
+            ]
+        ),
+        db.query_documents(
+            "jaap_reminders",
+            filters=[
+                ("user_id", "==", user_id),
+                ("mantra_type", "==", mantra_type),
+                ("active", "==", True)
+            ],
+            limit=1
+        )
     )
 
-    unique_user_ids = {r.get("user_id") for r in all_reminders if r.get("user_id")}
-    total_count = len(unique_user_ids)
-    is_user_interested = user_id in unique_user_ids
+    is_user_interested = len(user_reminders) > 0
 
     return {
         "mantra_type": mantra_type,

@@ -221,7 +221,7 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
 
     try:
         subprocess.run(command, capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as exc:
+    except subprocess.CalledProcessError:
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
     except Exception as exc:
@@ -405,7 +405,7 @@ async def _upload_and_compress_video_impl(
         }
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         logger.exception("Video upload pipeline failed for user_id=%s", token_data.get("user_id"))
         raise HTTPException(status_code=500, detail="An internal server error occurred")
     finally:

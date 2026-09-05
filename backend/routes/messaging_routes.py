@@ -42,7 +42,11 @@ async def send_community_message(
 
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        error_msg = str(e)
+        if error_msg in ["Not a community member", "Only verified members can post in State & National community groups"]:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        # Moderation reasons or other validation errors
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @router.get("/community/{community_id}/{subgroup_type}")
@@ -82,7 +86,10 @@ async def send_circle_message(
             message_type=message.message_type.value
         )
     except ValueError as e:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        error_msg = str(e)
+        if error_msg == "Not a circle member":
+            raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @router.get("/circle/{circle_id}")
@@ -118,7 +125,10 @@ async def send_direct_message(
             message_type=message.message_type.value
         )
     except ValueError as e:
-        raise HTTPException(status_code=404, detail="Resource not found")
+        error_msg = str(e)
+        if error_msg == "User not found":
+            raise HTTPException(status_code=404, detail="Resource not found")
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @router.get("/dm/conversations")
@@ -140,5 +150,5 @@ async def get_direct_messages(
             conversation_id,
             limit
         )
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(status_code=403, detail="Forbidden")

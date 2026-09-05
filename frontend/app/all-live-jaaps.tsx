@@ -23,6 +23,7 @@ import { socketService } from '../src/services/socket';
 import { Svg, Path } from 'react-native-svg';
 import { useTranslation } from '../src/utils/i18n';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
+import { AnimatedDoubleArrow } from '../src/components/AnimatedDoubleArrow';
 
 const SubtleJoinButton = ({ onPress, style, children }: any) => {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -318,16 +319,17 @@ export default function AllLiveJaapsScreen() {
                     })() : jaap.title}
                   </Text>
                   <Text style={styles.cardSlok} numberOfLines={2}>{jaap.slok}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                     <SubtleJoinButton
-                      style={{ flex: 1 }}
+                      style={{ width: '88%' }}
                       onPress={() => goToJaap(jaap)}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <Text style={styles.exactJoinText}>{t('join')}</Text>
-                        <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3.5 }}>
+                        <Text style={styles.exactJoinText} numberOfLines={1}>{t('join')}</Text>
+                        <Svg width={13} height={13} viewBox="0 0 16 16" fill="none">
                           <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00"/>
                         </Svg>
+                        {showLive && <AnimatedDoubleArrow color="#FF7B00" size={10} />}
                       </View>
                     </SubtleJoinButton>
                   </View>

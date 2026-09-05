@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, memo } from 'react';
+import React, { useEffect, memo } from 'react';
 import { AppState } from 'react-native';
 import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from './SafeVideoView';
 
@@ -69,28 +69,14 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (isPlayerValid(player)) {
+      if (nextAppState === 'active' && shouldPlay && isPlayerValid(player)) {
         try {
-          if (nextAppState !== 'active') {
-            player.pause();
-          } else if (shouldPlay) {
-            player.play();
-          }
+          player.play();
         } catch (_e) {}
       }
     });
     return () => subscription.remove();
   }, [player, shouldPlay]);
-
-  useEffect(() => {
-    return () => {
-      if (isPlayerValid(player)) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
 
   return (
     <SafeVideoView

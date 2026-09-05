@@ -105,7 +105,16 @@ const NativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  const fallback = <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  const fallback = videoPosterUrl ? (
+    <Image
+      source={{ uri: videoPosterUrl }}
+      style={{ width: '100%', height: '100%' }}
+      contentFit={contentFitMode}
+      onError={handlePosterError}
+    />
+  ) : (
+    <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
+  );
 
   if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
     return fallback;

@@ -139,6 +139,8 @@ xcuserdata/
 *.pdb
 *.bsdiff
 *.patch
+!patches/*.patch
+!*/patches/*.patch
 *.diff
 *.rej
 *.orig

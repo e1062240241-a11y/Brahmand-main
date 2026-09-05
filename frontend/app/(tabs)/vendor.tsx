@@ -18,7 +18,6 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -30,6 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useRouter } from 'expo-router';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,7 +39,7 @@ import * as Location from 'expo-location';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { calculateHaversineDistance } from '../../src/utils/formatDistance';
 import { sortItemsByLocationPreference, computeLocationTier } from '../../src/utils/locationPreference';
-import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import { useTabBar } from '../../src/contexts/TabBarContext';
 import { filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import VendorCategories from '../../src/components/VendorCategories';
@@ -298,23 +298,23 @@ const ServiceCard = memo<ServiceCardProps>(({
         {
           width,
           height,
-          ...(isTall ? { alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 } : {}),
+          ...(isTall ? { alignItems: 'flex-start' } : {}),
         },
       ]}
       onPress={() => onPress(category)}
     >
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.cardCoverImage}
-          resizeMode="cover"
-        />
-      </View>
-      <View style={styles.figmaServiceBadge}>
-        <Image
-          source={{ uri: iconUri }}
+      <ExpoImage
+        source={imageUri}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
+      <View style={[styles.figmaServiceBadge, isTall && { marginLeft: 8 }]}>
+        <ExpoImage
+          source={iconUri}
           style={styles.badgeIcon}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
         />
         <Text
           numberOfLines={1}
@@ -353,18 +353,18 @@ const BusinessCard = memo<BusinessCardProps>(({
       ]}
       onPress={() => onPress(category)}
     >
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.cardCoverImage}
-          resizeMode="cover"
-        />
-      </View>
+      <ExpoImage
+        source={imageUri}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
       <View style={styles.figmaServiceBadge}>
-        <Image
-          source={{ uri: iconUri }}
+        <ExpoImage
+          source={iconUri}
           style={styles.badgeIcon}
-          resizeMode="contain"
+          contentFit="contain"
+          cachePolicy="memory-disk"
         />
         <Text
           numberOfLines={1}
@@ -416,9 +416,12 @@ const VendorCardComponent = memo<VendorCardComponentProps>(({
       {/* Business Image Placeholder */}
       <View style={styles.vendorImageContainer}>
         {previewImage ? (
-          <Image
+          <ExpoImage
             source={{ uri: previewImage }}
             style={styles.vendorImage}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
           />
         ) : (
           <View style={styles.vendorImagePlaceholder}>
@@ -489,7 +492,7 @@ VendorCardComponent.displayName = 'VendorCardComponent';
 export default function VendorScreen() {
   const router = useRouter();
   const { language } = useTranslation();
-  const onVendorScrollTabBar = useScrollToHideTabBar();
+  const { showTabBar, hideTabBar } = useTabBar();
   const currentLang = (language === 'hi' || language === 'en') ? language : 'en';
 
   const isMountedRef = useRef(true);
@@ -504,50 +507,67 @@ export default function VendorScreen() {
 
   const animatedScrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
+      'worklet';
       scrollY.set(e.contentOffset.y);
     },
   });
 
   const animatedSearchContainerStyle = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.get(), [0, 70], [52, 0], Extrapolation.CLAMP),
-    opacity: interpolate(scrollY.get(), [0, 60], [1, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.get(), [0, 65], [52, 0], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.get(), [0, 55], [1, 0], Extrapolation.CLAMP),
     overflow: 'hidden' as const,
   }));
 
   const animatedSearchInnerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(scrollY.get(), [0, 70], [0, -14], Extrapolation.CLAMP) }],
+    transform: [{ translateY: interpolate(scrollY.get(), [0, 65], [0, -14], Extrapolation.CLAMP) }],
   }));
 
-  const lastY = useSharedValue(0);
-  const acc = useSharedValue(0);
-  const dir = useSharedValue(0);
+  const tabBarHidden = useSharedValue(false);
+  const lastScrollY = useSharedValue(0);
+  const accumulatedDelta = useSharedValue(0);
 
   useAnimatedReaction(
     () => scrollY.get(),
     (cur, prev) => {
       if (prev === null) {
-        lastY.set(cur);
+        lastScrollY.set(cur);
         return;
       }
       if (cur <= 10) {
-        acc.set(0);
-        dir.set(0);
-        lastY.set(cur);
-        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as Parameters<typeof onVendorScrollTabBar>[0]);
+        accumulatedDelta.set(0);
+        lastScrollY.set(cur);
+        if (tabBarHidden.get()) {
+          tabBarHidden.set(false);
+          scheduleOnRN(showTabBar);
+        }
         return;
       }
-      const delta = cur - lastY.get();
-      lastY.set(cur);
-      if (Math.abs(delta) < 0.5) return;
-      const curDir = delta > 0 ? 1 : -1;
-      if (dir.get() !== curDir) {
-        dir.set(curDir);
-        acc.set(Math.abs(delta));
+      const delta = cur - lastScrollY.get();
+      lastScrollY.set(cur);
+      if (Math.abs(delta) < 1) return;
+
+      if (delta > 0) {
+        // Scrolling down
+        if (accumulatedDelta.get() < 0) {
+          accumulatedDelta.set(delta);
+        } else {
+          accumulatedDelta.set(accumulatedDelta.get() + delta);
+        }
+        if (accumulatedDelta.get() >= 20 && !tabBarHidden.get()) {
+          tabBarHidden.set(true);
+          scheduleOnRN(hideTabBar);
+        }
       } else {
-        acc.set(acc.get() + Math.abs(delta));
-      }
-      if (acc.get() >= 12) {
-        scheduleOnRN(onVendorScrollTabBar, { nativeEvent: { contentOffset: { y: cur, x: 0 } } } as Parameters<typeof onVendorScrollTabBar>[0]);
+        // Scrolling up
+        if (accumulatedDelta.get() > 0) {
+          accumulatedDelta.set(delta);
+        } else {
+          accumulatedDelta.set(accumulatedDelta.get() + delta);
+        }
+        if (accumulatedDelta.get() <= -20 && tabBarHidden.get()) {
+          tabBarHidden.set(false);
+          scheduleOnRN(showTabBar);
+        }
       }
     }
   );
@@ -889,23 +909,20 @@ export default function VendorScreen() {
       style={styles.container}
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <TouchableWithoutFeedback onPress={dismissSearch}>
-          <View style={{ flex: 1 }}>
-            <Pressable onPress={dismissSearch} style={styles.stickyHeaderArea}>
-              <Animated.View style={animatedSearchContainerStyle}>
-                <Animated.View style={animatedSearchInnerStyle}>
-                  <Pressable onPress={(e) => e.stopPropagation()}>
-                    <VendorSearchBar
-                      ref={searchInputRef}
-                      searchTerm={searchTerm}
-                      setSearchTerm={setSearchTerm}
-                      placeholder={localT('searchRequests')}
-                      containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
-                    />
-                  </Pressable>
-                </Animated.View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.stickyHeaderArea} pointerEvents="box-none">
+            <Animated.View style={animatedSearchContainerStyle}>
+              <Animated.View style={animatedSearchInnerStyle}>
+                <VendorSearchBar
+                  ref={searchInputRef}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  placeholder={localT('searchRequests')}
+                  containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
+                />
               </Animated.View>
-            </Pressable>
+            </Animated.View>
+          </View>
 
         {!searchTerm ? (
           <AnimatedFlashList
@@ -1060,10 +1077,11 @@ export default function VendorScreen() {
 
                 {/* Colorful Background Container for the Business Section */}
                 <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
-                  <Image
+                  <ExpoImage
                     source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/background.webp' }}
-                    style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }}
-                    resizeMode="cover"
+                    style={{ position: 'absolute', width: '100%', height: 364, top: 0, left: 0, right: 0 }}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
 
                   {/* Business Header */}
@@ -1116,9 +1134,9 @@ export default function VendorScreen() {
             )}
             keyExtractor={(item) => (item as { id: string }).id}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+            contentContainerStyle={{ paddingTop: 64, paddingBottom: 100 }}
             onScroll={animatedScrollHandler}
-            scrollEventThrottle={1}
+            scrollEventThrottle={16}
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={dismissSearch}
             refreshControl={
@@ -1126,7 +1144,7 @@ export default function VendorScreen() {
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
                 colors={[COLORS.primary]}
-                progressViewOffset={42}
+                progressViewOffset={64}
               />
             }
           />
@@ -1142,9 +1160,9 @@ export default function VendorScreen() {
               data={displayVendors}
               renderItem={renderVendorItem}
               keyExtractor={(item) => (item as Vendor).id}
-              contentContainerStyle={[styles.listContent, { paddingTop: 8, paddingBottom: 90 }]}
+              contentContainerStyle={[styles.listContent, { paddingTop: 64, paddingBottom: 90 }]}
               onScroll={animatedScrollHandler}
-              scrollEventThrottle={1}
+              scrollEventThrottle={16}
               keyboardShouldPersistTaps="handled"
               onScrollBeginDrag={dismissSearch}
               refreshControl={
@@ -1152,7 +1170,7 @@ export default function VendorScreen() {
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
                   colors={[COLORS.primary]}
-                  progressViewOffset={42}
+                  progressViewOffset={64}
                 />
               }
               ListEmptyComponent={
@@ -1175,8 +1193,7 @@ export default function VendorScreen() {
             />
           </View>
         )}
-          </View>
-        </TouchableWithoutFeedback>
+        </View>
         <VendorRegistrationModal
           visible={showRegistrationModal}
           onClose={() => setShowRegistrationModal(false)}
@@ -1306,6 +1323,11 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   stickyHeaderArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     backgroundColor: 'transparent',
     paddingTop: 8,
     paddingBottom: 2,
@@ -1411,7 +1433,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 8,
   },
   cardCoverImage: {
     width: '100%',
@@ -1438,6 +1459,7 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
     paddingLeft: 10,
     gap: 4,
+    marginBottom: 8,
   },
   figmaServiceBadgeText: {
     color: '#000000',
@@ -1466,6 +1488,5 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 7,
   },
 });
