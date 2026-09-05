@@ -83,7 +83,7 @@ def _ensure_ffmpeg_tools_available() -> None:
 
 async def _save_upload_to_temp_file(file: UploadFile) -> tuple[str, int]:
     suffix = ".mp4"
-    filename = file.filename or ""
+    filename = os.path.basename(file.filename.replace('\\', '/')) if file.filename else ""
     if "." in filename:
         suffix = f".{filename.rsplit('.', 1)[-1].lower()}"
 
@@ -296,8 +296,9 @@ async def _upload_and_compress_video_impl(
     token_data: dict,
 ):
     content_type = (file.content_type or "").lower()
-    if not content_type and file.filename:
-        filename_lower = file.filename.lower()
+    safe_filename = os.path.basename(file.filename.replace('\\', '/')) if file.filename else ""
+    if not content_type and safe_filename:
+        filename_lower = safe_filename.lower()
         if filename_lower.endswith(('.mp4', '.mov', '.webm', '.mkv')):
             content_type = 'video/mp4'
     if content_type and not content_type.startswith("video/"):
