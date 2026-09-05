@@ -7,15 +7,16 @@ import { initializePushNotifications } from '../services/pushNotifications';
 
 import { secureStorage } from '../utils/secureStorage';
 
+const INVALID_STRINGS = ['nan', 'none', 'undefined'];
+
 export const sanitizeUserProfile = (user: any): any => {
   if (Platform.OS !== 'android' || !user) return user;
   const cleaned = { ...user };
-  const invalidStrings = new Set(['nan', 'none', 'undefined']);
   
   const cleanValue = (val: any): any => {
     if (typeof val === 'string') {
       const trimmed = val.toLowerCase().trim();
-      if (invalidStrings.has(trimmed)) {
+      if (INVALID_STRINGS.includes(trimmed)) {
         return null;
       }
       return val;
