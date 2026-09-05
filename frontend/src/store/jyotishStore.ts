@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 
 const INVALID_STRINGS = ['nan', 'none', 'undefined'];
 
+let _nextJyotishSaveVersion = 0;
+
 interface JyotishState {
   dob: string | null;
   tob: string | null;
@@ -17,6 +19,8 @@ export const useJyotishStore = create<JyotishState>((set) => ({
   tob: null,
   pob: null,
   setBirthDetails: async (dob, tob, pob) => {
+    const currentSaveVersion = ++_nextJyotishSaveVersion;
+
     if (Platform.OS === 'android') {
       const cleanInput = (val: string) => {
         if (!val) return '';
@@ -75,6 +79,8 @@ export const useJyotishStore = create<JyotishState>((set) => ({
         place_of_birth_latitude: lat,
         place_of_birth_longitude: lon,
       });
+
+      if (currentSaveVersion !== _nextJyotishSaveVersion) return;
 
       useAuthStore.getState().updateUser({
         ...(response.data || {}),
