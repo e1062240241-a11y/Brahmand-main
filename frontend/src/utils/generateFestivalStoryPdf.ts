@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Share as RNShare, Platform } from 'react-native';
+import { Asset } from 'expo-asset';
 
 // Clean text to safe ASCII printable characters to prevent PDF encoding crashes
 export function cleanTextForPdf(text: string): string {
@@ -224,6 +225,35 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
     const contentWidth = pageWidth - margin * 2;
     const bottomMargin = 45;
 
+    let hasCoverPage = false;
+    const isHariyaliTeej = data.festivalName.toLowerCase().includes('hariyali');
+    if (isHariyaliTeej) {
+      try {
+        const coverAsset = require('../../assets/images/hariyali_teej_pdf_card.jpg');
+        const asset = Asset.fromModule(coverAsset);
+        await asset.downloadAsync();
+        const fileUriToRead = asset.localUri || asset.uri;
+        if (fileUriToRead) {
+          const base64Cover = await FileSystem.readAsStringAsync(fileUriToRead, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          if (base64Cover) {
+            const embeddedCover = await doc.embedJpg(base64Cover);
+            const coverPage = doc.addPage([pageWidth, pageHeight]);
+            coverPage.drawImage(embeddedCover, {
+              x: 0,
+              y: 0,
+              width: pageWidth,
+              height: pageHeight,
+            });
+            hasCoverPage = true;
+          }
+        }
+      } catch (coverErr) {
+        console.warn('[PDF] Could not embed Hariyali Teej cover into PDF:', coverErr);
+      }
+    }
+
     let page = doc.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
 
@@ -430,9 +460,11 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
       bY -= 13;
     }
 
-    // Footers on all pages
+    // Footers on all narrative pages
     const totalPages = doc.getPageCount();
-    for (let p = 0; p < totalPages; p++) {
+    const startPage = hasCoverPage ? 1 : 0;
+    const contentPagesCount = hasCoverPage ? totalPages - 1 : totalPages;
+    for (let p = startPage; p < totalPages; p++) {
       const curPage = doc.getPage(p);
       curPage.drawLine({
         start: { x: margin, y: bottomMargin },
@@ -449,7 +481,8 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
         color: rgb(0.5, 0.5, 0.5),
       });
 
-      curPage.drawText(`Page ${p + 1} of ${totalPages}`, {
+      const displayPageNum = hasCoverPage ? p : p + 1;
+      curPage.drawText(`Page ${displayPageNum} of ${contentPagesCount}`, {
         x: margin + contentWidth - 56,
         y: bottomMargin - 12,
         size: 7.5,
