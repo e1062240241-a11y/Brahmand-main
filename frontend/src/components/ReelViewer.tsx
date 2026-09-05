@@ -509,17 +509,9 @@ const ReelVideoItem = React.memo(({
   // Fix 3: Clean up video player & web element on unmount or player change
   useEffect(() => {
     return () => {
-      if (player) {
+      if (player && isPlayerValid(player)) {
         try {
           player.pause();
-          if (typeof player.replaceAsync === 'function') {
-            player.replaceAsync(null);
-          } else if (typeof player.replace === 'function') {
-            player.replace(null);
-          }
-          if (Platform.OS !== 'web') {
-            player.destroy?.();
-          }
         } catch (e) { }
       }
       if (Platform.OS === 'web' && videoRef.current) {
@@ -536,14 +528,9 @@ const ReelVideoItem = React.memo(({
   useEffect(() => {
     const currentPostId = post?.id;
     if (prevPostIdRef.current !== currentPostId) {
-      if (player) {
+      if (player && isPlayerValid(player)) {
         try {
           player.pause();
-          if (typeof player.replaceAsync === 'function') {
-            player.replaceAsync(null);
-          } else if (typeof player.replace === 'function') {
-            player.replace(null);
-          }
         } catch (e) { }
       }
       prevPostIdRef.current = currentPostId;

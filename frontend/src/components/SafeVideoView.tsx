@@ -34,10 +34,6 @@ const actuallyReleasePlayer = (p: any) => {
   try {
     if (isPlayerValid(p)) {
       try { p.pause(); } catch (_e) {}
-      try {
-        if (typeof p.replaceAsync === 'function') p.replaceAsync(null);
-        else if (typeof p.replace === 'function') p.replace(null);
-      } catch (_e) {}
     }
   } catch (_e) {}
   try {
