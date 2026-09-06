@@ -16,3 +16,7 @@
 ## 2026-09-05 - Avoid new Set() array allocations in state updaters
 **Learning:** Recreating sets from arrays (e.g., `new Set([...prev, id])`) or chaining `.map().filter()` inside `new Set()` allocates intermediate arrays that increase garbage collection overhead in the React Native frontend.
 **Action:** Use native `.add()` or `.delete()` methods on cloned sets (`new Set(prevSet)`), or use manual `for` loops to populate sets efficiently in a single pass without extra allocations.
+
+## 2026-09-06 - Avoid Array.sort(() => Math.random() - 0.5) for random selection
+**Learning:** Using `Array.sort(() => Math.random() - 0.5)` to select random items from a large global session pool (like `allSessionPostsRef`) is inefficient for the main UI thread in React Native, introducing unnecessary O(N log N) CPU overhead.
+**Action:** Replace `Array.sort(() => Math.random() - 0.5)` with a partial Fisher-Yates shuffle that randomly selects and caps the required elements in O(K) time.
