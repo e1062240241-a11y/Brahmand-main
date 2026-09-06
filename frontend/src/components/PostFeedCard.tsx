@@ -1004,7 +1004,13 @@ const PostFeedCardComponent = ({
                 placeholder={t('language') === 'hi' ? 'एक कैप्शन लिखें...' : 'Write a caption...'}
                 placeholderTextColor="rgba(255,255,255,0.4)"
               />
-              <Text style={styles.charCountTextInline}>{editedCaption?.length || 0}/500</Text>
+              <Text
+                style={styles.charCountTextInline}
+                accessibilityLabel={`${editedCaption?.length || 0} of 500 characters used`}
+                accessibilityRole="text"
+              >
+                {editedCaption?.length || 0}/500
+              </Text>
             </View>
           </View>
 
