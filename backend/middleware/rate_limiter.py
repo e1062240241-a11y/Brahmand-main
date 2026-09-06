@@ -148,3 +148,22 @@ async def geocode_rate_limit(request: Request):
 
     key_prefix = f"geocode:uid:{user_id}" if user_id else "geocode:ip"
     return await rate_limit_dependency(request, limit=30, window=60, key_prefix=key_prefix)
+
+async def astrology_rate_limit(request: Request):
+    """Rate limit for third-party astrology & panchang API endpoints to prevent quota abuse & cost overrun.
+    Allows 20 requests per 60 seconds per user/IP — generous enough for normal client usage,
+    strict enough to protect external paid APIs (AstrologyAPI.com) from automated scraping or exhaustion.
+    """
+    user_id = None
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            import jwt as _jwt
+            token = auth_header[7:]
+            payload = _jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("user_id") or payload.get("sub")
+    except Exception:
+        pass
+
+    key_prefix = f"astrology:uid:{user_id}" if user_id else "astrology:ip"
+    return await rate_limit_dependency(request, limit=20, window=60, key_prefix=key_prefix)

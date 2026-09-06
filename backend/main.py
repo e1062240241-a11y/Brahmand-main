@@ -92,7 +92,7 @@ from models.schemas import (
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
-from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit
+from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit, astrology_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
 from routes.ramcharitmanas_routes import router as ramcharitmanas_router
 from routes.atharvaved_routes import router as atharvaved_router
@@ -11320,6 +11320,7 @@ async def get_panchang(
     lng: Optional[float] = None,
     force_refresh: bool = False,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Get Panchang data using AstrologyAPI (switched from Prokerala)."""
     try:
@@ -11371,6 +11372,7 @@ async def get_nakshatra_report(
     lon: Optional[float] = None,
     tz: Optional[float] = None,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Get General Kundli and Vedic Astrology data using user's or custom birth details."""
     db = await get_db()
@@ -11414,6 +11416,7 @@ async def get_nakshatra_report(
 async def search_birth_city(
     q: str,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Search for cities, coordinates and timezone offsets using AstrologyAPI.com."""
     if not q or len(q.strip()) < 2:
@@ -11431,6 +11434,7 @@ async def search_birth_city(
 async def ask_astrology_question(
     body: dict = Body(...),
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Ask Groq a question grounded in the current astrology/panchang payload."""
     question = str(body.get("question") or "").strip()
@@ -15140,7 +15144,8 @@ def get_daily_horoscope_mock(rashi: str, date: datetime):
 async def get_detailed_panchang(
     lat: float = 28.6139,
     lng: float = 77.2090,
-    date_str: Optional[str] = None
+    date_str: Optional[str] = None,
+    _: bool = Depends(astrology_rate_limit)
 ):
     """Get detailed Panchang for a date and location"""
     if date_str:

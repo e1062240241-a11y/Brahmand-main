@@ -45,6 +45,7 @@ UNBOUNDED GROWTH:
 N+1 QUERY PATTERNS:
 
 MISSING RATE LIMITS:
+- `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, `/spiritual/panchang` — expensive third-party API calls (AstrologyAPI.com / Groq LLM) callable without rate limits — FIXED
 
 MISSING INDEXES:
 
@@ -68,3 +69,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
 - `/events` — hardcoded limit without offset pagination — FIXED
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
+
+## 2026-09-07 - Rate Limiting Third-Party Astrology and Panchang Endpoints
+**Learning:** Third-party API calls (AstrologyAPI.com & Groq LLM for Panchan/Nakshatra/Horoscope) on `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, and `/spiritual/panchang` lacked rate limits. At 1 lakh+ users, unthrottled requests can lead to quota exhaustion, upstream rate limiting, and unexpected billing spikes.
+**Action:** Implemented `astrology_rate_limit` dependency in `backend/middleware/rate_limiter.py` limiting requests to 20 per 60s window per user/IP, and attached it to all external Astrology and Panchang endpoints in `backend/main.py`.
