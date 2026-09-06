@@ -1484,7 +1484,7 @@ export default function CommunityDetailScreen() {
         setCommunityPosts(prev => {
           const updated = prev.filter(post => post.id !== postId);
           const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
-          const newDeletedIds = [...new Set([...currentDeleted, postId])];
+          const newDeletedIds = Array.from(new Set(currentDeleted).add(postId));
           useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
           return updated;
         });
@@ -1520,7 +1520,7 @@ export default function CommunityDetailScreen() {
             setCommunityPosts(prev => {
               const updated = prev.filter(post => post.id !== postId);
               const currentDeleted = useChatStore.getState().communityScreenCaches[cacheKey]?.deletedPostIds || [];
-              const newDeletedIds = [...new Set([...currentDeleted, postId])];
+              const newDeletedIds = Array.from(new Set(currentDeleted).add(postId));
               useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated, deletedPostIds: newDeletedIds });
               return updated;
             });

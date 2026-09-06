@@ -111,9 +111,12 @@ export default function DiscoverCommunitiesScreen() {
         setCreatedGroups(userGroupsList);
         setFilteredGroups(userGroupsList);
         // Seed joinedIds from backend's is_member flag
-        const alreadyJoined = new Set<string>(
-          userGroupsList.filter((c: Community) => c.is_member).map((c: Community) => c.id)
-        );
+        const alreadyJoined = new Set<string>();
+        for (const c of userGroupsList) {
+          if (c.is_member) {
+            alreadyJoined.add(c.id);
+          }
+        }
         setJoinedIds(prev => {
           const next = new Set(prev);
           alreadyJoined.forEach(id => next.add(id));
