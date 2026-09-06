@@ -25,7 +25,7 @@ def check_session_boundary(last_updated_str: str, session_threshold_seconds: int
         logger.error(f"Error checking session boundary: {e}")
         return True
 
-async def extract_user_profile(user_message: str, chat_history: list = None) -> dict:
+async def extract_user_profile(user_message: str) -> dict:
     """
     Extracts the user's Spiritual-Psychological Profile.
     Returns default balanced profile.
