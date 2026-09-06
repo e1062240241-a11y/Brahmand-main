@@ -1799,7 +1799,7 @@ const styles = StyleSheet.create({
   },
   webGlassFill: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    backdropFilter: 'blur(20px)',
+    ...({ backdropFilter: 'blur(20px)' } as any),
   },
   inputInnerRow: {
     flexDirection: 'row',
