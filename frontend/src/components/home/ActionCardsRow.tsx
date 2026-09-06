@@ -1,12 +1,60 @@
-import { useVendorStore } from '../../store/vendorStore';
+import { useVendorStore, Vendor } from '../../store/vendorStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Alert, AppState, Image, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { HomeCardTextureBg } from './HomeCardTextureBg';
-import { styles } from './home.styles';
-import { ACTION_CARD_HEIGHT, ACTION_CARD_SNAP_INTERVAL, ACTION_CARD_WIDTH, ROTATING_AARTIS } from './homeConstants';
+import { styles as homeStyles } from './home.styles';
+import { ACTION_CARD_SNAP_INTERVAL, ROTATING_AARTIS } from './homeConstants';
+
+export interface CommunityRequestItem {
+    id: string;
+    community_id?: string;
+    type?: 'blood' | string;
+    blood_group?: string;
+    hospital_name?: string;
+    title?: string;
+    description?: string;
+    location?: string;
+}
+
+export interface AartiItem {
+    id: string;
+    name: string;
+}
+
+interface CardBaseProps {
+    t: (key: string) => string;
+    width: number;
+    height: number;
+}
+
+interface BloodRequestCardProps extends CardBaseProps {
+    request: CommunityRequestItem | null;
+    onPress: () => void;
+}
+
+interface RegisterBusinessCardProps extends CardBaseProps {
+    myVendor: Vendor | null;
+    onPress: () => void;
+}
+
+interface VerifiedVendorCardProps extends CardBaseProps {
+    displayVendor: Vendor | null;
+    onPress: () => void;
+}
+
+interface AartiCardProps extends CardBaseProps {
+    aarti: AartiItem;
+    onPress: () => void;
+    onNotify: () => void;
+}
+
+export interface ActionCardsRowProps {
+    t: (key: string) => string;
+    safeCommunityRequests: CommunityRequestItem[];
+}
 
 function BloodDropIcon() {
     return (
@@ -21,7 +69,7 @@ function LotusIcon() {
     return (
         <Image
             source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/sai_flower_lotus_icon.webp' }}
-            style={styles.saiLotusIcon}
+            style={homeStyles.saiLotusIcon}
             resizeMode="contain"
             accessibilityLabel="Lotus flower"
         />
@@ -32,7 +80,7 @@ function TempleIcon() {
     return (
         <Image
             source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/home_temple_icon.webp' }}
-            style={styles.actionCardIcon}
+            style={homeStyles.actionCardIcon}
             resizeMode="contain"
             accessibilityLabel="Temple"
         />
@@ -43,7 +91,7 @@ function ShopIcon() {
     return (
         <Image
             source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/home_shop_icon.webp' }}
-            style={styles.actionCardIcon}
+            style={homeStyles.actionCardIcon}
             resizeMode="contain"
             accessibilityLabel="Shop"
         />
@@ -56,13 +104,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
     onPress,
     width,
     height,
-}: {
-    request: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: BloodRequestCardProps) {
     const requestTitle = request
         ? (request.type === 'blood' ? `${request.blood_group || 'Blood'} ${t('bloodRequired')}` : (request.title || 'Community Help'))
         : '';
@@ -70,45 +112,31 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
         ? (request.type === 'blood' ? `${request.hospital_name || t('emergency')}\n${request.location || t('nearby')}` : (request.description || request.location || 'Nearby'))
         : '';
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[styles.cardOuter, { width, height }]}>
+            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
                 <HomeCardTextureBg texture="rose">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconContainer}>
                             {request?.type === 'blood' ? (
                                 <BloodDropIcon />
                             ) : (
                                 <Ionicons name="people-outline" size={26} color="#FF0022" />
                             )}
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{request ? requestTitle : t('needBlood')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{request ? requestDetails : t('createUrgentRequest')}</Text>
+                        <Text style={styles.titleText} numberOfLines={2}>{request ? requestTitle : t('needBlood')}</Text>
+                        <Text style={styles.subtextText} numberOfLines={2}>{request ? requestDetails : t('createUrgentRequest')}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF0022',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF0022',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[styles.btnBase, styles.btnRose]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                        <Text style={styles.btnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+            <View style={styles.badgeWrapper}>
+                <View style={[styles.badgeContainer, styles.badgeRoseBorder]}>
+                    <Text style={[styles.badgeText, styles.badgeRoseText]} numberOfLines={1}>{t('yourCommunity')}</Text>
                 </View>
             </View>
         </View>
@@ -121,49 +149,29 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
     onPress,
     width,
     height,
-}: {
-    myVendor: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: RegisterBusinessCardProps) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[styles.cardOuter, { width, height }]}>
+            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
                 <HomeCardTextureBg texture="peach">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconContainer}>
                             <ShopIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
+                        <Text style={styles.titleText} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                        <Text style={styles.subtextText} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF9500',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF9500',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[styles.btnBase, styles.btnPeach]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
+                        <Text style={styles.btnText} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
+            <View style={styles.badgeWrapper}>
+                <View style={[styles.badgeContainer, styles.badgePeachBorder]}>
+                    <Text style={[styles.badgeText, styles.badgePeachText]} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
                 </View>
             </View>
         </View>
@@ -176,53 +184,33 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
     onPress,
     width,
     height,
-}: {
-    displayVendor: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: VerifiedVendorCardProps) {
     const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
     const categoryAndLoc = displayVendor
         ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
         : 'Flower Decor\nAndheri West';
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[styles.cardOuter, { width, height }]}>
+            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
                 <HomeCardTextureBg texture="mint">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconContainer}>
                             <LotusIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                        <Text style={styles.titleText} numberOfLines={2}>{businessName}</Text>
+                        <Text style={styles.subtextText} numberOfLines={2}>{categoryAndLoc}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#00C781',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#00C781',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[styles.btnBase, styles.btnMint]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                        <Text style={styles.btnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#00C781', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('verifiedVendor')}</Text>
+            <View style={styles.badgeWrapper}>
+                <View style={[styles.badgeContainer, styles.badgeMintBorder]}>
+                    <Text style={[styles.badgeText, styles.badgeMintText]} numberOfLines={1}>{t('verifiedVendor')}</Text>
                 </View>
             </View>
         </View>
@@ -236,73 +224,51 @@ const AartiCard = React.memo(function AartiCard({
     onNotify,
     width,
     height,
-}: {
-    aarti: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    onNotify: () => void;
-    width: number;
-    height: number;
-}) {
+}: AartiCardProps) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[styles.cardOuter, { width, height }]}>
+            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
                 <HomeCardTextureBg texture="lavender">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={styles.cardContent}>
+                        <View style={styles.iconContainer}>
                             <TempleIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{aarti.name}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-                            <Text style={{ textAlign: 'center', fontSize: 10, color: '#444', fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                        <Text style={styles.titleText} numberOfLines={2}>{aarti.name}</Text>
+                        <View style={styles.notifyRow}>
+                            <Text style={styles.notifyText}>
                                 {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
                                 onPress={onNotify}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                hitSlop={HIT_SLOP_8}
                             >
                                 <Ionicons name="notifications-outline" size={14} color="#444" />
                             </TouchableOpacity>
                         </View>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#8C36DB',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#8C36DB',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[styles.btnBase, styles.btnLavender]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                        <Text style={styles.btnText} numberOfLines={1}>{t('watch')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#8C36DB', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('templeLabel')}</Text>
+            <View style={styles.badgeWrapper}>
+                <View style={[styles.badgeContainer, styles.badgeLavenderBorder]}>
+                    <Text style={[styles.badgeText, styles.badgeLavenderText]} numberOfLines={1}>{t('templeLabel')}</Text>
                 </View>
             </View>
         </View>
     );
 });
 
+const HIT_SLOP_8 = { top: 8, bottom: 8, left: 8, right: 8 };
+
 export const ActionCardsRow = React.memo(function ActionCardsRow({
     t,
     safeCommunityRequests,
-}: {
-    t: (key: string) => string;
-    safeCommunityRequests: any[];
-}) {
+}: ActionCardsRowProps) {
     const router = useRouter();
     const isFocused = useIsFocused();
     const { myVendor, vendors } = useVendorStore();
@@ -319,13 +285,13 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
 
         const aartiInterval = setInterval(() => {
             if (AppState.currentState !== 'active') return;
-            setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
-            setActiveRequestIndex(prev => prev + 1);
+            setActiveAartiIndex((prev: number) => (prev + 1) % ROTATING_AARTIS.length);
+            setActiveRequestIndex((prev: number) => prev + 1);
         }, 5000);
 
         const vendorInterval = setInterval(() => {
             if (AppState.currentState !== 'active') return;
-            setActiveVendorIndex(prev => prev + 1);
+            setActiveVendorIndex((prev: number) => prev + 1);
         }, 6000);
 
         return () => {
@@ -336,15 +302,61 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
 
     const req = safeCommunityRequests.length > 0 ? safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length] : null;
 
-    const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
+    const verifiedVendors = vendors.filter((v: Vendor) => v.kyc_status === 'verified');
     const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
     const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
 
     const aarti1 = ROTATING_AARTIS[activeAartiIndex % ROTATING_AARTIS.length];
     const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
 
+    const handleRequestPress = useCallback(() => {
+        if (req) {
+            router.push({
+                pathname: '/community-request/list',
+                params: {
+                    requestId: req.id,
+                    community_id: req.community_id
+                }
+            });
+        } else {
+            router.push('/community-request/list');
+        }
+    }, [req, router]);
+
+    const handleRegisterBusinessPress = useCallback(() => {
+        if (myVendor) {
+            router.push(`/vendor/${myVendor.id}`);
+        } else {
+            router.push('/(tabs)/vendor');
+        }
+    }, [myVendor, router]);
+
+    const handleVerifiedVendorPress = useCallback(() => {
+        if (displayVendor) {
+            router.push(`/vendor/${displayVendor.id}`);
+        } else {
+            router.push('/(tabs)/vendor');
+        }
+    }, [displayVendor, router]);
+
+    const handleAarti1Press = useCallback(() => {
+        router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
+    }, [aarti1.id, router]);
+
+    const handleAarti1Notify = useCallback(() => {
+        Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`);
+    }, [aarti1.name]);
+
+    const handleAarti2Press = useCallback(() => {
+        router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
+    }, [aarti2.id, router]);
+
+    const handleAarti2Notify = useCallback(() => {
+        Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`);
+    }, [aarti2.name]);
+
     return (
-        <View style={styles.postBannerSection}>
+        <View style={homeStyles.postBannerSection}>
             <ScrollView
                 ref={actionCardsScrollRef}
                 horizontal
@@ -352,75 +364,190 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                 nestedScrollEnabled={true}
                 snapToInterval={actionCardSnapInterval}
                 decelerationRate="fast"
-                contentContainerStyle={styles.actionCardsScroll}
-                style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
+                contentContainerStyle={homeStyles.actionCardsScroll}
+                style={styles.scrollViewStyle}
             >
                 <BloodRequestCard
                     request={req}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (req) {
-                            router.push({
-                                pathname: '/community-request/list',
-                                params: {
-                                    requestId: req.id,
-                                    community_id: req.community_id
-                                }
-                            });
-                        } else {
-                            router.push('/community-request/list');
-                        }
-                    }}
+                    onPress={handleRequestPress}
                 />
                 <RegisterBusinessCard
                     myVendor={myVendor}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (myVendor) {
-                            router.push(`/vendor/${myVendor.id}`);
-                        } else {
-                            router.push('/(tabs)/vendor');
-                        }
-                    }}
+                    onPress={handleRegisterBusinessPress}
                 />
                 <VerifiedVendorCard
                     displayVendor={displayVendor}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (displayVendor) {
-                            router.push(`/vendor/${displayVendor.id}`);
-                        } else {
-                            router.push('/(tabs)/vendor');
-                        }
-                    }}
+                    onPress={handleVerifiedVendorPress}
                 />
                 <AartiCard
                     aarti={aarti1}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
-                    }}
-                    onNotify={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                    onPress={handleAarti1Press}
+                    onNotify={handleAarti1Notify}
                 />
                 <AartiCard
                     aarti={aarti2}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
-                    }}
-                    onNotify={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                    onPress={handleAarti2Press}
+                    onNotify={handleAarti2Notify}
                 />
             </ScrollView>
         </View>
     );
+});
+
+const styles = StyleSheet.create({
+    cardOuter: {
+        position: 'relative',
+        overflow: 'visible',
+        marginHorizontal: 3,
+    },
+    actionCardInner: {
+        width: '100%',
+        height: '100%',
+        marginHorizontal: 0,
+        padding: 0,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    cardContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 10,
+        paddingHorizontal: 6,
+    },
+    iconContainer: {
+        marginBottom: 6,
+        marginTop: -4,
+    },
+    titleText: {
+        textAlign: 'center',
+        fontSize: 13,
+        color: '#000',
+        width: '100%',
+        lineHeight: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    subtextText: {
+        textAlign: 'center',
+        fontSize: 11,
+        color: '#444',
+        width: '100%',
+        marginTop: 4,
+        lineHeight: 14,
+        fontFamily: 'Inter_500Medium',
+    },
+    btnBase: {
+        width: '85%',
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
+        marginBottom: 10,
+    },
+    btnRose: {
+        backgroundColor: '#FF0022',
+        shadowColor: '#FF0022',
+    },
+    btnPeach: {
+        backgroundColor: '#FF9500',
+        shadowColor: '#FF9500',
+    },
+    btnMint: {
+        backgroundColor: '#00C781',
+        shadowColor: '#00C781',
+    },
+    btnLavender: {
+        backgroundColor: '#8C36DB',
+        shadowColor: '#8C36DB',
+    },
+    btnText: {
+        color: '#FFF',
+        fontSize: 12,
+        textAlign: 'center',
+        fontFamily: 'Inter_700Bold',
+    },
+    badgeWrapper: {
+        position: 'absolute',
+        top: -10,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    badgeContainer: {
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1.2,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        paddingHorizontal: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        elevation: 3,
+    },
+    badgeRoseBorder: {
+        borderColor: '#FF0000',
+    },
+    badgeRoseText: {
+        color: '#FF0000',
+    },
+    badgePeachBorder: {
+        borderColor: '#FF9500',
+    },
+    badgePeachText: {
+        color: '#FF9500',
+    },
+    badgeMintBorder: {
+        borderColor: '#00C781',
+    },
+    badgeMintText: {
+        color: '#00C781',
+    },
+    badgeLavenderBorder: {
+        borderColor: '#8C36DB',
+    },
+    badgeLavenderText: {
+        color: '#8C36DB',
+    },
+    badgeText: {
+        fontSize: 10,
+        textAlign: 'center',
+        fontFamily: 'Inter_600SemiBold',
+    },
+    notifyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    notifyText: {
+        textAlign: 'center',
+        fontSize: 10,
+        color: '#444',
+        fontFamily: 'Inter_500Medium',
+        marginRight: 3,
+    },
+    scrollViewStyle: {
+        marginBottom: 10,
+    },
 });
