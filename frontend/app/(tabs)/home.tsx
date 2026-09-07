@@ -12,7 +12,7 @@ import { RequestFormModal } from '../../src/components/RequestFormModal';
 import SharePostModal from '../../src/components/SharePostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getCommunities, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
+import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getCommunities, getHomeFeed, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { socketService } from '../../src/services/socket';
 import { useAuthStore } from '../../src/store/authStore';
@@ -35,7 +35,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, Interacti
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
-import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
+import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
 import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
 
 let FileSystemModule: any = null;
