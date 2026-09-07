@@ -218,8 +218,7 @@ def ml_check(text: str, threshold: float = 0.5) -> Dict[str, Any]:
 def is_offensive(
     text: str,
     use_hybrid: bool = True,
-    ml_threshold: float = 0.5,
-    skip_regex: bool = False
+    ml_threshold: float = 0.5
 ) -> Dict[str, Any]:
     """
     Main function to check offensive content (Globally disabled).

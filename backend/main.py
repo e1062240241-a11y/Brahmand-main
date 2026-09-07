@@ -9317,7 +9317,7 @@ async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depe
 # =================== KYC SYSTEM ===================
 
 
-def try_face_match(id_base64: str, selfie_base64: str) -> dict:
+def try_face_match() -> dict:
     """Fallback face match logic for environments without opencv/mediapipe support."""
     # In this deployment, backend face matching is disabled to avoid installing
     # heavy cv2/mediapipe dependencies. The frontend already validates live face
@@ -9653,7 +9653,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
-        match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
+        match_result = try_face_match()
         if match_result['status'] == 'verified':
             kyc_data['kyc_status'] = 'verified'
             kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat() + 'Z'
@@ -11061,7 +11061,7 @@ IDENTITY RULES:
         if new_session or not profile or profile.get("mood") == "Neutral":
             try:
                 if latest_user_msg:
-                    profile = await extract_user_profile(latest_user_msg, db_messages)
+                    profile = await extract_user_profile(latest_user_msg)
             except Exception as ext_err:
                 logger.error(f"Failed to extract profile: {ext_err}")
 
