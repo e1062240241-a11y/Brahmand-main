@@ -1864,7 +1864,7 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
 
 
 @api_router.post("/admin/auth/login")
-async def admin_panel_login(data: dict = Body(...)):
+async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_limit)):
     """Admin panel login with static credentials for internal review console."""
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
