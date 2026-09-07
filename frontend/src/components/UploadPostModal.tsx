@@ -255,6 +255,7 @@ const M3OutlinedInput = ({
   onChangeText,
   multiline = false,
   placeholder = "",
+  maxLength,
 }: any) => {
   const [isFocused, setIsFocused] = useState(false);
   const [mentionResults, setMentionResults] = useState<any[]>([]);
@@ -342,13 +343,19 @@ const M3OutlinedInput = ({
           placeholder={isFocused ? placeholder : label}
           placeholderTextColor={COLORS.textSecondary}
           multiline={multiline}
-          maxLength={200}
+          maxLength={maxLength}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
-        <Text style={{ fontSize: 12, color: "#999", textAlign: "right", marginTop: 4, marginRight: 4 }}>
-          {value?.length || 0}/200
-        </Text>
+        {maxLength && (
+          <Text
+            style={{ fontSize: 12, color: "#999", textAlign: "right", marginTop: 4, marginRight: 4 }}
+            accessibilityRole="text"
+            accessibilityLabel={`${value?.length || 0} of ${maxLength} characters used`}
+          >
+            {value?.length || 0}/{maxLength}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -1327,6 +1334,7 @@ export const UploadPostModal = ({
                 value={caption}
                 onChangeText={setCaption}
                 multiline
+                maxLength={200}
               />
               {selectedMedia?.mediaType === "video" && (
                 <View style={styles.muteRow}>
