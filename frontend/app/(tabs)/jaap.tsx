@@ -519,9 +519,12 @@ export default function JaapLandingScreen() {
                     if (hanumanStatus.isCompleted) {
                       liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
                     } else {
+                      // 🧡 Engagement: Reframed transactional counter "जाप" to devotional offering "चालीसा समर्पित"
+                      // Lever: Reframing + Devotional Framing
+                      // UI: Text-only change, no new visual components
                       liveLabel = t('language') === 'hi'
-                        ? `लाइव • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप`
-                        : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done`;
+                        ? `लाइव • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित`
+                        : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} chalisa offered`;
                     }
                   } else {
                     if (hanumanStatus.nextSessionStart) {
