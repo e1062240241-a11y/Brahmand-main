@@ -22,6 +22,10 @@
 **Learning:** Fetching all `jaap_reminders` for a `mantra_type` without query limits on `/jaap/reminder-stats` forces Firestore to stream all registered reminder documents across all users into memory to construct a set of unique user IDs. At 1 lakh+ users, this causes $O(N_{\text{reminders}})$ document reads per request. Since each user registration creates 4 fixed session documents ("Morning", "Afternoon", "Evening", "Night"), filtering for a single session name ("Morning") with `db.count_documents` yields the exact registered user count server-side with zero document payload transfer.
 **Action:** Replaced full document query in `/jaap/reminder-stats` with concurrent server-side `db.count_documents` for session_name="Morning" and a point check `db.query_documents(..., limit=1)` for the requesting user.
 
+## 2026-09-08 - Offset-based pagination for user discovery endpoint
+**Learning:** The `/users` endpoint loaded up to 500 users per request without `offset` pagination support, forcing clients to fetch the same top batch repeatedly or miss users beyond the initial limit.
+**Action:** Added `offset` parameter (default 0) with safe limit clamping (max 50) in `/users` endpoint (`backend/main.py`), calculating dynamic fetch bounds (`fetch_limit = safe_offset + safe_limit`) to allow backward-compatible paginated retrieval across large user populations.
+
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:
 - `/temples` — loads all temples — FIXED
@@ -69,6 +73,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
 - `/events` — hardcoded limit without offset pagination — FIXED
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
+- `/users` — unpaginated large user fetch — FIXED
 
 ## 2026-09-07 - Rate Limiting Third-Party Astrology and Panchang Endpoints
 **Learning:** Third-party API calls (AstrologyAPI.com & Groq LLM for Panchan/Nakshatra/Horoscope) on `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, and `/spiritual/panchang` lacked rate limits. At 1 lakh+ users, unthrottled requests can lead to quota exhaustion, upstream rate limiting, and unexpected billing spikes.
