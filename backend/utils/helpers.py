@@ -47,7 +47,7 @@ def moderate_content(content: str) -> Tuple[bool, Optional[str]]:
     content_lower = content.lower()
     for keyword in BLOCKED_KEYWORDS:
         if keyword in content_lower:
-            return False, f"Content contains inappropriate keyword"
+            return False, "Content contains inappropriate keyword"
     return True, None
 
 

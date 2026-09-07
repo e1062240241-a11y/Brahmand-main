@@ -10881,7 +10881,6 @@ async def send_shiv_katha_reminder_notification(
 
 
 
-import re
 
 def sanitize_krishna_response(response_text: str) -> str:
     """

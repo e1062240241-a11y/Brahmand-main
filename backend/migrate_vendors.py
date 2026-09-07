@@ -37,10 +37,10 @@ async def run_vendor_coordinate_migration(tolerance_km: float = 0.5):
     migrated_records = []
     skipped_records = []
 
-    print(f"\n================================================================================")
+    print("\n================================================================================")
     print(f"STARTING VENDOR COORDINATE MIGRATION AUDIT ({len(vendors)} TOTAL VENDORS)")
     print(f"Tolerance Threshold: {tolerance_km} km")
-    print(f"================================================================================\n")
+    print("================================================================================\n")
 
     for vendor in vendors:
         v_id = vendor.get('id')
@@ -131,7 +131,7 @@ async def run_vendor_coordinate_migration(tolerance_km: float = 0.5):
             
             try:
                 await db.update_document('vendors', v_id, update_payload)
-                print(f"  -> SUCCESS: Firestore document updated.\n")
+                print("  -> SUCCESS: Firestore document updated.\n")
                 migrated_records.append({
                     'id': v_id,
                     'business_name': name,
@@ -170,13 +170,13 @@ async def run_vendor_coordinate_migration(tolerance_km: float = 0.5):
         'skipped_records': skipped_records
     }
 
-    print(f"\n================================================================================")
-    print(f"MIGRATION SUMMARY")
-    print(f"================================================================================")
+    print("\n================================================================================")
+    print("MIGRATION SUMMARY")
+    print("================================================================================")
     print(f"Total Vendors Audited : {summary['total_vendors_audited']}")
     print(f"Migrated Records      : {summary['migrated_count']}")
     print(f"Skipped Records       : {summary['skipped_count']}")
-    print(f"================================================================================\n")
+    print("================================================================================\n")
 
     return summary
 

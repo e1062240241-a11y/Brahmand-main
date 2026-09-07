@@ -20,3 +20,6 @@
 ## 2026-09-06 - Avoid Array.sort(() => Math.random() - 0.5) for random selection
 **Learning:** Using `Array.sort(() => Math.random() - 0.5)` to select random items from a large global session pool (like `allSessionPostsRef`) is inefficient for the main UI thread in React Native, introducing unnecessary O(N log N) CPU overhead.
 **Action:** Replace `Array.sort(() => Math.random() - 0.5)` with a partial Fisher-Yates shuffle that randomly selects and caps the required elements in O(K) time.
+## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
+**Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
+**Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
