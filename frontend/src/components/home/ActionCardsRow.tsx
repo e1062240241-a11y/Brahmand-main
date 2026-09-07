@@ -50,6 +50,71 @@ function ShopIcon() {
     );
 }
 
+function BookIcon() {
+    return (
+        <Ionicons name="book-outline" size={26} color="#FF6B00" />
+    );
+}
+
+const ContinueReadingCard = React.memo(function ContinueReadingCard({
+    t,
+    onPress,
+    width,
+    height,
+}: {
+    t: (key: string) => string;
+    onPress: () => void;
+    width: number;
+    height: number;
+}) {
+    const isHindi = t('language') === 'hi';
+    const cardTitle = isHindi ? 'स्वाध्याय' : 'Daily Reading';
+    const cardSubtitle = isHindi ? 'पवित्र ग्रंथ पढ़ें' : 'Sacred Scriptures';
+    const badgeText = isHindi ? 'ग्रंथालय' : 'Library';
+    const btnText = isHindi ? 'पढ़ें' : 'Read';
+
+    return (
+        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+                <HomeCardTextureBg texture="peach">
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
+                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                            <BookIcon />
+                        </View>
+                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{cardTitle}</Text>
+                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{cardSubtitle}</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={{
+                            width: '85%',
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: '#FF6B00',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            alignSelf: 'center',
+                            shadowColor: '#FF6B00',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 3,
+                            elevation: 4,
+                            marginBottom: 10,
+                        }}
+                        onPress={onPress}
+                    >
+                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{btnText}</Text>
+                    </TouchableOpacity>
+                </HomeCardTextureBg>
+            </View>
+            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF6B00', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
+                    <Text style={{ color: '#FF6B00', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{badgeText}</Text>
+                </View>
+            </View>
+        </View>
+    );
+});
+
 const BloodRequestCard = React.memo(function BloodRequestCard({
     request,
     t,
@@ -355,6 +420,14 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
             >
+                <ContinueReadingCard
+                    t={t}
+                    width={actionCardWidth}
+                    height={actionCardHeight}
+                    onPress={() => {
+                        router.push('/library/continue-reading');
+                    }}
+                />
                 <BloodRequestCard
                     request={req}
                     t={t}
