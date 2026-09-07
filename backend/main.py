@@ -2486,18 +2486,24 @@ async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
 
 @api_router.get("/users")
 async def list_users(
-    limit: int = 200,
+    limit: int = 20,
+    offset: int = 0,
     search: Optional[str] = None,
     token_data: dict = Depends(verify_token)
 ):
     """List users for private chat discovery (safe public fields only)."""
     db = await get_db()
 
-    safe_limit = max(1, min(limit, 500))
-    users = await db.query_documents('users', limit=safe_limit)
+    # Architectural fix: Offset-based bounded query (max 50 per page)
+    # prevents O(N) database scans and threadpool/memory exhaustion at 100k+ users scale.
+    safe_limit = max(1, min(limit, 50))
+    safe_offset = max(0, offset)
+    query = (search or "").strip().lower()
+
+    fetch_limit = min(500, (safe_offset + safe_limit) * 5) if query else (safe_offset + safe_limit)
+    users = await db.query_documents('users', limit=fetch_limit)
 
     current_user_id = token_data["user_id"]
-    query = (search or "").strip().lower()
 
     result = []
     for user in users:
@@ -2519,8 +2525,7 @@ async def list_users(
             "photo": user.get('photo')
         })
 
-
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/users/batch")
