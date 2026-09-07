@@ -3,3 +3,4 @@
 ## 2026-09-04 - Unused exception variables
 **Learning:** Exception bindings like `except Exception as e:` where `e` is never used are safe to remove automatically via `ruff` and do not affect behavior.
 **Action:** Use `ruff check --fix --select F841 .` for completely safe exception variable cleanup instead of manually removing local imports that might break runtime scoping.
+## 2026-09-07 - Unused Import Cleanups\n**Learning:** When cleaning unused variables and imports based on linters, ensure you verify that dynamic dependencies (like `require()`) are not hiding actual usage, and always double check that the ESLint errors correspond to the exact `import` statements being removed.\n**Action:** Use `tsc --noEmit` to comprehensively verify that no symbols are missing after import removals.

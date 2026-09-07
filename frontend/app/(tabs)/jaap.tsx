@@ -7,13 +7,10 @@ import {
   ScrollView,
   FlatList,
   Pressable,
-  Image,
   Dimensions,
   Platform,
   TextInput,
-  Modal,
   ImageBackground,
-  Alert,
   LayoutAnimation,
   UIManager,
   Animated,
@@ -40,11 +37,9 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/fe
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { Svg, Path, Circle, G, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { CustomLoader } from '../../src/components/CustomLoader';
 import { KathaSection } from '../../src/components/KathaSection';
-import { SubtleJoinButton } from '../../src/components/SubtleJoinButton';
-import { TempleCard, TempleCardImageItem } from '../../src/components/TempleCard';
+import { TempleCardImageItem } from '../../src/components/TempleCard';
 import { CharDhamModal } from '../../src/components/CharDhamModal';
 import { LiveJaapCard, JAAP_CARD_WIDTH, JAAP_CARD_HEIGHT, JAAP_CARD_MARGIN_RIGHT } from '../../src/components/LiveJaapCard';
 import { UpcomingJaapsSection } from '../../src/components/UpcomingJaapsSection';

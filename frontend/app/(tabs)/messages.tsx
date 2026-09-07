@@ -8,8 +8,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Pressable,
-  FlatList,
-  RefreshControl,
   ActivityIndicator,
   ScrollView,
   Alert,
@@ -17,7 +15,6 @@ import {
   Platform,
   TextInput,
   Image,
-  ImageBackground,
   Animated,
   Dimensions,
   Linking,
@@ -35,7 +32,6 @@ import { COLORS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import Svg, { Path } from 'react-native-svg';
 import {
   getCircles,
   getCommunities,
@@ -162,15 +158,6 @@ const formatLastMessage = (lastMessage: string | undefined, isHindi: boolean): s
   return lastMessage;
 };
 
-interface Circle {
-  id: string;
-  name: string;
-  description?: string;
-  photo?: string;
-  member_count: number;
-  last_message?: string;
-  last_message_time?: string;
-}
 
 interface Community {
   id: string;
@@ -196,22 +183,6 @@ interface CommunityRequest {
   blood_group?: string;
   location?: string;
   support_needed?: string;
-}
-
-interface DMConversation {
-  conversation_id?: string;
-  chat_id?: string;
-  id?: string;
-  user?: {
-    id: string;
-    name: string;
-    sl_id: string;
-    photo?: string;
-    is_verified?: boolean;
-  };
-  last_message?: string;
-  last_message_at?: string;
-  unread_count?: number;
 }
 
 function MessagesScreen({
@@ -1242,7 +1213,7 @@ function MessagesScreen({
                   await database.batch(batchOps);
                 }
               });
-            } catch (dbErr) {
+            } catch {
               // Non-fatal DB write failure
             }
           });

@@ -10,13 +10,8 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
-  Image,
   Platform,
   Dimensions,
-  AppState,
-  Modal,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   Keyboard,
 } from 'react-native';
 import Animated, {

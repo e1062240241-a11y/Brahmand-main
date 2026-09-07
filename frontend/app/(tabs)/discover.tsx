@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { discoverCommunities, getTemples, getNearbyEvents } from '../../src/services/api';
+import { getTemples, getNearbyEvents } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 interface Temple {
