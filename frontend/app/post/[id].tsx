@@ -185,8 +185,17 @@ const PostScreen = () => {
             const pool = allSessionPostsRef.current;
             if (pool.length > 1) {
               const recycledFiltered = pool.filter(p => p && p.id && !existing.has(String(p.id)));
-              const shuffled = recycledFiltered.sort(() => Math.random() - 0.5);
-              return [...prev, ...shuffled.slice(0, FEED_PAGE_SIZE * 2)];
+
+              // Use partial Fisher-Yates shuffle instead of sort(() => Math.random() - 0.5) for O(K) complexity
+              const k = Math.min(FEED_PAGE_SIZE * 2, recycledFiltered.length);
+              for (let i = 0; i < k; i++) {
+                const j = i + Math.floor(Math.random() * (recycledFiltered.length - i));
+                const temp = recycledFiltered[i];
+                recycledFiltered[i] = recycledFiltered[j];
+                recycledFiltered[j] = temp;
+              }
+
+              return [...prev, ...recycledFiltered.slice(0, k)];
             }
             return prev;
           }
