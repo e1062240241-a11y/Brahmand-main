@@ -132,6 +132,8 @@ export default function BlockedAccountsScreen() {
           onPress={() => handleUnblock(item.id, item.name)}
           disabled={isUnblocking}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('unblock')} ${item.name}`}
         >
           {isUnblocking ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -147,7 +149,13 @@ export default function BlockedAccountsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('blockedAccounts')}</Text>
@@ -168,7 +176,12 @@ export default function BlockedAccountsScreen() {
               autoCorrect={false}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
                 <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
             )}
