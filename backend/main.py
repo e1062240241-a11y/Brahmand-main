@@ -3414,6 +3414,9 @@ async def _upload_post_impl(
     original_height: Optional[int] = None,
     mute_audio: Optional[str] = None,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     db = await get_db()
     user_id = token_data['user_id']
 
@@ -3723,6 +3726,9 @@ async def _upload_chat_media_impl(
     file: UploadFile,
     token_data: dict,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
     
