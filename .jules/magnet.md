@@ -16,6 +16,9 @@
 **Learning:** Placing a subtle, language-aware "Daily Reading" / "स्वाध्याय" action card directly in the top action cards row on the Home feed seamlessly encourages daily scripture reading habits by connecting Home directly to `/library/continue-reading`.
 **Action:** Added `ContinueReadingCard` in `frontend/src/components/home/ActionCardsRow.tsx` navigating to `/library/continue-reading` with pure English ("Daily Reading") and pure Hindi ("स्वाध्याय") localization based on `t('language')`.
 
+## 2026-09-08 - Backend Engagement Daily Spiritual Nudge Scheduler
+**Learning:** Proactive time-based spiritual nudges that deliver localized titles/bodies (respecting user language preference between Devanagari Hindi and English) significantly boost daily retention and Panchang discovery.
+**Action:** Created `EngagementSchedulerService` in `backend/services/engagement_scheduler.py` and API route `POST /nudge/daily` in `backend/routes/engagement_routes.py` connected via `backend/main.py`.
 ## 2026-09-08 - Language-Aware Chat Empty State Nudge
 **Learning:** Empty chat screens without warm, localized guidance feel impersonal. Adding warm Devanagari Hindi copy ("अभी कोई संदेश नहीं हैं। बातचीत शुरू करें! 🙏") for Hindi users encourages user engagement and interaction in private and circle chats.
 **Action:** Updated `ListEmptyComponent` in `frontend/app/chat/[type]/[id].tsx` to conditionally display language-aware empty text based on `user?.language`.
