@@ -167,3 +167,22 @@ async def astrology_rate_limit(request: Request):
 
     key_prefix = f"astrology:uid:{user_id}" if user_id else "astrology:ip"
     return await rate_limit_dependency(request, limit=20, window=60, key_prefix=key_prefix)
+
+async def search_rate_limit(request: Request):
+    """Rate limit for expensive global search queries to prevent database strain and denial-of-service.
+    Allows 30 requests per 60 seconds per user/IP — smooth for search-as-you-type,
+    strict enough to prevent automated scraping or query flooding across users, communities, and posts.
+    """
+    user_id = None
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            import jwt as _jwt
+            token = auth_header[7:]
+            payload = _jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("user_id") or payload.get("sub")
+    except Exception:
+        pass
+
+    key_prefix = f"search:uid:{user_id}" if user_id else "search:ip"
+    return await rate_limit_dependency(request, limit=30, window=60, key_prefix=key_prefix)
