@@ -1313,6 +1313,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Categories FlatList */}
             <FlatList
+              extraData={selectedTempCategoriesSet}
               // OPT: Use useMemo for list data to preserve referential equality and prevent re-renders
               data={React.useMemo(() => {
                 const input = customCategoryQuery.trim().toLowerCase();
