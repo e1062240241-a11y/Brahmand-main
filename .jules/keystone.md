@@ -42,6 +42,7 @@ RACE CONDITIONS:
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/like` — read-modify-write race condition on `liked_by` and `likes_count` — FIXED
 - `/events/{event_id}/attend` — read-modify-write race condition on `attendees` and `attendee_count` — FIXED
 - `/posts/{post_id}/watch` — read-modify-write race condition on `rewatches` — FIXED
+- `view_post` (`/posts/{post_id}/view` & `/posts/{post_id}/views`) — counts self-views, lacks view deduplication — FIXED
 
 UNBOUNDED GROWTH:
 - `temple.followers` array — exposed in full on list responses — FIXED
@@ -50,6 +51,7 @@ N+1 QUERY PATTERNS:
 
 MISSING RATE LIMITS:
 - `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, `/spiritual/panchang` — expensive third-party API calls (AstrologyAPI.com / Groq LLM) callable without rate limits — FIXED
+- `/search/global` — unthrottled search execution across multiple collections — FIXED
 
 MISSING INDEXES:
 
@@ -78,3 +80,7 @@ ENDPOINTS NEEDING PAGINATION:
 ## 2026-09-07 - Rate Limiting Third-Party Astrology and Panchang Endpoints
 **Learning:** Third-party API calls (AstrologyAPI.com & Groq LLM for Panchan/Nakshatra/Horoscope) on `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, and `/spiritual/panchang` lacked rate limits. At 1 lakh+ users, unthrottled requests can lead to quota exhaustion, upstream rate limiting, and unexpected billing spikes.
 **Action:** Implemented `astrology_rate_limit` dependency in `backend/middleware/rate_limiter.py` limiting requests to 20 per 60s window per user/IP, and attached it to all external Astrology and Panchang endpoints in `backend/main.py`.
+
+## 2026-09-09 - Rate Limiting Global Search Endpoint
+**Learning:** Unthrottled global search on `/search/global` fires up to 12 parallel prefix range queries per request across `users`, `communities`, and `posts` collections. Under high concurrent user loads (1 lakh+ users) or automated scraping/search-as-you-type spam, this can cause DB read spikes, thread pool exhaustion, and denial of service.
+**Action:** Implemented `search_rate_limit` dependency in `backend/middleware/rate_limiter.py` (30 requests/60s per user/IP) and attached it to `global_search` in `backend/routes/search_routes.py`.
