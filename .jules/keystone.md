@@ -42,6 +42,7 @@ RACE CONDITIONS:
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/like` — read-modify-write race condition on `liked_by` and `likes_count` — FIXED
 - `/events/{event_id}/attend` — read-modify-write race condition on `attendees` and `attendee_count` — FIXED
 - `/posts/{post_id}/watch` — read-modify-write race condition on `rewatches` — FIXED
+- `view_post` (`/posts/{post_id}/view` & `/posts/{post_id}/views`) — counts self-views, lacks view deduplication — FIXED
 
 UNBOUNDED GROWTH:
 - `temple.followers` array — exposed in full on list responses — FIXED
