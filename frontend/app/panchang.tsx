@@ -363,7 +363,9 @@ export default function PanchangScreen() {
           >
             <Ionicons name="chevron-back" size={24} color="#311303" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Panchang</Text>
+          {/* 🧡 Engagement: Reframed header title for Hindi primary language support */}
+          {/* Lever: Reframing / Mother Tongue Connection */}
+          <Text style={styles.headerTitle}>{language === 'hi' ? 'आज का पंचांग' : 'Panchang'}</Text>
           <View style={{ width: 40 }} />
         </View>
 
