@@ -23,3 +23,6 @@
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2026-09-08 - Avoid O(N^2) includes in manual loops for deduplication
+**Learning:** Replacing `[...new Set(array)]` with a manual `for` loop using `array.includes()` is an O(N^2) anti-pattern that degrades both readability and performance compared to the native O(N) Set implementation. Even for small arrays where the performance difference is negligible, the loss in readability makes it an unacceptable micro-optimization.
+**Action:** When acting as the 'Bolt' performance agent, never replace native `Set` deduplication with manual loops using `.includes()`. If you must optimize Set creation, focus on avoiding unnecessary intermediate array allocations (like `.filter()` or `.map()`) *before* creating the Set.
