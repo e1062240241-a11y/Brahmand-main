@@ -76,10 +76,10 @@ interface UpcomingJaapsSectionProps {
   onCardPress?: (jaap: UpcomingJaapItem) => void;
 }
 
-export const UpcomingJaapsSection = React.memo(({
+export const UpcomingJaapsSection = React.memo(function UpcomingJaapsSection({
   items = DEFAULT_UPCOMING_JAAPS,
   onCardPress,
-}: UpcomingJaapsSectionProps) => {
+}: UpcomingJaapsSectionProps) {
   const { t } = useTranslation();
 
   const handlePress = useCallback((jaap: UpcomingJaapItem) => {
@@ -149,6 +149,8 @@ export const UpcomingJaapsSection = React.memo(({
                     ]}
                     android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
                     onPress={() => handlePress(jaap)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${displayName}, ${t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}`}
                   >
                     <Text style={styles.comingSoonText} numberOfLines={1}>
                       {t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}
