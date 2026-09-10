@@ -20,6 +20,21 @@
 ## 2026-09-06 - Avoid Array.sort(() => Math.random() - 0.5) for random selection
 **Learning:** Using `Array.sort(() => Math.random() - 0.5)` to select random items from a large global session pool (like `allSessionPostsRef`) is inefficient for the main UI thread in React Native, introducing unnecessary O(N log N) CPU overhead.
 **Action:** Replace `Array.sort(() => Math.random() - 0.5)` with a partial Fisher-Yates shuffle that randomly selects and caps the required elements in O(K) time.
+
+## 2026-08-28 - Removed O(N) array filtering in dm conversation
+**Learning:** Redundant `.filter()` operations can easily sneak in via helper functions like `deduplicateMessages` even after guarding early returns with `.some()`.
+**Action:** When a state updater first uses `.some()` to check for an item and ensures it does not exist, appending the item safely without a second pass `.filter()` or `.map()` operation minimizes CPU overhead.
+
+## 2026-08-28 - Set state iteration performance
+**Learning:** Passing an iterable directly to a Set constructor (e.g., `new Set(existingSet)`) is highly optimized in V8/JS engines and doesn't create intermediate arrays. Replacing it with a manual JS loop degrades readability and reduces performance. This is totally different from `new Set(existingSet.map(...))` which DOES create an intermediate array!
+**Action:** Do NOT replace `new Set(existingSet)` with manual loops.
+
+## 2026-08-28 - O(N log N) socket sort elimination
+**Learning:** New socket events for a chat or comments feed are always the most recent by definition. Running `Array.sort` on the entire combined feed for every single incoming message introduces massive O(N log N) UI thread overhead as the feed grows.
+**Action:** Directly prepend new socket events via `[newItem, ...prev]` in O(1) time rather than appending and re-sorting the entire array.
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2026-09-08 - Avoid O(N^2) includes in manual loops for deduplication
+**Learning:** Replacing `[...new Set(array)]` with a manual `for` loop using `array.includes()` is an O(N^2) anti-pattern that degrades both readability and performance compared to the native O(N) Set implementation. Even for small arrays where the performance difference is negligible, the loss in readability makes it an unacceptable micro-optimization.
+**Action:** When acting as the 'Bolt' performance agent, never replace native `Set` deduplication with manual loops using `.includes()`. If you must optimize Set creation, focus on avoiding unnecessary intermediate array allocations (like `.filter()` or `.map()`) *before* creating the Set.

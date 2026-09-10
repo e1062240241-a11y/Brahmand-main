@@ -1304,7 +1304,7 @@ const DirectMessageScreen = () => {
                 return deduplicateMessages(updated);
               }
 
-              return deduplicateMessages([...prev, message]);
+              return [...prev, message];
             });
             const cached = await getCachedMessages(conversationId);
             if (!cached.some((m) => m.id === message.id)) {

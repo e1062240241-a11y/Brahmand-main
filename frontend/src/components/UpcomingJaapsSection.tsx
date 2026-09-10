@@ -142,7 +142,7 @@ UpcomingJaapCard.displayName = 'UpcomingJaapCard';
 export const UpcomingJaapsSection = React.memo(({
   items = DEFAULT_UPCOMING_JAAPS,
   onCardPress,
-}: UpcomingJaapsSectionProps) => {
+}: UpcomingJaapsSectionProps) {
   const { t } = useTranslation();
   const isHindi = t('language') === 'hi';
 
