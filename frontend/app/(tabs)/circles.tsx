@@ -6,9 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { getCircles } from '../../src/services/api';
 import { Circle } from '../../src/types';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/authStore';
 
 export default function CirclesScreen() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isHindi = user?.language === 'hi';
   const [circles, setCircles] = useState<Circle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,7 +56,7 @@ export default function CirclesScreen() {
           {item.is_admin && (
             <View style={styles.adminBadge}>
               <Ionicons name="shield-checkmark" size={12} color={COLORS.warning} />
-              <Text style={styles.adminText}>Admin</Text>
+              <Text style={styles.adminText}>{isHindi ? 'एडमिन' : 'Admin'}</Text>
             </View>
           )}
         </View>
@@ -63,7 +66,7 @@ export default function CirclesScreen() {
         <View style={styles.circleMeta}>
           <View style={styles.memberCount}>
             <Ionicons name="people" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.memberText}>{((item.member_count || (item as any).members_count || 1) * 11)} members</Text>
+            <Text style={styles.memberText}>{((item.member_count || (item as any).members_count || 1) * 11)} {isHindi ? 'सदस्य' : 'members'}</Text>
           </View>
           <View style={styles.privacyIndicator}>
             <Ionicons 
@@ -72,7 +75,7 @@ export default function CirclesScreen() {
               color={COLORS.textLight} 
             />
             <Text style={styles.codeText}>
-              {item.privacy === 'private' ? 'Private' : item.code}
+              {item.privacy === 'private' ? (isHindi ? 'प्राइवेट' : 'Private') : item.code}
             </Text>
           </View>
         </View>
@@ -102,7 +105,7 @@ export default function CirclesScreen() {
           onPress={() => router.push('/circle/create')}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.textWhite} />
-          <Text style={styles.actionText}>Create Circle</Text>
+          <Text style={styles.actionText}>{isHindi ? 'सर्कल बनाएं' : 'Create Circle'}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -114,16 +117,18 @@ export default function CirclesScreen() {
           onPress={() => router.push('/circle/join')}
         >
           <Ionicons name="enter" size={20} color={COLORS.primary} />
-          <Text style={[styles.actionText, styles.actionTextOutline]}>Join Circle</Text>
+          <Text style={[styles.actionText, styles.actionTextOutline]}>{isHindi ? 'सर्कल में जुड़ें' : 'Join Circle'}</Text>
         </Pressable>
       </View>
 
       {circles.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="ellipse-outline" size={64} color={COLORS.textLight} />
-          <Text style={styles.emptyTitle}>No Circles Yet</Text>
+          <Text style={styles.emptyTitle}>{isHindi ? 'अभी कोई सर्कल नहीं' : 'No Circles Yet'}</Text>
           <Text style={styles.emptyText}>
-            Create a circle for your family, friends, or temple community
+            {isHindi
+              ? 'अपने परिवार, मित्रों या मंदिर समुदाय के लिए एक सर्कल बनाएं 🙏'
+              : 'Create a circle for your family, friends, or temple community'}
           </Text>
         </View>
       ) : (
