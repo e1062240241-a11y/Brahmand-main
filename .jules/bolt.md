@@ -23,3 +23,6 @@
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2024-05-18 - Optimize Top Comments Query
+**Learning:** Firestore ordered queries with bounds (`limit`, `order_by`) can save significant memory over fetching a large batch and sorting in Python, but they may fail if the composite index hasn't been built yet.
+**Action:** When pushing limits/sorting to the database layer for subsets (like `top_comments`), always wrap the optimized query in a `try...except` block that catches 'requires an index' or '400' errors and falls back to an un-ordered query to prevent the API endpoint from breaking.
