@@ -26,14 +26,23 @@
 **Learning:** The `/users` endpoint loaded up to 500 users per request without `offset` pagination support, forcing clients to fetch the same top batch repeatedly or miss users beyond the initial limit.
 **Action:** Added `offset` parameter (default 0) with safe limit clamping (max 50) in `/users` endpoint (`backend/main.py`), calculating dynamic fetch bounds (`fetch_limit = safe_offset + safe_limit`) to allow backward-compatible paginated retrieval across large user populations.
 
+## 2026-09-10 - DB-level Bounded Candidate Fetching & Pagination for Community and Help Requests
+**Learning:** Fetching all historical `community_requests` without DB-level limit bounds in `get_community_requests` forced Firestore to stream all documents across the system into memory before applying location/visibility filters. At 1 lakh+ users, this caused $O(N_{\text{total\_requests}})$ reads per request. Passing `order_by='created_at'`, `order_direction='DESCENDING'`, and `fetch_limit` directly to Firestore bounds document reads to $O(\text{limit})$, while index fallback logic protects against missing composite indexes.
+**Action:** Added `offset: int = 0` pagination, enforced bounded `safe_limit` and `safe_offset`, capped Firestore candidate reads to `fetch_limit = safe_offset + safe_limit * 3 + 20` with `created_at` DESC ordering and composite index exception fallback in `/community-requests` and `/help-requests`.
+
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:
 - `/temples` — loads all temples — FIXED
 - `/temples/nearby` — loads all temples before slice — FIXED
 - `/notifications` — loads all historical user notifications — FIXED
+- `/help-requests` — unpaginated query — FIXED
 - `/help-requests/my` — loads all historical user help requests — FIXED
+- `/community-requests` — unpaginated DB scan across all community requests — FIXED
 - `/community-requests/my` — loads all historical user community requests — FIXED
 - `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
+- `/events` — hardcoded limit without offset pagination — FIXED
+- `/events/nearby` — hardcoded limit without offset pagination — FIXED
+- `/users` — unpaginated large user fetch — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -64,18 +73,6 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-06 - Limit-offset bounds for Event query endpoints
 **Learning:** Hardcoded query limits on `/events` and `/events/nearby` caused static batch sizes (20 or 10 events) without pagination support. As events accumulate at 1 lakh+ scale, clients cannot fetch subsequent pages of events.
 **Action:** Added optional `limit` (default 20, max 100) and `offset` (default 0) query parameters to `EventService.get_events`, `EventService.get_nearby_events`, `event_routes.py`, and `main.py`, bounding Firestore reads to `fetch_limit = safe_offset + safe_limit` and slicing the returned dataset accordingly.
-
-CODEBASE MAP:
-ENDPOINTS NEEDING PAGINATION:
-- `/temples` — loads all temples — FIXED
-- `/temples/nearby` — loads all temples before slice — FIXED
-- `/notifications` — loads all historical user notifications — FIXED
-- `/help-requests/my` — loads all historical user help requests — FIXED
-- `/community-requests/my` — loads all historical user community requests — FIXED
-- `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
-- `/events` — hardcoded limit without offset pagination — FIXED
-- `/events/nearby` — hardcoded limit without offset pagination — FIXED
-- `/users` — unpaginated large user fetch — FIXED
 
 ## 2026-09-07 - Rate Limiting Third-Party Astrology and Panchang Endpoints
 **Learning:** Third-party API calls (AstrologyAPI.com & Groq LLM for Panchan/Nakshatra/Horoscope) on `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, and `/spiritual/panchang` lacked rate limits. At 1 lakh+ users, unthrottled requests can lead to quota exhaustion, upstream rate limiting, and unexpected billing spikes.
