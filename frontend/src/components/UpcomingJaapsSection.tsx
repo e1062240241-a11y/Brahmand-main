@@ -76,95 +76,115 @@ interface UpcomingJaapsSectionProps {
   onCardPress?: (jaap: UpcomingJaapItem) => void;
 }
 
-export const UpcomingJaapsSection = React.memo(function UpcomingJaapsSection({
+interface UpcomingJaapCardProps {
+  jaap: UpcomingJaapItem;
+  isHindi: boolean;
+  onPress: (jaap: UpcomingJaapItem) => void;
+}
+
+/**
+ * 🎨 Varnish Code Quality & Performance Fix:
+ * 1. Extracted `UpcomingJaapCard` sub-component wrapped in `React.memo` to eliminate unnecessary card re-renders during parent state updates.
+ * 2. Moved inline style allocations (`cardWidth`/`cardHeight`, `cardFillWrapper`, `cardImage`, and Pressable state styles) to `StyleSheet.create`.
+ * 3. Added `fadeDuration={0}` to `<Image>` to eliminate flash during re-renders.
+ * 4. Added `accessibilityRole="button"` and `accessibilityLabel` for screen readers.
+ */
+const UpcomingJaapCard = React.memo(({ jaap, isHindi, onPress }: UpcomingJaapCardProps) => {
+  const displayName = isHindi ? jaap.titleHi : jaap.title;
+  const comingSoonText = isHindi ? 'जल्द ही आ रहा है' : 'COMING SOON';
+
+  const handleCardPress = useCallback(() => {
+    onPress(jaap);
+  }, [jaap, onPress]);
+
+  return (
+    <View style={styles.upcomingCard}>
+      <View style={styles.cardFillWrapper}>
+        <Image
+          source={jaap.image}
+          style={styles.cardImage}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View style={styles.upcomingCardContent}>
+          <Text style={styles.upcomingCardTitle} numberOfLines={2}>
+            {displayName}
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.upcomingReminderBtn,
+              pressed && styles.upcomingReminderBtnPressed,
+            ]}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+            onPress={handleCardPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${displayName} - ${comingSoonText}`}
+          >
+            <Text style={styles.comingSoonText} numberOfLines={1}>
+              {comingSoonText}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+UpcomingJaapCard.displayName = 'UpcomingJaapCard';
+
+export const UpcomingJaapsSection = React.memo(({
   items = DEFAULT_UPCOMING_JAAPS,
   onCardPress,
 }: UpcomingJaapsSectionProps) {
   const { t } = useTranslation();
+  const isHindi = t('language') === 'hi';
 
   const handlePress = useCallback((jaap: UpcomingJaapItem) => {
     if (onCardPress) {
       onCardPress(jaap);
       return;
     }
-    const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
+    const title = isHindi ? jaap.titleHi : jaap.title;
     Alert.alert(
-      t('language') === 'hi' ? '🙏 जल्द ही आ रहा है' : '🙏 Coming Soon',
-      t('language') === 'hi'
+      isHindi ? '🙏 जल्द ही आ रहा है' : '🙏 Coming Soon',
+      isHindi
         ? `${title} सेवा जल्द ही आ रही है। कृपया प्रतीक्षा करें!`
         : `${title} is coming soon. Stay tuned!`
     );
-  }, [onCardPress, t]);
+  }, [onCardPress, isHindi]);
 
   return (
     <View style={styles.container}>
       {/* More Upcoming Jaaps Section Header */}
       <View style={styles.sectionHeaderParity}>
         <Text style={styles.sectionTitleText}>
-          {t('language') === 'hi' ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
+          {isHindi ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
         </Text>
       </View>
 
       {/* Grid Cards */}
       <View style={styles.upcomingGridContainer}>
-        {items.map((jaap) => {
-          const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
-          return (
-            <View
-              key={jaap.id}
-              style={[
-                styles.upcomingCard,
-                { width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT }
-              ]}
-            >
-              <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
-                <Image
-                  source={jaap.image}
-                  style={{ width: '100%', height: '100%', position: 'absolute' }}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
-                  locations={[0, 0.5, 1]}
-                  style={StyleSheet.absoluteFill}
-                />
-
-                <View style={styles.upcomingCardContent}>
-                  <Text style={styles.upcomingCardTitle} numberOfLines={2}>
-                    {displayName}
-                  </Text>
-
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.upcomingReminderBtn,
-                      {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        borderColor: 'rgba(255, 255, 255, 0.4)',
-                        borderWidth: 1,
-                        elevation: 0,
-                        shadowOpacity: 0,
-                        overflow: 'hidden',
-                      },
-                      pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] }
-                    ]}
-                    android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
-                    onPress={() => handlePress(jaap)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${displayName}, ${t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}`}
-                  >
-                    <Text style={styles.comingSoonText} numberOfLines={1}>
-                      {t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          );
-        })}
+        {items.map((jaap) => (
+          <UpcomingJaapCard
+            key={jaap.id}
+            jaap={jaap}
+            isHindi={isHindi}
+            onPress={handlePress}
+          />
+        ))}
       </View>
     </View>
   );
 });
+
+UpcomingJaapsSection.displayName = 'UpcomingJaapsSection';
 
 export const MoreUpcomingJaapsSection = UpcomingJaapsSection;
 
@@ -197,10 +217,22 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   upcomingCard: {
+    width: UPCOMING_CARD_WIDTH,
+    height: UPCOMING_CARD_HEIGHT,
     borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#1A0A00',
+  },
+  cardFillWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
   },
   upcomingCardContent: {
     flex: 1,
@@ -223,7 +255,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   upcomingReminderBtn: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderWidth: 1,
     height: 32,
     borderRadius: 16,
     flexDirection: 'row',
@@ -235,7 +269,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 0,
+    overflow: 'hidden',
+  },
+  upcomingReminderBtnPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.96 }],
   },
   comingSoonText: {
     color: '#FFF',
