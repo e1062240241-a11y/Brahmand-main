@@ -296,7 +296,23 @@ export function useCommunityData(
 
         const serverPosts = [...formattedMsgs];
         const serverIds = new Set<string>();
-        for (const p of serverPosts) serverIds.add(String(p.id));
+        // ⚡ Bolt Optimization: Use O(1) Set lookup to deduplicate local offline posts against server response instead of O(N*M) array search
+        const serverPostSignatures = new Set<string>();
+
+        for (const p of serverPosts) {
+          serverIds.add(String(p.id));
+          const content = (p.content || '').trim();
+          if (content) {
+            if (p.sender_id && currentUserIdStr && String(p.sender_id) === currentUserIdStr) {
+              serverPostSignatures.add(`${content}|sender:${currentUserIdStr}`);
+            } else if (p.user_id && currentUserIdStr && String(p.user_id) === currentUserIdStr) {
+              serverPostSignatures.add(`${content}|user:${currentUserIdStr}`);
+            } else if (p.user?.name && currentUserName && p.user.name === currentUserName) {
+              serverPostSignatures.add(`${content}|name:${currentUserName}`);
+            }
+          }
+        }
+
         const prevPosts = currentCache?.communityPosts || [];
 
         const localPosts = prevPosts.filter((p: any) => {
@@ -309,16 +325,18 @@ export function useCommunityData(
           }
 
           if (pIdStr.startsWith('post-')) {
-            const hasServerMatch = serverPosts.some((sp: any) => {
-              const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
-              const senderMatches =
-                (sp.sender_id && currentUserIdStr && String(sp.sender_id) === currentUserIdStr) ||
-                (sp.user_id && currentUserIdStr && String(sp.user_id) === currentUserIdStr) ||
-                (sp.user?.name && currentUserName && sp.user.name === currentUserName);
-              return contentMatches && senderMatches;
-            });
-            if (hasServerMatch) {
-              return false;
+            const content = (p.content || '').trim();
+            if (content) {
+              const sigSender = `${content}|sender:${currentUserIdStr}`;
+              const sigUser = `${content}|user:${currentUserIdStr}`;
+              const sigName = `${content}|name:${currentUserName}`;
+              if (
+                serverPostSignatures.has(sigSender) ||
+                serverPostSignatures.has(sigUser) ||
+                serverPostSignatures.has(sigName)
+              ) {
+                return false;
+              }
             }
           }
 
@@ -362,8 +380,23 @@ export function useCommunityData(
       } else {
         setCommunityPosts((prev: any[]) => {
           const serverIds = new Set<string>();
-          for (const p of formattedMsgs) serverIds.add(p.id);
-          const serverPosts = [...formattedMsgs];
+          const serverPostSignatures = new Set<string>();
+          const currentUserIdStr = user?.id ? String(user.id) : null;
+          const currentUserName = user?.name || null;
+
+          for (const p of formattedMsgs) {
+            serverIds.add(p.id);
+            const content = (p.content || '').trim();
+            if (content) {
+              if (p.sender_id && currentUserIdStr && String(p.sender_id) === currentUserIdStr) {
+                serverPostSignatures.add(`${content}|sender:${currentUserIdStr}`);
+              } else if (p.user_id && currentUserIdStr && String(p.user_id) === currentUserIdStr) {
+                serverPostSignatures.add(`${content}|user:${currentUserIdStr}`);
+              } else if (p.user?.name && currentUserName && p.user.name === currentUserName) {
+                serverPostSignatures.add(`${content}|name:${currentUserName}`);
+              }
+            }
+          }
 
           const localPosts = prev.filter((p: any) => {
             const isDeleted = deletedIds.has(String(p.id));
@@ -379,15 +412,19 @@ export function useCommunityData(
             if (serverIds.has(p.id)) return false;
 
             if (String(p.id).startsWith('post-')) {
-              const hasServerMatch = serverPosts.some((sp: any) => {
-                const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
-                const senderMatches =
-                  (sp.sender_id && user?.id && String(sp.sender_id) === String(user?.id)) ||
-                  (sp.user_id && user?.id && String(sp.user_id) === String(user?.id)) ||
-                  (sp.user?.name && user?.name && sp.user.name === user.name);
-                return contentMatches && senderMatches;
-              });
-              if (hasServerMatch) return false;
+              const content = (p.content || '').trim();
+              if (content) {
+                const sigSender = `${content}|sender:${currentUserIdStr}`;
+                const sigUser = `${content}|user:${currentUserIdStr}`;
+                const sigName = `${content}|name:${currentUserName}`;
+                if (
+                  serverPostSignatures.has(sigSender) ||
+                  serverPostSignatures.has(sigUser) ||
+                  serverPostSignatures.has(sigName)
+                ) {
+                  return false;
+                }
+              }
             }
 
             return true;

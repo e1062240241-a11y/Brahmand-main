@@ -5403,12 +5403,25 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    # Recalculate top_comments
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=200,
-    )
+    # ⚡ Bolt Optimization: Recalculate top_comments using bounded ordered DB query instead of fetching 200 items in memory
+    try:
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=10,
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for top_comments post_id + created_at, falling back: {query_err}")
+            top_comments = await db.query_documents(
+                'post_comments',
+                filters=[('post_id', '==', post_id)],
+                limit=200,
+            )
+        else:
+            raise query_err
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
