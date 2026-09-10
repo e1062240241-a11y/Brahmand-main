@@ -142,7 +142,7 @@ UpcomingJaapCard.displayName = 'UpcomingJaapCard';
 export const UpcomingJaapsSection = React.memo(({
   items = DEFAULT_UPCOMING_JAAPS,
   onCardPress,
-}: UpcomingJaapsSectionProps) {
+}: UpcomingJaapsSectionProps) => {
   const { t } = useTranslation();
   const isHindi = t('language') === 'hi';
 
@@ -225,7 +225,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A0A00',
   },
   cardFillWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderRadius: 16,
     overflow: 'hidden',
   },
