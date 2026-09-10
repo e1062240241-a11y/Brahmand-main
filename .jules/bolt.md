@@ -23,3 +23,7 @@
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+
+## 2024-05-14 - Concurrent Database Queries in get_post_comments
+**Learning:** In the FastAPI backend, certain API endpoints perform multiple independent database fetches sequentially (e.g. querying post comments, blocked users, and reported content).
+**Action:** When multiple independent Firestore queries or cache lookups occur in the same endpoint handler (like `db.query_documents` and `_get_blocked_user_ids`), wrap them in a single `asyncio.gather(...)` call to execute them concurrently, significantly reducing the overall I/O latency.
