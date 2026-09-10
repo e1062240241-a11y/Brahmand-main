@@ -1100,12 +1100,9 @@ export default function HomeScreen() {
         setTabFeed(activeTab, {
           posts: currentPosts.map((item) => {
             if (item.id === selectedCommentPostId) {
-              const currentTop = Array.isArray(item.top_comments) ? item.top_comments : [];
               return {
                 ...item,
                 ...updatedPost,
-                // Ensure the new comment is shown in the 'outer' preview
-                top_comments: [serverComment || optimisticComment, ...currentTop].slice(0, 2)
               };
             }
             return item;
@@ -1114,7 +1111,6 @@ export default function HomeScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? {
           ...prev,
           ...updatedPost,
-          top_comments: [serverComment || optimisticComment, ...(Array.isArray(prev.top_comments) ? prev.top_comments : [])].slice(0, 2)
         } : prev));
       }
 
@@ -1274,15 +1270,12 @@ export default function HomeScreen() {
     let originalPostInFeed: any = null;
     if (postToUpdate) {
       originalPostInFeed = { ...postToUpdate };
-      const currentTop = Array.isArray(postToUpdate.top_comments) ? postToUpdate.top_comments : [];
-      const updatedTop = currentTop.filter((c: any) => c.id !== commentId);
       setTabFeed(activeTab, {
         posts: currentPosts.map((item) => {
           if (item.id === selectedCommentPostId) {
             return {
               ...item,
               comments_count: Math.max(0, (Number(item.comments_count) || 0) - 1),
-              top_comments: updatedTop,
             };
           }
           return item;
@@ -1293,11 +1286,9 @@ export default function HomeScreen() {
     if (selectedCommentPost) {
       setSelectedCommentPost((prev: any) => {
         if (prev?.id === selectedCommentPostId) {
-          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
           return {
             ...prev,
             comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-            top_comments: currentTop.filter((c: any) => c.id !== commentId),
           };
         }
         return prev;
@@ -1313,11 +1304,9 @@ export default function HomeScreen() {
         setTabFeed(activeTab, {
           posts: refreshedPosts.map((item) => {
             if (item.id === selectedCommentPostId) {
-              const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
               return {
                 ...item,
                 ...updatedPostFromServer,
-                top_comments: currentTop.slice(0, 2),
               };
             }
             return item;
@@ -1326,11 +1315,9 @@ export default function HomeScreen() {
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === selectedCommentPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;

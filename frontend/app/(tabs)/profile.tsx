@@ -1143,11 +1143,9 @@ export default function ProfileScreen() {
     const targetPostId = selectedCommentPost.id;
     setPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -1156,11 +1154,9 @@ export default function ProfileScreen() {
     if (selectedPost?.id === targetPostId) {
       setSelectedPost((prev: any) => {
         if (prev) {
-          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
           return {
             ...prev,
             comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-            top_comments: currentTop.filter((c: any) => c.id !== commentId),
           };
         }
         return prev;
@@ -1169,11 +1165,9 @@ export default function ProfileScreen() {
 
     setSelectedCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -1186,27 +1180,23 @@ export default function ProfileScreen() {
       if (updatedPostFromServer) {
         setPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
         }));
 
         if (selectedPost?.id === targetPostId) {
-          setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPostFromServer, top_comments: (Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : []).slice(0, 2) } : prev);
+          setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPostFromServer } : prev);
         }
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;

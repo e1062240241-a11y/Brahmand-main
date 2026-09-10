@@ -340,11 +340,9 @@ const PostScreen = () => {
     const targetPostId = commentPost.id;
     setFeedPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -352,11 +350,9 @@ const PostScreen = () => {
 
     setCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -369,11 +365,9 @@ const PostScreen = () => {
       if (updatedPostFromServer) {
         setFeedPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
@@ -381,11 +375,9 @@ const PostScreen = () => {
 
         setCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;

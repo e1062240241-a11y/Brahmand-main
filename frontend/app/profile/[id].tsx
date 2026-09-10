@@ -256,14 +256,12 @@ const UserProfileScreen = () => {
       setReplyingToComment(null);
       Keyboard.dismiss();
 
-      // Update top_comments in local state for outer preview
+      // Update comments in local state for outer preview
       setPosts(prev => prev.map(p => {
         if (p.id === selectedCommentPost.id) {
-          const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
           return {
             ...p,
             comments_count: (Number(p.comments_count) || 0) + 1,
-            top_comments: [serverComment, ...currentTop].slice(0, 2)
           };
         }
         return p;
@@ -291,11 +289,9 @@ const UserProfileScreen = () => {
     const targetPostId = selectedCommentPost.id;
     setPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -303,11 +299,9 @@ const UserProfileScreen = () => {
 
     setSelectedCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -320,11 +314,9 @@ const UserProfileScreen = () => {
       if (updatedPostFromServer) {
         setPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
@@ -332,11 +324,9 @@ const UserProfileScreen = () => {
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;
