@@ -11637,11 +11637,16 @@ async def get_help_requests(
     community_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get help requests visible to the user"""
     db = await get_db()
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     filters = [('status', '==', status)]
     
     if type:
@@ -11650,8 +11655,27 @@ async def get_help_requests(
     if community_level:
         filters.append(('community_level', '==', community_level))
     
-    requests = await db.query_documents('help_requests', filters=filters, limit=limit, order_by='created_at', order_direction='DESCENDING')
-    return requests
+    try:
+        requests = await db.query_documents(
+            'help_requests',
+            filters=filters,
+            limit=fetch_limit,
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for help_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'help_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
+
+    return requests[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.get("/help-requests/my")
@@ -13542,13 +13566,16 @@ async def get_community_requests(
     visibility_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get community requests with filters"""
     user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
     
     # 1. Try fetching from cache first (skip cache if fetching blood/emergency requests for real-time accuracy)
-    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
+    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{safe_limit}:{safe_offset}"
     if type not in ['blood', 'emergency', 'medical']:
         cached_requests = await cache_manager.get(cache_key)
         if cached_requests is not None:
@@ -13577,8 +13604,29 @@ async def get_community_requests(
     )
     if not isinstance(location_area, dict):
         location_area = {}
-    # Do not apply limit at DB level to avoid fetching oldest documents first
-    requests = await db.query_documents('community_requests', filters=filters)
+
+    # Architectural fix: Limit the candidate document query at DB level with created_at DESC
+    # to avoid O(N) reads of all historical community requests across the system.
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=filters,
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for community_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'community_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
     
     # Filter requests based on visibility level
     visible_requests = []
@@ -13681,15 +13729,14 @@ async def get_community_requests(
 
     filtered_clean_requests.sort(key=_final_sort_key)
     
-    # Apply limit
-    if limit:
-        filtered_clean_requests = filtered_clean_requests[:limit]
+    # Apply offset and limit pagination
+    paginated_requests = filtered_clean_requests[safe_offset : safe_offset + safe_limit]
             
     # 2. Store in cache with 30-second TTL
-    await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
+    await cache_manager.set(cache_key, paginated_requests, ttl=30)
     logger.info(f"Cached community requests for: {cache_key}")
     
-    return filtered_clean_requests
+    return paginated_requests
 
 
 @api_router.get("/community-requests/my")
