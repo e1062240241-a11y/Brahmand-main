@@ -26,3 +26,7 @@
 **Vulnerability:** The `/admin/auth/login` endpoint was lacking rate limiting middleware (`Depends(auth_rate_limit)`), leaving the admin panel exposed to brute-force credential attacks.
 **Learning:** While other standard authentication endpoints (like OTP and login) might be protected, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
 **Prevention:** Ensure that all endpoints associated with authentication, session generation, or token issuance uniformly implement the `Depends(auth_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
+## 2025-03-09 - Missing Rate Limit on Admin Upload Endpoint
+**Vulnerability:** The `/admin/upload` endpoint in `backend/routes/katha_routes.py` was missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large file uploads.
+**Learning:** While other standard file upload endpoints (like `/videos/upload`) might be protected with `Depends(upload_rate_limit)`, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
+**Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
