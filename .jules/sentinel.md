@@ -22,3 +22,7 @@
 **Vulnerability:** Path Traversal via unsanitized `UploadFile.filename` in FastAPI routes (`backend/routes/katha_routes.py` and `backend/routes/video_upload_routes.py`).
 **Learning:** `UploadFile.filename` is user-provided and can contain directory traversal sequences (like `../../../`) or Windows-style paths (`..\..\..\`). Directly using it to build output paths or determine file extensions can allow an attacker to write files outside intended directories.
 **Prevention:** Always sanitize `file.filename` using `os.path.basename(file.filename.replace('\\', '/'))` before using it in any backend logic.
+## 2025-03-09 - Missing Rate Limit on Admin Login
+**Vulnerability:** The `/admin/auth/login` endpoint was lacking rate limiting middleware (`Depends(auth_rate_limit)`), leaving the admin panel exposed to brute-force credential attacks.
+**Learning:** While other standard authentication endpoints (like OTP and login) might be protected, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
+**Prevention:** Ensure that all endpoints associated with authentication, session generation, or token issuance uniformly implement the `Depends(auth_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.

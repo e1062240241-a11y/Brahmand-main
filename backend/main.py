@@ -113,6 +113,7 @@ from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.search_routes import router as search_router
 from routes.katha_routes import router as katha_router
 from routes.home_routes import router as home_router
+from routes.engagement_routes import router as engagement_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1462,6 +1463,7 @@ api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
 api_router.include_router(home_router)
+api_router.include_router(engagement_router, prefix="/engagement", tags=["engagement"])
 
 
 
@@ -1864,7 +1866,7 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
 
 
 @api_router.post("/admin/auth/login")
-async def admin_panel_login(data: dict = Body(...)):
+async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_limit)):
     """Admin panel login with static credentials for internal review console."""
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
@@ -3291,6 +3293,7 @@ async def share_post_preview(post_id: str):
     return HTMLResponse(content=html_content)
 
 
+@api_router.get('/posts/{post_id}/views')
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3298,12 +3301,28 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
 
+    user_id = token_data.get('user_id')
+    current_views = post.get('views_count', 0) or 0
+
+    # Ignore self-views: author viewing their own post does not increment view_count
+    if user_id and user_id == post.get('user_id'):
+        return {'message': 'Self-view ignored', 'views_count': current_views}
+
+    # Deduplicate view count per user within a 5-minute window
+    if user_id:
+        cache_key = f"post_view:{post_id}:{user_id}"
+        already_viewed = await cache_manager.get(cache_key)
+        if already_viewed:
+            return {'message': 'View already recorded', 'views_count': current_views}
+
+        await cache_manager.set(cache_key, True, ttl=300)
+
     # Atomic server-side increment — avoids the read-then-write race where
     # concurrent views both read the same count and clobber each other.
     await db.increment_field('posts', post_id, 'views_count', 1)
 
     # Best-effort count for the response; the stored value is now accurate.
-    return {'message': 'View recorded', 'views_count': (post.get('views_count', 0) or 0) + 1}
+    return {'message': 'View recorded', 'views_count': current_views + 1}
 
 
 @api_router.get("/bunny-media/{filepath:path}")
@@ -3414,6 +3433,9 @@ async def _upload_post_impl(
     original_height: Optional[int] = None,
     mute_audio: Optional[str] = None,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     db = await get_db()
     user_id = token_data['user_id']
 
@@ -3723,6 +3745,9 @@ async def _upload_chat_media_impl(
     file: UploadFile,
     token_data: dict,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
     

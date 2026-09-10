@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from middleware.security import verify_token
+from middleware.rate_limiter import search_rate_limit
 from config.firestore_db import FirestoreDB
 from utils.search_algo import rank_search_results
 import asyncio
@@ -18,6 +19,7 @@ async def get_db() -> FirestoreDB:
 async def global_search(
     q: str = Query(..., min_length=2, description="The search query"),
     limit: int = Query(30, ge=1, le=50, description="Max results per category"),
+    _: bool = Depends(search_rate_limit),
     token_data: dict = Depends(verify_token)
 ):
     """
