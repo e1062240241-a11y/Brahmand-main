@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 import SwipeButton from '../src/components/SwipeButton';
 import { useTranslation } from '../src/utils/i18n';
+import { usePassportStore, calculateSadhanaStreak } from '../src/store/passportStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -201,6 +202,13 @@ export default function LiveJaapWelcomeScreen() {
   const isKedarnath = mantraType === 'kedarnath';
   const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
 
+  // Live Sadhana Sankalpa Diya & Streak state
+  const dailyHanuman = usePassportStore((state) => state.daily_hanuman_count) || {};
+  const dailyOther = usePassportStore((state) => state.daily_other_jaap_count) || {};
+  const streakData = React.useMemo(() => {
+    return calculateSadhanaStreak(dailyHanuman, dailyOther);
+  }, [dailyHanuman, dailyOther]);
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ gestureEnabled: false }} />
@@ -242,6 +250,44 @@ export default function LiveJaapWelcomeScreen() {
             isOtherLiveJaap={isOtherLiveJaap}
             t={t}
           />
+
+          {/* SADHANA SANKALPA LIVE STREAK & DIYA STATUS */}
+          <View style={styles.streakLiveBadge}>
+            <Text
+              style={[
+                styles.streakDiyaIcon,
+                streakData.todayCount === 0 && !streakData.isTodayCompleted
+                  ? styles.streakDiyaUnlit
+                  : styles.streakDiyaLit,
+              ]}
+            >
+              🪔
+            </Text>
+            <View style={styles.streakBadgeContent}>
+              <Text style={styles.streakBadgeTitle}>
+                {streakData.currentStreak > 0
+                  ? (t('language') === 'hi'
+                      ? `${streakData.currentStreak} दिवसीय साधना संकल्प`
+                      : `${streakData.currentStreak} Day Sadhana Sankalpa`)
+                  : (t('language') === 'hi'
+                      ? 'साधना संकल्प (Day 1)'
+                      : 'Sadhana Sankalpa (Day 1)')}
+              </Text>
+              <Text style={styles.streakBadgeSubtitle}>
+                {streakData.isTodayCompleted
+                  ? (t('language') === 'hi'
+                      ? '✨ आज का दीप प्रज्वलित है • संकल्प पूर्ण'
+                      : '✨ Today\'s Diya is Lit • Sankalpa Complete')
+                  : streakData.todayCount > 0
+                  ? (t('language') === 'hi'
+                      ? `दीप प्रज्वलित है • ${Math.max(0, 108 - streakData.todayCount)} जाप शेष`
+                      : `Diya Lit • ${Math.max(0, 108 - streakData.todayCount)} chants left`)
+                  : (t('language') === 'hi'
+                      ? 'सत्र में जाप करके आज का दीप प्रज्वलित करें 🙏'
+                      : 'Chant in this session to light today\'s Diya 🙏')}
+              </Text>
+            </View>
+          </View>
 
           {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>
@@ -503,5 +549,61 @@ const styles = StyleSheet.create({
     color: '#E8630A',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  streakLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(234, 88, 12, 0.28)',
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginVertical: 10,
+    gap: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#EA580C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.10,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  streakDiyaIcon: {
+    fontSize: 22,
+  },
+  streakDiyaLit: {
+    opacity: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.5,
+        shadowRadius: 3,
+      },
+      android: {},
+    }),
+  },
+  streakDiyaUnlit: {
+    opacity: 0.35,
+  },
+  streakBadgeContent: {
+    flex: 1,
+  },
+  streakBadgeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#882E06',
+    letterSpacing: 0.2,
+  },
+  streakBadgeSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#B45309',
+    marginTop: 1.5,
   },
 });

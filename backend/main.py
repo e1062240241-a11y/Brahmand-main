@@ -10855,20 +10855,6 @@ async def send_library_reminder_notification(
     return {"status": "success", "result": result}
 
 
-@api_router.post("/notifications/shiv-katha-reminder")
-async def send_shiv_katha_reminder_notification(
-    data: dict = Body({}),
-    token_data: dict = Depends(verify_token)
-):
-    user_id = data.get("target_user_id") or token_data["user_id"]
-    force = bool(data.get("force", False))
-    
-    result = await FirebaseNotificationService.notify_shiv_katha_reminder(
-        user_id=user_id,
-        force=force
-    )
-    return {"status": "success", "result": result}
-
 
 
 
@@ -16856,15 +16842,66 @@ async def _jaap_reminder_worker():
                                 sent_reminders_cache[cache_key] = now_ts
                                 continue
 
-                            # Send notification via task queue
+                            # Fetch user streak stats for personalized Sadhana Sankalpa notification
+                            user_streak = 0
+                            is_today_completed = False
+                            today_count = 0
+                            try:
+                                stats_doc = await db.get_document("user_jaap_stats", uid)
+                                if stats_doc:
+                                    user_streak = int(stats_doc.get("current_streak", 0))
+                                    if stats_doc.get("last_jaap_date") == date_str:
+                                        is_today_completed = bool(stats_doc.get("is_today_completed", False))
+                                        today_count = int(stats_doc.get("today_count", 0))
+                                else:
+                                    # Fallback to users doc
+                                    u_doc = await db.get_document("users", uid)
+                                    if u_doc:
+                                        user_streak = int(u_doc.get("sadhana_streak", 0))
+                                        if u_doc.get("last_jaap_date") == date_str:
+                                            is_today_completed = bool(u_doc.get("sadhana_today_completed", False))
+                                            today_count = int(u_doc.get("sadhana_today_count", 0))
+                            except Exception as streak_err:
+                                logger.warning(f"Error fetching user streak for notification: {streak_err}")
+
+                            # Personalize title and body based on user state (Case A, B, C, D)
+                            if is_today_completed:
+                                # Case C: Today's Sankalpa already completed (Diya Already Lit)
+                                final_title = f"✨ Live {mantra_title} Starting Soon"
+                                final_body = f"Aapka aaj ka sankalp pura ho chuka hai! Apni sadhana ko aur gehra karne ke liye {session['name']} Live Jaap mein juden."
+                            elif user_streak >= 1:
+                                if session['name'] in ['Evening', 'Night']:
+                                    # Case B: Evening/Night streak saver
+                                    final_title = f"🔥 {user_streak} Din Ka Sankalp Bachayein!"
+                                    remaining_txt = f" (Sirf {108 - today_count} baaki)" if today_count > 0 else " (1 Mala baaki)"
+                                    final_body = f"Aaj ka sankalp baaki hai{remaining_txt}. {session['name']} Live {mantra_title} mein judkar apna Diya prajwalit karein."
+                                else:
+                                    # Case A: Morning/Afternoon streak continuation
+                                    final_title = f"🪔 {user_streak} Din Ka Sadhana Sankalpa"
+                                    final_body = f"Live {mantra_title} 5 minute mein shuru ho raha hai. Aaj ka Diya prajwalit karein aur apna sankalp barkarar rakhein!"
+                            elif today_count > 0:
+                                # User chanted some today, not yet complete
+                                final_title = "🪔 1 Mala Pura Karein"
+                                final_body = f"Aapne aaj jaap shuru kiya hai ({today_count}/108). {session['name']} Live {mantra_title} mein judkar Diya prajwalit karein!"
+                            else:
+                                # Case D: New User or Fresh Start (Day 1 / streak == 0, today_count == 0)
+                                final_title = "🪔 Shuru Karein Sadhana Sankalpa"
+                                final_body = f"Live {mantra_title} 5 minute mein shuru ho raha hai. Aaj 1 Mala pura karke apna sankalp shuru karein!"
+
+                            # Send notification via task queue with streak context
                             await task_queue.enqueue(
                                 FirebaseNotificationService.notify_jaap_reminder,
                                 user_id=uid,
-                                title=notif_title,
-                                body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
+                                title=final_title,
+                                body=final_body,
                                 mantra_type=mantra_type,
                                 session_name=session['name'],
-                                notification_id=notif_id
+                                notification_id=notif_id,
+                                extra_data={
+                                    "current_streak": user_streak,
+                                    "today_count": today_count,
+                                    "is_today_completed": is_today_completed,
+                                }
                             )
                             sent_reminders_cache[cache_key] = now_ts
                     

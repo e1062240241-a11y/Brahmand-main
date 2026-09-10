@@ -1,14 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, StyleSheet, Text, ViewStyle } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-
+import { OmSpinner } from './CustomRefreshControl';
 
 interface CustomLoaderProps {
   size?: number;
@@ -19,58 +11,15 @@ interface CustomLoaderProps {
 }
 
 export const CustomLoader: React.FC<CustomLoaderProps> = ({
-  size = 64,
+  size = 56,
   color = '#FF6B00', // Saffron Primary
   message,
   fullScreen = true,
   style,
 }) => {
-  const rotation = useSharedValue(0);
-
-  useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 1100, easing: Easing.linear }),
-      -1,
-      false
-    );
-  }, [rotation]);
-
-  const animatedSpinnerStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
-
-  const strokeWidth = Math.max(3, Math.round(size / 14));
-  const radius = (size - strokeWidth * 2) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * 0.35;
-
   return (
     <View style={[fullScreen ? styles.fullScreenContainer : styles.inlineContainer, style]}>
-      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-        {/* Rotating Arc Spinner */}
-        <Animated.View style={[styles.absoluteCenter, animatedSpinnerStyle]}>
-          <Svg
-            width={size}
-            height={size}
-            viewBox={`0 0 ${size} ${size}`}
-          >
-            <Circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${circumference} ${circumference}`}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              fill="none"
-            />
-          </Svg>
-        </Animated.View>
-      </View>
-
+      <OmSpinner size={size} color={color} ringColor={color} />
       {message ? <Text style={styles.messageText}>{message}</Text> : null}
     </View>
   );

@@ -583,19 +583,20 @@ function useNotificationResponseHandler() {
         return;
       }
       // Handle Jaap reminder notification tap - open app to specific live jaap welcome screen
-      if (data.type === 'jaap_reminder' && data.mantra_type) {
+      if (data.type === 'jaap_reminder' && (data.mantra_type || data.mantraType)) {
+        const mantraVal = data.mantra_type || data.mantraType;
         let titleVal = '';
-        if (data.mantra_type === 'hanuman') titleVal = 'Hanuman Chalisa';
-        else if (data.mantra_type === 'krishna') titleVal = 'Hare Krishna Jaap';
-        else if (data.mantra_type === 'shiva') titleVal = 'Om Namah Shivaya';
-        else if (data.mantra_type === 'gayatri') titleVal = 'Gayatri Mantra';
-        else if (data.mantra_type === 'ganesh') titleVal = 'Ganesh Mantra';
-        else if (data.mantra_type === 'laxmi') titleVal = 'Laxmi Mantra';
-        else if (data.mantra_type === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
-        else titleVal = data.mantra_type.charAt(0).toUpperCase() + data.mantra_type.slice(1);
+        if (mantraVal === 'hanuman') titleVal = 'Hanuman Chalisa';
+        else if (mantraVal === 'krishna') titleVal = 'Hare Krishna Jaap';
+        else if (mantraVal === 'shiva') titleVal = 'Om Namah Shivaya';
+        else if (mantraVal === 'gayatri') titleVal = 'Gayatri Mantra';
+        else if (mantraVal === 'ganesh') titleVal = 'Ganesh Mantra';
+        else if (mantraVal === 'laxmi') titleVal = 'Laxmi Mantra';
+        else if (mantraVal === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
+        else titleVal = mantraVal.charAt(0).toUpperCase() + mantraVal.slice(1);
 
-        console.log(`[Push] Routing jaap_reminder for ${data.mantra_type} to live-jaap-welcome`);
-        navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
+        console.log(`[Push] Routing jaap_reminder for ${mantraVal} to live-jaap-welcome`);
+        navigateOrQueue(`/live-jaap-welcome?mantraType=${mantraVal}&title=${encodeURIComponent(titleVal)}`);
         return;
       }
 
@@ -1079,18 +1080,19 @@ export default function RootLayout() {
           }
         }
 
-        if (type === 'jaap_reminder' && data.mantra_type) {
+        if (type === 'jaap_reminder' && (data.mantra_type || data.mantraType)) {
+          const mantraVal = data.mantra_type || data.mantraType;
           let titleVal = '';
-          if (data.mantra_type === 'hanuman') titleVal = 'Hanuman Chalisa';
-          else if (data.mantra_type === 'krishna') titleVal = 'Hare Krishna Jaap';
-          else if (data.mantra_type === 'shiva') titleVal = 'Om Namah Shivaya';
-          else if (data.mantra_type === 'gayatri') titleVal = 'Gayatri Mantra';
-          else if (data.mantra_type === 'ganesh') titleVal = 'Ganesh Mantra';
-          else if (data.mantra_type === 'laxmi') titleVal = 'Laxmi Mantra';
-          else if (data.mantra_type === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
-          else titleVal = data.mantra_type.charAt(0).toUpperCase() + data.mantra_type.slice(1);
+          if (mantraVal === 'hanuman') titleVal = 'Hanuman Chalisa';
+          else if (mantraVal === 'krishna') titleVal = 'Hare Krishna Jaap';
+          else if (mantraVal === 'shiva') titleVal = 'Om Namah Shivaya';
+          else if (mantraVal === 'gayatri') titleVal = 'Gayatri Mantra';
+          else if (mantraVal === 'ganesh') titleVal = 'Ganesh Mantra';
+          else if (mantraVal === 'laxmi') titleVal = 'Laxmi Mantra';
+          else if (mantraVal === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
+          else titleVal = mantraVal.charAt(0).toUpperCase() + mantraVal.slice(1);
 
-          navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
+          navigateOrQueue(`/live-jaap-welcome?mantraType=${mantraVal}&title=${encodeURIComponent(titleVal)}`);
           return;
         }
 

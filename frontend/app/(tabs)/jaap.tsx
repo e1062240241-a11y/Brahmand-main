@@ -49,6 +49,7 @@ import { CharDhamModal } from '../../src/components/CharDhamModal';
 import { LiveJaapCard, JAAP_CARD_WIDTH, JAAP_CARD_HEIGHT, JAAP_CARD_MARGIN_RIGHT } from '../../src/components/LiveJaapCard';
 import { UpcomingJaapsSection } from '../../src/components/UpcomingJaapsSection';
 import { JaapHeroBanner } from '../../src/components/JaapHeroBanner';
+import { SadhanaStreakCard } from '../../src/components/SadhanaStreakCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -477,6 +478,9 @@ export default function JaapLandingScreen() {
             bounces
             onScroll={onJaapScrollTabBar}
           >
+            {/* 7-Day Sadhana Streak Tracker */}
+            <SadhanaStreakCard />
+
             {/* Top Jaap Hero Banner */}
             <JaapHeroBanner now={now} />
 

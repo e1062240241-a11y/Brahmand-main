@@ -23,8 +23,9 @@ import {
   Linking,
   InteractionManager,
   Keyboard,
+  Easing,
 } from 'react-native';
-import { InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from 'expo-router';
@@ -240,6 +241,28 @@ function MessagesScreen({
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const segmentAnim = useRef(new Animated.Value(0)).current;
+  const [refreshing, setRefreshing] = useState(false);
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (refreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [refreshing, androidRefreshAnim]);
 
   const handleTabSwitch = (tab: 'Community' | 'Private Chat') => {
     if (tab === activeTopTab) return;
@@ -414,7 +437,6 @@ function MessagesScreen({
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [mutedConversations, setMutedConversations] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<CommunityRequest | null>(null);
   const [hierarchyExpanded, setHierarchyExpanded] = useState(false);
@@ -1473,7 +1495,7 @@ function MessagesScreen({
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               {isJoining ? (
-                <ActivityIndicator size="small" color={borderColor} style={{ width: 36 }} />
+                <OmSpinner size="small" color={borderColor} ringColor={borderColor} style={{ width: 36 }} />
               ) : (
                 <Text style={[styles.localJoinBtnText, { color: isJoined ? '#AAA' : borderColor }]}>
                   {isJoined ? '✓ Joined' : 'Join'}
@@ -1500,71 +1522,12 @@ function MessagesScreen({
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
-      <View
-        style={styles.headerPadding}
-        onLayout={(e) => {
-          const { height } = e.nativeEvent.layout;
-          setCommunityHeaderLayout({ x: 0, y: insets.top || 0, width, height });
-        }}
-      >
-        <SafeAreaView edges={['top']}>
-          <View style={styles.segmentedTrack}>
-            {/* Animated sliding thumb — single source of truth */}
-            <Animated.View
-              style={[
-                styles.segmentThumb,
-                {
-                  transform: [{
-                    translateX: segmentAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, (width - 32 - 8) / 2],
-                    }),
-                  }],
-                },
-              ]}
-              pointerEvents="none"
-            />
-
-            {/* Community tab */}
-            <Pressable
-              style={styles.segmentPill}
-              onPress={() => handleTabSwitch('Community')}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  activeTopTab === 'Community' && styles.segmentTextActive,
-                ]}
-              >
-                {t('language') === 'hi' ? 'समुदाय' : 'Community'}
-              </Text>
-            </Pressable>
-
-            {/* Private Chat tab */}
-            <Pressable
-              style={styles.segmentPill}
-              onPress={() => handleTabSwitch('Private Chat')}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  activeTopTab === 'Private Chat' && styles.segmentTextActive,
-                ]}
-              >
-                {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
-              </Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </View>
-
       <ScrollView
         style={styles.mainContent}
         contentContainerStyle={styles.mainContentContainer}
         showsVerticalScrollIndicator={false}
-        overScrollMode="never"
         keyboardShouldPersistTaps="handled"
-        refreshControl={<InstagramRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+        refreshControl={<OmRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
         onScroll={(event) => {
           onMessagesScrollTabBar(event);
           const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -1577,6 +1540,90 @@ function MessagesScreen({
         }}
         scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
       >
+        <View style={{ width: '100%', overflow: 'visible', alignItems: 'center' }}>
+          {Platform.OS === 'android' ? (
+            <Animated.View
+              style={{
+                height: androidRefreshAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 52],
+                }),
+                opacity: androidRefreshAnim.interpolate({
+                  inputRange: [0, 0.4, 1],
+                  outputRange: [0, 0.5, 1],
+                }),
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+              }}
+            >
+              <OmSpinner refreshing={refreshing} size={36} />
+            </Animated.View>
+          ) : (
+            <View style={{ width: '100%', height: 48, marginTop: -48, alignItems: 'center', justifyContent: 'center' }}>
+              <OmSpinner refreshing={refreshing} size={36} />
+            </View>
+          )}
+
+          <View
+            style={styles.headerPadding}
+            onLayout={(e) => {
+              const { height } = e.nativeEvent.layout;
+              setCommunityHeaderLayout({ x: 0, y: insets.top || 0, width, height });
+            }}
+          >
+            <SafeAreaView edges={['top']}>
+              <View style={styles.segmentedTrack}>
+                {/* Animated sliding thumb — single source of truth */}
+                <Animated.View
+                  style={[
+                    styles.segmentThumb,
+                    {
+                      transform: [{
+                        translateX: segmentAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, (width - 32 - 8) / 2],
+                        }),
+                      }],
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+
+                {/* Community tab */}
+                <Pressable
+                  style={styles.segmentPill}
+                  onPress={() => handleTabSwitch('Community')}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeTopTab === 'Community' && styles.segmentTextActive,
+                    ]}
+                  >
+                    {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                  </Text>
+                </Pressable>
+
+                {/* Private Chat tab */}
+                <Pressable
+                  style={styles.segmentPill}
+                  onPress={() => handleTabSwitch('Private Chat')}
+                >
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      activeTopTab === 'Private Chat' && styles.segmentTextActive,
+                    ]}
+                  >
+                    {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
+                  </Text>
+                </Pressable>
+              </View>
+            </SafeAreaView>
+          </View>
+        </View>
         {activeTopTab === 'Community' ? (
           !hasValidLocation ? (
             <View style={styles.noLocationContainer}>

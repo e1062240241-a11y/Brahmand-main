@@ -23,6 +23,7 @@ import { useRouter, useIsFocused } from 'expo-router';
 
 import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
+import { OmSpinner } from './CustomRefreshControl';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import NativeVideoPlayer from './NativeVideoPlayer';
@@ -600,7 +601,7 @@ const PostFeedCardComponent = ({
             accessibilityState={{ disabled: isSavingEdit, busy: isSavingEdit }}
           >
             {isSavingEdit ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <OmSpinner size="small" color={COLORS.primary} />
             ) : (
               <Text style={styles.editHeaderDoneText}>{t('language') === 'hi' ? 'हो गया' : 'Done'}</Text>
             )}
@@ -766,7 +767,7 @@ const PostFeedCardComponent = ({
                   />
                   {mediaLoading && (
                     <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' }]}>
-                      <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
+                      <OmSpinner size="small" color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
                     </View>
                   )}
                   {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
@@ -870,7 +871,7 @@ const PostFeedCardComponent = ({
           </View>
         ) : (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
-            <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
+            <OmSpinner size={36} color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
           </View>
         )}
 
@@ -889,7 +890,7 @@ const PostFeedCardComponent = ({
 
         {showSpinner && !mediaError && (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.1)', justifyContent: 'center', alignItems: 'center' }]}>
-            <ActivityIndicator color="#FFD26C" size="large" />
+            <OmSpinner color="#FFD26C" size="large" />
           </View>
         )}
 

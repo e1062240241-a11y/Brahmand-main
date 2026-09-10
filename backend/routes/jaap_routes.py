@@ -110,8 +110,40 @@ async def record_jaap(
         "last_updated": datetime.now(timezone.utc).isoformat()
     }
 
+    # Store sadhana streak info & IST date in stats_data
+    from datetime import timedelta
+    ist_now = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    ist_date_str = ist_now.strftime("%Y-%m-%d")
+    stats_data["last_jaap_date"] = ist_date_str
+    stats_data["last_jaap_time"] = ist_now.isoformat()
+
+    current_streak = data.get("current_streak")
+    if current_streak is not None:
+        stats_data["current_streak"] = int(current_streak)
+    is_today_completed = data.get("is_today_completed")
+    if is_today_completed is not None:
+        stats_data["is_today_completed"] = bool(is_today_completed)
+    today_count = data.get("today_count")
+    if today_count is not None:
+        stats_data["today_count"] = int(today_count)
+
     # Save stats
     await db.create_document('user_jaap_stats', stats_data, doc_id=user_id, overwrite=True)
+
+    # Dual-write streak info into user document for fast notification lookups
+    try:
+        user_updates = {
+            "last_jaap_date": ist_date_str
+        }
+        if current_streak is not None:
+            user_updates["sadhana_streak"] = int(current_streak)
+        if is_today_completed is not None:
+            user_updates["sadhana_today_completed"] = bool(is_today_completed)
+        if today_count is not None:
+            user_updates["sadhana_today_count"] = int(today_count)
+        await db.update_document('users', user_id, user_updates)
+    except Exception as ue:
+        logger.warning(f"Error updating user doc with sadhana streak: {ue}")
 
     # Check for unlocked certificates
     newly_unlocked = []

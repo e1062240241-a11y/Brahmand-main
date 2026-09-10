@@ -240,7 +240,6 @@ const FestivalSectionDetailPage = () => {
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
-            onSharePdf={handleShare}
           />
         ) : (
           <ScrollView

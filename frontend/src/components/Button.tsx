@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
+import { OmSpinner } from './CustomRefreshControl';
 
 interface ButtonProps {
   title: string;
@@ -51,7 +52,7 @@ export const Button: React.FC<ButtonProps> = ({
       }}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.textWhite} />
+        <OmSpinner size="small" color={variant === 'outline' ? COLORS.primary : COLORS.textWhite} />
       ) : (
         <Text style={textStyleFinal}>{title}</Text>
       )}

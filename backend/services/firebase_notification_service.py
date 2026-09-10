@@ -897,16 +897,27 @@ class FirebaseNotificationService:
         body: str,
         mantra_type: str,
         session_name: str,
-        notification_id: Optional[str] = None
+        notification_id: Optional[str] = None,
+        extra_data: Optional[Dict[str, Any]] = None
     ):
         """Store notification and send push notification to user's device"""
+        data_payload = {
+            "mantra_type": mantra_type,
+            "mantraType": mantra_type,
+            "session_name": session_name,
+            "type": "jaap_reminder",
+            "route": f"/live-jaap-welcome?mantraType={mantra_type}"
+        }
+        if extra_data:
+            data_payload.update(extra_data)
+
         try:
             await FirebaseNotificationService.create_notification(
                 user_id=user_id,
                 title=title,
                 body=body,
                 notification_type="jaap_reminder",
-                data={"mantra_type": mantra_type, "session_name": session_name},
+                data=data_payload,
                 notification_id=notification_id,
                 overwrite=False
             )
@@ -921,7 +932,7 @@ class FirebaseNotificationService:
             user_id=user_id,
             title=title,
             body=body,
-            data={"mantra_type": mantra_type, "session_name": session_name, "type": "jaap_reminder"}
+            data=data_payload
         )
 
     @staticmethod
@@ -1021,91 +1032,6 @@ class FirebaseNotificationService:
         )
         return {"status": "success", "result": res}
 
-    @staticmethod
-    async def notify_shiv_katha_reminder(
-        user_id: str,
-        notification_id: Optional[str] = None,
-        force: bool = False
-    ) -> Dict[str, Any]:
-        """
-        Send push notification for LIVE Shiv Katha (starts on 13 August).
-        - Sent 2 times a day (Morning & Afternoon; max 1 per 12 hours).
-        - SKIPS users who have already pre-registered in jaap_reminders (mantra_type == 'shravan_katha').
-        """
-        db = await FirebaseNotificationService.get_db()
-
-        # 1. Check if user has ALREADY pre-registered for Shiv Katha
-        if not force:
-            try:
-                registered = await db.query_documents(
-                    'jaap_reminders',
-                    filters=[
-                        ('user_id', '==', user_id),
-                        ('mantra_type', '==', 'shravan_katha'),
-                        ('active', '==', True)
-                    ]
-                )
-                if registered and len(registered) > 0:
-                    logger.info(f"Skipping Shiv Katha reminder for user {user_id}: user already pre-registered")
-                    return {"status": "skipped", "reason": "User already pre-registered for Shiv Katha"}
-            except Exception as err:
-                logger.warning(f"Error checking pre-registration for shiv_katha_reminder: {err}")
-
-        # 2. Check 12h cooldown (morning & afternoon limit: 2 times per day)
-        TWELVE_HOURS_SECONDS = 12 * 3600
-        if not force:
-            try:
-                existing = await db.query_documents(
-                    'notifications',
-                    filters=[('user_id', '==', user_id), ('notification_type', '==', 'shiv_katha_reminder')]
-                )
-                now_ts = datetime.utcnow()
-                for doc in (existing or []):
-                    created_str = doc.get('created_at', '')
-                    if created_str:
-                        try:
-                            if created_str.endswith('Z'):
-                                created_str = created_str[:-1]
-                            created_dt = datetime.fromisoformat(created_str)
-                            if (now_ts - created_dt).total_seconds() < TWELVE_HOURS_SECONDS:
-                                logger.info(f"Skipping Shiv Katha reminder for user {user_id}: max 2 per day allowed")
-                                return {"status": "skipped", "reason": "Already sent within last 12 hours"}
-                        except Exception:
-                            pass
-            except Exception as err:
-                logger.warning(f"Error checking 12h limit for shiv_katha_reminder: {err}")
-
-        title = "🕉️ LIVE Shiv Katha starts on 13 August"
-        body = "Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji."
-        notif_data = {
-            "type": "shiv_katha_reminder",
-            "route": "/shravan-paath"
-        }
-
-        try:
-            await FirebaseNotificationService.create_notification(
-                user_id=user_id,
-                title=title,
-                body=body,
-                notification_type="shiv_katha_reminder",
-                data=notif_data,
-                notification_id=notification_id,
-                overwrite=False
-            )
-        except Exception as e:
-            from google.api_core.exceptions import AlreadyExists
-            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
-                logger.info(f"Skipping duplicate shiv_katha_reminder for user {user_id}")
-                return {"status": "skipped", "reason": "Already exists"}
-            logger.warning(f"Failed to create shiv_katha_reminder notification doc: {e}")
-
-        res = await FirebaseNotificationService.send_push_notification(
-            user_id=user_id,
-            title=title,
-            body=body,
-            data=notif_data
-        )
-        return {"status": "success", "result": res}
 
     @staticmethod
     async def notify_scripture_reading_reminder(

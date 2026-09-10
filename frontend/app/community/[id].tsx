@@ -25,8 +25,10 @@ import {View,
   TouchableWithoutFeedback,
   Animated,
   PanResponder,
-  Linking
+  Easing,
+  Linking,
 } from 'react-native';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -419,6 +421,28 @@ export default function CommunityDetailScreen() {
     countryCommunityIdRef,
     ensureSocketRooms
   );
+
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (refreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [refreshing, androidRefreshAnim]);
   // ⚡ Performance & Thermal optimization: Auto-polling disabled to prevent CPU spinning & re-renders.
   // Updates occur via WebSockets or on pull-to-refresh.
 
@@ -2198,7 +2222,31 @@ export default function CommunityDetailScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <CustomLoader size={40} fullScreen={false} /> : null}
         ListHeaderComponent={() => (
-          <View>
+          <View style={{ width: '100%', overflow: 'visible', alignItems: 'center' }}>
+            {Platform.OS === 'android' ? (
+              <Animated.View
+                style={{
+                  height: androidRefreshAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 52],
+                  }),
+                  opacity: androidRefreshAnim.interpolate({
+                    inputRange: [0, 0.4, 1],
+                    outputRange: [0, 0.5, 1],
+                  }),
+                  overflow: 'hidden',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
+              >
+                <OmSpinner refreshing={refreshing} size={36} />
+              </Animated.View>
+            ) : (
+              <View style={{ width: '100%', height: 48, marginTop: -48, alignItems: 'center', justifyContent: 'center' }}>
+                <OmSpinner refreshing={refreshing} size={36} />
+              </View>
+            )}
             {(activeTab === 'Requests') && mostRecentRequest && (
               <View style={styles.recentRequestCard}>
                 <LinearGradient
@@ -2281,7 +2329,7 @@ export default function CommunityDetailScreen() {
             )}
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<OmRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.mainContent}
       />
 

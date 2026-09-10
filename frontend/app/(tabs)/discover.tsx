@@ -1,8 +1,8 @@
-// accessibility: placeholder
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { discoverCommunities, getTemples, getNearbyEvents } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
@@ -73,7 +73,7 @@ export default function DiscoverScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <OmSpinner size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -103,7 +103,7 @@ export default function DiscoverScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          <OmRefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
         showsVerticalScrollIndicator={false}
       >

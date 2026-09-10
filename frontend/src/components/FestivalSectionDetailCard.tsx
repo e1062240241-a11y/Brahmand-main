@@ -459,20 +459,6 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
                 </Text>
               </View>
             )}
-
-            {onSharePdf && (
-              <TouchableOpacity
-                style={styles.storySharePdfButton}
-                onPress={onSharePdf}
-                activeOpacity={0.8}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Share Sacred Story as PDF"
-              >
-                <Ionicons name="document-text-outline" size={17} color="#F6D269" style={{ marginRight: 8 }} />
-                <Text style={styles.storySharePdfButtonText}>Share Sacred Story as PDF</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </ScrollView>
 

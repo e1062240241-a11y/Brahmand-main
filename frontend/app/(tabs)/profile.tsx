@@ -19,12 +19,13 @@ import {
   Pressable,
   StatusBar,
   ScrollView,
-  DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
+  DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler, Easing
 } from 'react-native';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter, useLocalSearchParams, useFocusEffect, useIsFocused } from 'expo-router';
+import { useRouter, useNavigation, useLocalSearchParams, useFocusEffect, useIsFocused } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -93,6 +94,7 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const { user, logout, updateUser } = useAuthStore();
   const { section } = useLocalSearchParams<{ section?: string }>();
@@ -184,6 +186,27 @@ export default function ProfileScreen() {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (refreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [refreshing, androidRefreshAnim]);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const offsetRef = useRef(0);
@@ -1478,22 +1501,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.jaapJourneyCard,
-              Platform.OS === 'ios' && pressed && styles.actionPressed
-            ]}
-            android_ripple={{ color: 'rgba(255, 255, 255, 0.15)' }}
-            onPress={() => router.push('/(tabs)/jaap')}
-            accessibilityRole="button"
-            accessibilityLabel={language === 'hi' ? 'आपकी जाप यात्रा' : 'Your Jaap Journey'}
-          >
-            <Ionicons name="sparkles-outline" size={16} color="#FF9E00" />
-            <Text style={styles.jaapJourneyText}>
-              {language === 'hi' ? 'आपकी जाप यात्रा →' : 'Your Jaap Journey →'}
-            </Text>
-          </Pressable>
-
           <View style={styles.actionButtonsRow}>
             <Pressable
               style={({ pressed }) => [
@@ -1509,8 +1516,35 @@ export default function ProfileScreen() {
               onPress={() => setShowUploadModal(true)}
             >
               <Ionicons name="add" size={20} color="#FFF" />
-              <Text style={styles.addPostButtonText}>{t('addPost')}</Text>
+              <Text style={styles.addPostButtonText} numberOfLines={1}>{t('addPost')}</Text>
             </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.jaapJourneyCard,
+                Platform.OS === 'ios' && pressed && styles.actionPressed
+              ]}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.25)' }}
+              onPress={() => {
+                try {
+                  navigation.navigate('jaap', { tab: 'jaap', section: 'jaap' });
+                } catch {
+                  router.navigate({ pathname: '/(tabs)/jaap', params: { tab: 'jaap', section: 'jaap' } } as any);
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={language === 'hi' ? 'आपकी जाप यात्रा' : 'Your Jaap Journey'}
+            >
+              <Image
+                source={require('../../assets/images/tab-bar/temple.webp')}
+                style={styles.jaapJourneyIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.jaapJourneyText} numberOfLines={1}>
+                {language === 'hi' ? 'जाप यात्रा' : 'Jaap Journey'}
+              </Text>
+            </Pressable>
+
             <Pressable
               style={({ pressed }) => [
                 styles.shareProfileButton,
@@ -1714,7 +1748,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {renderHeader()}
         <Animated.FlatList
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 150 }}
@@ -1734,10 +1767,41 @@ export default function ProfileScreen() {
             onProfileScrollTabBar(event);
           }}
           scrollEventThrottle={16}
+          ListHeaderComponent={
+            <View style={{ width: '100%', overflow: 'visible', alignItems: 'center' }}>
+              {Platform.OS === 'android' ? (
+                <Animated.View
+                  style={{
+                    height: androidRefreshAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 52],
+                    }),
+                    opacity: androidRefreshAnim.interpolate({
+                      inputRange: [0, 0.4, 1],
+                      outputRange: [0, 0.5, 1],
+                    }),
+                    overflow: 'hidden',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                  }}
+                >
+                  <OmSpinner refreshing={refreshing} size={36} />
+                </Animated.View>
+              ) : (
+                <View style={{ width: '100%', height: 48, marginTop: -48, alignItems: 'center', justifyContent: 'center' }}>
+                  <OmSpinner refreshing={refreshing} size={36} />
+                </View>
+              )}
+              <View style={{ width: '100%' }}>
+                {renderHeader()}
+              </View>
+            </View>
+          }
           ListFooterComponent={
             postsLoading ? (
               <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={COLORS.textLight} />
+                <OmSpinner size="small" color={COLORS.textLight} />
               </View>
             ) : !hasMore && posts.length > 0 ? (
               <View style={styles.endOfFeed}>
@@ -1769,7 +1833,7 @@ export default function ProfileScreen() {
           }}
           onEndReachedThreshold={0.8}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
+            <OmRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           showsVerticalScrollIndicator={false}
         />
@@ -1909,7 +1973,7 @@ export default function ProfileScreen() {
               />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <OmSpinner size="large" color={COLORS.primary} />
               </View>
             )}
 
@@ -1948,7 +2012,7 @@ export default function ProfileScreen() {
                   </View>
 
                   {commentsLoading ? (
-                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                    <OmSpinner size={36} color={COLORS.primary} style={{ marginTop: 40 }} />
                   ) : postComments.length === 0 ? (
                     <View style={styles.emptyComments}>
                       <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
@@ -2506,28 +2570,33 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   jaapJourneyCard: {
+    flex: 1,
     flexDirection: 'row',
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 158, 0, 0.08)',
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 158, 0, 0.25)',
-    marginBottom: 12,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    overflow: 'hidden',
+  },
+  jaapJourneyIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#FFFFFF',
   },
   jaapJourneyText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FF9E00',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
   },
   actionButtonsRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
+    gap: 10,
     marginBottom: 8,
   },
   addPostButton: {
@@ -2538,7 +2607,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
@@ -2546,7 +2616,7 @@ const styles = StyleSheet.create({
   addPostButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 14,
   },
   shareProfileButton: {
     width: 48,
