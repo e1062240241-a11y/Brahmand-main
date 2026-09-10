@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
-  FlatList,
   RefreshControl,
   Platform,
   Alert,
@@ -17,7 +16,6 @@ import {
   Animated,
   Keyboard,
   Pressable,
-  StatusBar,
   ScrollView,
   DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
 } from 'react-native';
@@ -36,7 +34,7 @@ import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
-import api, {
+import {
   getUserProfile,
   viewPost,
   deletePost,
@@ -46,8 +44,6 @@ import api, {
   deletePostComment,
   addPostComment,
   repostPost,
-  reportPost,
-  uploadUserPost,
   updateProfile,
   uploadChatMedia,
   setupDualLocation,
@@ -60,7 +56,6 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING } from '../../src/constants/theme';
-import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;

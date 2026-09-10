@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { useAuthStore } from '../../src/store/authStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { getUserProfile } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ export default function PassportCoverScreen() {
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const { user } = useAuthStore();
+  const language = useLanguageStore((state) => state.language);
   const isFocused = useIsFocused();
 
   const [isOpening, setIsOpening] = useState(false);
@@ -68,7 +70,9 @@ export default function PassportCoverScreen() {
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>BRAHMAND PASSPORT</Text>
+          {/* 🧡 Engagement: Reframed header title for Hindi primary language support */}
+          {/* Lever: Reframing / Mother Tongue Connection */}
+          <Text style={styles.headerTitle}>{language === 'hi' ? 'सनातन पासपोर्ट' : 'BRAHMAND PASSPORT'}</Text>
         </View>
 
         {/* Main Content Area */}
@@ -85,8 +89,10 @@ export default function PassportCoverScreen() {
                 contentFit="contain"
               />
               <View style={styles.textOverlay}>
-                <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
-                <Text style={styles.subText}>Your Sanatani Passport</Text>
+                {/* 🧡 Engagement: Reframed fallback name and card subtitle for devotional feeling */}
+                {/* Lever: Reframing + Cultural Connection */}
+                <Text style={styles.userName}>{user?.name || (language === 'hi' ? 'सनातनी' : 'Sanatani')}</Text>
+                <Text style={styles.subText}>{language === 'hi' ? 'आपकी सनातन यात्रा' : 'Your Sanatani Passport'}</Text>
               </View>
             </View>
           </TouchableOpacity>

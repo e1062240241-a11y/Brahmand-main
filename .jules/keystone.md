@@ -22,6 +22,10 @@
 **Learning:** Fetching all `jaap_reminders` for a `mantra_type` without query limits on `/jaap/reminder-stats` forces Firestore to stream all registered reminder documents across all users into memory to construct a set of unique user IDs. At 1 lakh+ users, this causes $O(N_{\text{reminders}})$ document reads per request. Since each user registration creates 4 fixed session documents ("Morning", "Afternoon", "Evening", "Night"), filtering for a single session name ("Morning") with `db.count_documents` yields the exact registered user count server-side with zero document payload transfer.
 **Action:** Replaced full document query in `/jaap/reminder-stats` with concurrent server-side `db.count_documents` for session_name="Morning" and a point check `db.query_documents(..., limit=1)` for the requesting user.
 
+## 2026-09-08 - Offset-based pagination for user discovery endpoint
+**Learning:** The `/users` endpoint loaded up to 500 users per request without `offset` pagination support, forcing clients to fetch the same top batch repeatedly or miss users beyond the initial limit.
+**Action:** Added `offset` parameter (default 0) with safe limit clamping (max 50) in `/users` endpoint (`backend/main.py`), calculating dynamic fetch bounds (`fetch_limit = safe_offset + safe_limit`) to allow backward-compatible paginated retrieval across large user populations.
+
 CODEBASE MAP:
 ENDPOINTS NEEDING PAGINATION:
 - `/temples` — loads all temples — FIXED
@@ -38,6 +42,7 @@ RACE CONDITIONS:
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/like` — read-modify-write race condition on `liked_by` and `likes_count` — FIXED
 - `/events/{event_id}/attend` — read-modify-write race condition on `attendees` and `attendee_count` — FIXED
 - `/posts/{post_id}/watch` — read-modify-write race condition on `rewatches` — FIXED
+- `view_post` (`/posts/{post_id}/view` & `/posts/{post_id}/views`) — counts self-views, lacks view deduplication — FIXED
 
 UNBOUNDED GROWTH:
 - `temple.followers` array — exposed in full on list responses — FIXED
@@ -46,6 +51,7 @@ N+1 QUERY PATTERNS:
 
 MISSING RATE LIMITS:
 - `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, `/spiritual/panchang` — expensive third-party API calls (AstrologyAPI.com / Groq LLM) callable without rate limits — FIXED
+- `/search/global` — unthrottled search execution across multiple collections — FIXED
 
 MISSING INDEXES:
 
@@ -69,7 +75,12 @@ ENDPOINTS NEEDING PAGINATION:
 - `/jaap/reminder-stats` — loaded all reminder docs into memory for count — FIXED
 - `/events` — hardcoded limit without offset pagination — FIXED
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
+- `/users` — unpaginated large user fetch — FIXED
 
 ## 2026-09-07 - Rate Limiting Third-Party Astrology and Panchang Endpoints
 **Learning:** Third-party API calls (AstrologyAPI.com & Groq LLM for Panchan/Nakshatra/Horoscope) on `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, and `/spiritual/panchang` lacked rate limits. At 1 lakh+ users, unthrottled requests can lead to quota exhaustion, upstream rate limiting, and unexpected billing spikes.
 **Action:** Implemented `astrology_rate_limit` dependency in `backend/middleware/rate_limiter.py` limiting requests to 20 per 60s window per user/IP, and attached it to all external Astrology and Panchang endpoints in `backend/main.py`.
+
+## 2026-09-09 - Rate Limiting Global Search Endpoint
+**Learning:** Unthrottled global search on `/search/global` fires up to 12 parallel prefix range queries per request across `users`, `communities`, and `posts` collections. Under high concurrent user loads (1 lakh+ users) or automated scraping/search-as-you-type spam, this can cause DB read spikes, thread pool exhaustion, and denial of service.
+**Action:** Implemented `search_rate_limit` dependency in `backend/middleware/rate_limiter.py` (30 requests/60s per user/IP) and attached it to `global_search` in `backend/routes/search_routes.py`.

@@ -12,7 +12,7 @@ export function HomeCardTextureBg({
 }: {
     texture: HomeCardTextureKey;
     borderRadius?: number;
-    children: React.ReactNode;
+    children?: React.ReactNode;
 }) {
     const overlayColors = CARD_TEXTURE_OVERLAY[texture] || ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)'];
 

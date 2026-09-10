@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Share as RNShare, Platform } from 'react-native';
+import { Share as RNShare } from 'react-native';
 import { Asset } from 'expo-asset';
 
 // Clean text to safe ASCII printable characters to prevent PDF encoding crashes
@@ -57,19 +57,11 @@ export function getFestivalChapters(festival: any, sectionValue?: string): {
   const lowerName = festivalName.toLowerCase();
 
   const isHariyaliTeej = lowerName.includes('hariyali');
-  const isKajariTeej = lowerName.includes('kajari') || lowerName.includes('badi teej') || lowerName.includes('satudi');
-  const isTeej = (isHariyaliTeej || isKajariTeej || lowerName.includes('teej')) && !isKajariTeej;
-  const isNagPanchami = lowerName.includes('nag') || lowerName.includes('panchami');
-  const isOnam = lowerName.includes('onam');
-  const isRakshaBandhan = lowerName.includes('raksha') || lowerName.includes('bandhan');
   const isJanmashtami = lowerName.includes('janmashtami') || lowerName.includes('krishna');
   const isGaneshChaturthi = lowerName.includes('ganesh') || lowerName.includes('vinayaka') || lowerName.includes('chaturthi');
   const isNavratri = lowerName.includes('navratri') || lowerName.includes('durga') || lowerName.includes('pooja');
   const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
   const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
-  const isChhath = lowerName.includes('chhath');
-  const isHoli = lowerName.includes('holi');
-  const isMakarSankranti = lowerName.includes('makar') || lowerName.includes('sankranti') || lowerName.includes('pongal');
 
   const storyText = sectionValue || festival?.origin || festival?.story || festival?.summary || '';
   const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [storyText];
@@ -612,20 +604,17 @@ export async function shareFestivalStoryPdf(festival: any, sectionValue?: string
     });
 
     // Share via expo-sharing
-    let shared = false;
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(fileUri, {
         mimeType: 'application/pdf',
         dialogTitle: `Share ${data.festivalName} Story (PDF)`,
         UTI: 'com.adobe.pdf',
       });
-      shared = true;
     } else {
       await RNShare.share({
         title: `${data.festivalName} Sacred Katha`,
         message: `${data.festivalName} Sacred Katha & Vrat Story:\n\n${data.subtitle}\n\nRead more on Brahmand App.`,
       });
-      shared = true;
     }
 
     return { success: true, uri: fileUri };

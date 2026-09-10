@@ -32,3 +32,9 @@
 ## 2026-08-28 - O(N log N) socket sort elimination
 **Learning:** New socket events for a chat or comments feed are always the most recent by definition. Running `Array.sort` on the entire combined feed for every single incoming message introduces massive O(N log N) UI thread overhead as the feed grows.
 **Action:** Directly prepend new socket events via `[newItem, ...prev]` in O(1) time rather than appending and re-sorting the entire array.
+## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
+**Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
+**Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2026-09-08 - Avoid O(N^2) includes in manual loops for deduplication
+**Learning:** Replacing `[...new Set(array)]` with a manual `for` loop using `array.includes()` is an O(N^2) anti-pattern that degrades both readability and performance compared to the native O(N) Set implementation. Even for small arrays where the performance difference is negligible, the loss in readability makes it an unacceptable micro-optimization.
+**Action:** When acting as the 'Bolt' performance agent, never replace native `Set` deduplication with manual loops using `.includes()`. If you must optimize Set creation, focus on avoiding unnecessary intermediate array allocations (like `.filter()` or `.map()`) *before* creating the Set.

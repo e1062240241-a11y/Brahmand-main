@@ -755,7 +755,7 @@ def get_gita_solution(user_message: str) -> Dict[str, Any]:
         response_parts = []
         response_parts.append(f"Hey mere bhakta! {matched_data['explanation']}")
         response_parts.append("")
-        response_parts.append(f"Bhagavad Gita mein maine Arjun ko samjhaya tha —")
+        response_parts.append("Bhagavad Gita mein maine Arjun ko samjhaya tha —")
         response_parts.append(f"({matched_data['shlok']})")
         response_parts.append("")
         response_parts.append(matched_data['relevance'])
