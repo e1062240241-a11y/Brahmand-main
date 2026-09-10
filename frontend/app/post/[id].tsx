@@ -281,13 +281,7 @@ const PostScreen = () => {
       if (!comment) return;
       setPostComments(prev => {
         if (prev.some(c => c.id === comment.id)) return prev;
-        const merged = [...prev, comment];
-        merged.sort((a: any, b: any) => {
-          const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-          const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        return merged;
+        return [comment, ...prev];
       });
       setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: data.comments_count || p.comments_count } : p));
     };

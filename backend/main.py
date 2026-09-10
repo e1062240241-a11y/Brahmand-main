@@ -5168,20 +5168,24 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, of
 
     safe_limit = max(1, min(limit, 500))
     safe_offset = max(0, offset)
+    user_id = token_data['user_id']
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+
+    # ⚡ Bolt Optimization: Use asyncio.gather to concurrently fetch comments, blocked users, and reported content to reduce overall endpoint latency.
     # ponytail: query_documents has no cursor/offset, so we fetch the bounded 500-cap set once
     # and paginate in memory (same pattern as get_my_posts). Upgrade to a Firestore start_after
     # cursor in query_documents if DB reads on this endpoint ever become a bottleneck.
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=500,
+    comments, blocked_user_ids, reported_comment_ids = await asyncio.gather(
+        db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post_id)],
+            limit=500,
+        ),
+        _get_blocked_user_ids(db, user_id),
+        _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     )
 
-    user_id = token_data['user_id']
-    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     comments = [
         c for c in comments
         if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids

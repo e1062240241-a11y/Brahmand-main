@@ -1386,9 +1386,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
                                                     : (hanumanStatus.nextSessionStart
                                                         ? (t('language') === 'hi'
-                                                            ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
-                                                            : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                            // 🧡 Engagement: Reframed transactional start time "जाप 6:00 AM बजे शुरू होगा" to commitment framing "अगला जाप 6:00 AM बजे — संकल्प लें 🚩"
+                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
+                                                            // Why: "संकल्प लें" transforms a passive time notification into a spiritual commitment for daily practice.
+                                                            // UI: Text-only change, zero visual layout additions.
+                                                            ? `अगला जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                            : `Next jaap at ${formatTime(hanumanStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
                                             </Text>
                                         </View>
                                     </View>
@@ -1550,8 +1554,14 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 {shivaStatus.isActive
                                                     ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
                                                     : (shivaStatus.nextSessionStart
-                                                        ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                        ? (t('language') === 'hi'
+                                                            // 🧡 Engagement: Reframed transactional time announcement to spiritual commitment framing
+                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
+                                                            // Why: Indian users respond to "संकल्प" (devotional pledge) rather than generic schedule info.
+                                                            // UI: Text-only change, zero visual additions.
+                                                            ? `अगला जाप ${formatTime(shivaStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                            : `Next jaap at ${formatTime(shivaStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
                                             </Text>
                                         </View>
                                     </View>
