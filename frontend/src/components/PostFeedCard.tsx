@@ -542,7 +542,6 @@ const PostFeedCardComponent = ({
   const likesCount = Number(post?.likes_count || 0);
   const commentsCount = Number(post?.comments_count || 0);
   const viewsCount = Number(post?.views_count || 0);
-  const topComments = Array.isArray(post?.top_comments) ? post.top_comments.slice(0, 5) : [];
   const captionText = String(post?.caption || '').trim();
 
   const { captionWords, collapsedCaption, isLongCaption } = useMemo(() => {
@@ -1084,19 +1083,6 @@ const PostFeedCardComponent = ({
               : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
           </Text>
         </TouchableOpacity>
-      )}
-
-      {!isEditing && topComments.length > 0 && (
-        <View style={styles.topCommentsWrap}>
-          {topComments.map((comment: any, index: number) => (
-            <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
-                {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
-              </Text>
-              <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
-            </Text>
-          ))}
-        </View>
       )}
 
       {isFullscreen && (

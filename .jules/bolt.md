@@ -35,13 +35,6 @@
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
-
-## 2024-05-14 - Concurrent Database Queries in get_post_comments
-**Learning:** In the FastAPI backend, certain API endpoints perform multiple independent database fetches sequentially (e.g. querying post comments, blocked users, and reported content).
-**Action:** When multiple independent Firestore queries or cache lookups occur in the same endpoint handler (like `db.query_documents` and `_get_blocked_user_ids`), wrap them in a single `asyncio.gather(...)` call to execute them concurrently, significantly reducing the overall I/O latency.
 ## 2024-05-18 - Optimize Top Comments Query
 **Learning:** Firestore ordered queries with bounds (`limit`, `order_by`) can save significant memory over fetching a large batch and sorting in Python, but they may fail if the composite index hasn't been built yet.
 **Action:** When pushing limits/sorting to the database layer for subsets (like `top_comments`), always wrap the optimized query in a `try...except` block that catches 'requires an index' or '400' errors and falls back to an un-ordered query to prevent the API endpoint from breaking.
-## 2026-09-08 - Avoid O(N^2) includes in manual loops for deduplication
-**Learning:** Replacing `[...new Set(array)]` with a manual `for` loop using `array.includes()` is an O(N^2) anti-pattern that degrades both readability and performance compared to the native O(N) Set implementation. Even for small arrays where the performance difference is negligible, the loss in readability makes it an unacceptable micro-optimization.
-**Action:** When acting as the 'Bolt' performance agent, never replace native `Set` deduplication with manual loops using `.includes()`. If you must optimize Set creation, focus on avoiding unnecessary intermediate array allocations (like `.filter()` or `.map()`) *before* creating the Set.

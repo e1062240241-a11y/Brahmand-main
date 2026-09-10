@@ -4503,42 +4503,6 @@ async def get_posts_feed(
     except Exception:
         authors_by_id = {}
 
-    def _comment_sort_key(item: dict):
-        val = item.get('created_at')
-        if isinstance(val, datetime): return val
-        if isinstance(val, str):
-            try: return datetime.fromisoformat(val.replace('Z', '+00:00'))
-            except Exception: return datetime.min
-        return datetime.min
-
-    # Batch retrieve comments for posts with low comments count (<= 10) to eliminate N+1 queries
-    post_ids_for_batch_comments = [
-        p.get('id') for p in paged_posts 
-        if p.get('id') and 0 < (p.get('comments_count', 0) or 0) <= 10
-    ]
-    
-    comments_by_post = {}
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments in Discovery Feed: {comment_err}")
-
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -4566,10 +4530,6 @@ async def get_posts_feed(
             # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
-            
-            # Don't include full comments in feed - only counts
-            # Comments will be fetched on-demand when user opens the post
-            post.pop('top_comments', None)
             
             # Slim response: Remove heavy fields not needed in feed
             # Remove full liked_by array (we already have likes_count and liked_by_me)
@@ -4745,71 +4705,11 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         except Exception as e:
             logger.error(f"Error batch fetching post authors: {e}")
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
-
-    comments_by_post_id = {}
-
-    # ⚡ Bolt Optimization: Batch fetch top comments using 'in' query for posts with <= 10 comments to avoid N+1 bottleneck securely.
-    post_ids_for_batch_comments = [
-        post.get('id') for post in paged_posts
-        if post.get('id') and 0 < post.get('comments_count', 0) <= 10
-    ]
-
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post_id.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments for hashtag posts: {comment_err}")
-
-    # Fallback: Fetch comments concurrently with strict limits for viral posts (> 10 comments)
-    comments_tasks = []
-    for post in paged_posts:
-        if post.get('comments_count', 0) > 10:
-            comments_tasks.append((
-                post.get('id'),
-                db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=10,
-                )
-            ))
-
-    if comments_tasks:
-        post_ids, tasks = zip(*comments_tasks)
-        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        for pid, res in zip(post_ids, comments_results):
-            comments_by_post_id[pid] = res if not isinstance(res, Exception) else []
 
     normalized = []
     for post in paged_posts:
         pid = post.get('id')
-        top_comments = comments_by_post_id.get(pid, []) if pid else []
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4821,9 +4721,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
         normalized.append(post)
 
     has_more = (safe_offset + safe_limit) < len(visible_posts)
@@ -4864,30 +4761,6 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    comments_cnt = post.get('comments_count', 0) or 0
-    if comments_cnt > 0:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=10,
-        )
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-
-        def _comment_created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
-
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-    else:
-        post['top_comments'] = []
     return post
 
 
@@ -5261,35 +5134,6 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    
-    # Pre-fetch existing comments but manually include the new one to ensure immediate visibility
-    try:
-        top_comments_raw = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post_id)],
-            limit=10,
-        )
-    except:
-        top_comments_raw = []
-
-    # Ensure the one we just created is included even if Firestore hasn't indexed it yet
-    if not any(c.get('id') == comment_id for c in top_comments_raw):
-        top_comments_raw.append(comment_doc)
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                # Handle ISO format with Z or +00:00
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
-    updated_post['top_comments'] = top_comments_raw[:5]
 
     # Send all notifications (replies, comments, mentions) in the background asynchronously
     asyncio.create_task(
@@ -5403,50 +5247,12 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    # ⚡ Bolt Optimization: Recalculate top_comments using bounded ordered DB query instead of fetching 200 items in memory
-    try:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post_id)],
-            order_by='created_at',
-            order_direction='DESCENDING',
-            limit=10,
-        )
-    except Exception as query_err:
-        if 'requires an index' in str(query_err) or '400' in str(query_err):
-            logger.warning(f"Firestore composite index missing for top_comments post_id + created_at, falling back: {query_err}")
-            top_comments = await db.query_documents(
-                'post_comments',
-                filters=[('post_id', '==', post_id)],
-                limit=200,
-            )
-        else:
-            raise query_err
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-
-    await db.update_document('posts', post_id, {
-        'top_comments': top_comments[:5]
-    })
-
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
         updated_post = post.copy()
         updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    updated_post['top_comments'] = top_comments[:5]
 
     return {
         'message': 'Comment deleted',
