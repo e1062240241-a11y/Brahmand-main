@@ -86,22 +86,26 @@ export default function ContinueReadingPage() {
         {activeBooks.length === 0 ? (
           <View style={s.emptyState}>
             <Ionicons name="book-outline" size={64} color={CLAY} style={{ marginBottom: 16 }} />
+            {/* 🧡 Engagement: Reframed transactional reading copy ("No books in progress") to devotional Swadhyaya framing ("स्वाध्याय की मधुर प्रतीक्षा ✨") */}
+            {/* Lever: Reframing (Emotional Copy) + Culture/Sanskara (Swadhyaya) */}
+            {/* Why: Swadhyaya (self-study of sacred scriptures) is a core Sanatan spiritual ritual. Framing reading as Swadhyaya deepens connection and forms habit/sanskara. */}
+            {/* UI: Text-only change, zero structural modifications. */}
             <Text style={s.emptyStateTitle}>
-              {isHindi ? 'अभी कोई पुस्तक आरंभ नहीं की' : 'No books in progress'}
+              {isHindi ? 'स्वाध्याय की मधुर प्रतीक्षा ✨' : 'Your Sacred Reading Awaits ✨'}
             </Text>
             <Text style={s.emptyStateSub}>
               {isHindi
-                ? 'श्रीमद्भगवद्गीता या अन्य पवित्र ग्रंथों से अपनी आध्यात्मिक यात्रा आरंभ करें 🙏'
-                : 'Begin your spiritual journey with Srimad Bhagavad Gita or sacred scriptures 🙏'}
+                ? 'श्रीमद्भगवद्गीता व पवित्र ग्रंथों के चिंतन से अपनी आत्मा को प्रकाशित करें 🙏'
+                : 'Illuminate your inner journey with Srimad Bhagavad Gita and sacred wisdom 🙏'}
             </Text>
             <TouchableOpacity
               style={s.startReadingBtn}
               onPress={() => router.push('/library' as any)}
               accessibilityRole="button"
-              accessibilityLabel={isHindi ? 'पवित्र ग्रंथ पढ़ें' : 'Explore Sacred Scriptures'}
+              accessibilityLabel={isHindi ? 'ज्ञान सागर में प्रवेश करें' : 'Enter the Ocean of Wisdom'}
             >
               <Text style={s.startReadingTxt}>
-                {isHindi ? 'पवित्र ग्रंथ पढ़ें 📖' : 'Explore Sacred Scriptures 📖'}
+                {isHindi ? 'ज्ञान सागर में प्रवेश करें 📖' : 'Enter the Ocean of Wisdom 📖'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -124,13 +128,16 @@ export default function ContinueReadingPage() {
                   </View>
                 </View>
 
+                {/* 🧡 Engagement: Reframed CTA from transactional "Continue Reading" to devotional "स्वाध्याय आगे बढ़ाएं" */}
+                {/* Lever: Reframing + Habit/Sanskara */}
+                {/* UI: Text-only change, zero layout/visual additions. */}
                 <TouchableOpacity
                   style={s.continueBtn}
                   onPress={() => handleContinue(book.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={isHindi ? 'पढ़ना जारी रखें' : 'Continue Reading'}
+                  accessibilityLabel={isHindi ? 'स्वाध्याय आगे बढ़ाएं' : 'Continue Sacred Reading'}
                 >
-                  <Text style={s.continueBtnTxt}>{isHindi ? 'पढ़ना जारी रखें' : 'Continue Reading'}</Text>
+                  <Text style={s.continueBtnTxt}>{isHindi ? 'स्वाध्याय आगे बढ़ाएं 📖' : 'Continue Sacred Reading 📖'}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFF" />
                 </TouchableOpacity>
               </View>
