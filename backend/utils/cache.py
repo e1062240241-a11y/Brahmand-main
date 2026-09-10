@@ -3,7 +3,6 @@ import json
 import logging
 from typing import Optional, Any, List, Dict
 from functools import wraps
-from datetime import datetime
 
 from config.settings import settings
 
@@ -19,8 +18,6 @@ class CacheManager:
     USER_PREFIX = "users"
     COMMUNITY_PREFIX = "community"
     TEMPLE_PREFIX = "temple"
-    PANCHANG_PREFIX = "panchang"
-    WISDOM_PREFIX = "wisdom"
     STATS_PREFIX = "stats"
     
     def __init__(self):
@@ -172,25 +169,6 @@ class CacheManager:
     
     async def invalidate_temples(self):
         await self.delete(f"{self.TEMPLE_PREFIX}:all")
-    
-    # Panchang caching (cache for whole day)
-    async def get_panchang(self) -> Optional[dict]:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        return await self.get(f"{self.PANCHANG_PREFIX}:{today}")
-    
-    async def set_panchang(self, panchang: dict):
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        # Cache until midnight (max 24 hours)
-        await self.set(f"{self.PANCHANG_PREFIX}:{today}", panchang, ttl=86400)
-    
-    # Wisdom caching
-    async def get_wisdom(self) -> Optional[dict]:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        return await self.get(f"{self.WISDOM_PREFIX}:{today}")
-    
-    async def set_wisdom(self, wisdom: dict):
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        await self.set(f"{self.WISDOM_PREFIX}:{today}", wisdom, ttl=86400)
     
     # Stats caching
     async def get_community_stats(self, community_id: str) -> Optional[dict]:
