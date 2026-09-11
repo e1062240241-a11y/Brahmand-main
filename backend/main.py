@@ -1807,7 +1807,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 @api_router.post("/auth/login-anonymous")
-async def login_anonymous(request: AnonymousLoginRequest):
+async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth_rate_limit)):
     """Login using a predefined anonymous number without OTP."""
     try:
         return await FirebaseAuthService.login_anonymous(
