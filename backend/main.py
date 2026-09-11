@@ -2582,29 +2582,28 @@ async def get_user_by_id(
         'is_verified', 'verification_level',
     ]
 
-    # Membership via a single O(1) point read on the follow-edge collection,
-    # NOT by scanning the followers array.
-    is_following = False
-    edge = None
-    if viewer_id:
-        edge = await db.get_document('user_follows', f"{viewer_id}_{user_id}")
-        if edge is not None:
-            is_following = True
+    # ⚡ Bolt Optimization: Concurrently fetch user profile and follow edge to prevent sequential latency
+    async def fetch_edge():
+        if viewer_id and viewer_id != user_id:
+            return await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        return None
+
+    async def fetch_user():
+        fields = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+        return await db.get_document_fields('users', user_id, fields)
+
+    edge, doc = await asyncio.gather(fetch_edge(), fetch_user())
+
+    if not doc:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    is_following = edge is not None
 
     if include_lists:
-        # follow-connections screen needs the actual ID arrays. Fetch them
-        # explicitly (still maintained by dual-write on follow/unfollow).
-        doc = await db.get_document_fields(
-            'users', user_id, SCALAR_FIELDS + ['followers', 'following']
-        )
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
+        # follow-connections screen needs the actual ID arrays.
         followers_list = list(doc.get('followers') or [])
         following_list = list(doc.get('following') or [])
     else:
-        doc = await db.get_document_fields('users', user_id, SCALAR_FIELDS)
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
         followers_list = None  # not loaded
         following_list = None  # not loaded
         # Pre-backfill fallback: edge doc missing but this may be an existing
