@@ -12412,7 +12412,8 @@ async def upload_vendor_business_image(
     vendor_id: str,
     file: UploadFile = File(...),
     slot: int = Form(...),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit)
 ):
     """Upload approved vendor business gallery image to Firebase Storage."""
     from firebase_admin import storage as firebase_storage
@@ -12488,7 +12489,8 @@ async def upload_vendor_kyc_file(
     vendor_id: str,
     doc_type: str = Form(...),
     file: UploadFile = File(...),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit)
 ):
     """Upload vendor KYC files through backend (owner only)."""
     from firebase_admin import storage as firebase_storage
@@ -12552,7 +12554,8 @@ async def extract_kyc_text_from_image(
     vendor_id: str,
     file: Optional[UploadFile] = File(None),
     image_base64: Optional[str] = Form(None),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit)
 ):
     """Use Google Cloud Vision to extract text from KYC images (Aadhaar/PAN)."""
     if vision is None:
@@ -12689,7 +12692,8 @@ async def extract_kyc_text_from_image(
 async def extract_user_kyc_text_from_image(
     file: Optional[UploadFile] = File(None),
     image_base64: Optional[str] = Form(None),
-    token_data: dict = Depends(verify_token)
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(upload_rate_limit)
 ):
     """Use Google Cloud Vision to extract text from user KYC images."""
     if vision is None:
