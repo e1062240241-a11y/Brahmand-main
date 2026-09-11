@@ -1807,7 +1807,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 @api_router.post("/auth/login-anonymous")
-async def login_anonymous(request: AnonymousLoginRequest):
+async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth_rate_limit)):
     """Login using a predefined anonymous number without OTP."""
     try:
         return await FirebaseAuthService.login_anonymous(
@@ -2012,6 +2012,12 @@ async def get_profile(token_data: dict = Depends(verify_token)):
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    # Pre-fetch user document to merge in-memory, avoiding read-after-write
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         photo_data = update_data.get('photo')
         if photo_data:
@@ -2041,19 +2047,35 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     logger.warning(f"Failed to compress profile photo: {e}")
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
+
         await db.update_document('users', token_data["user_id"], update_data)
         from utils.cache import cache_manager
         await cache_manager.invalidate_user(token_data['user_id'])
-        return await db.get_document('users', token_data["user_id"])
+
+        # Merge in-memory to avoid redundant fetch
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
-    return await db.get_document('users', token_data["user_id"])
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.post("/user/saved-kundlis")
@@ -8320,15 +8342,14 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     """Get all circles the user is a member of"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
     circles = []
-    user_circle_ids = list(user.get('circles', [])) if user else []
     
-    if user_circle_ids:
-        try:
-            fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
-            
+    try:
+        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
+        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+
+        if fetched_circles:
             # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
             all_member_ids = set()
             for circle in fetched_circles:
@@ -8374,8 +8395,8 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
-        except Exception as e:
-            logger.error("Error batch fetching circles: %s", e)
+    except Exception as e:
+        logger.error("Error batch fetching circles: %s", e)
             
 
     return circles
