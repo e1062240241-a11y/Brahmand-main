@@ -26,3 +26,7 @@
 ## 2026-09-09 - Language-Aware Circles Empty State & Warm Action CTAs
 **Learning:** Empty group/circle discovery screens without localized copy discourage community formation. Localizing primary action CTAs ("सर्कल बनाएं", "सर्कल में जुड़ें") and empty state prompts in warm Hindi ("अपने परिवार, मित्रों या मंदिर समुदाय के लिए एक सर्कल बनाएं 🙏") increases community engagement for Hindi users.
 **Action:** Updated `frontend/app/(tabs)/circles.tsx` to conditionally render Devanagari Hindi copy for action buttons, badge metadata, and empty states when `user?.language === 'hi'`.
+
+## 2026-09-10 - Spiritual Streak Tracker Nudge Service
+**Learning:** Celebrating multi-day spiritual streaks (like daily Jaap or scripture reading) via localized push notifications with respectful Devanagari Hindi copy ("आपकी अद्भुत साधना निष्ठा! आज भी अपनी दैनिक साधना जारी रखें 🙏") reinforces habit loops and long-term user retention.
+**Action:** Created `StreakTrackerService` in `backend/services/streak_tracker.py` and endpoint `POST /nudge/streak` in `backend/routes/engagement_routes.py`.
