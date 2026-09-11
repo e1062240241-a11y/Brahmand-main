@@ -123,7 +123,7 @@ const ContinueReadingCard = React.memo(function ContinueReadingCard({
 
     return (
         <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[homeStyles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
                 <HomeCardTextureBg texture="peach">
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
                         <View style={{ marginBottom: 6, marginTop: -4 }}>
@@ -178,7 +178,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
         : '';
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="rose">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -217,7 +217,7 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
 }: RegisterBusinessCardProps) {
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="peach">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -256,7 +256,7 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
         : 'Flower Decor\nAndheri West';
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="mint">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -292,7 +292,7 @@ const AartiCard = React.memo(function AartiCard({
 }: AartiCardProps) {
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="lavender">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
