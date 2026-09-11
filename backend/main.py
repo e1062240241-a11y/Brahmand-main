@@ -3051,16 +3051,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if user_id in blocked_user_ids:
         raise HTTPException(status_code=403, detail='Follow not allowed due to a block relationship')
 
-    current_user = await db.get_document('users', current_user_id)
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    current_user, target_user, existing_edge = await asyncio.gather(
+        db.get_document('users', current_user_id),
+        db.get_document('users', user_id),
+        db.get_document('user_follows', follow_doc_id)
+    )
+
     if not current_user:
         raise HTTPException(status_code=404, detail='Current user not found')
-
-    target_user = await db.get_document('users', user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
-
-    follow_doc_id = f"{current_user_id}_{user_id}"
-    existing_edge = await db.get_document('user_follows', follow_doc_id)
     if existing_edge is not None:
         return {'message': 'Already following user', 'user_id': user_id}
 
@@ -3129,13 +3130,17 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
     current_user_id = token_data['user_id']
 
-    target_user = await db.get_document('users', user_id)
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    target_user, edge_doc = await asyncio.gather(
+        db.get_document('users', user_id),
+        db.get_document('user_follows', follow_doc_id)
+    )
+
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
     # Remove the follow edge doc (primary)
-    follow_doc_id = f"{current_user_id}_{user_id}"
-    edge_existed = await db.get_document('user_follows', follow_doc_id) is not None
+    edge_existed = edge_doc is not None
     if edge_existed:
         await db.delete_document('user_follows', follow_doc_id)
 
