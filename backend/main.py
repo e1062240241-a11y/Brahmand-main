@@ -2012,6 +2012,12 @@ async def get_profile(token_data: dict = Depends(verify_token)):
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    # Pre-fetch user document to merge in-memory, avoiding read-after-write
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         photo_data = update_data.get('photo')
         if photo_data:
@@ -2041,19 +2047,35 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     logger.warning(f"Failed to compress profile photo: {e}")
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
+
         await db.update_document('users', token_data["user_id"], update_data)
         from utils.cache import cache_manager
         await cache_manager.invalidate_user(token_data['user_id'])
-        return await db.get_document('users', token_data["user_id"])
+
+        # Merge in-memory to avoid redundant fetch
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
-    return await db.get_document('users', token_data["user_id"])
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.post("/user/saved-kundlis")
@@ -2582,29 +2604,34 @@ async def get_user_by_id(
         'is_verified', 'verification_level',
     ]
 
-    # Membership via a single O(1) point read on the follow-edge collection,
-    # NOT by scanning the followers array.
+    # ⚡ Bolt Optimization: Use asyncio.gather to concurrently fetch the edge and user doc
     is_following = False
-    edge = None
-    if viewer_id:
-        edge = await db.get_document('user_follows', f"{viewer_id}_{user_id}")
-        if edge is not None:
-            is_following = True
+    edge_task = None
+
+    if viewer_id and viewer_id != user_id:
+        edge_task = db.get_document('user_follows', f"{viewer_id}_{user_id}")
+    else:
+        async def mock_none():
+            return None
+        edge_task = mock_none()
+
+    fields_to_fetch = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+    doc_task = db.get_document_fields('users', user_id, fields_to_fetch)
+
+    # Parallelize fetch
+    import asyncio
+    edge, doc = await asyncio.gather(edge_task, doc_task)
+
+    if edge is not None:
+        is_following = True
+
+    if not doc:
+        raise HTTPException(status_code=404, detail='User not found')
 
     if include_lists:
-        # follow-connections screen needs the actual ID arrays. Fetch them
-        # explicitly (still maintained by dual-write on follow/unfollow).
-        doc = await db.get_document_fields(
-            'users', user_id, SCALAR_FIELDS + ['followers', 'following']
-        )
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
         followers_list = list(doc.get('followers') or [])
         following_list = list(doc.get('following') or [])
     else:
-        doc = await db.get_document_fields('users', user_id, SCALAR_FIELDS)
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
         followers_list = None  # not loaded
         following_list = None  # not loaded
         # Pre-backfill fallback: edge doc missing but this may be an existing
@@ -8321,15 +8348,14 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     """Get all circles the user is a member of"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
     circles = []
-    user_circle_ids = list(user.get('circles', [])) if user else []
     
-    if user_circle_ids:
-        try:
-            fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
-            
+    try:
+        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
+        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+
+        if fetched_circles:
             # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
             all_member_ids = set()
             for circle in fetched_circles:
@@ -8375,8 +8401,8 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
-        except Exception as e:
-            logger.error("Error batch fetching circles: %s", e)
+    except Exception as e:
+        logger.error("Error batch fetching circles: %s", e)
             
 
     return circles
