@@ -26,3 +26,7 @@
 ## 2026-09-09 - Language-Aware Circles Empty State & Warm Action CTAs
 **Learning:** Empty group/circle discovery screens without localized copy discourage community formation. Localizing primary action CTAs ("सर्कल बनाएं", "सर्कल में जुड़ें") and empty state prompts in warm Hindi ("अपने परिवार, मित्रों या मंदिर समुदाय के लिए एक सर्कल बनाएं 🙏") increases community engagement for Hindi users.
 **Action:** Updated `frontend/app/(tabs)/circles.tsx` to conditionally render Devanagari Hindi copy for action buttons, badge metadata, and empty states when `user?.language === 'hi'`.
+
+## 2026-09-10 - Discover Tab Language-Aware Polish & Cross-Feature CTAs
+**Learning:** Unlocalized discovery screens leave non-English users feeling disconnected. Localizing tab headers ("मंदिर", "कार्यक्रम"), section titles, and empty states alongside cross-feature links (to Panchang and Jaap) improves feature cross-discovery with zero backend load.
+**Action:** Updated `frontend/app/(tabs)/discover.tsx` with Devanagari Hindi titles, warm empty prompts, and cross-feature links to `/panchang` and `/(tabs)/jaap`.

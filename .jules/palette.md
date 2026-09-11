@@ -1,14 +1,3 @@
-## $(date +%Y-%m-%d) - Accessible Character Counters
-**Learning:** Hardcoding `maxLength` limits in reusable components restricts their applicability. Additionally, character counters for screen readers must include `accessibilityRole="text"` and `accessibilityLabel` (e.g., "N of M characters used") to be properly understood, as raw text like "5/200" is unhelpful.
-**Action:** Ensure `maxLength` is passed as a prop to reusable inputs and that any conditionally rendered counter text is fully accessible.
-
-## 2025-02-23 - Context-Aware ARIA Labels for Repeated Elements
-**Learning:** When using repeated buttons like "Coming Soon" across a grid or list of cards (e.g. `UpcomingJaapsSection`), screen readers will simply read the raw text. Without the card's context (the item's name), users cannot distinguish between identical buttons.
-**Action:** Always include contextual data (e.g., the specific item's `displayName`) in the `accessibilityLabel` for repeated elements to provide clarity for screen reader users.
-## $(date +%Y-%m-%d) - Accessible Icon Buttons in Settings
-**Learning:** Icon-only buttons (like back buttons and clear search buttons) often have touch targets that are too small and lack context for screen readers. Using `hitSlop` makes them easier to tap, and `accessibilityRole`/`accessibilityLabel` makes them accessible.
-**Action:** Always add `hitSlop` and accessibility attributes to icon-only `TouchableOpacity` elements.
-
-## 2025-03-10 - Accessible Form Pickers (AI Jyotish)
-**Learning:** Custom Date and Time pickers in React Native forms often use `TouchableOpacity` wrappers that behave like buttons but lack `accessibilityRole="button"`. This causes screen readers to ignore their interactivity, leading to a frustrating experience for visually impaired users.
-**Action:** When creating custom touchable wrappers for pickers or dropdowns, always ensure `accessibilityRole="button"` and context-specific `accessibilityLabel` (e.g., "Select Date of Birth") are applied.
+## 2024-05-18 - Added accessibility attributes to Switch component
+**Learning:** In React Native, `<Switch>` components do not inherently link to adjacent `<Text>` labels for accessibility (unlike HTML forms). When screen readers interact with a bare `<Switch>`, they only announce "switch" without context.
+**Action:** To ensure screen readers announce them properly, explicitly apply `accessibilityRole="switch"` and a descriptive `accessibilityLabel` to the `<Switch>` element.

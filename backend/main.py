@@ -1807,7 +1807,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 @api_router.post("/auth/login-anonymous")
-async def login_anonymous(request: AnonymousLoginRequest):
+async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth_rate_limit)):
     """Login using a predefined anonymous number without OTP."""
     try:
         return await FirebaseAuthService.login_anonymous(
@@ -2012,6 +2012,12 @@ async def get_profile(token_data: dict = Depends(verify_token)):
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    # Pre-fetch user document to merge in-memory, avoiding read-after-write
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         photo_data = update_data.get('photo')
         if photo_data:
@@ -2041,19 +2047,35 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     logger.warning(f"Failed to compress profile photo: {e}")
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
+
         await db.update_document('users', token_data["user_id"], update_data)
         from utils.cache import cache_manager
         await cache_manager.invalidate_user(token_data['user_id'])
-        return await db.get_document('users', token_data["user_id"])
+
+        # Merge in-memory to avoid redundant fetch
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
-    return await db.get_document('users', token_data["user_id"])
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.post("/user/saved-kundlis")
@@ -2582,29 +2604,28 @@ async def get_user_by_id(
         'is_verified', 'verification_level',
     ]
 
-    # Membership via a single O(1) point read on the follow-edge collection,
-    # NOT by scanning the followers array.
-    is_following = False
-    edge = None
-    if viewer_id:
-        edge = await db.get_document('user_follows', f"{viewer_id}_{user_id}")
-        if edge is not None:
-            is_following = True
+    # ⚡ Bolt Optimization: Concurrently fetch user profile and follow edge to prevent sequential latency
+    async def fetch_edge():
+        if viewer_id and viewer_id != user_id:
+            return await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        return None
+
+    async def fetch_user():
+        fields = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+        return await db.get_document_fields('users', user_id, fields)
+
+    edge, doc = await asyncio.gather(fetch_edge(), fetch_user())
+
+    if not doc:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    is_following = edge is not None
 
     if include_lists:
-        # follow-connections screen needs the actual ID arrays. Fetch them
-        # explicitly (still maintained by dual-write on follow/unfollow).
-        doc = await db.get_document_fields(
-            'users', user_id, SCALAR_FIELDS + ['followers', 'following']
-        )
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
+        # follow-connections screen needs the actual ID arrays.
         followers_list = list(doc.get('followers') or [])
         following_list = list(doc.get('following') or [])
     else:
-        doc = await db.get_document_fields('users', user_id, SCALAR_FIELDS)
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
         followers_list = None  # not loaded
         following_list = None  # not loaded
         # Pre-backfill fallback: edge doc missing but this may be an existing
@@ -8321,15 +8342,14 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     """Get all circles the user is a member of"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
     circles = []
-    user_circle_ids = list(user.get('circles', [])) if user else []
     
-    if user_circle_ids:
-        try:
-            fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
-            
+    try:
+        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
+        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+
+        if fetched_circles:
             # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
             all_member_ids = set()
             for circle in fetched_circles:
@@ -8375,8 +8395,8 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
-        except Exception as e:
-            logger.error("Error batch fetching circles: %s", e)
+    except Exception as e:
+        logger.error("Error batch fetching circles: %s", e)
             
 
     return circles
@@ -11623,11 +11643,16 @@ async def get_help_requests(
     community_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get help requests visible to the user"""
     db = await get_db()
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     filters = [('status', '==', status)]
     
     if type:
@@ -11636,8 +11661,27 @@ async def get_help_requests(
     if community_level:
         filters.append(('community_level', '==', community_level))
     
-    requests = await db.query_documents('help_requests', filters=filters, limit=limit, order_by='created_at', order_direction='DESCENDING')
-    return requests
+    try:
+        requests = await db.query_documents(
+            'help_requests',
+            filters=filters,
+            limit=fetch_limit,
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for help_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'help_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
+
+    return requests[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.get("/help-requests/my")
@@ -13528,13 +13572,16 @@ async def get_community_requests(
     visibility_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get community requests with filters"""
     user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
     
     # 1. Try fetching from cache first (skip cache if fetching blood/emergency requests for real-time accuracy)
-    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
+    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{safe_limit}:{safe_offset}"
     if type not in ['blood', 'emergency', 'medical']:
         cached_requests = await cache_manager.get(cache_key)
         if cached_requests is not None:
@@ -13563,8 +13610,29 @@ async def get_community_requests(
     )
     if not isinstance(location_area, dict):
         location_area = {}
-    # Do not apply limit at DB level to avoid fetching oldest documents first
-    requests = await db.query_documents('community_requests', filters=filters)
+
+    # Architectural fix: Limit the candidate document query at DB level with created_at DESC
+    # to avoid O(N) reads of all historical community requests across the system.
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=filters,
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for community_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'community_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
     
     # Filter requests based on visibility level
     visible_requests = []
@@ -13667,15 +13735,14 @@ async def get_community_requests(
 
     filtered_clean_requests.sort(key=_final_sort_key)
     
-    # Apply limit
-    if limit:
-        filtered_clean_requests = filtered_clean_requests[:limit]
+    # Apply offset and limit pagination
+    paginated_requests = filtered_clean_requests[safe_offset : safe_offset + safe_limit]
             
     # 2. Store in cache with 30-second TTL
-    await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
+    await cache_manager.set(cache_key, paginated_requests, ttl=30)
     logger.info(f"Cached community requests for: {cache_key}")
     
-    return filtered_clean_requests
+    return paginated_requests
 
 
 @api_router.get("/community-requests/my")
