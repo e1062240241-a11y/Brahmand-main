@@ -226,20 +226,23 @@ class TempleService:
         if not user:
             raise ValueError("User not found")
         
+        post_id = str(uuid4())
         new_post = {
-            "id": str(uuid4()),
+            "id": post_id,
+            "temple_id": temple_id,
             "title": title,
             "content": content,
             "post_type": post_type,
             "author_id": user_id,
-            "author_name": user["name"],
+            "author_name": user.get("name") or "Admin",
             "reactions": [],
             "created_at": datetime.utcnow().isoformat() + 'Z'
         }
         
-        posts = temple.get("posts", [])
-        posts = [new_post] + posts
-        await db.update_document("temples", temple["id"], {"posts": posts})
+        # Architectural fix: Store post as standalone document in temple_posts collection
+        # to prevent unbounded array growth and 1MB limit crash on temple parent doc.
+        await db.create_document("temple_posts", new_post, doc_id=post_id)
+
         await cache_manager.delete(f"temple:detail:{temple_id}")
         if temple.get("temple_id"):
             await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
@@ -248,7 +251,7 @@ class TempleService:
     
     @staticmethod
     async def get_posts(temple_id: str) -> List[Dict[str, Any]]:
-        """Get temple posts"""
+        """Get temple posts from dedicated collection with fallback to legacy embedded posts"""
         db = await TempleService.get_db()
         
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
@@ -256,8 +259,38 @@ class TempleService:
             temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
-        
-        return temple.get("posts", [])[:20]
+
+        # Query standalone temple_posts collection
+        try:
+            posts = await db.query_documents(
+                "temple_posts",
+                filters=[("temple_id", "==", temple_id)],
+                order_by="created_at",
+                order_direction="DESCENDING",
+                limit=20
+            )
+        except Exception as e:
+            if "requires an index" in str(e) or "400" in str(e):
+                logger.warning("Composite index missing for temple_posts temple_id + created_at: %s", e)
+                try:
+                    posts = await db.query_documents(
+                        "temple_posts",
+                        filters=[("temple_id", "==", temple_id)],
+                        limit=20
+                    )
+                    posts.sort(key=lambda x: str(x.get("created_at") or ""), reverse=True)
+                except Exception as inner_e:
+                    logger.error("Failed un-ordered fallback query for temple_posts: %s", inner_e)
+                    posts = []
+            else:
+                posts = []
+
+        if posts:
+            return posts
+
+        # Fallback to legacy embedded posts array on temple document if standalone collection is empty
+        legacy_posts = temple.get("posts", [])
+        return legacy_posts[:20]
     
     @staticmethod
     async def react_to_post(
@@ -266,9 +299,21 @@ class TempleService:
         post_id: str,
         reaction: str = "namaste"
     ) -> Dict[str, Any]:
-        """React to a temple post"""
+        """React to a temple post with atomic update on temple_posts document"""
         db = await TempleService.get_db()
         
+        # 1. Try updating standalone post in temple_posts collection
+        post = await db.get_document("temple_posts", post_id)
+        if post:
+            reactions = post.get("reactions", [])
+            existing_reaction = next((r for r in reactions if r.get("user_id") == user_id and r.get("reaction") == reaction), None)
+            if not existing_reaction:
+                new_reaction = {"user_id": user_id, "reaction": reaction}
+                await db.array_union_update("temple_posts", post_id, "reactions", [new_reaction])
+                await cache_manager.delete(f"temple:detail:{temple_id}")
+            return {"message": "Reaction added"}
+
+        # 2. Fallback for legacy embedded posts on temple document
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
             temple = await db.get_document("temples", temple_id)
@@ -277,13 +322,13 @@ class TempleService:
         
         posts = temple.get("posts", [])
         updated = False
-        for post in posts:
-            if post.get("id") == post_id:
-                reactions = post.get("reactions", [])
+        for p in posts:
+            if p.get("id") == post_id:
+                reactions = p.get("reactions", [])
                 existing_reaction = next((r for r in reactions if r.get("user_id") == user_id and r.get("reaction") == reaction), None)
                 if not existing_reaction:
                     reactions.append({"user_id": user_id, "reaction": reaction})
-                    post["reactions"] = reactions
+                    p["reactions"] = reactions
                     updated = True
                 break
                 
