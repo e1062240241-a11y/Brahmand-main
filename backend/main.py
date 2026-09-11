@@ -2604,31 +2604,25 @@ async def get_user_by_id(
         'is_verified', 'verification_level',
     ]
 
-    # ⚡ Bolt Optimization: Use asyncio.gather to concurrently fetch the edge and user doc
-    is_following = False
-    edge_task = None
+    # ⚡ Bolt Optimization: Concurrently fetch user profile and follow edge to prevent sequential latency
+    async def fetch_edge():
+        if viewer_id and viewer_id != user_id:
+            return await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        return None
 
-    if viewer_id and viewer_id != user_id:
-        edge_task = db.get_document('user_follows', f"{viewer_id}_{user_id}")
-    else:
-        async def mock_none():
-            return None
-        edge_task = mock_none()
+    async def fetch_user():
+        fields = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+        return await db.get_document_fields('users', user_id, fields)
 
-    fields_to_fetch = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
-    doc_task = db.get_document_fields('users', user_id, fields_to_fetch)
-
-    # Parallelize fetch
-    import asyncio
-    edge, doc = await asyncio.gather(edge_task, doc_task)
-
-    if edge is not None:
-        is_following = True
+    edge, doc = await asyncio.gather(fetch_edge(), fetch_user())
 
     if not doc:
         raise HTTPException(status_code=404, detail='User not found')
 
+    is_following = edge is not None
+
     if include_lists:
+        # follow-connections screen needs the actual ID arrays.
         followers_list = list(doc.get('followers') or [])
         following_list = list(doc.get('following') or [])
     else:

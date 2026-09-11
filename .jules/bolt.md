@@ -39,9 +39,6 @@
 **Learning:** Firestore ordered queries with bounds (`limit`, `order_by`) can save significant memory over fetching a large batch and sorting in Python, but they may fail if the composite index hasn't been built yet.
 **Action:** When pushing limits/sorting to the database layer for subsets (like `top_comments`), always wrap the optimized query in a `try...except` block that catches 'requires an index' or '400' errors and falls back to an un-ordered query to prevent the API endpoint from breaking.
 
-## 2025-02-23 - Read-After-Write and Sequential Dependencies
-**Learning:** During profile updates, doing a `get_document` after `update_document` costs an entire DB network round-trip. Similarly, in profile fetches, fetching a follow-edge sequentially before the user document doubles latency. In list endpoints (like `/circles`), fetching a user document just to read an array of IDs to then fetch the circles is an N+1 anti-pattern if the collection supports native `array_contains` queries.
-**Action:**
-1. Use in-memory merging for `update_document` endpoints, explicitly appending DB-maintained fields like `updated_at` to avoid read-after-write.
-2. In `GET /users/{user_id}`, parallelize the user document fetch and the `user_follows` edge document fetch using `asyncio.gather` (conditionally firing the edge fetch only if `viewer_id` exists and is not equal to `user_id`) to significantly reduce endpoint latency.
-3. To optimize `GET /circles`, query the `circles` collection directly using `filters=[('members', 'array_contains', user_id)]` instead of fetching the user document to retrieve `user_circle_ids`.
+## 2024-09-10 - Parallelize User Profile and Edge Queries
+**Learning:** In `GET /users/{user_id}`, parallelize the user document fetch and the `user_follows` edge document fetch using `asyncio.gather` (conditionally firing the edge fetch only if `viewer_id` exists and is not equal to `user_id`) to significantly reduce endpoint latency.
+**Action:** Always look for independent database queries in API routes (e.g. fetching a primary entity and a relation/edge) and batch them using `asyncio.gather` when they don't depend on each other.
