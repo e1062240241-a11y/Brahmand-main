@@ -55,6 +55,7 @@ RACE CONDITIONS:
 
 UNBOUNDED GROWTH:
 - `temple.followers` array — exposed in full on list responses — FIXED
+- `temple.posts` array — embedded posts and reactions grow unbounded in temple doc — FIXED
 
 N+1 QUERY PATTERNS:
 
@@ -81,3 +82,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-09 - Rate Limiting Global Search Endpoint
 **Learning:** Unthrottled global search on `/search/global` fires up to 12 parallel prefix range queries per request across `users`, `communities`, and `posts` collections. Under high concurrent user loads (1 lakh+ users) or automated scraping/search-as-you-type spam, this can cause DB read spikes, thread pool exhaustion, and denial of service.
 **Action:** Implemented `search_rate_limit` dependency in `backend/middleware/rate_limiter.py` (30 requests/60s per user/IP) and attached it to `global_search` in `backend/routes/search_routes.py`.
+
+## 2026-09-11 - Standalone Collection & Atomic Reaction Updates for Temple Posts
+**Learning:** Storing temple announcement posts and post reactions directly in an embedded `posts` array on the parent `temples` document causes unbounded document growth toward Firestore's 1MB limit. Additionally, creating posts or adding reactions via read-modify-write on the parent temple document introduces race conditions that overwrite concurrent posts and reactions under load.
+**Action:** Migrated temple post creation and retrieval to a dedicated `temple_posts` collection in `TempleService`, updated post reactions to use atomic `db.array_union_update` directly on `temple_posts` documents, and maintained backward-compatible fallback for legacy embedded posts.
