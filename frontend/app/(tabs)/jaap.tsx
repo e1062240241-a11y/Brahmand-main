@@ -7,13 +7,10 @@ import {
   ScrollView,
   FlatList,
   Pressable,
-  Image,
   Dimensions,
   Platform,
   TextInput,
-  Modal,
   ImageBackground,
-  Alert,
   LayoutAnimation,
   UIManager,
   Animated,
@@ -40,11 +37,9 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/fe
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { Svg, Path, Circle, G, Defs, LinearGradient as SvgLinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import { CustomLoader } from '../../src/components/CustomLoader';
 import { KathaSection } from '../../src/components/KathaSection';
-import { SubtleJoinButton } from '../../src/components/SubtleJoinButton';
-import { TempleCard, TempleCardImageItem } from '../../src/components/TempleCard';
+import { TempleCardImageItem } from '../../src/components/TempleCard';
 import { CharDhamModal } from '../../src/components/CharDhamModal';
 import { LiveJaapCard, JAAP_CARD_WIDTH, JAAP_CARD_HEIGHT, JAAP_CARD_MARGIN_RIGHT } from '../../src/components/LiveJaapCard';
 import { UpcomingJaapsSection } from '../../src/components/UpcomingJaapsSection';
@@ -523,9 +518,12 @@ export default function JaapLandingScreen() {
                     if (hanumanStatus.isCompleted) {
                       liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
                     } else {
+                      // 🧡 Engagement: Reframed transactional counter "जाप" to devotional offering "चालीसा समर्पित"
+                      // Lever: Reframing + Devotional Framing
+                      // UI: Text-only change, no new visual components
                       liveLabel = t('language') === 'hi'
-                        ? `लाइव • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप`
-                        : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done`;
+                        ? `लाइव • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित`
+                        : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} chalisa offered`;
                     }
                   } else {
                     if (hanumanStatus.nextSessionStart) {

@@ -193,7 +193,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   numberOfLines={3}
                   maxLength={200}
                 />
-                <Text style={styles.charCount}>
+                <Text
+                  style={styles.charCount}
+                  accessibilityLabel={`${description.length} of 200 characters used`}
+                  accessibilityRole="text"
+                >
                   {description.length}/200
                 </Text>
               </View>

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
-import { discoverCommunities, getTemples, getNearbyEvents } from '../../src/services/api';
+import { getTemples, getNearbyEvents } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 
 interface Temple {

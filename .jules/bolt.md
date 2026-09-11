@@ -12,3 +12,29 @@
 ## 2026-09-05 - Request version tokens for race conditions
 **Learning:** When making asynchronous requests to fetch state that might be modified concurrently by other requests or components, responses from older requests resolving later can overwrite newer state.
 **Action:** Use a global, monotonically increasing request token variable (e.g. `_nextProfileVersion`). Capture the token before making the async request, and pass it to the state updater. The updater should ignore the payload if the token is older than the currently stored version.
+
+## 2026-09-05 - Avoid new Set() array allocations in state updaters
+**Learning:** Recreating sets from arrays (e.g., `new Set([...prev, id])`) or chaining `.map().filter()` inside `new Set()` allocates intermediate arrays that increase garbage collection overhead in the React Native frontend.
+**Action:** Use native `.add()` or `.delete()` methods on cloned sets (`new Set(prevSet)`), or use manual `for` loops to populate sets efficiently in a single pass without extra allocations.
+
+## 2026-09-06 - Avoid Array.sort(() => Math.random() - 0.5) for random selection
+**Learning:** Using `Array.sort(() => Math.random() - 0.5)` to select random items from a large global session pool (like `allSessionPostsRef`) is inefficient for the main UI thread in React Native, introducing unnecessary O(N log N) CPU overhead.
+**Action:** Replace `Array.sort(() => Math.random() - 0.5)` with a partial Fisher-Yates shuffle that randomly selects and caps the required elements in O(K) time.
+
+## 2026-08-28 - Removed O(N) array filtering in dm conversation
+**Learning:** Redundant `.filter()` operations can easily sneak in via helper functions like `deduplicateMessages` even after guarding early returns with `.some()`.
+**Action:** When a state updater first uses `.some()` to check for an item and ensures it does not exist, appending the item safely without a second pass `.filter()` or `.map()` operation minimizes CPU overhead.
+
+## 2026-08-28 - Set state iteration performance
+**Learning:** Passing an iterable directly to a Set constructor (e.g., `new Set(existingSet)`) is highly optimized in V8/JS engines and doesn't create intermediate arrays. Replacing it with a manual JS loop degrades readability and reduces performance. This is totally different from `new Set(existingSet.map(...))` which DOES create an intermediate array!
+**Action:** Do NOT replace `new Set(existingSet)` with manual loops.
+
+## 2026-08-28 - O(N log N) socket sort elimination
+**Learning:** New socket events for a chat or comments feed are always the most recent by definition. Running `Array.sort` on the entire combined feed for every single incoming message introduces massive O(N log N) UI thread overhead as the feed grows.
+**Action:** Directly prepend new socket events via `[newItem, ...prev]` in O(1) time rather than appending and re-sorting the entire array.
+## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
+**Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
+**Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2024-05-18 - Optimize Top Comments Query
+**Learning:** Firestore ordered queries with bounds (`limit`, `order_by`) can save significant memory over fetching a large batch and sorting in Python, but they may fail if the composite index hasn't been built yet.
+**Action:** When pushing limits/sorting to the database layer for subsets (like `top_comments`), always wrap the optimized query in a `try...except` block that catches 'requires an index' or '400' errors and falls back to an un-ordered query to prevent the API endpoint from breaking.

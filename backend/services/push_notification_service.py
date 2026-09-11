@@ -6,6 +6,7 @@ Uses Firebase Admin SDK to send notifications via FCM.
 """
 
 import logging
+import asyncio
 from typing import Optional, List, Dict, Any
 from firebase_admin import messaging
 
@@ -35,12 +36,15 @@ class PushNotificationService:
         blocked_ids = set()
         try:
             db = await _get_db()
-            blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+            blocks_by_me_task = db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+            blocks_of_me_task = db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+
+            blocks_by_me, blocks_of_me = await asyncio.gather(blocks_by_me_task, blocks_of_me_task)
+
             for b in blocks_by_me:
                 b_uid = b.get('blockedUid')
                 if b_uid:
                     blocked_ids.add(b_uid)
-            blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
             for b in blocks_of_me:
                 b_uid = b.get('blockerUid')
                 if b_uid:
@@ -356,7 +360,7 @@ class PushNotificationService:
         
         # Truncate message preview or hide if encrypted
         is_encrypted = message_preview and len(message_preview) > 30 and (
-            not message_preview.startswith("http") and not (" " in message_preview)
+            not message_preview.startswith("http") and " " not in message_preview
         )
         preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
 
@@ -440,7 +444,7 @@ class PushNotificationService:
         
         # Truncate message preview or hide if encrypted
         is_encrypted = message_preview and len(message_preview) > 30 and (
-            not message_preview.startswith("http") and not (" " in message_preview)
+            not message_preview.startswith("http") and " " not in message_preview
         )
         preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
 
@@ -523,7 +527,7 @@ class PushNotificationService:
             
 
         is_encrypted = message_preview and len(message_preview) > 30 and (
-            not message_preview.startswith("http") and not (" " in message_preview)
+            not message_preview.startswith("http") and " " not in message_preview
         )
         preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
 

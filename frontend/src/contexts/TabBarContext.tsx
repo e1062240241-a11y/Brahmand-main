@@ -35,6 +35,10 @@ export const TabBarProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
+export const useOptionalTabBar = () => {
+  return useContext(TabBarContext);
+};
+
 export const useTabBar = () => {
   const context = useContext(TabBarContext);
   if (!context) {

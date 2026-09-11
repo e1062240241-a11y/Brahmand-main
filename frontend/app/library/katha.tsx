@@ -30,6 +30,7 @@ import { useIsFocused } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '../../src/services/api';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 let ExpoVideoModule: any = null;
 try {
@@ -120,6 +121,7 @@ const KNOWN_EP_DURATIONS: Record<string, string> = {
 export default function KathaPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const language = useLanguageStore((state) => state.language);
   const isFocused = useIsFocused();
   const scrollViewRef = useRef<ScrollView>(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -932,6 +934,23 @@ export default function KathaPage() {
                   <Text style={styles.backToEpisodesText}>View All Episodes</Text>
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                style={styles.readScriptureBtn}
+                onPress={() => router.push('/library/ramcharitmanas')}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  language === 'hi' ? 'संबंधित शास्त्र पढ़ें' : 'Read related scripture'
+                }
+              >
+                <Ionicons name="book-outline" size={18} color="#FF6B00" />
+                <Text style={styles.readScriptureText}>
+                  {language === 'hi'
+                    ? 'संबंधित शास्त्र पढ़ें →'
+                    : 'Read related scripture →'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -1512,5 +1531,28 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  readScriptureBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,107,0,0.35)',
+    borderRadius: 22,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    marginTop: 10,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  readScriptureText: {
+    color: '#FF6B00',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

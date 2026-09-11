@@ -389,8 +389,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
               liked_by_me: false,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              views_count: 0,
-              top_comments: []
+              views_count: 0
             };
 
             const currentPosts = useFeedStore.getState().tabFeeds['for_you']?.posts || [];

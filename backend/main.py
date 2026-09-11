@@ -92,7 +92,7 @@ from models.schemas import (
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
-from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit
+from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit, astrology_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
 from routes.ramcharitmanas_routes import router as ramcharitmanas_router
 from routes.atharvaved_routes import router as atharvaved_router
@@ -113,6 +113,7 @@ from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.search_routes import router as search_router
 from routes.katha_routes import router as katha_router
 from routes.home_routes import router as home_router
+from routes.engagement_routes import router as engagement_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1462,6 +1463,7 @@ api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
 api_router.include_router(home_router)
+api_router.include_router(engagement_router, prefix="/engagement", tags=["engagement"])
 
 
 
@@ -1864,7 +1866,7 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
 
 
 @api_router.post("/admin/auth/login")
-async def admin_panel_login(data: dict = Body(...)):
+async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_limit)):
     """Admin panel login with static credentials for internal review console."""
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
@@ -2486,18 +2488,24 @@ async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
 
 @api_router.get("/users")
 async def list_users(
-    limit: int = 200,
+    limit: int = 20,
+    offset: int = 0,
     search: Optional[str] = None,
     token_data: dict = Depends(verify_token)
 ):
     """List users for private chat discovery (safe public fields only)."""
     db = await get_db()
 
-    safe_limit = max(1, min(limit, 500))
-    users = await db.query_documents('users', limit=safe_limit)
+    # Architectural fix: Offset-based bounded query (max 50 per page)
+    # prevents O(N) database scans and threadpool/memory exhaustion at 100k+ users scale.
+    safe_limit = max(1, min(limit, 50))
+    safe_offset = max(0, offset)
+    query = (search or "").strip().lower()
+
+    fetch_limit = min(500, (safe_offset + safe_limit) * 5) if query else (safe_offset + safe_limit)
+    users = await db.query_documents('users', limit=fetch_limit)
 
     current_user_id = token_data["user_id"]
-    query = (search or "").strip().lower()
 
     result = []
     for user in users:
@@ -2519,8 +2527,7 @@ async def list_users(
             "photo": user.get('photo')
         })
 
-
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/users/batch")
@@ -3286,6 +3293,7 @@ async def share_post_preview(post_id: str):
     return HTMLResponse(content=html_content)
 
 
+@api_router.get('/posts/{post_id}/views')
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3293,12 +3301,28 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
 
+    user_id = token_data.get('user_id')
+    current_views = post.get('views_count', 0) or 0
+
+    # Ignore self-views: author viewing their own post does not increment view_count
+    if user_id and user_id == post.get('user_id'):
+        return {'message': 'Self-view ignored', 'views_count': current_views}
+
+    # Deduplicate view count per user within a 5-minute window
+    if user_id:
+        cache_key = f"post_view:{post_id}:{user_id}"
+        already_viewed = await cache_manager.get(cache_key)
+        if already_viewed:
+            return {'message': 'View already recorded', 'views_count': current_views}
+
+        await cache_manager.set(cache_key, True, ttl=300)
+
     # Atomic server-side increment — avoids the read-then-write race where
     # concurrent views both read the same count and clobber each other.
     await db.increment_field('posts', post_id, 'views_count', 1)
 
     # Best-effort count for the response; the stored value is now accurate.
-    return {'message': 'View recorded', 'views_count': (post.get('views_count', 0) or 0) + 1}
+    return {'message': 'View recorded', 'views_count': current_views + 1}
 
 
 @api_router.get("/bunny-media/{filepath:path}")
@@ -3409,6 +3433,9 @@ async def _upload_post_impl(
     original_height: Optional[int] = None,
     mute_audio: Optional[str] = None,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     db = await get_db()
     user_id = token_data['user_id']
 
@@ -3718,6 +3745,9 @@ async def _upload_chat_media_impl(
     file: UploadFile,
     token_data: dict,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
     
@@ -4473,42 +4503,6 @@ async def get_posts_feed(
     except Exception:
         authors_by_id = {}
 
-    def _comment_sort_key(item: dict):
-        val = item.get('created_at')
-        if isinstance(val, datetime): return val
-        if isinstance(val, str):
-            try: return datetime.fromisoformat(val.replace('Z', '+00:00'))
-            except Exception: return datetime.min
-        return datetime.min
-
-    # Batch retrieve comments for posts with low comments count (<= 10) to eliminate N+1 queries
-    post_ids_for_batch_comments = [
-        p.get('id') for p in paged_posts 
-        if p.get('id') and 0 < (p.get('comments_count', 0) or 0) <= 10
-    ]
-    
-    comments_by_post = {}
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments in Discovery Feed: {comment_err}")
-
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -4536,10 +4530,6 @@ async def get_posts_feed(
             # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
-            
-            # Don't include full comments in feed - only counts
-            # Comments will be fetched on-demand when user opens the post
-            post.pop('top_comments', None)
             
             # Slim response: Remove heavy fields not needed in feed
             # Remove full liked_by array (we already have likes_count and liked_by_me)
@@ -4715,71 +4705,11 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         except Exception as e:
             logger.error(f"Error batch fetching post authors: {e}")
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
-
-    comments_by_post_id = {}
-
-    # ⚡ Bolt Optimization: Batch fetch top comments using 'in' query for posts with <= 10 comments to avoid N+1 bottleneck securely.
-    post_ids_for_batch_comments = [
-        post.get('id') for post in paged_posts
-        if post.get('id') and 0 < post.get('comments_count', 0) <= 10
-    ]
-
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post_id.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments for hashtag posts: {comment_err}")
-
-    # Fallback: Fetch comments concurrently with strict limits for viral posts (> 10 comments)
-    comments_tasks = []
-    for post in paged_posts:
-        if post.get('comments_count', 0) > 10:
-            comments_tasks.append((
-                post.get('id'),
-                db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=10,
-                )
-            ))
-
-    if comments_tasks:
-        post_ids, tasks = zip(*comments_tasks)
-        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        for pid, res in zip(post_ids, comments_results):
-            comments_by_post_id[pid] = res if not isinstance(res, Exception) else []
 
     normalized = []
     for post in paged_posts:
         pid = post.get('id')
-        top_comments = comments_by_post_id.get(pid, []) if pid else []
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4791,9 +4721,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
         normalized.append(post)
 
     has_more = (safe_offset + safe_limit) < len(visible_posts)
@@ -4834,30 +4761,6 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    comments_cnt = post.get('comments_count', 0) or 0
-    if comments_cnt > 0:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=10,
-        )
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-
-        def _comment_created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
-
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-    else:
-        post['top_comments'] = []
     return post
 
 
@@ -5231,35 +5134,6 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    
-    # Pre-fetch existing comments but manually include the new one to ensure immediate visibility
-    try:
-        top_comments_raw = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post_id)],
-            limit=10,
-        )
-    except:
-        top_comments_raw = []
-
-    # Ensure the one we just created is included even if Firestore hasn't indexed it yet
-    if not any(c.get('id') == comment_id for c in top_comments_raw):
-        top_comments_raw.append(comment_doc)
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                # Handle ISO format with Z or +00:00
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
-    updated_post['top_comments'] = top_comments_raw[:5]
 
     # Send all notifications (replies, comments, mentions) in the background asynchronously
     asyncio.create_task(
@@ -5294,20 +5168,24 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, of
 
     safe_limit = max(1, min(limit, 500))
     safe_offset = max(0, offset)
+    user_id = token_data['user_id']
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+
+    # ⚡ Bolt Optimization: Use asyncio.gather to concurrently fetch comments, blocked users, and reported content to reduce overall endpoint latency.
     # ponytail: query_documents has no cursor/offset, so we fetch the bounded 500-cap set once
     # and paginate in memory (same pattern as get_my_posts). Upgrade to a Firestore start_after
     # cursor in query_documents if DB reads on this endpoint ever become a bottleneck.
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=500,
+    comments, blocked_user_ids, reported_comment_ids = await asyncio.gather(
+        db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post_id)],
+            limit=500,
+        ),
+        _get_blocked_user_ids(db, user_id),
+        _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     )
 
-    user_id = token_data['user_id']
-    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     comments = [
         c for c in comments
         if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids
@@ -5369,37 +5247,12 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    # Recalculate top_comments
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=200,
-    )
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-
-    await db.update_document('posts', post_id, {
-        'top_comments': top_comments[:5]
-    })
-
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
         updated_post = post.copy()
         updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    updated_post['top_comments'] = top_comments[:5]
 
     return {
         'message': 'Comment deleted',
@@ -9317,7 +9170,7 @@ async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depe
 # =================== KYC SYSTEM ===================
 
 
-def try_face_match(id_base64: str, selfie_base64: str) -> dict:
+def try_face_match() -> dict:
     """Fallback face match logic for environments without opencv/mediapipe support."""
     # In this deployment, backend face matching is disabled to avoid installing
     # heavy cv2/mediapipe dependencies. The frontend already validates live face
@@ -9653,7 +9506,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
-        match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
+        match_result = try_face_match()
         if match_result['status'] == 'verified':
             kyc_data['kyc_status'] = 'verified'
             kyc_data['kyc_verified_at'] = datetime.utcnow().isoformat() + 'Z'
@@ -10655,15 +10508,23 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 # =================== EVENTS ===================
 
 @api_router.get("/events")
-async def get_events(token_data: dict = Depends(verify_token)):
+async def get_events(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('events', limit=20)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+    docs = await db.query_documents('events', limit=fetch_limit)
+    return docs[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.get("/events/nearby")
-async def get_nearby_events(token_data: dict = Depends(verify_token)):
+async def get_nearby_events(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('events', limit=10)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+    docs = await db.query_documents('events', limit=fetch_limit)
+    return docs[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/events/{event_id}/attend")
@@ -10859,7 +10720,6 @@ async def send_library_reminder_notification(
 
 
 
-import re
 
 def sanitize_krishna_response(response_text: str) -> str:
     """
@@ -11039,7 +10899,7 @@ IDENTITY RULES:
         if new_session or not profile or profile.get("mood") == "Neutral":
             try:
                 if latest_user_msg:
-                    profile = await extract_user_profile(latest_user_msg, db_messages)
+                    profile = await extract_user_profile(latest_user_msg)
             except Exception as ext_err:
                 logger.error(f"Failed to extract profile: {ext_err}")
 
@@ -11298,6 +11158,7 @@ async def get_panchang(
     lng: Optional[float] = None,
     force_refresh: bool = False,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Get Panchang data using AstrologyAPI (switched from Prokerala)."""
     try:
@@ -11349,6 +11210,7 @@ async def get_nakshatra_report(
     lon: Optional[float] = None,
     tz: Optional[float] = None,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Get General Kundli and Vedic Astrology data using user's or custom birth details."""
     db = await get_db()
@@ -11392,6 +11254,7 @@ async def get_nakshatra_report(
 async def search_birth_city(
     q: str,
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Search for cities, coordinates and timezone offsets using AstrologyAPI.com."""
     if not q or len(q.strip()) < 2:
@@ -11409,6 +11272,7 @@ async def search_birth_city(
 async def ask_astrology_question(
     body: dict = Body(...),
     token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
 ):
     """Ask Groq a question grounded in the current astrology/panchang payload."""
     question = str(body.get("question") or "").strip()
@@ -15118,7 +14982,8 @@ def get_daily_horoscope_mock(rashi: str, date: datetime):
 async def get_detailed_panchang(
     lat: float = 28.6139,
     lng: float = 77.2090,
-    date_str: Optional[str] = None
+    date_str: Optional[str] = None,
+    _: bool = Depends(astrology_rate_limit)
 ):
     """Get detailed Panchang for a date and location"""
     if date_str:

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 
 from middleware.security import optional_verify_token
+from middleware.rate_limiter import upload_rate_limit
 from config.firebase_config import get_firestore
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ IN_MEMORY_EPISODES: Dict[str, Any] = {}
 
 def _detect_video_content_type(filename: str, provided_type: Optional[str]) -> tuple[str, str]:
     """Detect extension and MIME content-type for any video format."""
+    if filename:
+        filename = os.path.basename(filename.replace('\\', '/'))
     ext = "mp4"
     if filename and "." in filename:
         ext = filename.rsplit(".", 1)[-1].lower()
@@ -94,8 +97,9 @@ async def _verify_admin_auth(
 async def _save_upload_to_disk_chunks(upload_file: UploadFile) -> tuple[str, int]:
     """Save upload stream to temporary file in 1MB chunks to ensure zero server RAM overhead."""
     suffix = ".mp4"
-    if upload_file.filename and "." in upload_file.filename:
-        suffix = f".{upload_file.filename.rsplit('.', 1)[-1].lower()}"
+    filename = os.path.basename(upload_file.filename.replace('\\', '/')) if upload_file.filename else ""
+    if filename and "." in filename:
+        suffix = f".{filename.rsplit('.', 1)[-1].lower()}"
 
     temp_file = NamedTemporaryFile(delete=False, suffix=suffix)
     total_size = 0
@@ -448,7 +452,8 @@ async def admin_upload_katha_episode(
     duration: str = Form("01:30:00"),
     file: UploadFile = File(...),
     thumbnail: Optional[UploadFile] = File(None),
-    _: bool = Depends(_verify_admin_auth)
+    _: bool = Depends(_verify_admin_auth),
+    __: bool = Depends(upload_rate_limit)
 ):
     """
     Admin streaming upload endpoint supporting high-capacity video files (multi-GB)
@@ -469,7 +474,8 @@ async def admin_upload_katha_episode(
 
     logger.info(f"Episode ID: {episode_id}")
 
-    ext, content_type = _detect_video_content_type(file.filename or "", file.content_type)
+    safe_filename = os.path.basename(file.filename.replace('\\', '/')) if file.filename else ""
+    ext, content_type = _detect_video_content_type(safe_filename, file.content_type)
     file_name = f"ep_{episode_number}_{uuid4().hex[:8]}.{ext}"
     object_path = f"katha/acharya_shamik/saavan_katha/{file_name}"
 
@@ -541,8 +547,9 @@ async def admin_upload_katha_episode(
         if thumbnail:
             temp_thumb_path, _ = await _save_upload_to_disk_chunks(thumbnail)
             thumb_ext = "jpg"
-            if thumbnail.filename and "." in thumbnail.filename:
-                thumb_ext = thumbnail.filename.rsplit(".", 1)[-1].lower()
+            thumb_filename = os.path.basename(thumbnail.filename.replace('\\', '/')) if thumbnail.filename else ""
+            if thumb_filename and "." in thumb_filename:
+                thumb_ext = thumb_filename.rsplit(".", 1)[-1].lower()
             thumb_object_path = f"katha/acharya_shamik/saavan_katha/thumb_ep_{episode_number}_{uuid4().hex[:6]}.{thumb_ext}"
             thumbnail_url = await _stream_file_to_bunny(temp_thumb_path, thumb_object_path, thumbnail.content_type or "image/jpeg")
 

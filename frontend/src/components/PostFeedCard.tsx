@@ -31,9 +31,10 @@ import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateU
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
-import { useTabBar } from '../contexts/TabBarContext';
+import { useOptionalTabBar } from '../contexts/TabBarContext';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
+const QUICK_EMOJIS = ['✨', '🙏', '🕉️', '🌸', '🚩', '📿'];
 
 
 
@@ -114,7 +115,7 @@ const PostFeedCardComponent = ({
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
-  const menuAnim = useRef(new Animated.Value(0)).current;
+  const menuAnim = useMemo(() => new Animated.Value(0), []);
 
   const openMenu = useCallback(() => {
     setMenuVisible(true);
@@ -147,14 +148,10 @@ const PostFeedCardComponent = ({
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Tab bar visibility control
-  let showTabBar: (() => void) | undefined;
-  let hideTabBar: (() => void) | undefined;
-  try {
-    const tabBar = useTabBar();
-    showTabBar = tabBar.showTabBar;
-    hideTabBar = tabBar.hideTabBar;
-  } catch (e) { }
+  // Tab bar visibility control: safely consume TabBarContext without try/catch hook violation
+  const tabBar = useOptionalTabBar();
+  const showTabBar = tabBar?.showTabBar;
+  const hideTabBar = tabBar?.hideTabBar;
 
   useEffect(() => {
     if (isFullscreen) {
@@ -285,16 +282,16 @@ const PostFeedCardComponent = ({
   const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
 
-  const cropStyle = useMemo(() => {
-    const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
-    const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
+  const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
+  const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
+  const origW = post?.original_width ?? post?.metadata?.original_width;
+  const origH = post?.original_height ?? post?.metadata?.original_height;
 
+  // Memoize cropStyle with granular dependencies so post state changes (likes, comments, etc.) do not recompute crop layout
+  const cropStyle = useMemo(() => {
     if (cropX === undefined && cropY === undefined) {
       return null;
     }
-
-    const origW = post?.original_width ?? post?.metadata?.original_width;
-    const origH = post?.original_height ?? post?.metadata?.original_height;
 
     if (!origW || !origH) {
       return null;
@@ -330,7 +327,7 @@ const PostFeedCardComponent = ({
       height: imgHeight,
       transform: transformStyle as any
     };
-  }, [post, displayRatio, feedHeight]);
+  }, [cropX, cropY, origW, origH, displayRatio, feedHeight, SCREEN_WIDTH]);
 
   const [appState, setAppState] = useState(AppState.currentState);
 
@@ -546,7 +543,6 @@ const PostFeedCardComponent = ({
   const likesCount = Number(post?.likes_count || 0);
   const commentsCount = Number(post?.comments_count || 0);
   const viewsCount = Number(post?.views_count || 0);
-  const topComments = Array.isArray(post?.top_comments) ? post.top_comments.slice(0, 5) : [];
   const captionText = String(post?.caption || '').trim();
 
   const { captionWords, collapsedCaption, isLongCaption } = useMemo(() => {
@@ -973,12 +969,8 @@ const PostFeedCardComponent = ({
 
       {/* Stats Summary */}
       {!isEditing && (
-        <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
-          <Text style={{
-            color: theme === 'light' ? '#000' : '#FFFFFF',
-            fontWeight: '900',
-            fontSize: 14
-          }}>
+        <View style={styles.statsWrap}>
+          <Text style={[styles.statsText, { color: theme === 'light' ? '#000' : '#FFFFFF' }]}>
             {likesCount > 0 ? (
               t('language') === 'hi'
                 ? `${likesCount.toLocaleString()} पसंद`
@@ -1005,13 +997,19 @@ const PostFeedCardComponent = ({
                 placeholder={t('language') === 'hi' ? 'एक कैप्शन लिखें...' : 'Write a caption...'}
                 placeholderTextColor="rgba(255,255,255,0.4)"
               />
-              <Text style={styles.charCountTextInline}>{editedCaption?.length || 0}/500</Text>
+              <Text
+                style={styles.charCountTextInline}
+                accessibilityLabel={`${editedCaption?.length || 0} of 500 characters used`}
+                accessibilityRole="text"
+              >
+                {editedCaption?.length || 0}/500
+              </Text>
             </View>
           </View>
 
           {/* Quick Emoji Helper */}
           <View style={styles.quickEmojisContainerInline}>
-            {['✨', '🙏', '🕉️', '🌸', '🚩', '📿'].map((emoji) => (
+            {QUICK_EMOJIS.map((emoji) => (
               <TouchableOpacity
                 key={emoji}
                 style={styles.quickEmojiBtnInline}
@@ -1037,7 +1035,7 @@ const PostFeedCardComponent = ({
         </View>
       ) : (
         captionSegments.length > 0 && (
-          <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
+          <View style={styles.captionContainer}>
             <Pressable
               onPress={() => {
                 if (!isLongCaption) return;
@@ -1054,11 +1052,11 @@ const PostFeedCardComponent = ({
                 </Text>
                 {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                   seg.isHashtag ? (
-                    <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
+                    <Text key={idx} style={styles.hashtagText} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
                       {seg.text}
                     </Text>
                   ) : seg.isMention ? (
-                    <Text key={idx} style={{ color: '#8C36DB', fontWeight: '800' }} onPress={() => handleMentionPress(seg.text.slice(1))}>
+                    <Text key={idx} style={styles.mentionText} onPress={() => handleMentionPress(seg.text.slice(1))}>
                       {seg.text}
                     </Text>
                   ) : (
@@ -1067,7 +1065,7 @@ const PostFeedCardComponent = ({
                 ) : collapsedCaption}
               </Text>
               {isLongCaption && (
-                <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
+                <Text style={styles.moreLessBtnText}>
                   {isCaptionExpanded ? (t('language') === 'hi' ? 'कम दिखाएं' : 'Show less') : (t('language') === 'hi' ? 'अधिक' : 'More')}
                 </Text>
               )}
@@ -1079,26 +1077,13 @@ const PostFeedCardComponent = ({
       {!isEditing && viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
 
       {!isEditing && (
-        <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-          <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+        <TouchableOpacity onPress={() => onComment?.(post)} style={styles.viewCommentsBtn}>
+          <Text style={[styles.viewCommentsText, { color: theme === 'light' ? '#666' : '#FFFFFF' }]}>
             {commentsCount > 0
               ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
               : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
           </Text>
         </TouchableOpacity>
-      )}
-
-      {!isEditing && topComments.length > 0 && (
-        <View style={styles.topCommentsWrap}>
-          {topComments.map((comment: any, index: number) => (
-            <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
-              <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
-                {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
-              </Text>
-              <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
-            </Text>
-          ))}
-        </View>
       )}
 
       {isFullscreen && (
@@ -1316,6 +1301,40 @@ const styles = StyleSheet.create({
     color: '#FF6B00',
     fontSize: 10,
     fontWeight: '700',
+  },
+  statsWrap: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: 2,
+  },
+  statsText: {
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  captionContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  hashtagText: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  mentionText: {
+    color: '#8C36DB',
+    fontWeight: '800',
+  },
+  moreLessBtnText: {
+    color: COLORS.primary,
+    marginTop: 4,
+    fontWeight: '900',
+  },
+  viewCommentsBtn: {
+    paddingHorizontal: SPACING.md,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  viewCommentsText: {
+    fontSize: 13,
+    fontWeight: '900',
   },
 });
 

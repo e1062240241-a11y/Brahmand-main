@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
-  FlatList,
   RefreshControl,
   Platform,
   Alert,
@@ -17,7 +16,6 @@ import {
   Animated,
   Keyboard,
   Pressable,
-  StatusBar,
   ScrollView,
   DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler, Easing
 } from 'react-native';
@@ -37,7 +35,7 @@ import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
-import api, {
+import {
   getUserProfile,
   viewPost,
   deletePost,
@@ -47,8 +45,6 @@ import api, {
   deletePostComment,
   addPostComment,
   repostPost,
-  reportPost,
-  uploadUserPost,
   updateProfile,
   uploadChatMedia,
   setupDualLocation,
@@ -61,7 +57,6 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING } from '../../src/constants/theme';
-import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;
@@ -1171,11 +1166,9 @@ export default function ProfileScreen() {
     const targetPostId = selectedCommentPost.id;
     setPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -1184,11 +1177,9 @@ export default function ProfileScreen() {
     if (selectedPost?.id === targetPostId) {
       setSelectedPost((prev: any) => {
         if (prev) {
-          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
           return {
             ...prev,
             comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-            top_comments: currentTop.filter((c: any) => c.id !== commentId),
           };
         }
         return prev;
@@ -1197,11 +1188,9 @@ export default function ProfileScreen() {
 
     setSelectedCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -1214,27 +1203,23 @@ export default function ProfileScreen() {
       if (updatedPostFromServer) {
         setPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
         }));
 
         if (selectedPost?.id === targetPostId) {
-          setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPostFromServer, top_comments: (Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : []).slice(0, 2) } : prev);
+          setSelectedPost((prev: any) => prev ? { ...prev, ...updatedPostFromServer } : prev);
         }
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;

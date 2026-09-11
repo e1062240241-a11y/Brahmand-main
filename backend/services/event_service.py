@@ -62,25 +62,29 @@ class EventService:
         return serialize_doc(event)
     
     @staticmethod
-    async def get_events() -> List[Dict[str, Any]]:
-        """Get upcoming events"""
+    async def get_events(limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get upcoming events with pagination"""
         db = await EventService.get_db()
         today = datetime.utcnow().strftime("%Y-%m-%d")
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        fetch_limit = safe_offset + safe_limit
+
         try:
             events = await db.query_documents(
                 'events',
                 filters=[('date', '>=', today)],
                 order_by='date',
                 order_direction='ASCENDING',
-                limit=20
+                limit=fetch_limit
             )
         except Exception as e:
             logger.warning(f"Failed to query events with filter: {e}. Falling back to simple query.")
-            events = await db.query_documents('events', limit=20)
+            events = await db.query_documents('events', limit=fetch_limit)
         
         # If no future events found, fallback to return all events
         if not events:
-            events = await db.query_documents('events', limit=20)
+            events = await db.query_documents('events', limit=fetch_limit)
 
         # Normalize events
         normalized = []
@@ -102,17 +106,21 @@ class EventService:
                 doc['time'] = dt.strftime("%H:%M")
             normalized.append(doc)
             
-        return normalized
+        return normalized[safe_offset:safe_offset + safe_limit]
     
     @staticmethod
-    async def get_nearby_events(user_id: str) -> List[Dict[str, Any]]:
-        """Get events near user's location"""
+    async def get_nearby_events(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get events near user's location with pagination"""
         db = await EventService.get_db()
         user = await db.get_document('users', user_id)
         if not user:
             return []
         user_location = user.get("location", {})
         
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        fetch_limit = safe_offset + safe_limit
+
         # Get events in user's city
         today = datetime.utcnow().strftime("%Y-%m-%d")
         filters = [('date', '>=', today)]
@@ -126,11 +134,11 @@ class EventService:
                 filters=filters,
                 order_by='date',
                 order_direction='ASCENDING',
-                limit=20
+                limit=fetch_limit
             )
         except Exception as e:
             logger.warning(f"Failed to query nearby events with filter: {e}")
-            events = await db.query_documents('events', limit=20)
+            events = await db.query_documents('events', limit=fetch_limit)
         
         # Add distance info (simplified)
         result = []
@@ -139,7 +147,7 @@ class EventService:
             event["distance"] = "2.5 km"  # Placeholder - calculate actual distance
             result.append(event)
         
-        return result
+        return result[safe_offset:safe_offset + safe_limit]
     
     @staticmethod
     async def get_event(event_id: str) -> Dict[str, Any]:

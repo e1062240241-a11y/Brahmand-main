@@ -100,9 +100,12 @@ export default function NewDMScreen() {
       const conversationsList = convResponse.data || [];
       const otherUsers = allUsers.filter((u: any) => u.id !== user?.id);
 
-      const chattedUserIds = new Set(
-        conversationsList.map((c: any) => c.user?.id).filter(Boolean)
-      );
+      const chattedUserIds = new Set<string>();
+      for (const c of conversationsList) {
+        if (c.user?.id) {
+          chattedUserIds.add(c.user.id);
+        }
+      }
       
       let frequent = otherUsers.filter((u: any) => chattedUserIds.has(u.id));
       let suggested = otherUsers.filter((u: any) => !chattedUserIds.has(u.id));

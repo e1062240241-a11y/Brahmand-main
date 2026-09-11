@@ -1,5 +1,6 @@
 """Firebase Push Notification Service using FCM"""
 import logging
+import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -28,15 +29,19 @@ class FirebaseNotificationService:
     async def _get_blocked_user_ids(db, user_id: str) -> set:
         blocked_ids = set()
         try:
+            # Prepare tasks for concurrent execution
+            blocks_by_me_task = db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+            blocks_of_me_task = db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+
+            blocks_by_me, blocks_of_me = await asyncio.gather(blocks_by_me_task, blocks_of_me_task)
+
             # Users blocked by user_id
-            blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
             for b in blocks_by_me:
                 b_uid = b.get('blockedUid')
                 if b_uid:
                     blocked_ids.add(b_uid)
             
             # Users who blocked user_id
-            blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
             for b in blocks_of_me:
                 b_uid = b.get('blockerUid')
                 if b_uid:

@@ -12,7 +12,7 @@ import { RequestFormModal } from '../../src/components/RequestFormModal';
 import SharePostModal from '../../src/components/SharePostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getCommunities, getHomeFeed, getHomeInit, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
+import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getCommunities, getHomeFeed, getHomeShell, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { socketService } from '../../src/services/socket';
 import { useAuthStore } from '../../src/store/authStore';
@@ -35,7 +35,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, Interacti
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
-import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
+import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
 import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
 
 let FileSystemModule: any = null;
@@ -1100,12 +1100,9 @@ export default function HomeScreen() {
         setTabFeed(activeTab, {
           posts: currentPosts.map((item) => {
             if (item.id === selectedCommentPostId) {
-              const currentTop = Array.isArray(item.top_comments) ? item.top_comments : [];
               return {
                 ...item,
                 ...updatedPost,
-                // Ensure the new comment is shown in the 'outer' preview
-                top_comments: [serverComment || optimisticComment, ...currentTop].slice(0, 2)
               };
             }
             return item;
@@ -1114,7 +1111,6 @@ export default function HomeScreen() {
         setSelectedCommentPost((prev: any) => (prev?.id === selectedCommentPostId ? {
           ...prev,
           ...updatedPost,
-          top_comments: [serverComment || optimisticComment, ...(Array.isArray(prev.top_comments) ? prev.top_comments : [])].slice(0, 2)
         } : prev));
       }
 
@@ -1274,15 +1270,12 @@ export default function HomeScreen() {
     let originalPostInFeed: any = null;
     if (postToUpdate) {
       originalPostInFeed = { ...postToUpdate };
-      const currentTop = Array.isArray(postToUpdate.top_comments) ? postToUpdate.top_comments : [];
-      const updatedTop = currentTop.filter((c: any) => c.id !== commentId);
       setTabFeed(activeTab, {
         posts: currentPosts.map((item) => {
           if (item.id === selectedCommentPostId) {
             return {
               ...item,
               comments_count: Math.max(0, (Number(item.comments_count) || 0) - 1),
-              top_comments: updatedTop,
             };
           }
           return item;
@@ -1293,11 +1286,9 @@ export default function HomeScreen() {
     if (selectedCommentPost) {
       setSelectedCommentPost((prev: any) => {
         if (prev?.id === selectedCommentPostId) {
-          const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
           return {
             ...prev,
             comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-            top_comments: currentTop.filter((c: any) => c.id !== commentId),
           };
         }
         return prev;
@@ -1313,11 +1304,9 @@ export default function HomeScreen() {
         setTabFeed(activeTab, {
           posts: refreshedPosts.map((item) => {
             if (item.id === selectedCommentPostId) {
-              const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
               return {
                 ...item,
                 ...updatedPostFromServer,
-                top_comments: currentTop.slice(0, 2),
               };
             }
             return item;
@@ -1326,11 +1315,9 @@ export default function HomeScreen() {
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === selectedCommentPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;

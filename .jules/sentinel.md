@@ -18,3 +18,15 @@
 **Vulnerability:** The backend was logging raw upstream API error responses (`response.text`) in their entirety when making external HTTP requests (e.g. to the NettyFish SMS gateway).
 **Learning:** Logging raw 3rd-party response bodies in their entirety exposes the application to log injection attacks, limits exposure of potentially sensitive data (like user phone numbers or tokens echoed back in unexpected error responses), and protects against disk exhaustion from abnormally large or malformed HTML payloads.
 **Prevention:** When logging 3rd-party API responses (e.g., `response.text`), always truncate the logged body (e.g., `response.text[:200]`) to protect the logging infrastructure and prevent information exposure.
+## 2025-03-09 - Fix Path Traversal in Video Uploads
+**Vulnerability:** Path Traversal via unsanitized `UploadFile.filename` in FastAPI routes (`backend/routes/katha_routes.py` and `backend/routes/video_upload_routes.py`).
+**Learning:** `UploadFile.filename` is user-provided and can contain directory traversal sequences (like `../../../`) or Windows-style paths (`..\..\..\`). Directly using it to build output paths or determine file extensions can allow an attacker to write files outside intended directories.
+**Prevention:** Always sanitize `file.filename` using `os.path.basename(file.filename.replace('\\', '/'))` before using it in any backend logic.
+## 2025-03-09 - Missing Rate Limit on Admin Login
+**Vulnerability:** The `/admin/auth/login` endpoint was lacking rate limiting middleware (`Depends(auth_rate_limit)`), leaving the admin panel exposed to brute-force credential attacks.
+**Learning:** While other standard authentication endpoints (like OTP and login) might be protected, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
+**Prevention:** Ensure that all endpoints associated with authentication, session generation, or token issuance uniformly implement the `Depends(auth_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
+## 2025-03-09 - Missing Rate Limit on Admin Upload Endpoint
+**Vulnerability:** The `/admin/upload` endpoint in `backend/routes/katha_routes.py` was missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large file uploads.
+**Learning:** While other standard file upload endpoints (like `/videos/upload`) might be protected with `Depends(upload_rate_limit)`, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
+**Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.

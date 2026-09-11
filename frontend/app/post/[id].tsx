@@ -185,8 +185,17 @@ const PostScreen = () => {
             const pool = allSessionPostsRef.current;
             if (pool.length > 1) {
               const recycledFiltered = pool.filter(p => p && p.id && !existing.has(String(p.id)));
-              const shuffled = recycledFiltered.sort(() => Math.random() - 0.5);
-              return [...prev, ...shuffled.slice(0, FEED_PAGE_SIZE * 2)];
+
+              // Use partial Fisher-Yates shuffle instead of sort(() => Math.random() - 0.5) for O(K) complexity
+              const k = Math.min(FEED_PAGE_SIZE * 2, recycledFiltered.length);
+              for (let i = 0; i < k; i++) {
+                const j = i + Math.floor(Math.random() * (recycledFiltered.length - i));
+                const temp = recycledFiltered[i];
+                recycledFiltered[i] = recycledFiltered[j];
+                recycledFiltered[j] = temp;
+              }
+
+              return [...prev, ...recycledFiltered.slice(0, k)];
             }
             return prev;
           }
@@ -272,13 +281,7 @@ const PostScreen = () => {
       if (!comment) return;
       setPostComments(prev => {
         if (prev.some(c => c.id === comment.id)) return prev;
-        const merged = [...prev, comment];
-        merged.sort((a: any, b: any) => {
-          const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-          const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
-        return merged;
+        return [comment, ...prev];
       });
       setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: data.comments_count || p.comments_count } : p));
     };
@@ -331,11 +334,9 @@ const PostScreen = () => {
     const targetPostId = commentPost.id;
     setFeedPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -343,11 +344,9 @@ const PostScreen = () => {
 
     setCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -360,11 +359,9 @@ const PostScreen = () => {
       if (updatedPostFromServer) {
         setFeedPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
@@ -372,11 +369,9 @@ const PostScreen = () => {
 
         setCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;
