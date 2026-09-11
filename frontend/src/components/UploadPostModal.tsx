@@ -1344,15 +1344,15 @@ export const UploadPostModal = ({
                     color="#666"
                   />
                   <Text style={styles.muteLabel}>
-                    {t("language") === "hi"
-                      ? "ऑдио म्यूट करें"
-                      : "Mute Audio"}
+                    {t("language") === "hi" ? "ऑडियो म्यूट करें" : "Mute Audio"}
                   </Text>
                   <Switch
                     value={mutedAudio}
                     onValueChange={setMutedAudio}
                     trackColor={{ false: "#ddd", true: "#FF6B00" }}
                     thumbColor="#fff"
+                    accessibilityRole="switch"
+                    accessibilityLabel={t("language") === "hi" ? "ऑडियो म्यूट करें" : "Mute Audio"}
                   />
                 </View>
               )}
