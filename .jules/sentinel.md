@@ -30,3 +30,7 @@
 **Vulnerability:** The `/admin/upload` endpoint in `backend/routes/katha_routes.py` was missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large file uploads.
 **Learning:** While other standard file upload endpoints (like `/videos/upload`) might be protected with `Depends(upload_rate_limit)`, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
 **Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
+## 2025-03-09 - Missing Rate Limit on File Upload Endpoints
+**Vulnerability:** The vendor and KYC file upload endpoints in `backend/main.py` (`/vendors/{vendor_id}/business/images/upload`, `/vendors/{vendor_id}/kyc/upload`, `/vendors/{vendor_id}/kyc/vision-extract`, and `/kyc/vision-extract`) were missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large or repeated file uploads.
+**Learning:** While other standard file upload endpoints (like `/videos/upload` or `/posts/upload`) were protected with `Depends(upload_rate_limit)`, these specific vendor and KYC endpoints missed the dependency.
+**Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of their location in the router.
