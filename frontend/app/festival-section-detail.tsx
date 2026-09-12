@@ -243,54 +243,38 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Share to WhatsApp Status (Image) Button */}
-            <TouchableOpacity 
-              style={[
-                styles.headerActionButton, 
-                isStorySection && styles.storyHeaderButtonCircle, 
-                { borderColor: 'rgba(37, 211, 102, 0.45)', backgroundColor: isStorySection ? 'rgba(0, 0, 0, 0.55)' : '#F0FDF4' }
-              ]} 
-              onPress={() => handleShareImage('whatsapp')}
-              activeOpacity={0.7}
-              disabled={isSharing}
-              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Share to WhatsApp Status as Image"
-            >
-              <Ionicons
-                name="logo-whatsapp"
-                size={19}
-                color="#25D366"
+          {/* Share as PDF Button */}
+          <TouchableOpacity 
+            style={[
+              styles.sharePdfButton, 
+              isStorySection && styles.storySharePdfButton
+            ]} 
+            onPress={isStorySection ? handleSharePdf : () => handleShareImage('generic')}
+            activeOpacity={0.7}
+            disabled={isSharing}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Share as PDF"
+          >
+            {isSharing ? (
+              <ActivityIndicator
+                size="small"
+                color={isStorySection ? '#FFFFFF' : '#111827'}
               />
-            </TouchableOpacity>
-
-            {/* Share as PDF Button (or generic share on non-story sections) */}
-            <TouchableOpacity 
-              style={[styles.headerActionButton, isStorySection && styles.storyHeaderButtonCircle]} 
-              onPress={isStorySection ? handleSharePdf : () => handleShareImage('generic')}
-              activeOpacity={0.7}
-              disabled={isSharing}
-              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={isStorySection ? "Share as Sacred PDF" : "Share section"}
-            >
-              {isSharing ? (
-                <ActivityIndicator
-                  size="small"
-                  color={isStorySection ? '#FFFFFF' : '#111827'}
-                />
-              ) : (
+            ) : (
+              <View style={styles.sharePdfContent}>
                 <Ionicons
-                  name={isStorySection ? 'document-text-outline' : 'share-social-outline'}
-                  size={19}
+                  name="document-text-outline"
+                  size={17}
                   color={isStorySection ? '#FFFFFF' : '#111827'}
                 />
-              )}
-            </TouchableOpacity>
-          </View>
+                <Text style={[styles.sharePdfText, isStorySection && styles.storySharePdfText]}>
+                  Share as PDF
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {isStorySection ? (
@@ -385,6 +369,34 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sharePdfButton: {
+    height: 38,
+    paddingHorizontal: 12,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storySharePdfButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  sharePdfContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sharePdfText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  storySharePdfText: {
+    color: '#FFFFFF',
   },
 });
 

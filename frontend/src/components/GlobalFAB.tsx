@@ -89,6 +89,22 @@ export function GlobalFAB() {
   const fabExpandedRef = useRef(fabExpanded);
   useEffect(() => {
     fabExpandedRef.current = fabExpanded;
+    if (Platform.OS === 'android' && fabExpanded) {
+      try {
+        const NavigationBar = require('expo-navigation-bar');
+        if (typeof NavigationBar.setBackgroundColorAsync === 'function') {
+          NavigationBar.setBackgroundColorAsync('#00000000').catch(() => {});
+        }
+        if (typeof NavigationBar.setBorderColorAsync === 'function') {
+          NavigationBar.setBorderColorAsync('#00000000').catch(() => {});
+        }
+        if (typeof NavigationBar.setStyle === 'function') {
+          NavigationBar.setStyle('light');
+        } else if (typeof NavigationBar.setButtonStyleAsync === 'function') {
+          NavigationBar.setButtonStyleAsync('light').catch(() => {});
+        }
+      } catch (err) {}
+    }
   }, [fabExpanded]);
 
   const isCheckingSOSRef = useRef(false);
@@ -441,6 +457,7 @@ export function GlobalFAB() {
         transparent
         animationType="fade"
         statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={toggleFab}
       >
         <TouchableOpacity
