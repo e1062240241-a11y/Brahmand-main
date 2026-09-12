@@ -179,43 +179,36 @@ const FestivalSectionDetailPage = () => {
     );
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: isStorySection ? '#030712' : '#FDF8F0' }}>
-      <StatusBar
-        translucent={isStorySection}
-        barStyle={isStorySection ? 'light-content' : 'dark-content'}
-        backgroundColor={isStorySection ? 'transparent' : '#FDF8F0'}
-      />
-      <SafeAreaView style={{ flex: 1 }} edges={isStorySection ? [] : ['top']}>
-        {/* Offscreen Full Master Catalog Image Container - rendered behind screen with full dimensions for reliable Android snapshot */}
+  const renderContent = () => (
+    <SafeAreaView style={{ flex: 1 }} edges={isStorySection ? [] : ['top']}>
+      {/* Offscreen Full Master Catalog Image Container for Sharing Snapshot */}
+      <View
+        style={{
+          position: 'absolute',
+          left: -9999,
+          top: 0,
+          width: 480,
+          height: 853,
+          zIndex: -9999,
+        }}
+        pointerEvents="none"
+      >
         <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: 480,
-            height: 853,
-            zIndex: -9999,
-            elevation: -1,
-          }}
-          pointerEvents="none"
+          ref={catalogRef}
+          collapsable={false}
+          style={{ width: 480, height: 853, backgroundColor: '#0F0818' }}
         >
-          <View
-            ref={catalogRef}
-            collapsable={false}
-            style={{ width: 480, height: 853, backgroundColor: '#0F0818' }}
-          >
-            <FestivalMasterCatalogCard festival={festival} />
-          </View>
+          <FestivalMasterCatalogCard festival={festival} />
         </View>
+      </View>
 
-        {/* Top Header Bar */}
-        <View
-          style={[
-            styles.header,
-            isStorySection && styles.headerStoryFloating,
-          ]}
-        >
+      {/* Top Header Bar */}
+      <View
+        style={[
+          styles.header,
+          isStorySection && styles.headerStoryFloating,
+        ]}
+      >
           <TouchableOpacity 
             style={[styles.backButton, isStorySection && styles.storyHeaderButtonCircle]} 
             onPress={() => {
@@ -313,7 +306,34 @@ const FestivalSectionDetailPage = () => {
           </ScrollView>
         )}
       </SafeAreaView>
-    </View>
+    );
+
+  if (isStorySection) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#030712' }}>
+        <StatusBar
+          translucent={true}
+          barStyle="light-content"
+          backgroundColor="transparent"
+        />
+        {renderContent()}
+      </View>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.1058, 0.2212]}
+      style={{ flex: 1 }}
+    >
+      <StatusBar
+        translucent={false}
+        barStyle="dark-content"
+        backgroundColor="#FF8D57"
+      />
+      {renderContent()}
+    </LinearGradient>
   );
 };
 

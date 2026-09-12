@@ -275,7 +275,7 @@ const CelebrationPage = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: SPACING.md,

@@ -8,7 +8,6 @@
  */
 
 import {
-  getFirestore,
   collection,
   addDoc,
   setDoc,
@@ -21,7 +20,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
-import { initializeFirebase, getFirebaseAuth } from './config';
+import { initializeFirebase, getFirebaseAuth, getFirestoreDB } from './config';
 
 export type ReportReason =
   | 'spam'
@@ -57,8 +56,7 @@ export interface ReportPayload {
 }
 
 function getDB() {
-  const app = initializeFirebase();
-  return getFirestore(app);
+  return getFirestoreDB();
 }
 
 /**
