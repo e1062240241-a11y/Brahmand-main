@@ -332,13 +332,38 @@ export default function AstrologyScreen() {
     return d;
   };
 
-  const handlePlaceOfBirthChange = async (val: string) => {
+  const placeSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const placeSearchAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (placeSearchTimeoutRef.current) clearTimeout(placeSearchTimeoutRef.current);
+      if (placeSearchAbortRef.current) placeSearchAbortRef.current.abort();
+    };
+  }, []);
+
+  const handlePlaceOfBirthChange = (val: string) => {
     setPlaceOfBirth(val);
     setSelectedLat(null);
     setSelectedLon(null);
 
+    if (placeSearchTimeoutRef.current) {
+      clearTimeout(placeSearchTimeoutRef.current);
+    }
+    if (placeSearchAbortRef.current) {
+      placeSearchAbortRef.current.abort();
+    }
+
     const trimmed = val.trim();
-    if (trimmed.length >= 1) {
+    if (trimmed.length < 2) {
+      setFilteredCities([]);
+      return;
+    }
+
+    placeSearchTimeoutRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      placeSearchAbortRef.current = controller;
+
       // Instant local search suggestions first
       const localFiltered = CITIES_DB.filter(city =>
         city.toLowerCase().includes(trimmed.toLowerCase())
@@ -369,9 +394,10 @@ export default function AstrologyScreen() {
 
       setFilteredCities(makeSuggestionsList(localFiltered.slice(0, 8)));
 
-      // Network API search suggestions (supports villages, talukas & local regions via Nominatim/Google)
+      // Network API search suggestions
       try {
         const response = await forwardGeocode(trimmed);
+        if (controller.signal.aborted) return;
         if (response && response.data && Array.isArray(response.data)) {
           const apiSuggestions = response.data.map((item: any) => ({
             display_name: item.display_name,
@@ -386,14 +412,15 @@ export default function AstrologyScreen() {
           const remainingLocal = localFiltered.filter(l => !existingNames.has(l.display_name.toLowerCase()));
           const combined = [...apiSuggestions, ...remainingLocal].slice(0, 8);
 
-          setFilteredCities(makeSuggestionsList(combined));
+          if (!controller.signal.aborted) {
+            setFilteredCities(makeSuggestionsList(combined));
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError' || controller.signal.aborted) return;
         console.warn('Failed to fetch place of birth suggestions:', err);
       }
-    } else {
-      setFilteredCities([]);
-    }
+    }, 400);
   };
 
   const handleCalculate = async () => {
