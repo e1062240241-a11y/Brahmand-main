@@ -101,7 +101,10 @@ class FirebaseUserService:
         
         # Get all users with pagination
         users = []
-        docs = users_ref.limit(limit).offset(offset).stream()
+        docs = users_ref.select([
+            "sl_id", "name", "photo", "language", "badges",
+            "reputation", "created_at", "is_verified", "verification_level"
+        ]).limit(limit).offset(offset).stream()
         
         async for doc in docs:
             user_data = doc.to_dict()
