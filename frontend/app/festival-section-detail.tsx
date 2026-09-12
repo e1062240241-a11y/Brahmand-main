@@ -11,7 +11,8 @@ import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCa
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
-import { shareFestivalStoryPdf } from '../src/utils/generateFestivalStoryPdf';
+import { shareFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
+import { getFestivalImage } from '../src/constants/festivalImages';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   console.log('[FestivalSectionDetail Debug] safeCaptureRef called');
@@ -104,33 +105,59 @@ const FestivalSectionDetailPage = () => {
     loadFestival();
   }, [festivalIndex]);
 
-  const handleShare = async () => {
+  const handleSharePdf = async () => {
+    if (!festival || isSharing) return;
+    try {
+      setIsSharing(true);
+      await shareFestivalStoryPdf(festival);
+    } catch (err) {
+      console.warn('Failed to share festival PDF', err);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleShareImage = async (targetApp: 'whatsapp' | 'generic' = 'whatsapp') => {
     if (!festival || isSharing) return;
 
     try {
       setIsSharing(true);
       const festivalName = (festival.festival_name || festival.name || festival.title || 'Sacred Festival').toUpperCase();
 
-      // If viewing the Story page, share the authentic sacred katha as a PDF document
-      if (isStorySection) {
-        await shareFestivalStoryPdf(festival);
-        return;
-      }
-
       let imageUri: string | null = null;
       if (catalogRef.current) {
-        await new Promise((res) => setTimeout(res, 250));
+        // Allow brief delay for view mounting & rendering
+        await new Promise((res) => setTimeout(res, 300));
         const captureResult = await safeCaptureRef(catalogRef, {
           format: 'png',
-          quality: 0.9,
+          quality: 0.95,
           result: 'tmpfile',
         });
         imageUri = captureResult.uri;
       }
 
-      await shareFestivalCard(imageUri, festivalName);
+      // Robust fallback if view capture was null or failed
+      if (!imageUri) {
+        const fallbackImg = getFestivalImage(festival);
+        if (fallbackImg?.uri) {
+          imageUri = fallbackImg.uri;
+        }
+      }
+
+      const statusTrackedUrl = getTrackedBrahmandUrl(
+        festivalName,
+        targetApp === 'whatsapp' ? 'whatsapp_status' : 'whatsapp_share'
+      );
+      await shareFestivalCard(
+        imageUri,
+        festivalName,
+        `🌸 *${festivalName} Sacred Katha & Darshan* 🌸\n\n` +
+        `Read the authentic sacred katha, daily panchang & live jaap on Brahmand App.\n\n` +
+        `📲 Download Brahmand App:\n👉 ${statusTrackedUrl}`,
+        targetApp
+      );
     } catch (err) {
-      console.warn('Failed to share festival section', err);
+      console.warn('Failed to share festival image', err);
     } finally {
       setIsSharing(false);
     }
@@ -160,18 +187,24 @@ const FestivalSectionDetailPage = () => {
         backgroundColor={isStorySection ? 'transparent' : '#FDF8F0'}
       />
       <SafeAreaView style={{ flex: 1 }} edges={isStorySection ? [] : ['top']}>
-        {/* Offscreen Full Master Catalog Image Container */}
+        {/* Offscreen Full Master Catalog Image Container - rendered behind screen with full dimensions for reliable Android snapshot */}
         <View
           style={{
             position: 'absolute',
-            left: -9999,
             top: 0,
+            left: 0,
             width: 480,
+            height: 853,
             zIndex: -9999,
+            elevation: -1,
           }}
           pointerEvents="none"
         >
-          <View ref={catalogRef} collapsable={false}>
+          <View
+            ref={catalogRef}
+            collapsable={false}
+            style={{ width: 480, height: 853, backgroundColor: '#0F0818' }}
+          >
             <FestivalMasterCatalogCard festival={festival} />
           </View>
         </View>
@@ -210,29 +243,54 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          <TouchableOpacity 
-            style={[styles.shareButton, isStorySection && styles.storyHeaderButtonCircle]} 
-            onPress={handleShare}
-            activeOpacity={0.7}
-            disabled={isSharing}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Share section"
-          >
-            {isSharing ? (
-              <ActivityIndicator
-                size="small"
-                color={isStorySection ? '#FFFFFF' : '#111827'}
-              />
-            ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Share to WhatsApp Status (Image) Button */}
+            <TouchableOpacity 
+              style={[
+                styles.headerActionButton, 
+                isStorySection && styles.storyHeaderButtonCircle, 
+                { borderColor: 'rgba(37, 211, 102, 0.45)', backgroundColor: isStorySection ? 'rgba(0, 0, 0, 0.55)' : '#F0FDF4' }
+              ]} 
+              onPress={() => handleShareImage('whatsapp')}
+              activeOpacity={0.7}
+              disabled={isSharing}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Share to WhatsApp Status as Image"
+            >
               <Ionicons
-                name="share-social-outline"
-                size={20}
-                color={isStorySection ? '#FFFFFF' : '#111827'}
+                name="logo-whatsapp"
+                size={19}
+                color="#25D366"
               />
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+
+            {/* Share as PDF Button (or generic share on non-story sections) */}
+            <TouchableOpacity 
+              style={[styles.headerActionButton, isStorySection && styles.storyHeaderButtonCircle]} 
+              onPress={isStorySection ? handleSharePdf : () => handleShareImage('generic')}
+              activeOpacity={0.7}
+              disabled={isSharing}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={isStorySection ? "Share as Sacred PDF" : "Share section"}
+            >
+              {isSharing ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isStorySection ? '#FFFFFF' : '#111827'}
+                />
+              ) : (
+                <Ionicons
+                  name={isStorySection ? 'document-text-outline' : 'share-social-outline'}
+                  size={19}
+                  color={isStorySection ? '#FFFFFF' : '#111827'}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {isStorySection ? (
@@ -320,6 +378,13 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-end',
+  },
+  headerActionButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

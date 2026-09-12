@@ -3319,6 +3319,167 @@ async def share_post_preview(post_id: str):
     return HTMLResponse(content=html_content)
 
 
+@api_router.get("/download", response_class=HTMLResponse)
+@api_router.get("/share/download", response_class=HTMLResponse)
+async def download_app_redirect(request: Request):
+    """Smart web landing & redirect page for Brahmand App with UTM attribution."""
+    query_str = request.url.query or ""
+    play_store_base = "https://play.google.com/store/apps/details?id=com.brahmand.app"
+    play_store_url = f"{play_store_base}&referrer={quote(query_str)}" if query_str else play_store_base
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Download Brahmand App - Daily Sanatan Community</title>
+  <meta name="description" content="Download Brahmand App for Daily Panchang, 1000+ Live Temple Darshans, Live Jaap Counter & Sacred Festival Katha." />
+  <meta property="og:title" content="Download Brahmand App - Daily Sanatan Community" />
+  <meta property="og:site_name" content="Brahmand" />
+  <meta property="og:description" content="Join 1 Lakh+ devotees for Live Temple Darshan, Vedic Panchang, and Sacred Katha." />
+  <meta property="og:image" content="{DEFAULT_BRAHMAND_LOGO}" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Download Brahmand App - Daily Sanatan Community" />
+  <meta name="twitter:description" content="Join 1 Lakh+ devotees for Live Temple Darshan, Vedic Panchang, and Sacred Katha." />
+  <meta name="twitter:image" content="{DEFAULT_BRAHMAND_LOGO}" />
+  <link rel="icon" href="{DEFAULT_BRAHMAND_LOGO}" />
+  <link rel="apple-touch-icon" href="{DEFAULT_BRAHMAND_LOGO}" />
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #FDFBF7;
+      color: #2C2C2C;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }}
+    .card {{
+      background: #FFFFFF;
+      max-width: 440px;
+      width: 100%;
+      border-radius: 24px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: 0 12px 36px rgba(139, 46, 26, 0.09);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+    }}
+    .logo {{
+      width: 76px;
+      height: 76px;
+      border-radius: 20px;
+      margin: 0 auto 18px;
+      display: block;
+      box-shadow: 0 8px 20px rgba(184, 51, 42, 0.18);
+    }}
+    .brand-title {{
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #8F1C14;
+      margin-bottom: 4px;
+    }}
+    .brand-sub {{
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #334726;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }}
+    .tagline {{
+      font-size: 14px;
+      font-weight: 600;
+      color: #4A4A4A;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }}
+    .hook {{
+      font-size: 13px;
+      color: #6B7280;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }}
+    .features {{
+      background: #FDF6EC;
+      border-radius: 14px;
+      padding: 14px 10px;
+      margin-bottom: 26px;
+      display: flex;
+      justify-content: space-around;
+      font-size: 12px;
+      font-weight: 600;
+      color: #802E17;
+    }}
+    .btn {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 15px 20px;
+      background: linear-gradient(135deg, #A8201A, #7A1424);
+      color: #FFFFFF;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(143, 28, 20, 0.28);
+      transition: transform 0.15s ease;
+    }}
+    .btn:active {{ transform: scale(0.98); }}
+    .badges {{
+      margin-top: 20px;
+      font-size: 11px;
+      color: #6B7280;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }}
+  </style>
+  <script>
+    (function() {{
+      var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      var isAndroid = /android/i.test(userAgent);
+      var playStoreUrl = "{play_store_url}";
+      if (isAndroid) {{
+        window.location.replace(playStoreUrl);
+      }}
+    }})();
+  </script>
+</head>
+<body>
+  <div class="card">
+    <img src="{DEFAULT_BRAHMAND_LOGO}" alt="Brahmand App" class="logo" />
+    <h1 class="brand-title">BRAHMAND</h1>
+    <div class="brand-sub">Daily Sanatan Community</div>
+    <p class="tagline">Har Din Prabhu Sang • Apne Phone Ko Banayein Mandir.</p>
+    <p class="hook">Aaj ka Shubh Muhurat aur Live Jaap join karne ke liye Brahmand App download karein.</p>
+
+    <div class="features">
+      <span>📿 Live Jaap</span>
+      <span>📅 Daily Panchang</span>
+      <span>🛕 1000+ Darshans</span>
+    </div>
+
+    <a id="downloadBtn" href="{play_store_url}" class="btn">
+      DOWNLOAD ON GOOGLE PLAY ➔
+    </a>
+
+    <div class="badges">
+      <span>✓ 100% Free Seva</span>
+      <span>★ 1 Lakh+ Devotees</span>
+      <span>✓ Safe & Verified</span>
+    </div>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+
 @api_router.get('/posts/{post_id}/views')
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
@@ -16977,6 +17138,8 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
+app.get("/download", response_class=HTMLResponse)(download_app_redirect)
+app.get("/share/download", response_class=HTMLResponse)(download_app_redirect)
 app.mount("/socket.io", socket_app)
 
 
