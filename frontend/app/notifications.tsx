@@ -728,6 +728,13 @@ export default function NotificationsScreen() {
           }
         >
           {notifications.length === 0 ? (
+            /*
+              🧡 Engagement: Reframed "No notifications yet" to "सब शांत और मंगलमय है ✨" / "All is Peaceful ✨"
+              Lever: Reframing (Transactional -> Devotional)
+              Why: "No notifications" feels like missing out or empty transactional state.
+                   Reframing as peaceful spiritual quietude turns an empty screen into an inviting moment of devotion.
+              UI: Text-only change via i18n, zero new visual components.
+            */
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="notifications-off-outline" size={50} color="#8E8E93" />
