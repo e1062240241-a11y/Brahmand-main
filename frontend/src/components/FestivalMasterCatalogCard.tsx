@@ -114,7 +114,7 @@ export const FestivalMasterCatalogCard = forwardRef<View, FestivalMasterCatalogC
           />
           <View style={styles.brandTextWrapper}>
             <Text style={styles.brandMainTitle}>BRAHMAND</Text>
-            <Text style={styles.brandSubTitle}>India's Spiritual Network</Text>
+            <Text style={styles.brandSubTitle}>Daily Sanatan Community</Text>
           </View>
         </View>
 
@@ -242,7 +242,7 @@ export const FestivalMasterCatalogCard = forwardRef<View, FestivalMasterCatalogC
                 style={styles.downloadButtonPill}
               >
                 <Text style={styles.downloadArrow}>↓</Text>
-                <Text style={styles.downloadButtonText}>DOWNLOAD BRAHMAND</Text>
+                <Text style={styles.downloadButtonText}>DOWNLOAD BRAHMAND APP</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -254,7 +254,7 @@ export const FestivalMasterCatalogCard = forwardRef<View, FestivalMasterCatalogC
           {/* E. VERY BOTTOM BRAND STRIP */}
           <View style={styles.veryBottomBar}>
             <Text style={styles.bottomBarLeft}>
-              <Text style={styles.cinzelBrandName}>Brahmand</Text> — India's Spiritual Network
+              <Text style={styles.cinzelBrandName}>Brahmand</Text> — Daily Sanatan Community
             </Text>
             <Text style={styles.bottomBarRight}>DOWNLOAD • EXPLORE • CONNECT • EXPERIENCE</Text>
           </View>

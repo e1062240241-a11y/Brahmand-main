@@ -13,6 +13,8 @@ const CANCELLATION_REGEX = /cancelled|dismissed|user did not share/i;
 // -------------------------------------------------------------
 interface RNShareModule {
   open(options: RNShareOptions): Promise<unknown>;
+  shareSingle?(options: Record<string, unknown>): Promise<unknown>;
+  isPackageInstalled?(packageName: string): Promise<{ isInstalled: boolean; message?: string }>;
 }
 
 interface IntentLauncherModule {
@@ -120,17 +122,24 @@ const buildSharePayload = (
   const cleanTitle = festivalName.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Festival';
   const greetingHeader = `✨ Wishing you and your family a very Happy ${festivalName}! ✨`;
 
-  const shareMessage =
-    `${greetingHeader}\n\n` +
-    `${festivalDescription}\n\n` +
-    `I created this personalized greeting on Brahmand App. Check out the link in the image or click below to download!\n` +
-    `🔗 Download: ${PLAY_STORE_URL}`;
+  const isCustomCompleteMessage =
+    festivalDescription.includes('http://') ||
+    festivalDescription.includes('https://') ||
+    festivalDescription.includes('Brahmand App');
+
+  const shareMessage = isCustomCompleteMessage
+    ? festivalDescription
+    : `${greetingHeader}\n\n` +
+      `${festivalDescription}\n\n` +
+      `I created this personalized greeting on Brahmand App. Check out the link in the image or click below to download!\n` +
+      `🔗 Download: ${PLAY_STORE_URL}`;
 
   return { cleanTitle, greetingHeader, shareMessage };
 };
 
 /**
- * Prepares image file in FileSystem.documentDirectory with caching & forced PNG conversion.
+ * Prepares image file in cacheDirectory (essential on Android for FileProvider root)
+ * with remote download & forced PNG conversion when necessary.
  */
 const prepareImageFile = async (
   uri: string,
@@ -145,11 +154,28 @@ const prepareImageFile = async (
   });
 
   const friendlyFileName = `${cleanTitle}_Greeting.png`;
-  const baseDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+  // On Android, react-native-share's FileProvider ONLY exposes cache-path.
+  // Using documentDirectory fails with IllegalArgumentException: Failed to find configured root.
+  const baseDir =
+    (Platform.OS === 'android'
+      ? FileSystem.cacheDirectory
+      : FileSystem.documentDirectory || FileSystem.cacheDirectory) || FileSystem.cacheDirectory;
   const targetUri = `${baseDir}${friendlyFileName}`;
 
   try {
     let processedUri = uri;
+
+    // 0. Handle remote HTTP/HTTPS image URL by downloading it to local storage
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      try {
+        logShare('info', 'Downloading remote image to cache for sharing:', uri);
+        const downloadRes = await FileSystem.downloadAsync(uri, targetUri);
+        processedUri = downloadRes.uri;
+        return ensureFileProtocol(downloadRes.uri);
+      } catch (dlErr: unknown) {
+        logShare('warn', 'Remote image download failed in prepareImageFile:', getErrorMessage(dlErr));
+      }
+    }
 
     // 1. Forced WebP/AVIF/captured image to PNG conversion via expo-image-manipulator
     if (convertToPng) {
@@ -158,7 +184,7 @@ const prepareImageFile = async (
         if (ImageManipulator && typeof ImageManipulator.manipulateAsync === 'function') {
           logShare('info', 'Executing forced PNG conversion via ImageManipulator...');
           const manipulated = await ImageManipulator.manipulateAsync(
-            uri,
+            processedUri,
             [],
             { format: ImageManipulator.SaveFormat.PNG, compress: 1.0 }
           );
@@ -172,13 +198,24 @@ const prepareImageFile = async (
       }
     }
 
-    // 2. Save converted PNG to target URI in documentDirectory
-    await FileSystem.copyAsync({
-      from: processedUri,
-      to: targetUri,
-    });
+    // 2. Save converted PNG to target URI in baseDir if not already at destination
+    if (processedUri !== targetUri) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(targetUri);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(targetUri, { idempotent: true });
+        }
+        await FileSystem.copyAsync({
+          from: processedUri,
+          to: targetUri,
+        });
+      } catch (copyErr: unknown) {
+        logShare('warn', 'copyAsync in prepareImageFile error, using processedUri:', getErrorMessage(copyErr));
+        return ensureFileProtocol(processedUri);
+      }
+    }
 
-    logShare('info', 'File successfully copied to documentDirectory:', targetUri);
+    logShare('info', 'File successfully prepared in directory:', targetUri);
     return ensureFileProtocol(targetUri);
   } catch (err: unknown) {
     logShare('warn', 'prepareImageFile error, returning original normalized URI:', getErrorMessage(err));
@@ -187,7 +224,9 @@ const prepareImageFile = async (
 };
 
 /**
- * Universal fallback pipeline (RNShareApi.share -> expo-sharing)
+ * Universal fallback pipeline.
+ * IMPORTANT: If fileUrl exists on Android, expo-sharing MUST take precedence
+ * because RNShareApi.share on Android ignores file URLs and only sends text.
  */
 const executeUniversalFallback = async (
   fileUrl: string | null,
@@ -195,20 +234,7 @@ const executeUniversalFallback = async (
 ): Promise<boolean> => {
   const { greetingHeader, shareMessage } = payload;
 
-  // 1. React Native Built-in Share
-  try {
-    logShare('info', 'Executing universal fallback via RN Share.share...');
-    await RNShareApi.share({
-      message: shareMessage,
-      url: fileUrl || PLAY_STORE_URL,
-      title: greetingHeader,
-    });
-    return true;
-  } catch (rnApiErr: unknown) {
-    logShare('warn', 'RNShareApi fallback failed', getErrorMessage(rnApiErr));
-  }
-
-  // 2. Expo Sharing
+  // 1. Expo Sharing (Direct Native File Intent — handles images reliably on Android)
   if (fileUrl) {
     try {
       const isAvailable = await Sharing.isAvailableAsync();
@@ -222,8 +248,26 @@ const executeUniversalFallback = async (
         return true;
       }
     } catch (sharingErr: unknown) {
+      if (isUserCancellation(sharingErr)) {
+        logShare('info', 'expo-sharing cancelled by user');
+        return false;
+      }
       logShare('warn', 'expo-sharing fallback failed', getErrorMessage(sharingErr));
     }
+  }
+
+  // 2. React Native Built-in Share (Text & Link fallback)
+  try {
+    logShare('info', 'Executing universal fallback via RN Share.share...');
+    await RNShareApi.share({
+      message: shareMessage,
+      url: fileUrl || PLAY_STORE_URL,
+      title: greetingHeader,
+    });
+    return true;
+  } catch (rnApiErr: unknown) {
+    if (isUserCancellation(rnApiErr)) return false;
+    logShare('warn', 'RNShareApi fallback failed', getErrorMessage(rnApiErr));
   }
 
   return false;
@@ -234,9 +278,10 @@ const executeUniversalFallback = async (
  */
 const shareIOS = async (
   uri: string | null,
-  payload: SharePayload
+  payload: SharePayload,
+  targetApp?: 'whatsapp' | 'generic'
 ): Promise<boolean> => {
-  logShare('info', 'Executing iOS share pipeline');
+  logShare('info', 'Executing iOS share pipeline', { targetApp });
   const { cleanTitle, greetingHeader, shareMessage } = payload;
 
   let fileUrl: string | null = null;
@@ -259,6 +304,28 @@ const shareIOS = async (
   }
 
   const RNShare = getRNShare();
+
+  // If user tapped WhatsApp icon, attempt direct WhatsApp single share first
+  if (targetApp === 'whatsapp' && RNShare && typeof RNShare.shareSingle === 'function') {
+    try {
+      logShare('info', 'Attempting iOS direct WhatsApp shareSingle...');
+      await RNShare.shareSingle({
+        social: 'whatsapp',
+        url: fileUrl || undefined,
+        message: shareMessage,
+        type: 'image/png',
+      });
+      logShare('info', 'iOS direct WhatsApp share completed');
+      return true;
+    } catch (waErr: unknown) {
+      if (isUserCancellation(waErr)) {
+        logShare('info', 'iOS WhatsApp share cancelled by user');
+        return false;
+      }
+      logShare('warn', 'iOS shareSingle to WhatsApp failed, falling back to general share sheet', getErrorMessage(waErr));
+    }
+  }
+
   if (RNShare) {
     try {
       logShare('info', 'Attempting react-native-share on iOS with activityItemSources linkMetadata.title...');
@@ -308,13 +375,14 @@ const shareIOS = async (
 };
 
 /**
- * Android-specific share pipeline with IntentLauncher & third-party app support.
+ * Android-specific share pipeline with WhatsApp direct intent & fallback support.
  */
 const shareAndroid = async (
   uri: string | null,
-  payload: SharePayload
+  payload: SharePayload,
+  targetApp?: 'whatsapp' | 'generic'
 ): Promise<boolean> => {
-  logShare('info', 'Executing Android share pipeline');
+  logShare('info', 'Executing Android share pipeline', { targetApp, hasUri: Boolean(uri) });
   const { cleanTitle, greetingHeader, shareMessage } = payload;
 
   let fileUrl: string | null = null;
@@ -323,9 +391,94 @@ const shareAndroid = async (
   }
 
   const RNShare = getRNShare();
+
+  // 1. Direct WhatsApp Sharing Path (when user clicked WhatsApp icon)
+  if (targetApp === 'whatsapp') {
+    if (RNShare && typeof RNShare.shareSingle === 'function') {
+      try {
+        logShare('info', 'Attempting direct WhatsApp shareSingle on Android...');
+        let socialTarget = 'whatsapp';
+        try {
+          if (typeof RNShare.isPackageInstalled === 'function') {
+            const isWa = await RNShare.isPackageInstalled('com.whatsapp');
+            if (isWa && isWa.isInstalled === false) {
+              const isW4b = await RNShare.isPackageInstalled('com.whatsapp.w4b');
+              if (isW4b && isW4b.isInstalled) {
+                socialTarget = 'whatsappbusiness';
+              }
+            }
+          }
+        } catch (pkgErr: unknown) {
+          logShare('warn', 'Package check failed, proceeding with default WhatsApp:', getErrorMessage(pkgErr));
+        }
+
+        const singleOptions: Record<string, unknown> = {
+          social: socialTarget,
+          message: shareMessage,
+        };
+        if (fileUrl) {
+          singleOptions.url = fileUrl;
+          singleOptions.type = 'image/png';
+          singleOptions.filename = `${cleanTitle} Greeting`;
+        }
+
+        await RNShare.shareSingle(singleOptions);
+        logShare('info', 'Direct WhatsApp shareSingle completed successfully on Android');
+        return true;
+      } catch (waShareErr: unknown) {
+        if (isUserCancellation(waShareErr)) {
+          logShare('info', 'WhatsApp share cancelled by user');
+          return false;
+        }
+        logShare('warn', 'RNShare.shareSingle to WhatsApp failed, trying IntentLauncher', getErrorMessage(waShareErr));
+      }
+    }
+
+    // Direct Intent Launcher targeting WhatsApp or WhatsApp Business
+    if (fileUrl) {
+      const IntentLauncher = getIntentLauncher();
+      if (IntentLauncher) {
+        try {
+          logShare('info', 'Triggering Android IntentLauncher directly to WhatsApp...');
+          const contentUri = await FileSystem.getContentUriAsync(fileUrl);
+
+          try {
+            await IntentLauncher.startActivityAsync('android.intent.action.SEND', {
+              type: 'image/png',
+              packageName: 'com.whatsapp',
+              extra: {
+                'android.intent.extra.STREAM': contentUri,
+                'android.intent.extra.TEXT': shareMessage,
+              },
+              flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+            });
+            logShare('info', 'Android Intent launched directly to WhatsApp');
+            return true;
+          } catch (stdWaErr: unknown) {
+            logShare('info', 'WhatsApp standard not responding, trying WhatsApp Business intent...');
+            await IntentLauncher.startActivityAsync('android.intent.action.SEND', {
+              type: 'image/png',
+              packageName: 'com.whatsapp.w4b',
+              extra: {
+                'android.intent.extra.STREAM': contentUri,
+                'android.intent.extra.TEXT': shareMessage,
+              },
+              flags: 1,
+            });
+            logShare('info', 'Android Intent launched directly to WhatsApp Business');
+            return true;
+          }
+        } catch (intentErr: unknown) {
+          logShare('warn', 'Direct IntentLauncher to WhatsApp failed:', getErrorMessage(intentErr));
+        }
+      }
+    }
+  }
+
+  // 2. Generic System Share Sheet (or fallback if direct WhatsApp intent failed)
   if (RNShare) {
     try {
-      logShare('info', 'Attempting react-native-share on Android...');
+      logShare('info', 'Attempting react-native-share open on Android...');
       const shareOptions: RNShareOptions = {
         title: greetingHeader,
         subject: greetingHeader,
@@ -349,32 +502,7 @@ const shareAndroid = async (
         logShare('info', 'Android share cancelled by user');
         return false;
       }
-      logShare('warn', 'Android react-native-share failed, trying IntentLauncher', getErrorMessage(rnShareErr));
-    }
-  }
-
-  // Android Specific Intent Launcher: Sends BOTH image + caption to WhatsApp & messaging apps
-  if (fileUrl) {
-    const IntentLauncher = getIntentLauncher();
-    if (IntentLauncher) {
-      try {
-        logShare('info', 'Triggering Android IntentLauncher with Image + Caption...');
-        const contentUri = await FileSystem.getContentUriAsync(fileUrl);
-
-        await IntentLauncher.startActivityAsync('android.intent.action.SEND', {
-          type: 'image/png',
-          extra: {
-            'android.intent.extra.STREAM': contentUri,
-            'android.intent.extra.TEXT': shareMessage,
-          },
-          flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-        });
-
-        logShare('info', 'Android Intent launched successfully');
-        return true;
-      } catch (intentErr: unknown) {
-        logShare('warn', 'Android IntentLauncher error:', getErrorMessage(intentErr));
-      }
+      logShare('warn', 'Android react-native-share failed, trying universal fallback', getErrorMessage(rnShareErr));
     }
   }
 
@@ -419,26 +547,28 @@ const shareWeb = async (
 export const shareFestivalCard = async (
   uri: string | null,
   festivalName: string,
-  festivalDescription: string = 'May this auspicious occasion bring joy and prosperity.'
+  festivalDescription: string = 'May this auspicious occasion bring joy and prosperity.',
+  targetApp?: 'whatsapp' | 'generic'
 ): Promise<boolean> => {
   logShare('info', 'shareFestivalCard invoked with source URI validation:', {
     festivalName,
     platform: Platform.OS,
     hasUri: Boolean(uri),
     rawUri: uri,
+    targetApp,
   });
 
   const payload = buildSharePayload(festivalName, festivalDescription);
 
   switch (Platform.OS) {
     case 'ios':
-      return shareIOS(uri, payload);
+      return shareIOS(uri, payload, targetApp);
     case 'android':
-      return shareAndroid(uri, payload);
+      return shareAndroid(uri, payload, targetApp);
     case 'web':
       return shareWeb(uri, payload);
     default:
-      return shareAndroid(uri, payload);
+      return shareAndroid(uri, payload, targetApp);
   }
 };
 

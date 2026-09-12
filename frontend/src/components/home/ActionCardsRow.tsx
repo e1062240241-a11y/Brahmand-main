@@ -98,59 +98,6 @@ function ShopIcon() {
     );
 }
 
-function BookIcon() {
-    return (
-        <Ionicons name="book-outline" size={26} color="#FF6B00" />
-    );
-}
-
-// Fixed: Replaced inline style allocations and undefined styles.actionCard reference with StyleSheet rules
-// and memoized onPress callback with useCallback to prevent memo invalidation on card rotation timer ticks.
-const ContinueReadingCard = React.memo(function ContinueReadingCard({
-    t,
-    onPress,
-    width,
-    height,
-}: {
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
-    const isHindi = t('language') === 'hi';
-    const cardTitle = isHindi ? 'स्वाध्याय' : 'Daily Reading';
-    const cardSubtitle = isHindi ? 'पवित्र ग्रंथ पढ़ें' : 'Sacred Scriptures';
-    const badgeText = isHindi ? 'ग्रंथालय' : 'Library';
-    const btnText = isHindi ? 'पढ़ें' : 'Read';
-
-    return (
-        <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
-                <HomeCardTextureBg texture="peach">
-                    <View style={styles.cardContent}>
-                        <View style={styles.iconContainer}>
-                            <BookIcon />
-                        </View>
-                        <Text style={styles.titleText} numberOfLines={2}>{cardTitle}</Text>
-                        <Text style={styles.subtextText} numberOfLines={2}>{cardSubtitle}</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.btnBase, styles.btnOrange]}
-                        onPress={onPress}
-                    >
-                        <Text style={styles.btnText} numberOfLines={1}>{btnText}</Text>
-                    </TouchableOpacity>
-                </HomeCardTextureBg>
-            </View>
-            <View style={styles.badgeWrapper}>
-                <View style={[styles.badgeContainer, styles.badgeOrangeBorder]}>
-                    <Text style={[styles.badgeText, styles.badgeOrangeText]} numberOfLines={1}>{badgeText}</Text>
-                </View>
-            </View>
-        </View>
-    );
-});
-
 const BloodRequestCard = React.memo(function BloodRequestCard({
     request,
     t,
@@ -404,10 +351,6 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
         router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
     }, [aarti2.id, router]);
 
-    const handleContinueReadingPress = useCallback(() => {
-        router.push('/library/continue-reading');
-    }, [router]);
-
     const handleAarti2Notify = useCallback(() => {
         Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`);
     }, [aarti2.name]);
@@ -424,12 +367,6 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                 contentContainerStyle={homeStyles.actionCardsScroll}
                 style={styles.scrollViewStyle}
             >
-                <ContinueReadingCard
-                    t={t}
-                    width={actionCardWidth}
-                    height={actionCardHeight}
-                    onPress={handleContinueReadingPress}
-                />
                 <BloodRequestCard
                     request={req}
                     t={t}

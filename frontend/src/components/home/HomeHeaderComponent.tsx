@@ -392,6 +392,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         };
     }, [achPlayer]);
 
+    const isHanumanActive = Boolean(hanumanStatus?.isActive);
+
     React.useEffect(() => {
         if (!isPlayerValid(achPlayer)) return;
         const activeFocused = isFocused !== false;
@@ -399,7 +401,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         const updatePlayback = (appState: string = AppState.currentState) => {
             if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
-            const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === 1;
+            const targetBannerIdx = isHanumanActive ? 1 : 0;
+            const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === targetBannerIdx;
             if (shouldPlay) {
                 try {
                     achPlayer.play();
@@ -427,7 +430,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 if (isPlayerValid(achPlayer)) achPlayer.pause();
             } catch (_e) { }
         };
-    }, [achPlayer, isFocused, videoError, activeBannerIndex]);
+    }, [achPlayer, isFocused, videoError, activeBannerIndex, isHanumanActive]);
     return (
         <View style={{ paddingTop: 4 }}>
 
@@ -881,787 +884,609 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Hanuman Chalisa Banner (First) */}
-                            <StaticBannerCard
-                                width={screenWidth - 40}
-                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
-                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
-                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                            >
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
-                                    {/* Top Left Content */}
-                                    <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                                            <Text style={[
-                                                styles.featuredLiveTitle,
-                                                {
-                                                    color: '#FFF',
-                                                    fontFamily: 'System',
-                                                    fontSize: 15,
-                                                    fontStyle: 'normal',
-                                                    fontWeight: '700',
-                                                    letterSpacing: 1,
-                                                    textShadowColor: 'rgba(0,0,0,0.9)',
-                                                    textShadowOffset: { width: 0, height: 1 },
-                                                    textShadowRadius: 6,
-                                                }
-                                            ]}>Hanuman Chalisa</Text>
-                                        </View>
-
-                                        <Text style={[styles.featuredDevotees, {
-                                            color: '#FFF',
-                                            fontWeight: '600',
-                                            opacity: 0.9,
-                                            textShadowColor: 'rgba(0,0,0,0.8)',
-                                            textShadowOffset: { width: 0, height: 1 },
-                                            textShadowRadius: 4,
-                                            marginLeft: 14,
-                                            marginTop: 0,
-                                            marginBottom: 2,
-                                            fontSize: 13
-                                        }]}>
-                                            {hanumanStatus.isActive
-                                                ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
-                                                : (t('language') === 'hi'
-                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
-                                                    // Lever: Devotional Reframing + Satsang Proof
-                                                    // UI: Text-only change, zero new components.
-                                                    ? '2300+ भक्त पहले ही जाप समर्पित कर चुके हैं'
-                                                    : '2300+ devotees already offered jaap')}
-                                        </Text>
-
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                                            <Text style={[styles.featuredTime, {
-                                                marginTop: 0,
-                                                marginLeft: 4,
-                                                color: '#FFF',
-                                                fontWeight: '600',
-                                                fontSize: 12
-                                            }]}>
-                                                {hanumanStatus.isActive
-                                                    ? (t('language') === 'hi'
-                                                        // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
-                                                        // Lever: Reframing + Proximity to Completion
-                                                        // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
-                                                        // UI: Text-only change, zero layout/visual additions.
-                                                        ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
-                                                        : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
-                                                    : (hanumanStatus.nextSessionStart
-                                                        ? (t('language') === 'hi'
-                                                            ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
-                                                            : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Top Right LIVE Badge */}
-                                    <View style={[styles.liveBadge, {
-                                        alignSelf: 'flex-start',
-                                        backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
-                                        paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
-                                    }]}>
-                                        {hanumanStatus.isActive && <View style={styles.liveDot} />}
-                                        <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
-                                            {hanumanStatus.isActive
-                                                ? 'LIVE'
-                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {/* Bottom Button Row */}
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.joinJaapButton,
-                                            {
-                                                backgroundColor: '#FF5100',
-                                                display: 'flex',
-                                                width: 138,
-                                                height: 36,
-                                                paddingHorizontal: 12,
-                                                flexDirection: 'row',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                borderRadius: 20,
-                                                borderWidth: 1,
-                                                borderColor: 'rgba(255, 255, 255, 0.4)',
-                                                shadowColor: '#FF5100',
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: 0.5,
-                                                shadowRadius: 5,
-                                                elevation: 4,
-                                                transform: [{ scale: pressed ? 0.95 : 1 }],
-                                            }
-                                        ]}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (_e) { }
-                                            handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
-                                        }}
-                                    >
-                                        <Ionicons name="play" size={12} color="#FFF" />
-                                        <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={({ pressed }) => ({
-                                            backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
-                                            width: 36,
-                                            height: 36,
-                                            borderRadius: 18,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderWidth: 1,
-                                            borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
-                                            transform: [{ scale: pressed ? 0.92 : 1 }],
-                                        })}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            } catch (_e) { }
-                                            handleSetReminder('hanuman', 'Hanuman Chalisa');
-                                        }}
-                                    >
-                                        <Ionicons
-                                            name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
-                                            size={18}
-                                            color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
-                                        />
-                                    </Pressable>
-                                </View>
-                            </StaticBannerCard>
-
-                            {/* Live Katha Banner - Acharya Shamik Ji (Second) */}
+                            {/* Helper components for Banner 1 & Banner 2 */}
                             {(() => {
-                                // Dynamic Event State Calculation (13 August - 11 September Shravan Maas Shiv Katha)
-                                // Standardized to Asia/Kolkata (IST UTC+5:30)
-                                const getISTDate = () => {
-                                    const d = new Date();
-                                    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-                                    return new Date(utc + (3600000 * 5.5)); // UTC + 5:30 IST offset
-                                };
-                                const now = getISTDate();
-
-                                // Campaign dates in IST: 13 August 2026 8:00 AM IST to 11 September 2026 9:30 AM IST
-                                const campaignStart = new Date(2026, 7, 13, 8, 0, 0); // Month 7 = August 13th 8:00 AM IST
-                                const campaignEnd = new Date(2026, 8, 11, 9, 30, 0); // Month 8 = September 11th 9:30 AM IST
-
-                                let eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed' = 'upcoming';
-                                let targetLiveTime = campaignStart;
-
-                                if (kathaStatus) {
-                                    if (kathaStatus.is_live) {
-                                        eventStatus = 'live';
-                                    } else if (kathaStatus.is_prefetch_window) {
-                                        eventStatus = 'starting_soon';
-                                        if (kathaStatus.next_stream_at) {
-                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
-                                        }
-                                    } else if (kathaStatus.mode === 'UPCOMING') {
-                                        eventStatus = 'upcoming';
-                                        if (kathaStatus.next_stream_at) {
-                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
-                                        }
-                                    } else {
-                                        eventStatus = 'between_streams';
-                                        if (kathaStatus.next_stream_at) {
-                                            targetLiveTime = new Date(kathaStatus.next_stream_at);
-                                        }
-                                    }
-                                } else if (now.getTime() < campaignStart.getTime()) {
-                                    // Before campaign officially launches -> Upcoming targeting 13 Aug 8:00 AM IST
-                                    eventStatus = 'upcoming';
-                                    targetLiveTime = campaignStart;
-                                } else if (now.getTime() > campaignEnd.getTime()) {
-                                    // After full 1-month campaign completes
-                                    eventStatus = 'campaign_completed';
-                                } else {
-                                    // Within Campaign (13 Aug to 11 Sep): Fallback local calculation
-                                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-                                    const mStart = 8 * 60; // 8:00 AM IST (480 mins)
-                                    const mEnd = 9 * 60 + 30; // 9:30 AM IST (570 mins)
-                                    const mSoon = 7 * 60 + 45; // 7:45 AM IST
-
-                                    const eStart = 20 * 60; // 8:00 PM IST (1200 mins)
-                                    const eEnd = 21 * 60 + 30; // 9:30 PM IST (1290 mins)
-                                    const eSoon = 19 * 60 + 45; // 7:45 PM IST
-
-                                    if ((currentMinutes >= mStart && currentMinutes <= mEnd) ||
-                                        (currentMinutes >= eStart && currentMinutes <= eEnd)) {
-                                        eventStatus = 'live';
-                                    } else if (currentMinutes >= mSoon && currentMinutes < mStart) {
-                                        eventStatus = 'starting_soon';
-                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
-                                    } else if (currentMinutes >= eSoon && currentMinutes < eStart) {
-                                        eventStatus = 'starting_soon';
-                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
-                                    } else if (currentMinutes < mSoon) {
-                                        eventStatus = 'upcoming';
-                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
-                                    } else if (currentMinutes < eSoon) {
-                                        eventStatus = 'between_streams';
-                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
-                                    } else {
-                                        const isLastDay = now.getMonth() === 8 && now.getDate() === 11;
-                                        if (isLastDay) {
-                                            eventStatus = 'campaign_completed';
-                                        } else {
-                                            eventStatus = 'between_streams';
-                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
-                                        }
-                                    }
-                                }
-
-                                const isLive = Boolean(kathaStatus?.is_live || eventStatus === 'live');
-
-                                return (
-                                    <Pressable
-                                        style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={handleNavigateKatha}
+                                const renderHanumanBanner = (key: string) => (
+                                    <StaticBannerCard
+                                        key={key}
+                                        width={screenWidth - 40}
+                                        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
+                                        onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                        onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                        onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
                                     >
-                                        <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
-                                            {/* Local WebP Fallback (always rendered underneath video) */}
-                                            <Image
-                                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/banner1_optimized.webp' }}
-                                                style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
-                                                resizeMode="cover"
-                                            />
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
-                                            {!videoError && isPlayerValid(achPlayer) && (
-                                                <ExpoVideoView
-                                                    player={achPlayer}
-                                                    style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
-                                                    contentFit="cover"
-                                                    nativeControls={false}
-                                                    allowsVideoFrameAnalysis={false}
-                                                />
-                                            )}
-
-                                            {/* Right Speaker Portrait Cutout */}
-                                            <Image
-                                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_cutout.webp' }}
-                                                style={{
-                                                    position: 'absolute',
-                                                    right: -24,
-                                                    bottom: -16,
-                                                    width: '54%',
-                                                    height: '128%',
-                                                    zIndex: 1,
-                                                }}
-                                                resizeMode="contain"
-                                            />
-
-                                            {/* TOP RIGHT CORNER: LIVE BADGE WHEN ON-AIR */}
-                                            {isLive && (
-                                                <View style={{
-                                                    position: 'absolute',
-                                                    top: 12,
-                                                    right: 12,
-                                                    zIndex: 20,
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    backgroundColor: '#D32F2F',
-                                                    paddingHorizontal: 9,
-                                                    paddingVertical: 4,
-                                                    borderRadius: 12,
-                                                    borderWidth: 1,
-                                                    borderColor: '#FF8A80',
-                                                    shadowColor: '#D32F2F',
-                                                    shadowOffset: { width: 0, height: 2 },
-                                                    shadowOpacity: 0.8,
-                                                    shadowRadius: 5,
-                                                    elevation: 6,
-                                                }}>
-                                                    <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '900', letterSpacing: 0.5, marginRight: 5 }}>LIVE NOW</Text>
-                                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF' }} />
-                                                </View>
-                                            )}
-
-                                            {/* TOP RIGHT CORNER: REMOVED TIMER BADGE */}
-
-                                            {/* LEFT CONTENT AREA */}
-                                            <View
-                                                pointerEvents="box-none"
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    bottom: 0,
-                                                    width: '58%',
-                                                    paddingLeft: 14,
-                                                    paddingRight: 4,
-                                                    paddingTop: Platform.OS === 'android' ? 4 : 6,
-                                                    paddingBottom: 4,
-                                                    justifyContent: 'flex-start',
-                                                    alignItems: 'flex-start',
-                                                    zIndex: 2,
-                                                }}>
-                                                {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
-                                                <View style={{
-                                                    width: '100%',
-                                                    alignItems: 'flex-start',
-                                                }}>
-                                                    {/* TOP BANNER TITLE CHIP (🔴 LIVE | श्रावण विशेष on top-left if live) */}
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                                    </View>
-
-                                                    <View style={{ paddingLeft: 0 }}>
-                                                        <Text
-                                                            numberOfLines={1}
-                                                            style={{
-                                                                color: '#FFF8E7',
-                                                                fontSize: Platform.OS === 'ios' ? 26 : 24,
-                                                                fontWeight: '900',
-                                                                lineHeight: Platform.OS === 'ios' ? 32 : 30,
-                                                                paddingVertical: Platform.OS === 'ios' ? 2 : 0,
-                                                                letterSpacing: 0,
-                                                                textAlign: 'left',
-                                                                textShadowColor: 'rgba(216, 90, 0, 0.95)',
-                                                                textShadowOffset: { width: 1.5, height: 2.5 },
-                                                                textShadowRadius: 2,
-                                                            }}
-                                                        >
-                                                            श्रावण मास <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
-                                                        </Text>
-                                                    </View>
-
-                                                    {/* शिव कथा with iOS matra height fix & 32 lineHeight on Android */}
-                                                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 8, marginTop: Platform.OS === 'ios' ? -5 : 1 }}>
-                                                        <Text
-                                                            numberOfLines={1}
-                                                            style={{
-                                                                color: '#FFE58F',
-                                                                fontSize: 22,
-                                                                fontWeight: '900',
-                                                                lineHeight: Platform.OS === 'ios' ? 30 : 28,
-                                                                paddingVertical: Platform.OS === 'ios' ? 3 : 0,
-                                                                letterSpacing: 0.5,
-                                                                textAlign: 'left',
-                                                                textShadowColor: 'rgba(50, 18, 0, 0.98)',
-                                                                textShadowOffset: { width: 2, height: 3 },
-                                                                textShadowRadius: 1,
-                                                            }}
-                                                        >
-                                                            <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
-                                                        </Text>
-                                                    </View>
-
-                                                    {/* SPEAKER NAME - Acharya Shamik Ji */}
-                                                    <View style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'flex-start',
-                                                        marginTop: Platform.OS === 'ios' ? 0 : 1,
-                                                        marginLeft: 2,
-                                                    }}>
-                                                        <Text style={{
-                                                            color: '#FFD700',
-                                                            fontSize: Platform.OS === 'android' ? 11 : 13,
-                                                            marginRight: 4,
-                                                            transform: [{ rotate: '90deg' }],
-                                                            textShadowColor: 'rgba(255,215,0,0.8)',
-                                                            textShadowOffset: { width: 0, height: 0 },
-                                                            textShadowRadius: 4,
-                                                        }}>
-                                                            ⚜
-                                                        </Text>
-                                                        <Text style={{
-                                                            color: '#FFFFFF',
-                                                            fontSize: Platform.OS === 'android' ? 12.5 : 14.5,
+                                            {/* Top Left Content */}
+                                            <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                                                    <Text style={[
+                                                        styles.featuredLiveTitle,
+                                                        {
+                                                            color: '#FFF',
+                                                            fontFamily: 'System',
+                                                            fontSize: 15,
+                                                            fontStyle: 'normal',
                                                             fontWeight: '700',
-                                                            letterSpacing: 0.3,
+                                                            letterSpacing: 1,
                                                             textShadowColor: 'rgba(0,0,0,0.9)',
                                                             textShadowOffset: { width: 0, height: 1 },
-                                                            textShadowRadius: 3,
-                                                        }}>
-                                                            Acharya Shamik Ji
-                                                        </Text>
-                                                        <Text style={{
-                                                            color: '#FFD700',
-                                                            fontSize: Platform.OS === 'android' ? 11 : 13,
-                                                            marginLeft: 4,
-                                                            transform: [{ rotate: '90deg' }],
-                                                            textShadowColor: 'rgba(255,215,0,0.8)',
-                                                            textShadowOffset: { width: 0, height: 0 },
-                                                            textShadowRadius: 4,
-                                                        }}>
-                                                            ⚜
-                                                        </Text>
-                                                    </View>
+                                                            textShadowRadius: 6,
+                                                        }
+                                                    ]}>Hanuman Chalisa</Text>
                                                 </View>
 
-                                                {/* DATE SECTION & DYNAMIC CTA BUTTON */}
-                                                <View style={{
-                                                    alignSelf: 'flex-start',
-                                                    marginTop: Platform.OS === 'android' ? 1 : 3,
-                                                    marginLeft: 2,
-                                                }}>
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                        <Text style={{ fontSize: Platform.OS === 'android' ? 10 : 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
+                                                <Text style={[styles.featuredDevotees, {
+                                                    color: '#FFF',
+                                                    fontWeight: '600',
+                                                    opacity: 0.9,
+                                                    textShadowColor: 'rgba(0,0,0,0.8)',
+                                                    textShadowOffset: { width: 0, height: 1 },
+                                                    textShadowRadius: 4,
+                                                    marginLeft: 14,
+                                                    marginTop: 0,
+                                                    marginBottom: 2,
+                                                    fontSize: 13
+                                                }]}>
+                                                    {hanumanStatus.isActive
+                                                        ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
+                                                        : (t('language') === 'hi'
+                                                            // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
+                                                            // Lever: Devotional Reframing + Satsang Proof
+                                                            // UI: Text-only change, zero new components.
+                                                            ? '2300+ भक्त पहले ही जाप समर्पित कर चुके हैं'
+                                                            : '2300+ devotees already offered jaap')}
+                                                </Text>
+
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                                    <Ionicons name="time-outline" size={13} color="#FFF" />
+                                                    <Text style={[styles.featuredTime, {
+                                                        marginTop: 0,
+                                                        marginLeft: 4,
+                                                        color: '#FFF',
+                                                        fontWeight: '600',
+                                                        fontSize: 12
+                                                    }]}>
+                                                        {hanumanStatus.isActive
+                                                            ? (t('language') === 'hi'
+                                                                // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
+                                                                // Lever: Reframing + Proximity to Completion
+                                                                // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
+                                                                // UI: Text-only change, zero layout/visual additions.
+                                                                ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
+                                                                : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
+                                                            : (hanumanStatus.nextSessionStart
+                                                                ? (t('language') === 'hi'
+                                                                    ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
+                                                                    : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            {/* Top Right LIVE Badge */}
+                                            <View style={[styles.liveBadge, {
+                                                alignSelf: 'flex-start',
+                                                backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
+                                                paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                                            }]}>
+                                                {hanumanStatus.isActive && <View style={styles.liveDot} />}
+                                                <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
+                                                    {hanumanStatus.isActive
+                                                        ? 'LIVE'
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Bottom Button Row */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                            <Pressable
+                                                style={({ pressed }) => [
+                                                    styles.joinJaapButton,
+                                                    {
+                                                        backgroundColor: '#FF5100',
+                                                        display: 'flex',
+                                                        width: 138,
+                                                        height: 36,
+                                                        paddingHorizontal: 12,
+                                                        flexDirection: 'row',
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        borderRadius: 20,
+                                                        borderWidth: 1,
+                                                        borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                        shadowColor: '#FF5100',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.5,
+                                                        shadowRadius: 5,
+                                                        elevation: 4,
+                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                    }
+                                                ]}
+                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                    } catch (_e) { }
+                                                    handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
+                                                }}
+                                            >
+                                                <Ionicons name="play" size={12} color="#FFF" />
+                                                <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                            </Pressable>
+
+                                            <Pressable
+                                                style={({ pressed }) => ({
+                                                    backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                                    width: 36,
+                                                    height: 36,
+                                                    borderRadius: 18,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    borderWidth: 1,
+                                                    borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                                                })}
+                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                onPressIn={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                }}
+                                                onPressOut={() => {
+                                                    if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                }}
+                                                onPress={() => {
+                                                    try {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    } catch (_e) { }
+                                                    handleSetReminder('hanuman', 'Hanuman Chalisa');
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
+                                                    size={18}
+                                                    color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
+                                                />
+                                            </Pressable>
+                                        </View>
+                                    </StaticBannerCard>
+                                );
+
+                                const renderShamikKathaBanner = (key: string) => {
+                                    const getISTDate = () => {
+                                        const d = new Date();
+                                        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+                                        return new Date(utc + (3600000 * 5.5)); // UTC + 5:30 IST offset
+                                    };
+                                    const now = getISTDate();
+
+                                    const campaignStart = new Date(2026, 7, 13, 8, 0, 0);
+                                    const campaignEnd = new Date(2026, 8, 11, 9, 30, 0);
+
+                                    let eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed' = 'upcoming';
+                                    let targetLiveTime = campaignStart;
+
+                                    if (kathaStatus) {
+                                        if (kathaStatus.is_live) {
+                                            eventStatus = 'live';
+                                        } else if (kathaStatus.is_prefetch_window) {
+                                            eventStatus = 'starting_soon';
+                                            if (kathaStatus.next_stream_at) {
+                                                targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                            }
+                                        } else if (kathaStatus.mode === 'UPCOMING') {
+                                            eventStatus = 'upcoming';
+                                            if (kathaStatus.next_stream_at) {
+                                                targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                            }
+                                        } else {
+                                            eventStatus = 'between_streams';
+                                            if (kathaStatus.next_stream_at) {
+                                                targetLiveTime = new Date(kathaStatus.next_stream_at);
+                                            }
+                                        }
+                                    } else if (now.getTime() < campaignStart.getTime()) {
+                                        eventStatus = 'upcoming';
+                                        targetLiveTime = campaignStart;
+                                    } else if (now.getTime() > campaignEnd.getTime()) {
+                                        eventStatus = 'campaign_completed';
+                                    } else {
+                                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                                        const mStart = 8 * 60;
+                                        const mEnd = 9 * 60 + 30;
+                                        const mSoon = 7 * 60 + 45;
+
+                                        const eStart = 20 * 60;
+                                        const eEnd = 21 * 60 + 30;
+                                        const eSoon = 19 * 60 + 45;
+
+                                        if ((currentMinutes >= mStart && currentMinutes <= mEnd) ||
+                                            (currentMinutes >= eStart && currentMinutes <= eEnd)) {
+                                            eventStatus = 'live';
+                                        } else if (currentMinutes >= mSoon && currentMinutes < mStart) {
+                                            eventStatus = 'starting_soon';
+                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+                                        } else if (currentMinutes >= eSoon && currentMinutes < eStart) {
+                                            eventStatus = 'starting_soon';
+                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+                                        } else if (currentMinutes < mSoon) {
+                                            eventStatus = 'upcoming';
+                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+                                        } else if (currentMinutes < eSoon) {
+                                            eventStatus = 'between_streams';
+                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+                                        } else {
+                                            const isLastDay = now.getMonth() === 8 && now.getDate() === 11;
+                                            if (isLastDay) {
+                                                eventStatus = 'campaign_completed';
+                                            } else {
+                                                eventStatus = 'between_streams';
+                                                targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
+                                            }
+                                        }
+                                    }
+
+                                    const isLive = Boolean(kathaStatus?.is_live || eventStatus === 'live');
+
+                                    return (
+                                        <Pressable
+                                            key={key}
+                                            style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
+                                            onPressIn={() => {
+                                                if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                            }}
+                                            onPressOut={() => {
+                                                if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                            }}
+                                            onPress={handleNavigateKatha}
+                                        >
+                                            <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                                                {/* Local WebP Fallback (always rendered underneath video) */}
+                                                <Image
+                                                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/banner1_optimized.webp' }}
+                                                    style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
+                                                    resizeMode="cover"
+                                                />
+
+                                                {!videoError && isPlayerValid(achPlayer) && (
+                                                    <ExpoVideoView
+                                                        player={achPlayer}
+                                                        style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%', borderRadius: 16 }]}
+                                                        contentFit="cover"
+                                                        nativeControls={false}
+                                                        allowsVideoFrameAnalysis={false}
+                                                    />
+                                                )}
+
+                                                {/* Right Speaker Portrait Cutout */}
+                                                <Image
+                                                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_cutout.webp' }}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        right: -24,
+                                                        bottom: -16,
+                                                        width: '54%',
+                                                        height: '128%',
+                                                        zIndex: 1,
+                                                    }}
+                                                    resizeMode="contain"
+                                                />
+
+                                                {/* TOP RIGHT CORNER: LIVE BADGE WHEN ON-AIR */}
+                                                {isLive && (
+                                                    <View style={{
+                                                        position: 'absolute',
+                                                        top: 12,
+                                                        right: 12,
+                                                        zIndex: 20,
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        backgroundColor: '#D32F2F',
+                                                        paddingHorizontal: 9,
+                                                        paddingVertical: 4,
+                                                        borderRadius: 12,
+                                                        borderWidth: 1,
+                                                        borderColor: '#FF8A80',
+                                                        shadowColor: '#D32F2F',
+                                                        shadowOffset: { width: 0, height: 2 },
+                                                        shadowOpacity: 0.8,
+                                                        shadowRadius: 5,
+                                                        elevation: 6,
+                                                    }}>
+                                                        <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '900', letterSpacing: 0.5, marginRight: 5 }}>LIVE NOW</Text>
+                                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF' }} />
+                                                    </View>
+                                                )}
+
+                                                {/* LEFT CONTENT AREA */}
+                                                <View
+                                                    pointerEvents="box-none"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: 0,
+                                                        bottom: 0,
+                                                        width: '58%',
+                                                        paddingLeft: 14,
+                                                        paddingRight: 4,
+                                                        paddingTop: Platform.OS === 'android' ? 4 : 6,
+                                                        paddingBottom: 4,
+                                                        justifyContent: 'flex-start',
+                                                        alignItems: 'flex-start',
+                                                        zIndex: 2,
+                                                    }}>
+                                                    {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
+                                                    <View style={{
+                                                        width: '100%',
+                                                        alignItems: 'flex-start',
+                                                    }}>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }} />
+
+                                                        <View style={{ paddingLeft: 0 }}>
+                                                            <Text
+                                                                numberOfLines={1}
+                                                                style={{
+                                                                    color: '#FFF8E7',
+                                                                    fontSize: Platform.OS === 'ios' ? 26 : 24,
+                                                                    fontWeight: '900',
+                                                                    lineHeight: Platform.OS === 'ios' ? 32 : 30,
+                                                                    paddingVertical: Platform.OS === 'ios' ? 2 : 0,
+                                                                    letterSpacing: 0,
+                                                                    textAlign: 'left',
+                                                                    textShadowColor: 'rgba(216, 90, 0, 0.95)',
+                                                                    textShadowOffset: { width: 1.5, height: 2.5 },
+                                                                    textShadowRadius: 2,
+                                                                }}
+                                                            >
+                                                                श्रावण मास <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                                                            </Text>
+                                                        </View>
+
+                                                        {/* शिव कथा with iOS matra height fix & 32 lineHeight on Android */}
+                                                        <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 8, marginTop: Platform.OS === 'ios' ? -5 : 1 }}>
+                                                            <Text
+                                                                numberOfLines={1}
+                                                                style={{
+                                                                    color: '#FFE58F',
+                                                                    fontSize: 22,
+                                                                    fontWeight: '900',
+                                                                    lineHeight: Platform.OS === 'ios' ? 30 : 28,
+                                                                    paddingVertical: Platform.OS === 'ios' ? 3 : 0,
+                                                                    letterSpacing: 0.5,
+                                                                    textAlign: 'left',
+                                                                    textShadowColor: 'rgba(50, 18, 0, 0.98)',
+                                                                    textShadowOffset: { width: 2, height: 3 },
+                                                                    textShadowRadius: 1,
+                                                                }}
+                                                            >
+                                                                <Text style={{ color: '#FFD700', fontSize: 13, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                                                            </Text>
+                                                        </View>
+
+                                                        {/* SPEAKER NAME - Acharya Shamik Ji */}
+                                                        <View style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'flex-start',
+                                                            marginTop: Platform.OS === 'ios' ? 0 : 1,
+                                                            marginLeft: 2,
+                                                        }}>
+                                                            <Text style={{
+                                                                color: '#FFD700',
+                                                                fontSize: Platform.OS === 'android' ? 11 : 13,
+                                                                marginRight: 4,
+                                                                transform: [{ rotate: '90deg' }],
+                                                                textShadowColor: 'rgba(255,215,0,0.8)',
+                                                                textShadowOffset: { width: 0, height: 0 },
+                                                                textShadowRadius: 4,
+                                                            }}>
+                                                                ⚜
+                                                            </Text>
+                                                            <Text style={{
+                                                                color: '#FFFFFF',
+                                                                fontSize: Platform.OS === 'android' ? 12.5 : 14.5,
+                                                                fontWeight: '700',
+                                                                letterSpacing: 0.3,
+                                                                textShadowColor: 'rgba(0,0,0,0.9)',
+                                                                textShadowOffset: { width: 0, height: 1 },
+                                                                textShadowRadius: 3,
+                                                            }}>
+                                                                Acharya Shamik Ji
+                                                            </Text>
+                                                            <Text style={{
+                                                                color: '#FFD700',
+                                                                fontSize: Platform.OS === 'android' ? 11 : 13,
+                                                                marginLeft: 4,
+                                                                transform: [{ rotate: '90deg' }],
+                                                                textShadowColor: 'rgba(255,215,0,0.8)',
+                                                                textShadowOffset: { width: 0, height: 0 },
+                                                                textShadowRadius: 4,
+                                                            }}>
+                                                                ⚜
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+
+                                                    {/* DATE SECTION & DYNAMIC CTA BUTTON */}
+                                                    <View style={{
+                                                        alignSelf: 'flex-start',
+                                                        marginTop: Platform.OS === 'android' ? 1 : 3,
+                                                        marginLeft: 2,
+                                                    }}>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                            <Text style={{ fontSize: Platform.OS === 'android' ? 10 : 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
+                                                            <Text style={{
+                                                                color: '#F4C55A',
+                                                                fontSize: Platform.OS === 'android' ? 11 : 12,
+                                                                fontWeight: '800',
+                                                                letterSpacing: 0.2,
+                                                                textShadowColor: 'rgba(0,0,0,0.95)',
+                                                                textShadowOffset: { width: 0, height: 1 },
+                                                                textShadowRadius: 3,
+                                                            }}>
+                                                                13 अगस्त – 11 सितंबर
+                                                            </Text>
+                                                        </View>
+
+                                                        {/* Dynamic Supporting Text */}
                                                         <Text style={{
-                                                            color: '#F4C55A',
-                                                            fontSize: Platform.OS === 'android' ? 11 : 12,
-                                                            fontWeight: '800',
-                                                            letterSpacing: 0.2,
+                                                            color: '#FFFFFF',
+                                                            opacity: 0.95,
+                                                            fontWeight: '600',
+                                                            fontSize: Platform.OS === 'android' ? 10 : 11,
+                                                            marginTop: Platform.OS === 'android' ? 1 : 3,
                                                             textShadowColor: 'rgba(0,0,0,0.95)',
                                                             textShadowOffset: { width: 0, height: 1 },
                                                             textShadowRadius: 3,
                                                         }}>
-                                                            13 अगस्त – 11 सितंबर
+                                                            {(eventStatus as any) === 'live'
+                                                                ? '🔴 अभी LIVE प्रसारण चल रहा है'
+                                                                : (eventStatus as any) === 'starting_soon'
+                                                                    ? '⏰ सुबह 8:00 बजे शुरू होगा'
+                                                                    : (eventStatus as any) === 'between_streams'
+                                                                        ? 'Next Live • 8:00 AM'
+                                                                        : (eventStatus as any) === 'campaign_completed' || (eventStatus as any) === 'ended'
+                                                                            ? '🕉 Shravan Katha Series Completed'
+                                                                            : 'हर दिन सुबह 8:00 बजे LIVE'}
                                                         </Text>
-                                                    </View>
 
-                                                    {/* Dynamic Supporting Text */}
-                                                    <Text style={{
-                                                        color: '#FFFFFF',
-                                                        opacity: 0.95,
-                                                        fontWeight: '600',
-                                                        fontSize: Platform.OS === 'android' ? 10 : 11,
-                                                        marginTop: Platform.OS === 'android' ? 1 : 3,
-                                                        textShadowColor: 'rgba(0,0,0,0.95)',
-                                                        textShadowOffset: { width: 0, height: 1 },
-                                                        textShadowRadius: 3,
-                                                    }}>
-                                                        {(eventStatus as any) === 'live'
-                                                            ? '🔴 अभी LIVE प्रसारण चल रहा है'
-                                                            : (eventStatus as any) === 'starting_soon'
-                                                                ? '⏰ सुबह 8:00 बजे शुरू होगा'
-                                                                : (eventStatus as any) === 'between_streams'
-                                                                    ? 'Next Live • 8:00 AM'
-                                                                    : (eventStatus as any) === 'campaign_completed' || (eventStatus as any) === 'ended'
-                                                                        ? '🕉 Shravan Katha Series Completed'
-                                                                        : 'हर दिन सुबह 8:00 बजे LIVE'}
-                                                    </Text>
-
-                                                    {/* DYNAMIC CTA BUTTON & ALIGNED COUNTDOWN TIMER ACCORDING TO LIVE EVENT LIFECYCLE */}
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'android' ? 4 : 6 }}>
-                                                        {isLive ? (
-                                                            <Pressable
-                                                                style={({ pressed }) => ({
-                                                                    backgroundColor: '#D32F2F',
-                                                                    paddingHorizontal: 14,
-                                                                    paddingVertical: Platform.OS === 'android' ? 6 : 7,
-                                                                    borderRadius: 20,
-                                                                    flexDirection: 'row',
-                                                                    alignItems: 'center',
-                                                                    borderWidth: 1,
-                                                                    borderColor: 'rgba(255, 138, 128, 0.9)',
-                                                                    shadowColor: '#FF1744',
-                                                                    shadowOffset: { width: 0, height: 2 },
-                                                                    shadowOpacity: 0.6,
-                                                                    shadowRadius: 6,
-                                                                    elevation: 5,
-                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                                                                })}
-                                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                                                onPress={() => {
-                                                                    try {
-                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                                                    } catch (_e) { }
-                                                                    handleNavigateKatha();
-                                                                }}
-                                                            >
-                                                                <Ionicons name="play" size={11} color="#FFF" style={{ marginRight: 4 }} />
-                                                                <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>🔴 LIVE NOW</Text>
-                                                            </Pressable>
-                                                        ) : (eventStatus as any) === 'campaign_completed' ? (
-                                                            <Pressable
-                                                                style={({ pressed }) => ({
-                                                                    backgroundColor: 'rgba(28, 25, 23, 0.88)',
-                                                                    paddingHorizontal: 14,
-                                                                    paddingVertical: Platform.OS === 'android' ? 5 : 6,
-                                                                    borderRadius: 20,
-                                                                    flexDirection: 'row',
-                                                                    alignItems: 'center',
-                                                                    borderWidth: 1,
-                                                                    borderColor: 'rgba(255, 215, 0, 0.7)',
-                                                                    shadowColor: '#FFD700',
-                                                                    shadowOffset: { width: 0, height: 2 },
-                                                                    shadowOpacity: 0.4,
-                                                                    shadowRadius: 6,
-                                                                    elevation: 4,
-                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                                                                })}
-                                                                onPress={() => {
-                                                                    try {
-                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                                    } catch (_e) { }
-                                                                    handleNavigateKatha();
-                                                                }}
-                                                            >
-                                                                <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
-                                                                <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Full Series</Text>
-                                                            </Pressable>
-                                                        ) : ((eventStatus as any) === 'between_streams' || (eventStatus as any) === 'ended') ? (
-                                                            <Pressable
-                                                                style={({ pressed }) => ({
-                                                                    backgroundColor: 'rgba(25, 23, 20, 0.85)',
-                                                                    paddingHorizontal: 14,
-                                                                    paddingVertical: Platform.OS === 'android' ? 5 : 6,
-                                                                    borderRadius: 20,
-                                                                    flexDirection: 'row',
-                                                                    alignItems: 'center',
-                                                                    borderWidth: 1,
-                                                                    borderColor: 'rgba(255, 215, 0, 0.6)',
-                                                                    shadowColor: '#FFD700',
-                                                                    shadowOffset: { width: 0, height: 2 },
-                                                                    shadowOpacity: 0.3,
-                                                                    shadowRadius: 5,
-                                                                    elevation: 4,
-                                                                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                                                                })}
-                                                                onPress={() => {
-                                                                    try {
-                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                                    } catch (_e) { }
-                                                                    handleNavigateKatha();
-                                                                }}
-                                                            >
-                                                                <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
-                                                                <Text style={{ color: '#FFF8E7', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Replay</Text>
-                                                            </Pressable>
-                                                        ) : (
-                                                            <UiverseNotifyButton
-                                                                isNotified={!!reminders['shravan_katha']}
-                                                                onPress={async () => {
-                                                                    if (isNavigatingRef.current) return;
-                                                                    isNavigatingRef.current = true;
-                                                                    try {
-                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                                                    } catch (_e) { }
-                                                                    const isCurrentlyNotified = !!reminders['shravan_katha'];
-                                                                    await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
-                                                                    if (!isCurrentlyNotified) {
-                                                                        scheduleShravanKatha15MinReminder().catch(() => { });
-                                                                    }
-                                                                    router.push({
-                                                                        pathname: '/shravan-paath',
-                                                                        params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
-                                                                    });
-                                                                    setTimeout(() => {
-                                                                        isNavigatingRef.current = false;
-                                                                    }, 1000);
-                                                                }}
-                                                                label={eventStatus === 'starting_soon' ? "Remind Me" : "Notify Me"}
-                                                                notifiedLabel="Notified"
-                                                                size="small"
-                                                                style={{
-                                                                    alignSelf: 'center',
-                                                                }}
-                                                            />
-                                                        )}
-                                                        <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} isFocused={isFocused} />
+                                                        {/* DYNAMIC CTA BUTTON & ALIGNED COUNTDOWN TIMER ACCORDING TO LIVE EVENT LIFECYCLE */}
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'android' ? 4 : 6 }}>
+                                                            {isLive ? (
+                                                                <Pressable
+                                                                    style={({ pressed }) => ({
+                                                                        backgroundColor: '#D32F2F',
+                                                                        paddingHorizontal: 14,
+                                                                        paddingVertical: Platform.OS === 'android' ? 6 : 7,
+                                                                        borderRadius: 20,
+                                                                        flexDirection: 'row',
+                                                                        alignItems: 'center',
+                                                                        borderWidth: 1,
+                                                                        borderColor: 'rgba(255, 138, 128, 0.9)',
+                                                                        shadowColor: '#FF1744',
+                                                                        shadowOffset: { width: 0, height: 2 },
+                                                                        shadowOpacity: 0.6,
+                                                                        shadowRadius: 6,
+                                                                        elevation: 5,
+                                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                    })}
+                                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                                    onPress={() => {
+                                                                        try {
+                                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                                        } catch (_e) { }
+                                                                        handleNavigateKatha();
+                                                                    }}
+                                                                >
+                                                                    <Ionicons name="play" size={11} color="#FFF" style={{ marginRight: 4 }} />
+                                                                    <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>🔴 LIVE NOW</Text>
+                                                                </Pressable>
+                                                            ) : (eventStatus as any) === 'campaign_completed' ? (
+                                                                <Pressable
+                                                                    style={({ pressed }) => ({
+                                                                        backgroundColor: 'rgba(28, 25, 23, 0.88)',
+                                                                        paddingHorizontal: 14,
+                                                                        paddingVertical: Platform.OS === 'android' ? 5 : 6,
+                                                                        borderRadius: 20,
+                                                                        flexDirection: 'row',
+                                                                        alignItems: 'center',
+                                                                        borderWidth: 1,
+                                                                        borderColor: 'rgba(255, 215, 0, 0.7)',
+                                                                        shadowColor: '#FFD700',
+                                                                        shadowOffset: { width: 0, height: 2 },
+                                                                        shadowOpacity: 0.4,
+                                                                        shadowRadius: 6,
+                                                                        elevation: 4,
+                                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                    })}
+                                                                    onPress={() => {
+                                                                        try {
+                                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                                        } catch (_e) { }
+                                                                        handleNavigateKatha();
+                                                                    }}
+                                                                >
+                                                                    <Ionicons name="play-circle" size={13} color="#FFD700" style={{ marginRight: 5 }} />
+                                                                    <Text style={{ color: '#FFD700', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Full Series</Text>
+                                                                </Pressable>
+                                                            ) : ((eventStatus as any) === 'between_streams' || (eventStatus as any) === 'ended') ? (
+                                                                <Pressable
+                                                                    style={({ pressed }) => ({
+                                                                        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                                                                        borderWidth: 1,
+                                                                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                                        borderRadius: 20,
+                                                                        paddingHorizontal: 12,
+                                                                        paddingVertical: Platform.OS === 'android' ? 5 : 6,
+                                                                        flexDirection: 'row',
+                                                                        alignItems: 'center',
+                                                                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                                    })}
+                                                                    onPress={handleNavigateKatha}
+                                                                >
+                                                                    <Ionicons name="play-circle" size={14} color="#FFD700" style={{ marginRight: 5 }} />
+                                                                    <Text style={{ color: '#FFF8E7', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Previous Katha</Text>
+                                                                </Pressable>
+                                                            ) : (
+                                                                <UiverseNotifyButton
+                                                                    isNotified={!!reminders['shravan_katha']}
+                                                                    onPress={async () => {
+                                                                        if (isNavigatingRef.current) return;
+                                                                        isNavigatingRef.current = true;
+                                                                        try {
+                                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                                        } catch (_e) { }
+                                                                        const isCurrentlyNotified = !!reminders['shravan_katha'];
+                                                                        await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                                                        if (!isCurrentlyNotified) {
+                                                                            scheduleShravanKatha15MinReminder().catch(() => { });
+                                                                        }
+                                                                        router.push({
+                                                                            pathname: '/shravan-paath',
+                                                                            params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
+                                                                        });
+                                                                        setTimeout(() => {
+                                                                            isNavigatingRef.current = false;
+                                                                        }, 1000);
+                                                                    }}
+                                                                    label={eventStatus === 'starting_soon' ? "Remind Me" : "Notify Me"}
+                                                                    notifiedLabel="Notified"
+                                                                    size="small"
+                                                                    style={{
+                                                                        alignSelf: 'center',
+                                                                    }}
+                                                                />
+                                                            )}
+                                                            <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} isFocused={isFocused} />
+                                                        </View>
                                                     </View>
                                                 </View>
                                             </View>
-                                        </View>
-                                    </Pressable>
+                                        </Pressable>
+                                    );
+                                };
+
+                                return isHanumanActive ? (
+                                    <>
+                                        {renderHanumanBanner('hanuman_banner')}
+                                        {renderShamikKathaBanner('shamik_banner')}
+                                    </>
+                                ) : (
+                                    <>
+                                        {renderShamikKathaBanner('shamik_banner')}
+                                        {renderHanumanBanner('hanuman_banner')}
+                                    </>
                                 );
                             })()}
-
-                            <StaticBannerCard
-                                width={screenWidth - 40}
-                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
-                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
-                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                            >
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
-                                    {/* Top Left Content */}
-                                    <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                                            <Text style={[
-                                                styles.featuredLiveTitle,
-                                                {
-                                                    color: '#FFF',
-                                                    fontFamily: 'System',
-                                                    fontSize: 15,
-                                                    fontStyle: 'normal',
-                                                    fontWeight: '700',
-                                                    letterSpacing: 1,
-                                                    textShadowColor: 'rgba(0,0,0,0.9)',
-                                                    textShadowOffset: { width: 0, height: 1 },
-                                                    textShadowRadius: 6,
-                                                }
-                                            ]}>Hanuman Chalisa</Text>
-                                        </View>
-
-                                        <Text style={[styles.featuredDevotees, {
-                                            color: '#FFF',
-                                            fontWeight: '600',
-                                            opacity: 0.9,
-                                            textShadowColor: 'rgba(0,0,0,0.8)',
-                                            textShadowOffset: { width: 0, height: 1 },
-                                            textShadowRadius: 4,
-                                            marginLeft: 14,
-                                            marginTop: 0,
-                                            marginBottom: 2,
-                                            fontSize: 13
-                                        }]}>
-                                            {hanumanStatus.isActive
-                                                ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
-                                                : (t('language') === 'hi'
-                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
-                                                    // Lever: Devotional Reframing + Satsang Proof
-                                                    // UI: Text-only change, zero new components.
-                                                    ? '2300+ भक्त पहले ही जाप समर्पित कर चुके हैं'
-                                                    : '2300+ devotees already offered jaap')}
-                                        </Text>
-
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                                            <Text style={[styles.featuredTime, {
-                                                marginTop: 0,
-                                                marginLeft: 4,
-                                                color: '#FFF',
-                                                fontWeight: '600',
-                                                fontSize: 12
-                                            }]}>
-                                                {hanumanStatus.isActive
-                                                    ? (t('language') === 'hi'
-                                                        // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
-                                                        // Lever: Reframing + Proximity to Completion
-                                                        // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
-                                                        // UI: Text-only change, zero layout/visual additions.
-                                                        ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
-                                                        : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
-                                                    : (hanumanStatus.nextSessionStart
-                                                        ? (t('language') === 'hi'
-                                                            // 🧡 Engagement: Reframed transactional start time "जाप 6:00 AM बजे शुरू होगा" to commitment framing "अगला जाप 6:00 AM बजे — संकल्प लें 🚩"
-                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
-                                                            // Why: "संकल्प लें" transforms a passive time notification into a spiritual commitment for daily practice.
-                                                            // UI: Text-only change, zero visual layout additions.
-                                                            ? `अगला जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
-                                                            : `Next jaap at ${formatTime(hanumanStatus.nextSessionStart)} — Take Sankalpa 🚩`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Top Right LIVE Badge */}
-                                    <View style={[styles.liveBadge, {
-                                        alignSelf: 'flex-start',
-                                        backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
-                                        paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
-                                    }]}>
-                                        {hanumanStatus.isActive && <View style={styles.liveDot} />}
-                                        <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
-                                            {hanumanStatus.isActive
-                                                ? 'LIVE'
-                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {/* Bottom Button Row */}
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.joinJaapButton,
-                                            {
-                                                backgroundColor: '#FF5100',
-                                                display: 'flex',
-                                                width: 138,
-                                                height: 36,
-                                                paddingHorizontal: 12,
-                                                flexDirection: 'row',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                borderRadius: 20,
-                                                borderWidth: 1,
-                                                borderColor: 'rgba(255, 255, 255, 0.4)',
-                                                shadowColor: '#FF5100',
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: 0.5,
-                                                shadowRadius: 5,
-                                                elevation: 4,
-                                                transform: [{ scale: pressed ? 0.95 : 1 }],
-                                            }
-                                        ]}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (_e) { }
-                                            handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
-                                        }}
-                                    >
-                                        <Ionicons name="play" size={12} color="#FFF" />
-                                        <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={({ pressed }) => ({
-                                            backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
-                                            width: 36,
-                                            height: 36,
-                                            borderRadius: 18,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderWidth: 1,
-                                            borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
-                                            transform: [{ scale: pressed ? 0.92 : 1 }],
-                                        })}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            } catch (_e) { }
-                                            handleSetReminder('hanuman', 'Hanuman Chalisa');
-                                        }}
-                                    >
-                                        <Ionicons
-                                            name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
-                                            size={18}
-                                            color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
-                                        />
-                                    </Pressable>
-                                </View>
-                            </StaticBannerCard>
 
                             <StaticBannerCard
                                 width={screenWidth - 40}
@@ -1831,6 +1656,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     </Pressable>
                                 </View>
                             </StaticBannerCard>
+
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
                             {[0, 1, 2].map((idx) => (

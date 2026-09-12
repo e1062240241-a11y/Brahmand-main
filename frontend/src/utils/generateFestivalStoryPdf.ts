@@ -73,6 +73,66 @@ export function wrapText(text: string, font: any, fontSize: number, maxWidth: nu
   return lines;
 }
 
+/**
+ * Constructs a production-ready tracked UTM Brahmand URL for analytics attribution.
+ */
+export function getTrackedBrahmandUrl(
+  festivalName: string,
+  placement: 'download_button' | 'pdf_footer' | 'whatsapp_status' | 'whatsapp_share' = 'download_button'
+): string {
+  const cleanName = (festivalName || 'festival')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const slug = cleanName || 'sacred_festival';
+  const params = [
+    'utm_source=pdf_katha',
+    'utm_medium=whatsapp',
+    `utm_campaign=katha_${slug}`,
+    `utm_content=${placement}`,
+    `festival=${slug}`,
+  ].join('&');
+  return `https://brahmand.app/download?${params}`;
+}
+
+/**
+ * Attaches a fully interactive, clickable Link annotation to a page using clean ISO-standard PDF link dictionaries.
+ * Omit QuadPoints and F: 4 so all mobile and desktop viewers (Android, iOS QuickLook, Acrobat, Chrome, WhatsApp)
+ * cleanly handle touch hit-testing using Rect bounds without print-only flag or vertex conflicts.
+ */
+function addClickableLink(
+  doc: PDFDocument,
+  page: any,
+  uri: string,
+  rect: [number, number, number, number]
+) {
+  try {
+    const [x1, y1, x2, y2] = rect;
+    const rX1 = Math.round(Math.min(x1, x2));
+    const rY1 = Math.round(Math.min(y1, y2));
+    const rX2 = Math.round(Math.max(x1, x2));
+    const rY2 = Math.round(Math.max(y1, y2));
+
+    const linkAnnotation = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [rX1, rY1, rX2, rY2],
+        Border: [0, 0, 0],
+        C: [0, 0, 0],
+        A: {
+          Type: 'Action',
+          S: 'URI',
+          URI: PDFString.of(uri),
+        },
+      })
+    );
+    page.node.addAnnot(linkAnnotation);
+  } catch (err) {
+    console.warn('[PDF] Failed to add link annotation:', err);
+  }
+}
+
 // Draw justified text line with elegant typographical spacing
 function drawJustifiedLine(
   page: any,
@@ -867,23 +927,23 @@ export async function renderDynamicFestivalPage1(
     color: colCrimson,
   });
 
-  curY -= 17;
+  curY -= 21;
 
-  const tagText = "INDIA'S  SPIRITUAL  NETWORK";
-  const tagW = fontHelveticaBold.widthOfTextAtSize(tagText, 7.2);
+  const tagText = "DAILY   SANATAN   COMMUNITY";
+  const tagW = fontHelveticaBold.widthOfTextAtSize(tagText, 7.5);
   const tagX = (pageWidth - tagW) / 2;
 
-  page1.drawLine({ start: { x: tagX - 32, y: curY + 2 }, end: { x: tagX - 8, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
+  page1.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
   page1.drawText(tagText, {
     x: tagX,
     y: curY,
-    size: 7.2,
+    size: 7.5,
     font: fontHelveticaBold,
     color: colSageDeep,
   });
-  page1.drawLine({ start: { x: tagX + tagW + 8, y: curY + 2 }, end: { x: tagX + tagW + 32, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
+  page1.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
 
-  curY -= 20;
+  curY -= 22;
 
   // 6. HERO MANDALA WITH FESTIVAL DEITY MEDALLION (Balanced vertical flow closer to header)
   const mCy = 632;
@@ -1285,6 +1345,20 @@ export async function renderDynamicFestivalPage1(
     color: colInkSoft,
   });
 
+  try {
+    const footerTrackingUrl = getTrackedBrahmandUrl(theme.name, 'pdf_footer');
+    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 7.8);
+    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 7.8);
+    addClickableLink(doc, page1, footerTrackingUrl, [
+      44 + pfxW - 2,
+      footY - 4,
+      44 + pfxW + lnkW + 2,
+      footY + 14,
+    ]);
+  } catch (footerLinkErr) {
+    console.warn('[PDF] Failed to add footer link annotation on Page 1:', footerLinkErr);
+  }
+
   const pageText = 'SHARED WITH LOVE VIA BRAHMAND APP';
   const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 7);
   page1.drawText(pageText, {
@@ -1314,7 +1388,7 @@ export async function generateUniversalFestivalArtworkPdf(festival: any, section
 
   const doc = await PDFDocument.create();
   doc.setTitle(`Brahmand - ${cleanTextForPdf(theme.name)} Festival Artwork`);
-  doc.setAuthor("Brahmand - India's Spiritual Network");
+  doc.setAuthor("Brahmand - Daily Sanatan Community");
   doc.setSubject(`${cleanTextForPdf(theme.name)} Celebration Artwork`);
   doc.setCreator('Brahmand Platform');
 
@@ -1329,8 +1403,8 @@ export async function generateUniversalFestivalArtworkPdf(festival: any, section
   const page1 = doc.addPage([pageWidth, pageHeight]);
   await renderDynamicFestivalPage1(doc, page1, theme, fonts, festival, 1, 1);
 
-  // Save PDF
-  const base64Pdf = await doc.saveAsBase64();
+  // Save PDF with standard xref table (no object streams) for 100% viewer compatibility
+  const base64Pdf = await doc.saveAsBase64({ useObjectStreams: false });
   const sanitizedName = theme.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
   const filename = `${sanitizedName}_brahmand_artwork.pdf`;
   const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
@@ -1357,7 +1431,7 @@ export async function renderDynamicFestivalPage2(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
 
   // Warm Peach + Beige Foundation Palette
@@ -1477,23 +1551,23 @@ export async function renderDynamicFestivalPage2(
     color: colCrimson,
   });
 
-  curY -= 17;
+  curY -= 21;
 
-  const tagText = "INDIA'S  SPIRITUAL  NETWORK";
-  const tagW = fontHelveticaBold.widthOfTextAtSize(tagText, 7.2);
+  const tagText = "DAILY   SANATAN   COMMUNITY";
+  const tagW = fontHelveticaBold.widthOfTextAtSize(tagText, 7.5);
   const tagX = (pageWidth - tagW) / 2;
 
-  page2.drawLine({ start: { x: tagX - 32, y: curY + 2 }, end: { x: tagX - 8, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
+  page2.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
   page2.drawText(tagText, {
     x: tagX,
     y: curY,
-    size: 7.2,
+    size: 7.5,
     font: fontHelveticaBold,
     color: colSageDeep,
   });
-  page2.drawLine({ start: { x: tagX + tagW + 8, y: curY + 2 }, end: { x: tagX + tagW + 32, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
+  page2.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: colSageDeep, opacity: 0.6 });
 
-  curY -= 15;
+  curY -= 18;
 
   // 5. TITLE BLOCK (Title, Subtitle, Symmetrical Jewel Divider)
   // Two-tone Story Title (VRAT removed)
@@ -1546,11 +1620,11 @@ export async function renderDynamicFestivalPage2(
 
   curY -= 16;
 
-  // 6. 5 CHAPTERS OF KATHA NARRATIVE (Full page utilization & enlarged 13pt readable typography)
+  // 6. 5 CHAPTERS OF KATHA NARRATIVE (Comfortable, spacious 14pt typography with open margins)
   const p2Margin = 38;
   const p2ContentWidth = pageWidth - p2Margin * 2;
-  const bodyFontSize = 13;
-  const bodyLineHeight = 15.6;
+  const bodyFontSize = 14;
+  const bodyLineHeight = 17.2;
   const chapterNumerals = ['CHAPTER ONE', 'CHAPTER TWO', 'CHAPTER THREE', 'CHAPTER FOUR', 'CHAPTER FIVE'];
 
   const chaptersCount = Math.min(5, theme.chapters.length);
@@ -1563,45 +1637,45 @@ export async function renderDynamicFestivalPage2(
     page2.drawText(chNum, {
       x: p2Margin,
       y: curY,
-      size: 8.5,
+      size: 9.5,
       font: brandFont,
       color: colSageDeep,
     });
-    const numW = brandFont.widthOfTextAtSize(chNum, 8.5);
+    const numW = brandFont.widthOfTextAtSize(chNum, 9.5);
     page2.drawText('  *  ', {
       x: p2Margin + numW,
       y: curY,
-      size: 8.5,
+      size: 9.5,
       font: brandFont,
       color: colPeachDeep,
     });
-    const sepW = brandFont.widthOfTextAtSize('  *  ', 8.5);
+    const sepW = brandFont.widthOfTextAtSize('  *  ', 9.5);
     page2.drawText(chTitle, {
       x: p2Margin + numW + sepW,
       y: curY,
-      size: 9.8,
+      size: 11,
       font: brandFont,
       color: colCrimson,
     });
 
-    curY -= 12;
+    curY -= 13;
 
     // Drop Cap
     const cleanContent = cleanTextForPdf(ch.content);
     const dropLetter = cleanContent.charAt(0) || 'T';
     const restOfText = cleanContent.slice(1);
-    const dropCapSize = 27;
+    const dropCapSize = 29;
     const dropW = brandFont.widthOfTextAtSize(dropLetter, dropCapSize);
 
     page2.drawText(dropLetter, {
       x: p2Margin,
-      y: curY - 10,
+      y: curY - 11,
       size: dropCapSize,
       font: brandFont,
       color: colCrimson,
     });
 
-    const dropIndent = dropW + 4;
+    const dropIndent = dropW + 5;
     const firstLinesWidth = p2ContentWidth - dropIndent;
 
     const words = restOfText.split(/\s+/);
@@ -1676,116 +1750,190 @@ export async function renderDynamicFestivalPage2(
       curY -= bodyLineHeight;
     }
 
-    curY -= 3;
+    curY -= 6;
 
     // Small divider between chapters
     if (cIdx < chaptersCount - 1) {
       const dW = 75;
       const dX = (pageWidth - dW) / 2;
-      page2.drawLine({ start: { x: dX, y: curY }, end: { x: cx - 10, y: curY }, thickness: 0.5, color: colPeachDeep, opacity: 0.7 });
-      page2.drawRectangle({ x: cx - 2, y: curY - 2, width: 4, height: 4, color: colSageDeep, rotate: degrees(45) });
-      page2.drawLine({ start: { x: cx + 10, y: curY }, end: { x: dX + dW, y: curY }, thickness: 0.5, color: colPeachDeep, opacity: 0.7 });
-      curY -= 6;
+      page2.drawLine({ start: { x: dX, y: curY }, end: { x: cx - 10, y: curY }, thickness: 0.6, color: colPeachDeep, opacity: 0.8 });
+      page2.drawCircle({ x: cx, y: curY, size: 2, color: colSageDeep });
+      page2.drawLine({ start: { x: cx + 10, y: curY }, end: { x: dX + dW, y: curY }, thickness: 0.6, color: colPeachDeep, opacity: 0.8 });
+      curY -= 10;
     }
   }
 
-  // 7. MARKETING & DOWNLOAD BRAHMAND APP CARD (EXACTLY AS USER REQUESTED: NO EXTRA TEXT!)
-  curY -= 5;
-  const mBoxW = p2ContentWidth;
-  const mBoxH = 62;
-  const mBoxX = p2Margin;
-  const mBoxY = curY - mBoxH;
+  // 7. MARKETING & DOWNLOAD BRAHMAND APP (Open, un-congested, no background boxes)
+  curY -= 14;
 
-  page2.drawRectangle({
-    x: mBoxX,
-    y: mBoxY,
-    width: mBoxW,
-    height: mBoxH,
-    color: rgb(0.985, 0.94, 0.89),
-    borderColor: colPeachDeep,
-    borderWidth: 0.8,
-  });
+  // Ornamental Divider before download section
+  const divW = 160;
+  const divX = (pageWidth - divW) / 2;
+  page2.drawLine({ start: { x: divX, y: curY }, end: { x: cx - 16, y: curY }, thickness: 0.8, color: colPeachDeep, opacity: 0.85 });
+  page2.drawCircle({ x: cx, y: curY, size: 2.5, color: colCrimson });
+  page2.drawLine({ start: { x: cx + 16, y: curY }, end: { x: divX + divW, y: curY }, thickness: 0.8, color: colPeachDeep, opacity: 0.85 });
 
-  page2.drawLine({ start: { x: cx - 60, y: mBoxY + mBoxH }, end: { x: cx + 60, y: mBoxY + mBoxH }, thickness: 1.5, color: colTerracotta });
-  page2.drawLine({ start: { x: cx - 60, y: mBoxY }, end: { x: cx + 60, y: mBoxY }, thickness: 1.5, color: colSageDeep });
+  curY -= 16;
 
-  let myY = mBoxY + mBoxH - 14;
-
-  // Title: DOWNLOAD THE BRAHMAND APP
+  // 1. Headline (Clickable)
   const mTit = 'DOWNLOAD   THE   BRAHMAND   APP';
-  const mtW = brandFont.widthOfTextAtSize(mTit, 11);
+  const mtW = brandFont.widthOfTextAtSize(mTit, 11.5);
   page2.drawText(mTit, {
     x: (pageWidth - mtW) / 2,
-    y: myY,
-    size: 11,
+    y: curY,
+    size: 11.5,
     font: brandFont,
+    color: colCrimson,
+  });
+  const downloadButtonUri = getTrackedBrahmandUrl(theme.name, 'download_button');
+  addClickableLink(doc, page2, downloadButtonUri, [
+    (pageWidth - mtW) / 2 - 12,
+    curY - 4,
+    (pageWidth + mtW) / 2 + 12,
+    curY + 14,
+  ]);
+
+  curY -= 15;
+
+  // 2. The 3 Features requested: LIVE JAAP • DAILY PANCHANG • DAILY SANATAN COMMUNITY
+  const featText = 'LIVE JAAP   *   DAILY PANCHANG   *   DAILY SANATAN COMMUNITY';
+  const ftW = fontHelveticaBold.widthOfTextAtSize(featText, 7.5);
+  page2.drawText(featText, {
+    x: (pageWidth - ftW) / 2,
+    y: curY,
+    size: 7.5,
+    font: fontHelveticaBold,
     color: colTerracottaDk,
   });
 
-  // 3 items requested: LIVE JAAP, DAILY PANCHANG, SANATAN COMMUNITY
-  const features = [
-    { title: 'LIVE JAAP', col: colPeachDeep, x: cx - 145 },
-    { title: 'DAILY PANCHANG', col: colRose, x: cx },
-    { title: 'SANATAN COMMUNITY', col: colSage, x: cx + 145 },
-  ];
-  const fBadgeY = myY - 14;
-  for (let i = 0; i < features.length; i++) {
-    const feat = features[i];
-    page2.drawCircle({ x: feat.x, y: fBadgeY + 3, size: 6.5, color: feat.col, opacity: 0.85 });
-    page2.drawCircle({ x: feat.x, y: fBadgeY + 3, size: 2.5, color: colCream });
-    const ftW = fontHelveticaBold.widthOfTextAtSize(feat.title, 7);
-    page2.drawText(feat.title, {
-      x: feat.x - ftW / 2,
-      y: fBadgeY - 9,
-      size: 7,
-      font: fontHelveticaBold,
-      color: colInk,
-    });
-  }
+  curY -= 22;
 
-  // DOWNLOAD FREE button (No other text!)
-  const ctaDownloadText = 'DOWNLOAD FREE';
-  const ctaDW = brandFont.widthOfTextAtSize(ctaDownloadText, 8.5);
-  const ctaBtnW = ctaDW + 32;
-  const ctaBtnH = 16;
-  const ctaBtnX = (pageWidth - ctaBtnW) / 2;
-  const ctaBtnY = mBoxY + 7;
-
-  page2.drawRectangle({
-    x: ctaBtnX,
-    y: ctaBtnY,
-    width: ctaBtnW,
-    height: ctaBtnH,
+  // 3. Download Free App Button (Clean & Borderless with generous breathing space before and after)
+  const btnLine1 = 'DOWNLOAD   FREE   APP';
+  const b1W = brandFont.widthOfTextAtSize(btnLine1, 10.5);
+  const btnX = (pageWidth - b1W) / 2;
+  page2.drawText(btnLine1, {
+    x: btnX,
+    y: curY,
+    size: 10.5,
+    font: brandFont,
     color: colCrimson,
   });
-  page2.drawText(ctaDownloadText, {
-    x: ctaBtnX + 16,
-    y: ctaBtnY + 4.5,
-    size: 8.5,
-    font: brandFont,
-    color: colCream,
+
+  // Clickable link annotation covering the button text with generous touch padding
+  addClickableLink(doc, page2, downloadButtonUri, [
+    btnX - 18,
+    curY - 10,
+    btnX + b1W + 18,
+    curY + 16,
+  ]);
+
+  curY -= 22;
+
+  // 4. "AVAILABLE ON GOOGLE PLAY STORE & APP STORE"
+  const storeAvailText = 'AVAILABLE ON GOOGLE PLAY STORE & APP STORE';
+  const satW = fontHelveticaBold.widthOfTextAtSize(storeAvailText, 7.8);
+  page2.drawText(storeAvailText, {
+    x: (pageWidth - satW) / 2,
+    y: curY,
+    size: 7.8,
+    font: fontHelveticaBold,
+    color: colSageDeep,
   });
 
-  // Clickable link annotation for DOWNLOAD FREE button -> opens Brahmand on Google Play Store
-  const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
-  try {
-    const linkAnnotation = doc.context.obj({
-      Type: 'Annot',
-      Subtype: 'Link',
-      Rect: [ctaBtnX - 4, ctaBtnY - 4, ctaBtnX + ctaBtnW + 4, ctaBtnY + ctaBtnH + 4],
-      Border: [0, 0, 0],
-      C: [0, 0, 0],
-      A: {
-        Type: 'Action',
-        S: 'URI',
-        URI: PDFString.of(playStoreUri),
-      },
-    });
-    const linkRef = doc.context.register(linkAnnotation);
-    page2.node.addAnnot(linkRef);
-  } catch (annotErr) {
-    console.warn('[PDF] Failed to add link annotation to DOWNLOAD FREE button:', annotErr);
+  curY -= 15;
+
+  // Store Badges (Google Play & App Store - Clean, borderless, NO background boxes as requested!)
+  const playText = 'Google Play';
+  const appStoreText = 'App Store';
+  const playScale = 0.48;
+  const appleScale = 0.48;
+  const playIconW = 24 * playScale;
+  const appleIconW = 24 * appleScale;
+  const playTextW = fontHelveticaBold.widthOfTextAtSize(playText, 9);
+  const appStoreTextW = fontHelveticaBold.widthOfTextAtSize(appStoreText, 9);
+
+  const playTotalW = playIconW + 6 + playTextW;
+  const appStoreTotalW = appleIconW + 6 + appStoreTextW;
+  const gapBetweenStores = 36;
+  const totalStoresW = playTotalW + gapBetweenStores + appStoreTotalW;
+  const playStartX = (pageWidth - totalStoresW) / 2;
+  const appStoreStartX = playStartX + playTotalW + gapBetweenStores;
+  const storeRowY = curY;
+
+  // Authentic 4-color Google Play Store triangle icon (vector SVG paths, no box)
+  const playPaths = [
+    { p: 'M 3.25 2.14 C 2.87 2.53 2.65 3.14 2.65 3.94 L 2.65 20.06 C 2.65 20.86 2.87 21.47 3.25 21.86 L 3.32 21.93 L 12.44 12.81 L 12.44 12.38 L 12.44 12.38 L 3.32 3.26 Z', c: rgb(0.25, 0.63, 0.96) },
+    { p: 'M 15.48 15.85 L 12.44 12.81 L 12.44 12.38 L 15.48 9.34 L 15.56 9.38 L 19.16 11.43 C 20.19 12.01 20.19 12.97 19.16 13.55 L 15.56 15.60 Z', c: rgb(1.0, 0.79, 0.0) },
+    { p: 'M 15.56 15.60 L 12.44 12.48 L 3.25 21.86 C 3.59 22.22 4.15 22.27 4.80 21.90 L 15.56 15.60', c: rgb(0.92, 0.26, 0.21) },
+    { p: 'M 15.56 9.38 L 4.80 3.28 C 4.15 2.91 3.59 2.96 3.25 3.32 L 12.44 12.51 Z', c: rgb(0.18, 0.73, 0.42) },
+  ];
+  for (const seg of playPaths) {
+    page2.drawSvgPath(seg.p, { x: playStartX, y: storeRowY + 9, scale: playScale, color: seg.c });
   }
+
+  page2.drawText(playText, {
+    x: playStartX + playIconW + 6,
+    y: storeRowY,
+    size: 9,
+    font: fontHelveticaBold,
+    color: colInk,
+  });
+
+  const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
+  addClickableLink(doc, page2, playStoreUri, [
+    playStartX - 10,
+    storeRowY - 8,
+    playStartX + playTotalW + 10,
+    storeRowY + 18,
+  ]);
+
+  // Authentic Apple icon (vector SVG path, no box)
+  const applePath =
+    'M 18.71 19.5 C 17.88 20.74 17.00 21.93 15.66 21.97 C 14.32 22.01 13.88 21.20 12.37 21.20 C 10.84 21.20 10.37 21.93 9.09 21.97 C 7.79 22.01 6.80 20.69 5.96 19.47 C 4.25 17.00 2.94 12.48 4.70 9.42 C 5.57 7.91 7.13 6.95 8.82 6.93 C 10.10 6.91 11.31 7.79 12.10 7.79 C 12.87 7.79 14.33 6.72 15.89 6.89 C 16.55 6.92 18.39 7.15 19.56 8.87 C 19.46 8.93 17.37 10.15 17.39 12.63 C 17.42 15.60 20.00 16.59 20.03 16.60 C 20.00 16.70 19.61 18.06 18.71 19.5 Z M 14.97 4.57 C 15.65 3.75 16.11 2.61 15.98 1.46 C 14.99 1.50 13.79 2.12 13.08 2.95 C 12.45 3.68 11.90 4.85 12.05 5.97 C 13.16 6.06 14.29 5.39 14.97 4.57 Z';
+  page2.drawSvgPath(applePath, { x: appStoreStartX, y: storeRowY + 9, scale: appleScale, color: colInk });
+
+  page2.drawText(appStoreText, {
+    x: appStoreStartX + appleIconW + 6,
+    y: storeRowY,
+    size: 9,
+    font: fontHelveticaBold,
+    color: colInk,
+  });
+
+  const appStoreUri = 'https://brahmand.app/download?platform=ios';
+  addClickableLink(doc, page2, appStoreUri, [
+    appStoreStartX - 10,
+    storeRowY - 8,
+    appStoreStartX + appStoreTotalW + 10,
+    storeRowY + 18,
+  ]);
+
+  let afterBtnY = storeRowY - 13;
+
+  // 6. DAILY PANCHANG & LIVE JAAP INTEGRATION CALLOUT
+  afterBtnY -= 11;
+  const panchangHook = 'Aaj ka Shubh Muhurat aur Live Jaap join karne ke liye Brahmand App download karein.';
+  const phW = fontTimesItalic.widthOfTextAtSize(panchangHook, 8);
+  page2.drawText(panchangHook, {
+    x: (pageWidth - phW) / 2,
+    y: afterBtnY,
+    size: 8,
+    font: fontTimesItalic,
+    color: colTerracottaDk,
+  });
+
+  // 7. FEEDBACK LOOP MESSAGE
+  afterBtnY -= 10;
+  const feedbackMsg = 'Did you like this Katha? Share your feedback on the Brahmand App.';
+  const fbW = fontHelvetica.widthOfTextAtSize(feedbackMsg, 7.2);
+  page2.drawText(feedbackMsg, {
+    x: (pageWidth - fbW) / 2,
+    y: afterBtnY,
+    size: 7.2,
+    font: fontHelvetica,
+    color: colSageDeep,
+  });
 
   // 8. FOOTER (Without QR code, matching Page 1)
   const footY = 24;
@@ -1824,6 +1972,21 @@ export async function renderDynamicFestivalPage2(
     color: colInkSoft,
   });
 
+  try {
+    const footerTrackingUrl = getTrackedBrahmandUrl(theme.name, 'pdf_footer');
+    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 7.8);
+    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 7.8);
+    addClickableLink(doc, page2, footerTrackingUrl, [
+      44 + pfxW,
+      footY - 2,
+      44 + pfxW + lnkW,
+      footY + 12,
+    ]);
+  } catch (footerLinkErr) {
+    console.warn('[PDF] Failed to add footer link annotation on Page 2:', footerLinkErr);
+  }
+
+
   const pageText = 'SHARED WITH LOVE VIA BRAHMAND APP';
   const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 7);
   page2.drawText(pageText, {
@@ -1853,7 +2016,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
 
   const doc = await PDFDocument.create();
   doc.setTitle(`Brahmand - ${cleanTextForPdf(theme.name)} Festival Katha`);
-  doc.setAuthor("Brahmand - India's Spiritual Network");
+  doc.setAuthor("Brahmand - Daily Sanatan Community");
   doc.setSubject(`${cleanTextForPdf(theme.name)} Story and Katha`);
   doc.setCreator('Brahmand Platform');
 
@@ -1874,13 +2037,13 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
   const page2 = doc.addPage([pageWidth, pageHeight]);
   await renderDynamicFestivalPage2(doc, page2, theme, fonts, festival);
 
-  // Save 2-Page PDF
-  const base64Pdf = await doc.saveAsBase64();
+  // Save 2-Page PDF with standard xref table (no object streams) for 100% viewer compatibility
+  const base64Pdf = await doc.saveAsBase64({ useObjectStreams: false });
   const sanitizedName = theme.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'festival';
   const filename = `${sanitizedName}_katha.pdf`;
 
-  // Always prefer documentDirectory for persistence & OS FileProvider compatibility, fallback to cacheDirectory
-  const targetDir = FileSystem.documentDirectory || FileSystem.cacheDirectory;
+  // Always prefer cacheDirectory for Android FileProvider compatibility (maps cache-path root)
+  const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
   const rawUri = `${targetDir}${filename}`;
   const fileUri = rawUri.startsWith('file://') ? rawUri : `file://${rawUri}`;
 
@@ -1919,13 +2082,14 @@ export async function shareFestivalStoryPdf(
     const fileUri = await generateFestivalStoryPdf(festival, sectionValue);
     const theme = getFestivalTheme(festival, sectionValue);
 
+    const trackingShareUrl = getTrackedBrahmandUrl(theme.name, 'whatsapp_share');
     const shareTitle = `${theme.name} Festival Katha & Divine Blessings`;
     const shareMessage =
       `🌸 *${theme.name} Festival Katha & Divine Blessings* 🌸\n\n` +
       `May the divine grace of ${theme.deity} bring peace, prosperity, and spiritual fulfillment to your family.\n\n` +
       `📖 Read the complete sacred story & Vedic blessings in the attached PDF.\n\n` +
       `🛕 *Download Brahmand App* for 1,000+ Live Temple Darshans, Daily Vedic Panchang, and Jaap Counter:\n` +
-      `👉 https://brahmand.app`;
+      `👉 ${trackingShareUrl}`;
 
     const isUserCancellation = (err: any) => {
       const msg = String(err?.message || err || '').toLowerCase();
@@ -2009,7 +2173,7 @@ export async function shareFestivalStoryPdf(
       // Tier 4: Standard RN Share text fallback
       await RNShare.share({
         title: shareTitle,
-        message: `${shareMessage}\n\n👉 Read story on Brahmand: https://brahmand.app`,
+        message: shareMessage,
       });
       return { success: true, uri: fileUri };
     }
@@ -2060,7 +2224,7 @@ export async function shareFestivalStoryPdf(
     // Tier 3: React Native text fallback
     await RNShare.share({
       title: shareTitle,
-      message: `${shareMessage}\n\n👉 Read story on Brahmand: https://brahmand.app`,
+      message: shareMessage,
     });
 
     return { success: true, uri: fileUri };
