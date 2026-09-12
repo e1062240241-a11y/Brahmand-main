@@ -29,6 +29,7 @@
     "@react-native-firebase/analytics": "^23.8.8",
     "@react-native-firebase/app": "^23.8.8",
     "@react-native-firebase/auth": "^23.8.8",
+    "@react-native-firebase/remote-config": "^23.8.8",
     "@react-native-picker/picker": "2.11.4",
     "@react-native/gradle-plugin": "^0.83.4",
     "@shopify/flash-list": "2.0.2",

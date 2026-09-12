@@ -361,6 +361,7 @@ export default function CommunityDetailScreen() {
     setShowTimePicker,
     showInlineCategories,
     setShowInlineCategories,
+    resetCreatePostState,
   } = useCreatePostState();
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState<string | null>(null);
