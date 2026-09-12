@@ -236,7 +236,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={onClose}>
+              <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cancel post creation">
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
@@ -249,6 +249,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 ]}
                 onPress={onPost}
                 disabled={!newMessage.trim() && !selectedImage}
+                accessibilityRole="button"
+                accessibilityLabel="Publish post"
+                accessibilityState={{ disabled: !newMessage.trim() && !selectedImage }}
               >
                 <Text style={styles.twitterPostBtnText}>Post</Text>
               </TouchableOpacity>
@@ -286,7 +289,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                       <Text style={styles.selectedCategoryText}>
                         {t('language') === 'hi' ? 'श्रेणी' : 'Category'}: {getTranslatedTab(postCategory)}
                       </Text>
-                      <TouchableOpacity onPress={onClearCategory}>
+                      <TouchableOpacity onPress={onClearCategory} accessibilityRole="button" accessibilityLabel="Clear selected category">
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
@@ -409,6 +412,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                         borderWidth: 1,
                         borderColor: !postCategory ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add media to post"
                     >
                       <Ionicons name="images-outline" size={18} color={!postCategory ? "#A0A0A0" : "#FF6600"} />
                       <Text style={{ fontSize: 13, fontWeight: '700', color: !postCategory ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
@@ -421,6 +426,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                       <TouchableOpacity
                         style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
                         onPress={onRemoveImage}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove selected media"
                       >
                         <Ionicons name="close" size={16} color="#FFF" />
                       </TouchableOpacity>
@@ -434,6 +441,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                         <TouchableOpacity
                           onPress={onOpenDatePicker}
                           style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Select event date"
                         >
                           <Ionicons name="calendar-outline" size={18} color="#FF6600" />
                           <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
@@ -448,6 +457,8 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                         <TouchableOpacity
                           onPress={onOpenTimePicker}
                           style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Select event time"
                         >
                           <Ionicons name="time-outline" size={18} color="#FF6600" />
                           <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
