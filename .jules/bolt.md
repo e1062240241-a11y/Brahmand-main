@@ -42,3 +42,14 @@
 ## 2024-09-10 - Parallelize User Profile and Edge Queries
 **Learning:** In `GET /users/{user_id}`, parallelize the user document fetch and the `user_follows` edge document fetch using `asyncio.gather` (conditionally firing the edge fetch only if `viewer_id` exists and is not equal to `user_id`) to significantly reduce endpoint latency.
 **Action:** Always look for independent database queries in API routes (e.g. fetching a primary entity and a relation/edge) and batch them using `asyncio.gather` when they don't depend on each other.
+## 2025-02-23 - Batch fetching related models using asyncio.gather
+**Learning:** Sequential calls to fetch related models (such as `db.get_document` for the main entity and another `db.get_document` for edge cases or related information) unnecessarily block execution and increase latency.
+**Action:** When fetching entities that don't depend on each other's data (like `target_user` and `existing_edge` in follow endpoints), always batch them into `asyncio.gather()` to fetch concurrently in the backend.
+
+## 2025-02-23 - FlatList extraData rendering bugs
+**Learning:** React Native's `FlatList` component is purely functional. If a render block depends on external state (like a tracking variable outside of the list data itself), mutations to that external state won't trigger re-renders of the list items unless that state is explicitly passed into `extraData`.
+**Action:** Always ensure that external state utilized in a `renderItem` method is also passed to `FlatList` via the `extraData` prop.
+
+## 2025-02-23 - Avoid new Set() combined with filter for array uniqueness extraction
+**Learning:** Creating intermediate filtered arrays to extract truthy values, passing them to `new Set()` to achieve uniqueness, and finally re-spreading them into an array (e.g., `[...new Set(arr.filter(Boolean))]`) introduces an enormous amount of overhead and memory allocation for simple extraction tasks.
+**Action:** Use a simple `for` loop to manually extract unique and truthy array items if the list doesn't benefit from set theory operations or exceeds nominal lengths.

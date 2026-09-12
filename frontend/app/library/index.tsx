@@ -352,7 +352,12 @@ function LibraryPage() {
           <View style={styles.sectionHead}>
             <View style={styles.headLeft}>
               <View style={styles.accentBar} />
-              <Text style={styles.sectionTitle}>Featured Collection</Text>
+              {/* 🧡 Engagement: Reframed static "Featured Collection" to devotional "✨ पवित्र ग्रंथ संग्रह"
+                  Lever: Reframing (Transactional -> Devotional) + Mother Tongue
+                  Why: "पवित्र ग्रंथ संग्रह" honors the sacred nature of scriptures, making discovery feel spiritual rather than a catalog. */}
+              <Text style={styles.sectionTitle}>
+                {language === 'hi' ? '✨ पवित्र ग्रंथ संग्रह' : 'Featured Collection'}
+              </Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/library/featured' as any)}>
               <Text style={styles.viewAll}>View All ›</Text>
