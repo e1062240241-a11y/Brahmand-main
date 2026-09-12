@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,238 +26,253 @@ export interface SadhanaStreakCardProps {
   onPressChant?: () => void;
 }
 
-export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressChant }) => {
-  const { language } = useTranslation();
-  const router = useRouter();
-  const isHindi = language === 'hi';
+/**
+ * SadhanaStreakCard
+ *
+ * 🎨 Varnish Optimization:
+ * 1. Wrapped in React.memo to prevent unnecessary re-renders when parent screen re-renders.
+ * 2. Moved fallback empty object ({}) creation inside useMemo to keep dependency references stable.
+ * 3. Replaced useRef().current animation value creation with useMemo to adhere strictly to React 19 rules (avoiding ref access during render) and eliminate lint errors.
+ */
+export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
+  function SadhanaStreakCard({ onPressChant }) {
+    const { language } = useTranslation();
+    const router = useRouter();
+    const isHindi = language === 'hi';
 
-  const dailyHanuman = usePassportStore((state) => state.daily_hanuman_count) || {};
-  const dailyOther = usePassportStore((state) => state.daily_other_jaap_count) || {};
+    const rawDailyHanuman = usePassportStore((state) => state.daily_hanuman_count);
+    const rawDailyOther = usePassportStore((state) => state.daily_other_jaap_count);
 
-  // Calculate streak data in IST
-  const streakData = useMemo(() => {
-    return calculateSadhanaStreak(dailyHanuman, dailyOther);
-  }, [dailyHanuman, dailyOther]);
+    // Calculate streak data in IST with stable fallback references
+    const streakData = useMemo(() => {
+      const dailyHanuman = rawDailyHanuman || {};
+      const dailyOther = rawDailyOther || {};
+      return calculateSadhanaStreak(dailyHanuman, dailyOther);
+    }, [rawDailyHanuman, rawDailyOther]);
 
-  const {
-    currentStreak,
-    isTodayCompleted,
-    todayCount,
-    weekDays,
-  } = streakData;
+    const {
+      currentStreak,
+      isTodayCompleted,
+      todayCount,
+      weekDays,
+    } = streakData;
 
-  // Pulse animation for today's active dot: ONLY when todayCount > 0 (diya is lit) and incomplete
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.6)).current;
+    // Pulse animation for today's active dot: ONLY when todayCount > 0 (diya is lit) and incomplete
+    // Initialized with useMemo to prevent accessing refs during render in React 19
+    const pulseAnim = useMemo(() => new Animated.Value(1), []);
+    const glowAnim = useMemo(() => new Animated.Value(0.6), []);
 
-  useEffect(() => {
-    // 🪔 Core Domain Rule: Diya flame pulse/glow only starts once user has performed jaap today!
-    if (todayCount > 0 && !isTodayCompleted) {
-      const pulseLoop = Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.15,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(glowAnim, {
-              toValue: 1,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-            Animated.timing(glowAnim, {
-              toValue: 0.5,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      );
-      pulseLoop.start();
-      return () => pulseLoop.stop();
-    } else {
-      pulseAnim.setValue(1);
-      glowAnim.setValue(1);
-    }
-  }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
-
-  const handleCardPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    if (onPressChant) {
-      onPressChant();
-    } else {
-      // Direct live experience route: open live jaap welcome
-      router.push({
-        pathname: '/live-jaap-welcome',
-        params: { mantraType: 'hanuman', fromStreak: 'true' },
-      });
-    }
-  };
-
-  // Hindi day abbreviations
-  const hindiDayLabels = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
-
-  // Status Chip Text & Styling
-  // 🪔 Diya only reflects lit state when todayCount > 0 or completed
-  let statusChipText = '';
-  let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
-
-  if (isTodayCompleted) {
-    statusChipType = 'complete';
-    statusChipText = isHindi ? '✨ दीप प्रज्वलित' : '✨ Diya Lit';
-  } else if (todayCount > 0) {
-    statusChipType = 'in_progress';
-    const remaining = Math.max(0, 108 - todayCount);
-    statusChipText = isHindi
-      ? `🪔 ${remaining} शेष`
-      : `🪔 ${remaining} left`;
-  } else {
-    statusChipType = 'unlit';
-    statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
-  }
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.outerContainer,
-        Platform.OS === 'ios' && pressed && styles.cardPressed,
-      ]}
-      onPress={handleCardPress}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isHindi
-          ? `साधना संकल्प: ${currentStreak} दिन`
-          : `Sadhana Sankalpa: ${currentStreak} days`
+    useEffect(() => {
+      // 🪔 Core Domain Rule: Diya flame pulse/glow only starts once user has performed jaap today!
+      if (todayCount > 0 && !isTodayCompleted) {
+        const pulseLoop = Animated.loop(
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(pulseAnim, {
+                toValue: 1.15,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+              Animated.timing(pulseAnim, {
+                toValue: 1,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.sequence([
+              Animated.timing(glowAnim, {
+                toValue: 1,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+              Animated.timing(glowAnim, {
+                toValue: 0.5,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+            ]),
+          ])
+        );
+        pulseLoop.start();
+        return () => pulseLoop.stop();
+      } else {
+        pulseAnim.setValue(1);
+        glowAnim.setValue(1);
       }
-    >
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
+    }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
+
+    const handleCardPress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      if (onPressChant) {
+        onPressChant();
+      } else {
+        // Direct live experience route: open live jaap welcome
+        router.push({
+          pathname: '/live-jaap-welcome',
+          params: { mantraType: 'hanuman', fromStreak: 'true' },
+        });
+      }
+    };
+
+    // Hindi day abbreviations
+    const hindiDayLabels = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
+
+    // Status Chip Text & Styling
+    // 🪔 Diya only reflects lit state when todayCount > 0 or completed
+    let statusChipText = '';
+    let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
+
+    if (isTodayCompleted) {
+      statusChipType = 'complete';
+      statusChipText = isHindi ? '✨ दीप प्रज्वलित' : '✨ Diya Lit';
+    } else if (todayCount > 0) {
+      statusChipType = 'in_progress';
+      const remaining = Math.max(0, 108 - todayCount);
+      statusChipText = isHindi
+        ? `🪔 ${remaining} शेष`
+        : `🪔 ${remaining} left`;
+    } else {
+      statusChipType = 'unlit';
+      statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
+    }
+
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.outerContainer,
+          Platform.OS === 'ios' && pressed && styles.cardPressed,
+        ]}
+        onPress={handleCardPress}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isHindi
+            ? `साधना संकल्प: ${currentStreak} दिन`
+            : `Sadhana Sankalpa: ${currentStreak} days`
+        }
       >
-        {/* Top Header Row: Streak Title + Today's Status Chip */}
-        <View style={styles.topRow}>
-          <View style={styles.streakTitleWrap}>
-            <Text
-              style={[
-                styles.diyaIcon,
-                todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
-              ]}
-            >
-              🪔
-            </Text>
-            <Text style={styles.streakTitleText}>
-              {currentStreak > 0
-                ? isHindi
-                  ? `${currentStreak} दिवसीय संकल्प`
-                  : `${currentStreak} Days Sankalpa`
-                : isHindi
-                ? 'साधना संकल्प'
-                : 'Sadhana Sankalpa'}
-            </Text>
-          </View>
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
+        >
+          {/* Top Header Row: Streak Title + Today's Status Chip */}
+          <View style={styles.topRow}>
+            <View style={styles.streakTitleWrap}>
+              <Text
+                style={[
+                  styles.diyaIcon,
+                  todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
+                ]}
+              >
+                🪔
+              </Text>
+              <Text style={styles.streakTitleText}>
+                {currentStreak > 0
+                  ? isHindi
+                    ? `${currentStreak} दिवसीय संकल्प`
+                    : `${currentStreak} Days Sankalpa`
+                  : isHindi
+                  ? 'साधना संकल्प'
+                  : 'Sadhana Sankalpa'}
+              </Text>
+            </View>
 
-          <View
-            style={[
-              styles.statusChip,
-              statusChipType === 'complete'
-                ? styles.statusChipComplete
-                : statusChipType === 'in_progress'
-                ? styles.statusChipInProgress
-                : styles.statusChipUnlit,
-            ]}
-          >
-            <Text
+            <View
               style={[
-                styles.statusChipText,
+                styles.statusChip,
                 statusChipType === 'complete'
-                  ? styles.statusTextComplete
+                  ? styles.statusChipComplete
                   : statusChipType === 'in_progress'
-                  ? styles.statusTextInProgress
-                  : styles.statusTextUnlit,
+                  ? styles.statusChipInProgress
+                  : styles.statusChipUnlit,
               ]}
-              numberOfLines={1}
             >
-              {statusChipText}
-            </Text>
+              <Text
+                style={[
+                  styles.statusChipText,
+                  statusChipType === 'complete'
+                    ? styles.statusTextComplete
+                    : statusChipType === 'in_progress'
+                    ? styles.statusTextInProgress
+                    : styles.statusTextUnlit,
+                ]}
+                numberOfLines={1}
+              >
+                {statusChipText}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {/* 7-Day Micro Tracker Row */}
-        <View style={styles.weekRow}>
-          {weekDays.map((day: WeekDayStreakInfo, index: number) => {
-            const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
+          {/* 7-Day Micro Tracker Row */}
+          <View style={styles.weekRow}>
+            {weekDays.map((day: WeekDayStreakInfo, index: number) => {
+              const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
 
-            return (
-              <View key={day.dateStr} style={styles.dayCol}>
-                <Text
-                  style={[
-                    styles.dayLabel,
-                    day.isToday && styles.dayLabelToday,
-                  ]}
-                >
-                  {displayLabel}
-                </Text>
+              return (
+                <View key={day.dateStr} style={styles.dayCol}>
+                  <Text
+                    style={[
+                      styles.dayLabel,
+                      day.isToday && styles.dayLabelToday,
+                    ]}
+                  >
+                    {displayLabel}
+                  </Text>
 
-                <View style={styles.dotSlot}>
-                  {day.isToday && !day.isCompleted ? (
-                    todayCount > 0 ? (
-                      // 🪔 Diya is LIT with flame glow and pulsing animation
-                      <Animated.View
-                        style={[
-                          styles.dotCircle,
-                          styles.todayLitPendingDot,
-                          {
-                            transform: [{ scale: pulseAnim }],
-                            opacity: glowAnim,
-                          },
-                        ]}
-                      >
-                        <Text style={styles.todayDiyaMiniLit}>🪔</Text>
-                      </Animated.View>
-                    ) : (
-                      // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
-                      <View style={[styles.dotCircle, styles.todayUnlitDot]}>
-                        <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
+                  <View style={styles.dotSlot}>
+                    {day.isToday && !day.isCompleted ? (
+                      todayCount > 0 ? (
+                        // 🪔 Diya is LIT with flame glow and pulsing animation
+                        <Animated.View
+                          style={[
+                            styles.dotCircle,
+                            styles.todayLitPendingDot,
+                            {
+                              transform: [{ scale: pulseAnim }],
+                              opacity: glowAnim,
+                            },
+                          ]}
+                        >
+                          <Text style={styles.todayDiyaMiniLit}>🪔</Text>
+                        </Animated.View>
+                      ) : (
+                        // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
+                        <View style={[styles.dotCircle, styles.todayUnlitDot]}>
+                          <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
+                        </View>
+                      )
+                    ) : day.isCompleted ? (
+                      <View style={[styles.dotCircle, styles.completedDot]}>
+                        <Text style={styles.lotusMini}>🪷</Text>
                       </View>
-                    )
-                  ) : day.isCompleted ? (
-                    <View style={[styles.dotCircle, styles.completedDot]}>
-                      <Text style={styles.lotusMini}>🪷</Text>
-                    </View>
-                  ) : (
-                    <View
-                      style={[
-                        styles.dotCircle,
-                        day.isFuture ? styles.futureDot : styles.pastEmptyDot,
-                      ]}
-                    >
+                    ) : (
                       <View
                         style={[
-                          styles.innerEmptyPoint,
-                          day.isFuture && styles.innerPointFuture,
+                          styles.dotCircle,
+                          day.isFuture ? styles.futureDot : styles.pastEmptyDot,
                         ]}
-                      />
-                    </View>
-                  )}
+                      >
+                        <View
+                          style={[
+                            styles.innerEmptyPoint,
+                            day.isFuture && styles.innerPointFuture,
+                          ]}
+                        />
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
-      </LinearGradient>
-    </Pressable>
-  );
-};
+              );
+            })}
+          </View>
+        </LinearGradient>
+      </Pressable>
+    );
+  }
+);
+
+SadhanaStreakCard.displayName = 'SadhanaStreakCard';
 
 const styles = StyleSheet.create({
   outerContainer: {
