@@ -35,7 +35,7 @@ interface AutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onChang
   
   // Data props
   data?: any[]; // Local static options (can be string[] or AutocompleteItem[])
-  onSearch?: (query: string) => Promise<any[]>; // Dynamic async fetch callback
+  onSearch?: (query: string, signal?: AbortSignal) => Promise<any[]>; // Dynamic async fetch callback
   disableLocalFilter?: boolean; // If true, data is rendered as-is (e.g. parent pre-filtered it)
   showSuggestionsOnFocusEmpty?: boolean; // Show suggestions when input is empty and focused
   minimumQueryLength?: number; // Minimum query length to trigger search/filter
@@ -66,7 +66,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   onSearch,
   disableLocalFilter = false,
   showSuggestionsOnFocusEmpty = false,
-  minimumQueryLength = 1,
+  minimumQueryLength = 2,
   forceShowAbove = true,
   containerStyle,
   inputContainerStyle,
@@ -90,6 +90,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   
   const containerRef = useRef<View>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Normalize any array items to AutocompleteItem format
   const getNormalizedItem = useCallback((item: any): AutocompleteItem => {
@@ -201,20 +202,32 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
     // Dynamic search via onSearch callback
     if (onSearch) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setLoading(true);
       try {
-        const results = await onSearch(trimmed);
+        const results = await (onSearch.length > 1 ? (onSearch as any)(trimmed, controller.signal) : onSearch(trimmed));
+        if (controller.signal.aborted) return;
         if (Array.isArray(results)) {
           const normalized = results.map(getNormalizedItem);
           setSuggestions(appendAddOptionIfNeeded(normalized));
         } else {
           setSuggestions(appendAddOptionIfNeeded([]));
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError' || controller.signal.aborted) {
+          return;
+        }
         console.warn('AutocompleteInput search error:', err);
         setSuggestions(appendAddOptionIfNeeded([]));
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
       return;
     }
@@ -241,11 +254,11 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // If it's a dynamic search, debounce the API call
+    // If it's a dynamic search, debounce the API call (400ms)
     if (onSearch) {
       searchTimeoutRef.current = setTimeout(() => {
         handleQuery(value);
-      }, 350);
+      }, 400);
     } else {
       // Local static filtering is fast, execute immediately
       handleQuery(value);
@@ -254,6 +267,9 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, [value, handleQuery, onSearch]);
