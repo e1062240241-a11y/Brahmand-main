@@ -89,6 +89,7 @@ export const TempleCard = React.memo(({
           source={currentSource}
           style={styles.newTempleCardImg}
           resizeMode="cover"
+          fadeDuration={0}
           onError={() => setHasError(true)}
         />
       )}
