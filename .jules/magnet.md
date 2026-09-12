@@ -30,3 +30,7 @@
 ## 2026-09-10 - Discover Tab Language-Aware Polish & Cross-Feature CTAs
 **Learning:** Unlocalized discovery screens leave non-English users feeling disconnected. Localizing tab headers ("मंदिर", "कार्यक्रम"), section titles, and empty states alongside cross-feature links (to Panchang and Jaap) improves feature cross-discovery with zero backend load.
 **Action:** Updated `frontend/app/(tabs)/discover.tsx` with Devanagari Hindi titles, warm empty prompts, and cross-feature links to `/panchang` and `/(tabs)/jaap`.
+
+## 2026-09-11 - Notifications Empty State Dual Cross-Feature CTAs
+**Learning:** Empty notification screens are high-intent drop-off points. Providing localized, dual-action CTAs ("Start Jaap 🙏" & "Today's Panchang ✨" / "जाप शुरू करें 🙏" & "आज का पंचांग ✨") converts an idle empty screen into a habit-building springboard for daily spiritual practices.
+**Action:** Updated `styles.emptyState` in `frontend/app/notifications.tsx` with a dual-CTA action row connecting Notifications to `/panchang` and `/(tabs)/jaap` with Devanagari Hindi and English localization.

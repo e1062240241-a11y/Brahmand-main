@@ -734,15 +734,26 @@ export default function NotificationsScreen() {
               </View>
               <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
               <Text style={styles.emptyText}>{t('noNotificationsSub')}</Text>
-              <TouchableOpacity
-                style={styles.emptyActionButton}
-                onPress={() => router.push('/(tabs)/jaap')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.emptyActionText}>
-                  {t('language') === 'hi' ? 'जाप शुरू करें 🙏' : 'Start Jaap 🙏'}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.emptyActionRow}>
+                <TouchableOpacity
+                  style={styles.emptyActionButton}
+                  onPress={() => router.push('/(tabs)/jaap')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.emptyActionText}>
+                    {t('language') === 'hi' ? 'जाप शुरू करें 🙏' : 'Start Jaap 🙏'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.emptyActionButton, styles.emptySecondaryButton]}
+                  onPress={() => router.push('/panchang')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.emptyActionText, styles.emptySecondaryText]}>
+                    {t('language') === 'hi' ? 'आज का पंचांग ✨' : "Today's Panchang ✨"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             <View style={{ backgroundColor: 'transparent' }}>
@@ -975,10 +986,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-  emptyActionButton: {
+  emptyActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     marginTop: 18,
+    flexWrap: 'wrap',
+  },
+  emptyActionButton: {
     backgroundColor: '#FF6600',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     shadowColor: '#FF6600',
@@ -987,9 +1005,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  emptySecondaryButton: {
+    backgroundColor: '#FFF0E6',
+    borderWidth: 1,
+    borderColor: '#FFD4AA',
+    shadowColor: 'transparent',
+    elevation: 0,
+  },
   emptyActionText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  emptySecondaryText: {
+    color: '#FF6600',
   },
 });

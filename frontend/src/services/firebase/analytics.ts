@@ -220,7 +220,7 @@ export async function logSelectContent(contentType: string, itemId: string) {
     content_type: contentType.slice(0, 40),
     item_id: String(itemId).slice(0, 100),
   });
-}
+}  
 
 /**
  * Log standard Share event via logEvent

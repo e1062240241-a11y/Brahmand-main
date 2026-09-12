@@ -113,7 +113,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
         : '';
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="rose">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -152,7 +152,7 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
 }: RegisterBusinessCardProps) {
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="peach">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -191,7 +191,7 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
         : 'Flower Decor\nAndheri West';
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="mint">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
@@ -227,7 +227,7 @@ const AartiCard = React.memo(function AartiCard({
 }: AartiCardProps) {
     return (
         <View style={[styles.cardOuter, { width, height }]}>
-            <View style={[homeStyles.actionCard, styles.actionCardInner]}>
+            <View style={[homeStyles.actionCard, homeStyles.actionCardInner]}>
                 <HomeCardTextureBg texture="lavender">
                     <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>

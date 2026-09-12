@@ -127,144 +127,6 @@ import { CommunityPost, CommunityRequest, FestivalEvent, DiscussionPost } from '
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const CosmicCharacterRing = ({ textLength, text }: { textLength?: number; text?: string }) => {
-  const size = 64;
-  const padding = 4;
-  const strokeWidth = 3.5;
-  const radius = (size - padding * 2 - strokeWidth) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circumference = 2 * Math.PI * radius;
-  const limit = 250;
-
-  // Exclude spaces from character count
-  const effectiveLength = typeof text === 'string'
-    ? text.replace(/\s/g, '').length
-    : (textLength || 0);
-
-  const currentTextLength = effectiveLength > 0 && effectiveLength % limit === 0 ? limit : effectiveLength % limit;
-  const threadCount = Math.floor(effectiveLength / limit) + (effectiveLength % limit > 0 ? 1 : 0);
-  const remaining = limit - currentTextLength;
-
-  const percentage = Math.min((currentTextLength / limit) * 100, 100);
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  // Light Blue Ring Gradient Colors (#38BDF8 Sky Light Blue)
-  let stopColor1 = '#38BDF8';
-  let stopColor2 = '#0284C7';
-
-  if (percentage >= 80 || remaining <= 20) {
-    stopColor1 = '#FF3D00';
-    stopColor2 = '#D50000';
-  } else if (percentage >= 50) {
-    stopColor1 = '#38BDF8';
-    stopColor2 = '#00B0FF';
-  }
-
-  // Sacred geometry outer mandala circles in soft white with increased opacity
-  const sgRadius = radius * 0.45;
-  const sgCircles = useMemo(() => {
-    const circles = [];
-    for (let i = 0; i < 6; i++) {
-      const a = (i * 60 * Math.PI) / 180;
-      circles.push({
-        x: cx + sgRadius * Math.cos(a),
-        y: cy + sgRadius * Math.sin(a),
-      });
-    }
-    return circles;
-  }, [cx, cy, sgRadius]);
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      {threadCount > 1 && (
-        <View style={{
-          backgroundColor: 'rgba(56, 189, 248, 0.12)',
-          borderColor: 'rgba(56, 189, 248, 0.3)',
-          borderWidth: 1,
-          paddingHorizontal: 10,
-          paddingVertical: 3,
-          borderRadius: 14,
-        }}>
-          <Text style={{ fontSize: 11, color: '#38BDF8', fontFamily: FONTS.bold }}>
-            {threadCount} posts
-          </Text>
-        </View>
-      )}
-
-      <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-        <Svg width={size} height={size}>
-          <Defs>
-            <SvgLinearGradient id="cosmicGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={stopColor1} />
-              <Stop offset="100%" stopColor={stopColor2} />
-            </SvgLinearGradient>
-          </Defs>
-
-          {/* Sacred Geometry Mandala Background Pattern in Soft White (Opacity increased to 0.45) */}
-          <G opacity={0.45}>
-            {sgCircles.map((circle, idx) => (
-              <Circle
-                key={idx}
-                cx={circle.x}
-                cy={circle.y}
-                r={sgRadius}
-                stroke="#FFFFFF"
-                strokeWidth={0.8}
-                fill="none"
-              />
-            ))}
-          </G>
-
-          {/* Background Orbit Ring */}
-          <Circle
-            cx={cx}
-            cy={cy}
-            r={radius}
-            stroke="rgba(255, 255, 255, 0.15)"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-
-          {/* Foreground Progress Orbit Ring */}
-          <Circle
-            cx={cx}
-            cy={cy}
-            r={radius}
-            stroke="url(#cosmicGradient)"
-            strokeWidth={remaining <= 0 ? strokeWidth + 0.6 : strokeWidth}
-            fill="transparent"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        </Svg>
-
-        {/* Center Display: Character Count Remaining */}
-        <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
-          <Text
-            style={{
-              fontSize: remaining <= 0 ? 12 : remaining < 100 ? 15 : 13,
-              fontWeight: '700',
-              fontFamily: FONTS.bold,
-              color: remaining <= 0 ? '#FF2D55' : remaining <= 20 ? '#FF9500' : '#FFFFFF',
-              lineHeight: 16,
-            }}
-          >
-            {remaining}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-
-
-
-
-
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
@@ -475,9 +337,6 @@ export default function CommunityDetailScreen() {
 
 
   const {
-    createPostState,
-    setCreatePostState,
-    resetCreatePostState,
     showCreateModal,
     setShowCreateModal,
     newMessage,
@@ -503,9 +362,6 @@ export default function CommunityDetailScreen() {
     showInlineCategories,
     setShowInlineCategories,
   } = useCreatePostState();
-
-  const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
-  const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState<string | null>(null);
   const [festivalSort, setFestivalSort] = useState<'latest' | 'oldest'>('latest');
@@ -522,10 +378,6 @@ export default function CommunityDetailScreen() {
   const [fullScreenOrigin, setFullScreenOrigin] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
-
-  const [cachedSymmetricKey, setCachedSymmetricKey] = useState<string | undefined>(undefined);
-
-  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
@@ -538,7 +390,6 @@ export default function CommunityDetailScreen() {
   // Apple Guideline 1.2 - community comment report state
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
-  const [keptComments, setKeptComments] = useState<any[]>([]);
 
   const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
   const [blockConfirmData, setBlockConfirmData] = useState<{
@@ -713,10 +564,6 @@ export default function CommunityDetailScreen() {
     }
     setShowTimePicker(true);
   }, [eventDate]);
-
-  const isLocalUserCommunity = useMemo(() => {
-    return !['city', 'state', 'country'].includes(community?.type);
-  }, [community?.type]);
 
   useEffect(() => {
     const onShow = (e: any) => {
@@ -1691,7 +1538,7 @@ export default function CommunityDetailScreen() {
             i === 0 ? (sevaDetails || undefined) : undefined,
             i === 0 ? (postLocation || undefined) : undefined,
             i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
-            cachedSymmetricKey
+            undefined
           );
           console.log(`[Community] Real thread chunk ${i + 1} sent`);
 
@@ -1902,11 +1749,6 @@ export default function CommunityDetailScreen() {
         created_at: c.created_at || c.createdAt || 0,
       }));
       const merged = [...mappedComments];
-      keptComments.forEach(kc => {
-        if (kc && kc.id && !merged.some(c => c.id === kc.id)) {
-          merged.push(kc);
-        }
-      });
       merged.sort((a, b) => {
         const dateA = new Date(a.created_at || 0).getTime();
         const dateB = new Date(b.created_at || 0).getTime();
@@ -1918,7 +1760,7 @@ export default function CommunityDetailScreen() {
     } catch (error) {
       console.warn('Failed to load comments:', error);
     }
-  }, [id, keptComments]);
+  }, [id]);
 
   const handleReport = useCallback((item: any) => {
     setPendingReportCommunityPost(item);
