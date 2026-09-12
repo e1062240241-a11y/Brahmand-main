@@ -113,6 +113,7 @@ from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.search_routes import router as search_router
 from routes.katha_routes import router as katha_router
 from routes.home_routes import router as home_router
+from routes.engagement_routes import router as engagement_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1462,6 +1463,7 @@ api_router.include_router(nettyfish_auth_router)
 api_router.include_router(search_router)
 api_router.include_router(katha_router)
 api_router.include_router(home_router)
+api_router.include_router(engagement_router, prefix="/engagement", tags=["engagement"])
 
 
 
@@ -1805,7 +1807,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 @api_router.post("/auth/login-anonymous")
-async def login_anonymous(request: AnonymousLoginRequest):
+async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth_rate_limit)):
     """Login using a predefined anonymous number without OTP."""
     try:
         return await FirebaseAuthService.login_anonymous(
@@ -1864,7 +1866,7 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
 
 
 @api_router.post("/admin/auth/login")
-async def admin_panel_login(data: dict = Body(...)):
+async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_limit)):
     """Admin panel login with static credentials for internal review console."""
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
@@ -2010,6 +2012,12 @@ async def get_profile(token_data: dict = Depends(verify_token)):
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    # Pre-fetch user document to merge in-memory, avoiding read-after-write
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         photo_data = update_data.get('photo')
         if photo_data:
@@ -2039,19 +2047,35 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     logger.warning(f"Failed to compress profile photo: {e}")
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
+
         await db.update_document('users', token_data["user_id"], update_data)
         from utils.cache import cache_manager
         await cache_manager.invalidate_user(token_data['user_id'])
-        return await db.get_document('users', token_data["user_id"])
+
+        # Merge in-memory to avoid redundant fetch
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
     update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
-    return await db.get_document('users', token_data["user_id"])
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+        user_doc.update(update_data)
+
+    return user_doc
 
 
 @api_router.post("/user/saved-kundlis")
@@ -2580,29 +2604,28 @@ async def get_user_by_id(
         'is_verified', 'verification_level',
     ]
 
-    # Membership via a single O(1) point read on the follow-edge collection,
-    # NOT by scanning the followers array.
-    is_following = False
-    edge = None
-    if viewer_id:
-        edge = await db.get_document('user_follows', f"{viewer_id}_{user_id}")
-        if edge is not None:
-            is_following = True
+    # ⚡ Bolt Optimization: Concurrently fetch user profile and follow edge to prevent sequential latency
+    async def fetch_edge():
+        if viewer_id and viewer_id != user_id:
+            return await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        return None
+
+    async def fetch_user():
+        fields = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+        return await db.get_document_fields('users', user_id, fields)
+
+    edge, doc = await asyncio.gather(fetch_edge(), fetch_user())
+
+    if not doc:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    is_following = edge is not None
 
     if include_lists:
-        # follow-connections screen needs the actual ID arrays. Fetch them
-        # explicitly (still maintained by dual-write on follow/unfollow).
-        doc = await db.get_document_fields(
-            'users', user_id, SCALAR_FIELDS + ['followers', 'following']
-        )
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
+        # follow-connections screen needs the actual ID arrays.
         followers_list = list(doc.get('followers') or [])
         following_list = list(doc.get('following') or [])
     else:
-        doc = await db.get_document_fields('users', user_id, SCALAR_FIELDS)
-        if not doc:
-            raise HTTPException(status_code=404, detail='User not found')
         followers_list = None  # not loaded
         following_list = None  # not loaded
         # Pre-backfill fallback: edge doc missing but this may be an existing
@@ -3028,16 +3051,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if user_id in blocked_user_ids:
         raise HTTPException(status_code=403, detail='Follow not allowed due to a block relationship')
 
-    current_user = await db.get_document('users', current_user_id)
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    current_user, target_user, existing_edge = await asyncio.gather(
+        db.get_document('users', current_user_id),
+        db.get_document('users', user_id),
+        db.get_document('user_follows', follow_doc_id)
+    )
+
     if not current_user:
         raise HTTPException(status_code=404, detail='Current user not found')
-
-    target_user = await db.get_document('users', user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
-
-    follow_doc_id = f"{current_user_id}_{user_id}"
-    existing_edge = await db.get_document('user_follows', follow_doc_id)
     if existing_edge is not None:
         return {'message': 'Already following user', 'user_id': user_id}
 
@@ -3106,13 +3130,17 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
     current_user_id = token_data['user_id']
 
-    target_user = await db.get_document('users', user_id)
+    follow_doc_id = f"{current_user_id}_{user_id}"
+    target_user, edge_doc = await asyncio.gather(
+        db.get_document('users', user_id),
+        db.get_document('user_follows', follow_doc_id)
+    )
+
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
     # Remove the follow edge doc (primary)
-    follow_doc_id = f"{current_user_id}_{user_id}"
-    edge_existed = await db.get_document('user_follows', follow_doc_id) is not None
+    edge_existed = edge_doc is not None
     if edge_existed:
         await db.delete_document('user_follows', follow_doc_id)
 
@@ -3291,6 +3319,7 @@ async def share_post_preview(post_id: str):
     return HTMLResponse(content=html_content)
 
 
+@api_router.get('/posts/{post_id}/views')
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3298,12 +3327,28 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
 
+    user_id = token_data.get('user_id')
+    current_views = post.get('views_count', 0) or 0
+
+    # Ignore self-views: author viewing their own post does not increment view_count
+    if user_id and user_id == post.get('user_id'):
+        return {'message': 'Self-view ignored', 'views_count': current_views}
+
+    # Deduplicate view count per user within a 5-minute window
+    if user_id:
+        cache_key = f"post_view:{post_id}:{user_id}"
+        already_viewed = await cache_manager.get(cache_key)
+        if already_viewed:
+            return {'message': 'View already recorded', 'views_count': current_views}
+
+        await cache_manager.set(cache_key, True, ttl=300)
+
     # Atomic server-side increment — avoids the read-then-write race where
     # concurrent views both read the same count and clobber each other.
     await db.increment_field('posts', post_id, 'views_count', 1)
 
     # Best-effort count for the response; the stored value is now accurate.
-    return {'message': 'View recorded', 'views_count': (post.get('views_count', 0) or 0) + 1}
+    return {'message': 'View recorded', 'views_count': current_views + 1}
 
 
 @api_router.get("/bunny-media/{filepath:path}")
@@ -3414,6 +3459,9 @@ async def _upload_post_impl(
     original_height: Optional[int] = None,
     mute_audio: Optional[str] = None,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     db = await get_db()
     user_id = token_data['user_id']
 
@@ -3723,6 +3771,9 @@ async def _upload_chat_media_impl(
     file: UploadFile,
     token_data: dict,
 ):
+    import os
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
     
@@ -4478,42 +4529,6 @@ async def get_posts_feed(
     except Exception:
         authors_by_id = {}
 
-    def _comment_sort_key(item: dict):
-        val = item.get('created_at')
-        if isinstance(val, datetime): return val
-        if isinstance(val, str):
-            try: return datetime.fromisoformat(val.replace('Z', '+00:00'))
-            except Exception: return datetime.min
-        return datetime.min
-
-    # Batch retrieve comments for posts with low comments count (<= 10) to eliminate N+1 queries
-    post_ids_for_batch_comments = [
-        p.get('id') for p in paged_posts 
-        if p.get('id') and 0 < (p.get('comments_count', 0) or 0) <= 10
-    ]
-    
-    comments_by_post = {}
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments in Discovery Feed: {comment_err}")
-
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -4541,10 +4556,6 @@ async def get_posts_feed(
             # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
-            
-            # Don't include full comments in feed - only counts
-            # Comments will be fetched on-demand when user opens the post
-            post.pop('top_comments', None)
             
             # Slim response: Remove heavy fields not needed in feed
             # Remove full liked_by array (we already have likes_count and liked_by_me)
@@ -4720,71 +4731,11 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         except Exception as e:
             logger.error(f"Error batch fetching post authors: {e}")
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
-
-    comments_by_post_id = {}
-
-    # ⚡ Bolt Optimization: Batch fetch top comments using 'in' query for posts with <= 10 comments to avoid N+1 bottleneck securely.
-    post_ids_for_batch_comments = [
-        post.get('id') for post in paged_posts
-        if post.get('id') and 0 < post.get('comments_count', 0) <= 10
-    ]
-
-    if post_ids_for_batch_comments:
-        try:
-            comment_queries = []
-            for idx in range(0, len(post_ids_for_batch_comments), 30):
-                chunk = post_ids_for_batch_comments[idx : idx + 30]
-                comment_queries.append(
-                    db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', 'in', chunk)]
-                    )
-                )
-            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
-            for res in query_results:
-                if isinstance(res, list):
-                    for comment in res:
-                        pid = comment.get('post_id')
-                        if pid:
-                            comments_by_post_id.setdefault(pid, []).append(comment)
-        except Exception as comment_err:
-            logger.warning(f"Failed to batch load comments for hashtag posts: {comment_err}")
-
-    # Fallback: Fetch comments concurrently with strict limits for viral posts (> 10 comments)
-    comments_tasks = []
-    for post in paged_posts:
-        if post.get('comments_count', 0) > 10:
-            comments_tasks.append((
-                post.get('id'),
-                db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=10,
-                )
-            ))
-
-    if comments_tasks:
-        post_ids, tasks = zip(*comments_tasks)
-        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        for pid, res in zip(post_ids, comments_results):
-            comments_by_post_id[pid] = res if not isinstance(res, Exception) else []
 
     normalized = []
     for post in paged_posts:
         pid = post.get('id')
-        top_comments = comments_by_post_id.get(pid, []) if pid else []
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4796,9 +4747,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
         normalized.append(post)
 
     has_more = (safe_offset + safe_limit) < len(visible_posts)
@@ -4839,30 +4787,6 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    comments_cnt = post.get('comments_count', 0) or 0
-    if comments_cnt > 0:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=10,
-        )
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-
-        def _comment_created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
-
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-    else:
-        post['top_comments'] = []
     return post
 
 
@@ -5236,35 +5160,6 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    
-    # Pre-fetch existing comments but manually include the new one to ensure immediate visibility
-    try:
-        top_comments_raw = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post_id)],
-            limit=10,
-        )
-    except:
-        top_comments_raw = []
-
-    # Ensure the one we just created is included even if Firestore hasn't indexed it yet
-    if not any(c.get('id') == comment_id for c in top_comments_raw):
-        top_comments_raw.append(comment_doc)
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                # Handle ISO format with Z or +00:00
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
-    updated_post['top_comments'] = top_comments_raw[:5]
 
     # Send all notifications (replies, comments, mentions) in the background asynchronously
     asyncio.create_task(
@@ -5299,20 +5194,24 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, of
 
     safe_limit = max(1, min(limit, 500))
     safe_offset = max(0, offset)
+    user_id = token_data['user_id']
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+
+    # ⚡ Bolt Optimization: Use asyncio.gather to concurrently fetch comments, blocked users, and reported content to reduce overall endpoint latency.
     # ponytail: query_documents has no cursor/offset, so we fetch the bounded 500-cap set once
     # and paginate in memory (same pattern as get_my_posts). Upgrade to a Firestore start_after
     # cursor in query_documents if DB reads on this endpoint ever become a bottleneck.
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=500,
+    comments, blocked_user_ids, reported_comment_ids = await asyncio.gather(
+        db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post_id)],
+            limit=500,
+        ),
+        _get_blocked_user_ids(db, user_id),
+        _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     )
 
-    user_id = token_data['user_id']
-    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     comments = [
         c for c in comments
         if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids
@@ -5374,37 +5273,12 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    # Recalculate top_comments
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post_id)],
-        limit=200,
-    )
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-
-    await db.update_document('posts', post_id, {
-        'top_comments': top_comments[:5]
-    })
-
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
         updated_post = post.copy()
         updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    updated_post['top_comments'] = top_comments[:5]
 
     return {
         'message': 'Comment deleted',
@@ -8473,15 +8347,14 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     """Get all circles the user is a member of"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
     circles = []
-    user_circle_ids = list(user.get('circles', [])) if user else []
     
-    if user_circle_ids:
-        try:
-            fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
-            
+    try:
+        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
+        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+
+        if fetched_circles:
             # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
             all_member_ids = set()
             for circle in fetched_circles:
@@ -8527,8 +8400,8 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                         "is_cultural": is_cultural,
                         "created_at": circle.get('created_at')
                     })
-        except Exception as e:
-            logger.error("Error batch fetching circles: %s", e)
+    except Exception as e:
+        logger.error("Error batch fetching circles: %s", e)
             
 
     return circles
@@ -10868,20 +10741,6 @@ async def send_library_reminder_notification(
     return {"status": "success", "result": result}
 
 
-@api_router.post("/notifications/shiv-katha-reminder")
-async def send_shiv_katha_reminder_notification(
-    data: dict = Body({}),
-    token_data: dict = Depends(verify_token)
-):
-    user_id = data.get("target_user_id") or token_data["user_id"]
-    force = bool(data.get("force", False))
-    
-    result = await FirebaseNotificationService.notify_shiv_katha_reminder(
-        user_id=user_id,
-        force=force
-    )
-    return {"status": "success", "result": result}
-
 
 
 
@@ -11789,11 +11648,16 @@ async def get_help_requests(
     community_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get help requests visible to the user"""
     db = await get_db()
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     filters = [('status', '==', status)]
     
     if type:
@@ -11802,8 +11666,27 @@ async def get_help_requests(
     if community_level:
         filters.append(('community_level', '==', community_level))
     
-    requests = await db.query_documents('help_requests', filters=filters, limit=limit, order_by='created_at', order_direction='DESCENDING')
-    return requests
+    try:
+        requests = await db.query_documents(
+            'help_requests',
+            filters=filters,
+            limit=fetch_limit,
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for help_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'help_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
+
+    return requests[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.get("/help-requests/my")
@@ -13694,13 +13577,16 @@ async def get_community_requests(
     visibility_level: Optional[str] = None,
     status: str = "active",
     limit: int = 50,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
     """Get community requests with filters"""
     user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
     
     # 1. Try fetching from cache first (skip cache if fetching blood/emergency requests for real-time accuracy)
-    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
+    cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{safe_limit}:{safe_offset}"
     if type not in ['blood', 'emergency', 'medical']:
         cached_requests = await cache_manager.get(cache_key)
         if cached_requests is not None:
@@ -13729,8 +13615,29 @@ async def get_community_requests(
     )
     if not isinstance(location_area, dict):
         location_area = {}
-    # Do not apply limit at DB level to avoid fetching oldest documents first
-    requests = await db.query_documents('community_requests', filters=filters)
+
+    # Architectural fix: Limit the candidate document query at DB level with created_at DESC
+    # to avoid O(N) reads of all historical community requests across the system.
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+    try:
+        requests = await db.query_documents(
+            'community_requests',
+            filters=filters,
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for community_requests, falling back to un-ordered query: {query_err}")
+            requests = await db.query_documents(
+                'community_requests',
+                filters=filters,
+                limit=fetch_limit
+            )
+            requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        else:
+            raise query_err
     
     # Filter requests based on visibility level
     visible_requests = []
@@ -13833,15 +13740,14 @@ async def get_community_requests(
 
     filtered_clean_requests.sort(key=_final_sort_key)
     
-    # Apply limit
-    if limit:
-        filtered_clean_requests = filtered_clean_requests[:limit]
+    # Apply offset and limit pagination
+    paginated_requests = filtered_clean_requests[safe_offset : safe_offset + safe_limit]
             
     # 2. Store in cache with 30-second TTL
-    await cache_manager.set(cache_key, filtered_clean_requests, ttl=30)
+    await cache_manager.set(cache_key, paginated_requests, ttl=30)
     logger.info(f"Cached community requests for: {cache_key}")
     
-    return filtered_clean_requests
+    return paginated_requests
 
 
 @api_router.get("/community-requests/my")
@@ -16873,15 +16779,66 @@ async def _jaap_reminder_worker():
                                 sent_reminders_cache[cache_key] = now_ts
                                 continue
 
-                            # Send notification via task queue
+                            # Fetch user streak stats for personalized Sadhana Sankalpa notification
+                            user_streak = 0
+                            is_today_completed = False
+                            today_count = 0
+                            try:
+                                stats_doc = await db.get_document("user_jaap_stats", uid)
+                                if stats_doc:
+                                    user_streak = int(stats_doc.get("current_streak", 0))
+                                    if stats_doc.get("last_jaap_date") == date_str:
+                                        is_today_completed = bool(stats_doc.get("is_today_completed", False))
+                                        today_count = int(stats_doc.get("today_count", 0))
+                                else:
+                                    # Fallback to users doc
+                                    u_doc = await db.get_document("users", uid)
+                                    if u_doc:
+                                        user_streak = int(u_doc.get("sadhana_streak", 0))
+                                        if u_doc.get("last_jaap_date") == date_str:
+                                            is_today_completed = bool(u_doc.get("sadhana_today_completed", False))
+                                            today_count = int(u_doc.get("sadhana_today_count", 0))
+                            except Exception as streak_err:
+                                logger.warning(f"Error fetching user streak for notification: {streak_err}")
+
+                            # Personalize title and body based on user state (Case A, B, C, D)
+                            if is_today_completed:
+                                # Case C: Today's Sankalpa already completed (Diya Already Lit)
+                                final_title = f"✨ Live {mantra_title} Starting Soon"
+                                final_body = f"Aapka aaj ka sankalp pura ho chuka hai! Apni sadhana ko aur gehra karne ke liye {session['name']} Live Jaap mein juden."
+                            elif user_streak >= 1:
+                                if session['name'] in ['Evening', 'Night']:
+                                    # Case B: Evening/Night streak saver
+                                    final_title = f"🔥 {user_streak} Din Ka Sankalp Bachayein!"
+                                    remaining_txt = f" (Sirf {108 - today_count} baaki)" if today_count > 0 else " (1 Mala baaki)"
+                                    final_body = f"Aaj ka sankalp baaki hai{remaining_txt}. {session['name']} Live {mantra_title} mein judkar apna Diya prajwalit karein."
+                                else:
+                                    # Case A: Morning/Afternoon streak continuation
+                                    final_title = f"🪔 {user_streak} Din Ka Sadhana Sankalpa"
+                                    final_body = f"Live {mantra_title} 5 minute mein shuru ho raha hai. Aaj ka Diya prajwalit karein aur apna sankalp barkarar rakhein!"
+                            elif today_count > 0:
+                                # User chanted some today, not yet complete
+                                final_title = "🪔 1 Mala Pura Karein"
+                                final_body = f"Aapne aaj jaap shuru kiya hai ({today_count}/108). {session['name']} Live {mantra_title} mein judkar Diya prajwalit karein!"
+                            else:
+                                # Case D: New User or Fresh Start (Day 1 / streak == 0, today_count == 0)
+                                final_title = "🪔 Shuru Karein Sadhana Sankalpa"
+                                final_body = f"Live {mantra_title} 5 minute mein shuru ho raha hai. Aaj 1 Mala pura karke apna sankalp shuru karein!"
+
+                            # Send notification via task queue with streak context
                             await task_queue.enqueue(
                                 FirebaseNotificationService.notify_jaap_reminder,
                                 user_id=uid,
-                                title=notif_title,
-                                body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
+                                title=final_title,
+                                body=final_body,
                                 mantra_type=mantra_type,
                                 session_name=session['name'],
-                                notification_id=notif_id
+                                notification_id=notif_id,
+                                extra_data={
+                                    "current_streak": user_streak,
+                                    "today_count": today_count,
+                                    "is_today_completed": is_today_completed,
+                                }
                             )
                             sent_reminders_cache[cache_key] = now_ts
                     

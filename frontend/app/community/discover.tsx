@@ -1,5 +1,4 @@
-// accessibility: placeholder
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +12,10 @@ import {
   FlatList,
   Platform,
   RefreshControl,
+  Animated,
+  Easing,
 } from 'react-native';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -63,6 +65,27 @@ export default function DiscoverCommunitiesScreen() {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (refreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [refreshing, androidRefreshAnim]);
   const [searchQuery, setSearchQuery] = useState('');
   const [createdGroups, setCreatedGroups] = useState<Community[]>([]);
   const [filteredGroups, setFilteredGroups] = useState<Community[]>([]);
@@ -300,7 +323,7 @@ export default function DiscoverCommunitiesScreen() {
                         disabled={resendingInviteIds.has(`${req.id}-${u.id}`)}
                       >
                         {resendingInviteIds.has(`${req.id}-${u.id}`) ? (
-                          <ActivityIndicator size="small" color="#FF3400" />
+                          <OmSpinner size="small" color="#FF3400" />
                         ) : (
                           <>
                             <Ionicons name="notifications-outline" size={12} color="#FF3400" />
@@ -331,7 +354,7 @@ export default function DiscoverCommunitiesScreen() {
                         disabled={resendingInviteIds.has(`${req.id}-${u.id}`)}
                       >
                         {resendingInviteIds.has(`${req.id}-${u.id}`) ? (
-                          <ActivityIndicator size="small" color="#FF3400" />
+                          <OmSpinner size="small" color="#FF3400" />
                         ) : (
                           <>
                             <Ionicons name="notifications-outline" size={12} color="#FF3400" />
@@ -446,16 +469,40 @@ export default function DiscoverCommunitiesScreen() {
 
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#FF3400" />
+          <OmSpinner size="large" color="#FF3400" />
         </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 60) }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} />
+            <OmRefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} />
           }
         >
+          {Platform.OS === 'android' ? (
+            <Animated.View
+              style={{
+                height: androidRefreshAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 52],
+                }),
+                opacity: androidRefreshAnim.interpolate({
+                  inputRange: [0, 0.4, 1],
+                  outputRange: [0, 0.5, 1],
+                }),
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+              }}
+            >
+              <OmSpinner refreshing={refreshing} size={36} />
+            </Animated.View>
+          ) : (
+            <View style={{ width: '100%', height: 48, marginTop: -48, alignItems: 'center', justifyContent: 'center' }}>
+              <OmSpinner refreshing={refreshing} size={36} />
+            </View>
+          )}
           {/* ─── My Created Communities ─── */}
           {myRequests.length > 0 && (
             <View style={styles.section}>

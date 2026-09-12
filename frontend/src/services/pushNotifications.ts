@@ -392,56 +392,6 @@ export async function scheduleLibraryReadingNotification(
   }
 }
 
-export async function scheduleShivKathaNotification(
-  triggerSeconds?: number,
-  force: boolean = false
-) {
-  if (Platform.OS === 'web') return null;
-  const Notifications = await getNotificationsModule();
-  if (!Notifications) return null;
-
-  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
-  if (!force) {
-    try {
-      const lastSentStr = await AsyncStorage.getItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP');
-      if (lastSentStr) {
-        const lastSentTime = parseInt(lastSentStr, 10);
-        if (Date.now() - lastSentTime < TWELVE_HOURS_MS) {
-          console.log('[Push] Shiv Katha notification skipped: max 2 per day allowed');
-          return null;
-        }
-      }
-    } catch (e) {
-      console.warn('[Push] Error checking last Shiv Katha reminder timestamp:', e);
-    }
-  }
-
-  const delay = triggerSeconds && triggerSeconds > 0 ? triggerSeconds : 1;
-
-  try {
-    const notifId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🕉️ LIVE Shiv Katha starts on 13 August',
-        body: 'Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.',
-        data: { type: 'shiv_katha_reminder', route: '/shravan-paath' },
-        sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
-      },
-      trigger: {
-        seconds: delay,
-        channelId: 'default_v4',
-        type: 'timeInterval',
-      } as any,
-    });
-
-    await AsyncStorage.setItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP', Date.now().toString()).catch(() => {});
-    console.log(`[Push] Shiv Katha notification scheduled in ${delay}s (id: ${notifId})`);
-    return notifId;
-  } catch (e) {
-    console.warn('[Push] Failed to schedule Shiv Katha notification:', e);
-    return null;
-  }
-}
-
 /**
  * ✅ FIXED: Uses explicit identifiers and cancels existing notifications before scheduling
  * to prevent duplicate stacking on app restarts.

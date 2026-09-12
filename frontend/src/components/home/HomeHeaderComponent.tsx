@@ -399,7 +399,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         const updatePlayback = (appState: string = AppState.currentState) => {
             if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
-            const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === 0;
+            const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === 1;
             if (shouldPlay) {
                 try {
                     achPlayer.play();
@@ -881,7 +881,179 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Live Katha Banner (First) */}
+                            {/* Hanuman Chalisa Banner (First) */}
+                            <StaticBannerCard
+                                width={screenWidth - 40}
+                                source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
+                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                            >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                                    {/* Top Left Content */}
+                                    <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                                            <Text style={[
+                                                styles.featuredLiveTitle,
+                                                {
+                                                    color: '#FFF',
+                                                    fontFamily: 'System',
+                                                    fontSize: 15,
+                                                    fontStyle: 'normal',
+                                                    fontWeight: '700',
+                                                    letterSpacing: 1,
+                                                    textShadowColor: 'rgba(0,0,0,0.9)',
+                                                    textShadowOffset: { width: 0, height: 1 },
+                                                    textShadowRadius: 6,
+                                                }
+                                            ]}>Hanuman Chalisa</Text>
+                                        </View>
+
+                                        <Text style={[styles.featuredDevotees, {
+                                            color: '#FFF',
+                                            fontWeight: '600',
+                                            opacity: 0.9,
+                                            textShadowColor: 'rgba(0,0,0,0.8)',
+                                            textShadowOffset: { width: 0, height: 1 },
+                                            textShadowRadius: 4,
+                                            marginLeft: 14,
+                                            marginTop: 0,
+                                            marginBottom: 2,
+                                            fontSize: 13
+                                        }]}>
+                                            {hanumanStatus.isActive
+                                                ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
+                                                : (t('language') === 'hi'
+                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
+                                                    // Lever: Devotional Reframing + Satsang Proof
+                                                    // UI: Text-only change, zero new components.
+                                                    ? '2300+ भक्त पहले ही जाप समर्पित कर चुके हैं'
+                                                    : '2300+ devotees already offered jaap')}
+                                        </Text>
+
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                            <Ionicons name="time-outline" size={13} color="#FFF" />
+                                            <Text style={[styles.featuredTime, {
+                                                marginTop: 0,
+                                                marginLeft: 4,
+                                                color: '#FFF',
+                                                fontWeight: '600',
+                                                fontSize: 12
+                                            }]}>
+                                                {hanumanStatus.isActive
+                                                    ? (t('language') === 'hi'
+                                                        // 🧡 Engagement: Reframed transactional counter "जाप पूर्ण" to devotional offering "चालीसा समर्पित" + proximity "बस X और"
+                                                        // Lever: Reframing + Proximity to Completion
+                                                        // Why: "समर्पित" evokes spiritual devotion over task completion; showing remaining count triggers Zeigarnik effect.
+                                                        // UI: Text-only change, zero layout/visual additions.
+                                                        ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} चालीसा समर्पित${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — बस ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} और` : ''}`
+                                                        : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
+                                                    : (hanumanStatus.nextSessionStart
+                                                        ? (t('language') === 'hi'
+                                                            ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
+                                                            : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Top Right LIVE Badge */}
+                                    <View style={[styles.liveBadge, {
+                                        alignSelf: 'flex-start',
+                                        backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
+                                        paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                                    }]}>
+                                        {hanumanStatus.isActive && <View style={styles.liveDot} />}
+                                        <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
+                                            {hanumanStatus.isActive
+                                                ? 'LIVE'
+                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                {/* Bottom Button Row */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.joinJaapButton,
+                                            {
+                                                backgroundColor: '#FF5100',
+                                                display: 'flex',
+                                                width: 138,
+                                                height: 36,
+                                                paddingHorizontal: 12,
+                                                flexDirection: 'row',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                borderRadius: 20,
+                                                borderWidth: 1,
+                                                borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                shadowColor: '#FF5100',
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: 0.5,
+                                                shadowRadius: 5,
+                                                elevation: 4,
+                                                transform: [{ scale: pressed ? 0.95 : 1 }],
+                                            }
+                                        ]}
+                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                        onPressIn={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                        }}
+                                        onPressOut={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                        }}
+                                        onPress={() => {
+                                            try {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                            } catch (_e) { }
+                                            handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa');
+                                        }}
+                                    >
+                                        <Ionicons name="play" size={12} color="#FFF" />
+                                        <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                    </Pressable>
+
+                                    <Pressable
+                                        style={({ pressed }) => ({
+                                            backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: 18,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            borderWidth: 1,
+                                            borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                            transform: [{ scale: pressed ? 0.92 : 1 }],
+                                        })}
+                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                        onPressIn={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                        }}
+                                        onPressOut={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                        }}
+                                        onPress={() => {
+                                            try {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            } catch (_e) { }
+                                            handleSetReminder('hanuman', 'Hanuman Chalisa');
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
+                                            size={18}
+                                            color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
+                                        />
+                                    </Pressable>
+                                </View>
+                            </StaticBannerCard>
+
+                            {/* Live Katha Banner - Acharya Shamik Ji (Second) */}
                             {(() => {
                                 // Dynamic Event State Calculation (13 August - 11 September Shravan Maas Shiv Katha)
                                 // Standardized to Asia/Kolkata (IST UTC+5:30)
@@ -1386,9 +1558,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
                                                     : (hanumanStatus.nextSessionStart
                                                         ? (t('language') === 'hi'
-                                                            ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
-                                                            : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                            // 🧡 Engagement: Reframed transactional start time "जाप 6:00 AM बजे शुरू होगा" to commitment framing "अगला जाप 6:00 AM बजे — संकल्प लें 🚩"
+                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
+                                                            // Why: "संकल्प लें" transforms a passive time notification into a spiritual commitment for daily practice.
+                                                            // UI: Text-only change, zero visual layout additions.
+                                                            ? `अगला जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                            : `Next jaap at ${formatTime(hanumanStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
                                             </Text>
                                         </View>
                                     </View>
@@ -1550,8 +1726,14 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 {shivaStatus.isActive
                                                     ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
                                                     : (shivaStatus.nextSessionStart
-                                                        ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                        ? (t('language') === 'hi'
+                                                            // 🧡 Engagement: Reframed transactional time announcement to spiritual commitment framing
+                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
+                                                            // Why: Indian users respond to "संकल्प" (devotional pledge) rather than generic schedule info.
+                                                            // UI: Text-only change, zero visual additions.
+                                                            ? `अगला जाप ${formatTime(shivaStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                            : `Next jaap at ${formatTime(shivaStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
                                             </Text>
                                         </View>
                                     </View>

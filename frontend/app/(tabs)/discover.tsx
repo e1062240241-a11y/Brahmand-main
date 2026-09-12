@@ -1,10 +1,11 @@
-// accessibility: placeholder
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { getTemples, getNearbyEvents } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { useAuthStore } from '../../src/store/authStore';
 
 interface Temple {
   id: string;
@@ -27,6 +28,9 @@ interface Event {
 
 export default function DiscoverScreen() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isHindi = user?.language === 'hi';
+
   const [activeTab, setActiveTab] = useState<'temples' | 'events'>('temples');
   const [temples, setTemples] = useState<Temple[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -73,7 +77,7 @@ export default function DiscoverScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <OmSpinner size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -82,19 +86,24 @@ export default function DiscoverScreen() {
     <View style={styles.container}>
       {/* Tab Switcher - Only Temples and Events */}
       <View style={styles.tabContainer}>
-        {['temples', 'events'].map((tab) => (
+        {[
+          { key: 'temples', label: isHindi ? 'मंदिर' : 'Temples', icon: 'home' as const },
+          { key: 'events', label: isHindi ? 'कार्यक्रम' : 'Events', icon: 'calendar' as const },
+        ].map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
-            onPress={() => setActiveTab(tab as any)}
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key as any)}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
           >
             <Ionicons
-              name={tab === 'temples' ? 'home' : 'calendar'}
+              name={tab.icon}
               size={18}
-              color={activeTab === tab ? COLORS.primary : COLORS.textSecondary}
+              color={activeTab === tab.key ? COLORS.primary : COLORS.textSecondary}
             />
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+              {tab.label}
             </Text>
           </TouchableOpacity>
         ))}
@@ -103,21 +112,41 @@ export default function DiscoverScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          <OmRefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
         showsVerticalScrollIndicator={false}
       >
         {/* Temples Tab */}
         {activeTab === 'temples' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Temple Network</Text>
-            <Text style={styles.sectionSubtitle}>Follow temples to receive updates and announcements</Text>
+            <Text style={styles.sectionTitle}>
+              {isHindi ? 'मंदिर नेटवर्क' : 'Temple Network'}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {isHindi
+                ? 'नवीनतम समाचार एवं घोषणाओं के लिए मंदिरों से जुड़ें 🙏'
+                : 'Follow temples to receive updates and announcements 🙏'}
+            </Text>
             
             {temples.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="home-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No temples registered yet</Text>
-                <Text style={styles.emptySubtext}>Be the first to add your local temple</Text>
+                <Text style={styles.emptyText}>
+                  {isHindi ? 'अभी कोई मंदिर पंजीकृत नहीं है' : 'No temples registered yet'}
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  {isHindi ? 'अपने स्थानीय मंदिर की जानकारी जोड़ें 🙏' : 'Be the first to add your local temple 🙏'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyCtaButton}
+                  onPress={() => router.push('/panchang' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isHindi ? 'आज का पंचांग देखें' : 'Today\'s Panchang'}
+                >
+                  <Text style={styles.emptyCtaText}>
+                    {isHindi ? 'आज का पंचांग देखें →' : "Today's Panchang →"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               temples.map((temple) => {
@@ -137,7 +166,7 @@ export default function DiscoverScreen() {
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardTitle}>{templeName}</Text>
                       <Text style={styles.cardSubtitle}>
-                        {locStr ? `${locStr} • ` : ''}{temple.follower_count || 0} followers
+                        {locStr ? `${locStr} • ` : ''}{temple.follower_count || 0} {isHindi ? 'अनुयायी' : 'followers'}
                       </Text>
                       {deityName ? (
                         <Text style={styles.deityText}>{deityName}</Text>
@@ -154,14 +183,36 @@ export default function DiscoverScreen() {
         {/* Events Tab */}
         {activeTab === 'events' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Nearby Sanatan Events</Text>
-            <Text style={styles.sectionSubtitle}>Discover spiritual events happening near you</Text>
+            <Text style={styles.sectionTitle}>
+              {isHindi ? 'निकटतम सनातन कार्यक्रम' : 'Nearby Sanatan Events'}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {isHindi
+                ? 'अपने निकट होने वाले आध्यात्मिक कार्यक्रमों की खोज करें 🙏'
+                : 'Discover spiritual events happening near you 🙏'}
+            </Text>
             
             {events.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No upcoming events</Text>
-                <Text style={styles.emptySubtext}>Check back later for new events</Text>
+                <Text style={styles.emptyText}>
+                  {isHindi ? 'अभी कोई आगामी कार्यक्रम नहीं' : 'No upcoming events'}
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  {isHindi
+                    ? 'शीघ्र ही नए कार्यक्रमों की जानकारी उपलब्ध होगी 🙏'
+                    : 'Check back later for new events 🙏'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyCtaButton}
+                  onPress={() => router.push('/(tabs)/jaap' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isHindi ? 'दैनिक जाप शुरू करें' : 'Start Daily Jaap'}
+                >
+                  <Text style={styles.emptyCtaText}>
+                    {isHindi ? 'दैनिक जाप शुरू करें →' : 'Start Daily Jaap →'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               events.map((event) => (
@@ -373,6 +424,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textLight,
     marginTop: SPACING.xs,
+    textAlign: 'center',
+  },
+  emptyCtaButton: {
+    marginTop: SPACING.md,
+    backgroundColor: `${COLORS.primary}15`,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  emptyCtaText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
   bottomPadding: {
     height: SPACING.xl,

@@ -15,3 +15,18 @@
 ## 2026-09-07 - Home Action Cards Row to Library Cross-Feature Connection
 **Learning:** Placing a subtle, language-aware "Daily Reading" / "स्वाध्याय" action card directly in the top action cards row on the Home feed seamlessly encourages daily scripture reading habits by connecting Home directly to `/library/continue-reading`.
 **Action:** Added `ContinueReadingCard` in `frontend/src/components/home/ActionCardsRow.tsx` navigating to `/library/continue-reading` with pure English ("Daily Reading") and pure Hindi ("स्वाध्याय") localization based on `t('language')`.
+
+## 2026-09-08 - Backend Engagement Daily Spiritual Nudge Scheduler
+**Learning:** Proactive time-based spiritual nudges that deliver localized titles/bodies (respecting user language preference between Devanagari Hindi and English) significantly boost daily retention and Panchang discovery.
+**Action:** Created `EngagementSchedulerService` in `backend/services/engagement_scheduler.py` and API route `POST /nudge/daily` in `backend/routes/engagement_routes.py` connected via `backend/main.py`.
+## 2026-09-08 - Language-Aware Chat Empty State Nudge
+**Learning:** Empty chat screens without warm, localized guidance feel impersonal. Adding warm Devanagari Hindi copy ("अभी कोई संदेश नहीं हैं। बातचीत शुरू करें! 🙏") for Hindi users encourages user engagement and interaction in private and circle chats.
+**Action:** Updated `ListEmptyComponent` in `frontend/app/chat/[type]/[id].tsx` to conditionally display language-aware empty text based on `user?.language`.
+
+## 2026-09-09 - Language-Aware Circles Empty State & Warm Action CTAs
+**Learning:** Empty group/circle discovery screens without localized copy discourage community formation. Localizing primary action CTAs ("सर्कल बनाएं", "सर्कल में जुड़ें") and empty state prompts in warm Hindi ("अपने परिवार, मित्रों या मंदिर समुदाय के लिए एक सर्कल बनाएं 🙏") increases community engagement for Hindi users.
+**Action:** Updated `frontend/app/(tabs)/circles.tsx` to conditionally render Devanagari Hindi copy for action buttons, badge metadata, and empty states when `user?.language === 'hi'`.
+
+## 2026-09-10 - Discover Tab Language-Aware Polish & Cross-Feature CTAs
+**Learning:** Unlocalized discovery screens leave non-English users feeling disconnected. Localizing tab headers ("मंदिर", "कार्यक्रम"), section titles, and empty states alongside cross-feature links (to Panchang and Jaap) improves feature cross-discovery with zero backend load.
+**Action:** Updated `frontend/app/(tabs)/discover.tsx` with Devanagari Hindi titles, warm empty prompts, and cross-feature links to `/panchang` and `/(tabs)/jaap`.

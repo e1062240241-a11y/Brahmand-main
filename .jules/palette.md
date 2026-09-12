@@ -1,3 +1,3 @@
-## $(date +%Y-%m-%d) - Accessible Character Counters
-**Learning:** Hardcoding `maxLength` limits in reusable components restricts their applicability. Additionally, character counters for screen readers must include `accessibilityRole="text"` and `accessibilityLabel` (e.g., "N of M characters used") to be properly understood, as raw text like "5/200" is unhelpful.
-**Action:** Ensure `maxLength` is passed as a prop to reusable inputs and that any conditionally rendered counter text is fully accessible.
+## 2024-05-18 - Added accessibility attributes to Switch component
+**Learning:** In React Native, `<Switch>` components do not inherently link to adjacent `<Text>` labels for accessibility (unlike HTML forms). When screen readers interact with a bare `<Switch>`, they only announce "switch" without context.
+**Action:** To ensure screen readers announce them properly, explicitly apply `accessibilityRole="switch"` and a descriptive `accessibilityLabel` to the `<Switch>` element.

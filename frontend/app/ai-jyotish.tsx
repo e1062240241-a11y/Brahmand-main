@@ -435,6 +435,8 @@ export default function AIJyotishScreen() {
                       activeOpacity={0.8} 
                       onPress={() => setShowDatePicker(!showDatePicker)} 
                       style={[styles.askNowInput, { justifyContent: 'center' }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Select Date of Birth"
                     >
                       <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
                         {date ? formatDateIST(date) : 'dd/mm/yyyy'}
@@ -468,6 +470,8 @@ export default function AIJyotishScreen() {
                       activeOpacity={0.8} 
                       onPress={() => setShowTimePicker(!showTimePicker)} 
                       style={[styles.askNowInput, { justifyContent: 'center' }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Select Time of Birth"
                     >
                       <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
                         {timeOfBirth ? timeOfBirth : '--:-- --'}
@@ -530,6 +534,8 @@ export default function AIJyotishScreen() {
                               setPlaceOfBirth(city);
                               setFilteredCities([]);
                             }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Select ${city} as place of birth`}
                           >
                             <Ionicons name="location-outline" size={14} color="#8E7164" style={{ marginRight: 8 }} />
                             <Text style={styles.suggestionText}>{city}</Text>
@@ -550,7 +556,12 @@ export default function AIJyotishScreen() {
                     <Text style={styles.errorText}>{validationError}</Text>
                   )}
 
-                  <TouchableOpacity style={styles.askNowCalcBtn} onPress={handleCalculateHoroscope}>
+                  <TouchableOpacity
+                    style={styles.askNowCalcBtn}
+                    onPress={handleCalculateHoroscope}
+                    accessibilityRole="button"
+                    accessibilityLabel="Calculate Horoscope"
+                  >
                     <Text style={styles.askNowCalcBtnText}>Calculate Horoscope</Text>
                     <Ionicons name="chevron-forward" size={18} color="#FFF" />
                   </TouchableOpacity>

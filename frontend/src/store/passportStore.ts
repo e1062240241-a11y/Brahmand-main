@@ -27,11 +27,193 @@ interface PassportState {
   completeBook: (book_name: string, completion_days: number, date: string) => Promise<void>;
 }
 
+export const getISTDateString = (date: Date = new Date()): string => {
+  // IST is strictly UTC + 5 hours 30 minutes (330 minutes) with no daylight saving time
+  const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffsetMs);
+  const year = istDate.getUTCFullYear();
+  const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(istDate.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getLocalDateString = () => {
-  const d = new Date();
-  const offset = d.getTimezoneOffset();
-  const localDate = new Date(d.getTime() - offset * 60 * 1000);
-  return localDate.toISOString().split('T')[0];
+  return getISTDateString();
+};
+
+export interface WeekDayStreakInfo {
+  dayLabel: string;
+  dayName: string;
+  dateStr: string;
+  isCompleted: boolean;
+  isToday: boolean;
+  isFuture: boolean;
+  count: number;
+}
+
+export interface SadhanaStreakResult {
+  currentStreak: number;
+  longestStreak: number;
+  isTodayCompleted: boolean;
+  todayCount: number;
+  daysCompletedThisWeek: boolean[];
+  weekDays: WeekDayStreakInfo[];
+}
+
+/**
+ * Calculates current and longest sadhana streaks using IST time.
+ * Daily threshold: at least 108 chants OR 1 Hanuman Chalisa.
+ * Today's incomplete status does NOT break the streak.
+ */
+export const calculateSadhanaStreak = (
+  dailyHanuman: Record<string, number> = {},
+  dailyOther: Record<string, number> = {},
+  referenceDate: Date = new Date()
+): SadhanaStreakResult => {
+  try {
+    const isCompletedDay = (dateStr: string): boolean => {
+      const hanuman = (dailyHanuman && dailyHanuman[dateStr]) || 0;
+      const other = (dailyOther && dailyOther[dateStr]) || 0;
+      return hanuman >= 1 || other >= 108;
+    };
+
+    const getDayCount = (dateStr: string): number => {
+      const hanuman = (dailyHanuman && dailyHanuman[dateStr]) || 0;
+      const other = (dailyOther && dailyOther[dateStr]) || 0;
+      return hanuman * 108 + other;
+    };
+
+    const todayStr = getISTDateString(referenceDate);
+    const isTodayCompleted = isCompletedDay(todayStr);
+    const todayCount =
+      ((dailyHanuman && dailyHanuman[todayStr]) || 0) * 108 +
+      ((dailyOther && dailyOther[todayStr]) || 0);
+
+    const getShiftedDateStr = (baseDateStr: string, daysOffset: number): string => {
+      try {
+        if (!baseDateStr || typeof baseDateStr !== 'string') {
+          return getISTDateString();
+        }
+        const parts = baseDateStr.split(/[-/]/).map(Number);
+        if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+          return getISTDateString();
+        }
+        let y = parts[0];
+        let m = parts[1];
+        let d = parts[2];
+        if (parts[0] <= 12 && parts[2] > 1000) {
+          m = parts[0];
+          d = parts[1];
+          y = parts[2];
+        }
+        const targetDate = new Date(Date.UTC(y, m - 1, d + daysOffset));
+        if (isNaN(targetDate.getTime())) {
+          return getISTDateString();
+        }
+        const resY = targetDate.getUTCFullYear();
+        const resM = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+        const resD = String(targetDate.getUTCDate()).padStart(2, '0');
+        return `${resY}-${resM}-${resD}`;
+      } catch {
+        return getISTDateString();
+      }
+    };
+
+    // 1. Calculate Current Streak (Count backwards from yesterday, max 365 days)
+    let currentStreak = 0;
+    if (isTodayCompleted) {
+      currentStreak++;
+    }
+
+    let offset = -1;
+    while (offset >= -365) {
+      const pastDateStr = getShiftedDateStr(todayStr, offset);
+      if (isCompletedDay(pastDateStr)) {
+        currentStreak++;
+        offset--;
+      } else {
+        break;
+      }
+    }
+
+    // 2. Calculate Longest Streak from all recorded dates
+    const allRecordedDates = Array.from(
+      new Set([...Object.keys(dailyHanuman || {}), ...Object.keys(dailyOther || {})])
+    )
+      .filter((d) => isCompletedDay(d))
+      .sort();
+
+    let longestStreak = currentStreak;
+    let runningStreak = 0;
+    let prevDateStr: string | null = null;
+
+    for (const dateStr of allRecordedDates) {
+      if (!prevDateStr) {
+        runningStreak = 1;
+      } else {
+        const nextExpected = getShiftedDateStr(prevDateStr, 1);
+        if (dateStr === nextExpected) {
+          runningStreak++;
+        } else {
+          runningStreak = 1;
+        }
+      }
+      if (runningStreak > longestStreak) {
+        longestStreak = runningStreak;
+      }
+      prevDateStr = dateStr;
+    }
+
+    // 3. Current Week (Monday through Sunday in IST)
+    const [curY, curM, curD] = todayStr.split('-').map(Number);
+    const curIstDate = new Date(Date.UTC(curY, curM - 1, curD));
+    const curDayOfWeek = curIstDate.getUTCDay();
+    const mondayOffset = curDayOfWeek === 0 ? -6 : 1 - curDayOfWeek;
+    const mondayDateStr = getShiftedDateStr(todayStr, mondayOffset);
+
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const weekDays: WeekDayStreakInfo[] = [];
+    const daysCompletedThisWeek: boolean[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      const dayDateStr = getShiftedDateStr(mondayDateStr, i);
+      const isCompleted = isCompletedDay(dayDateStr);
+      const isToday = dayDateStr === todayStr;
+      const isFuture = dayDateStr > todayStr;
+      const count = getDayCount(dayDateStr);
+
+      daysCompletedThisWeek.push(isCompleted);
+      weekDays.push({
+        dayLabel: dayLabels[i],
+        dayName: dayNames[i],
+        dateStr: dayDateStr,
+        isCompleted,
+        isToday,
+        isFuture,
+        count,
+      });
+    }
+
+    return {
+      currentStreak,
+      longestStreak,
+      isTodayCompleted,
+      todayCount,
+      daysCompletedThisWeek,
+      weekDays,
+    };
+  } catch (err) {
+    console.warn('[calculateSadhanaStreak] Error during calculation:', err);
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      isTodayCompleted: false,
+      todayCount: 0,
+      daysCompletedThisWeek: [false, false, false, false, false, false, false],
+      weekDays: [],
+    };
+  }
 };
 
 const generateJourneyStory = (journey: Omit<PassportJourney, 'id' | 'generated_story'>) => {
@@ -207,8 +389,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
               liked_by_me: false,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-              views_count: 0,
-              top_comments: []
+              views_count: 0
             };
 
             const currentPosts = useFeedStore.getState().tabFeeds['for_you']?.posts || [];
@@ -388,12 +569,21 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       return nextState;
     });
 
-    // Record jaap session to backend for cloud persistence across devices
+    // Record jaap session to backend for cloud persistence across devices & live streak notifications
     try {
+      const currentState = get();
+      const streakStats = calculateSadhanaStreak(
+        currentState.daily_hanuman_count,
+        currentState.daily_other_jaap_count
+      );
+
       api.post('/jaap/record', {
         mantra_type: mantraType || 'general',
         count_increment: count,
-        time_spent_seconds: count * 2
+        time_spent_seconds: count * 2,
+        current_streak: streakStats.currentStreak,
+        is_today_completed: streakStats.isTodayCompleted,
+        today_count: streakStats.todayCount,
       }).catch(() => {});
     } catch (_e) {}
 

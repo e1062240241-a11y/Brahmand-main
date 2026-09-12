@@ -452,7 +452,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           place.postalCode,
           place.country
         ];
-        const uniqueComponents = [...new Set(components.filter(Boolean))];
+        // OPT: Extract truthy values manually rather than mapping through Set with filter
+        const uniqueComponents: string[] = [];
+        for (const c of components) {
+          if (c && !uniqueComponents.includes(c)) {
+            uniqueComponents.push(c);
+          }
+        }
         const addr = uniqueComponents.join(', ');
         setAddress(addr);
       } else {
@@ -542,7 +548,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           place.postalCode,
           place.country
         ];
-        const uniqueComponents = [...new Set(components.filter(Boolean))];
+        // OPT: Extract truthy values manually rather than mapping through Set with filter
+        const uniqueComponents: string[] = [];
+        for (const c of components) {
+          if (c && !uniqueComponents.includes(c)) {
+            uniqueComponents.push(c);
+          }
+        }
         const addr = uniqueComponents.join(', ');
         setAddress(addr);
       } else {
@@ -1313,6 +1325,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Categories FlatList */}
             <FlatList
+              extraData={selectedTempCategoriesSet}
               // OPT: Use useMemo for list data to preserve referential equality and prevent re-renders
               data={React.useMemo(() => {
                 const input = customCategoryQuery.trim().toLowerCase();

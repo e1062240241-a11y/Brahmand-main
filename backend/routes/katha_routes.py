@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 
 from middleware.security import optional_verify_token
+from middleware.rate_limiter import upload_rate_limit
 from config.firebase_config import get_firestore
 
 logger = logging.getLogger(__name__)
@@ -451,7 +452,8 @@ async def admin_upload_katha_episode(
     duration: str = Form("01:30:00"),
     file: UploadFile = File(...),
     thumbnail: Optional[UploadFile] = File(None),
-    _: bool = Depends(_verify_admin_auth)
+    _: bool = Depends(_verify_admin_auth),
+    __: bool = Depends(upload_rate_limit)
 ):
     """
     Admin streaming upload endpoint supporting high-capacity video files (multi-GB)

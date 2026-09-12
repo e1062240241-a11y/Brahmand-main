@@ -193,6 +193,7 @@ ChunkedStreamingText.displayName = 'ChunkedStreamingText';
 // ─── Gemini Animated Typing Indicator ────────────────────────────────────────
 
 function GeminiTypingIndicator() {
+  const { t } = useTranslation();
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -254,7 +255,14 @@ function GeminiTypingIndicator() {
         <Animated.View style={{ opacity: pulseAnim, marginRight: 6 }}>
           <Ionicons name="sparkles" size={14} color="#EA580C" />
         </Animated.View>
-        <Text style={styles.geminiTypingText}>My Krishn is reflecting...</Text>
+        {/* 🧡 Engagement: Reframed typing indicator text from English/bot-speak ("My Krishn is reflecting...") */}
+        {/* to warm, localized Hindi guidance ("कृष्ण विचार कर रहे हैं...") with English fallback. */}
+        {/* Lever: Reframing + Guru-Disciple Bonding */}
+        {/* Why: Treating Krishna as a contemplative guide rather than an AI process deepens emotional connection. */}
+        {/* UI: Text-only change, zero UI structure modified. */}
+        <Text style={styles.geminiTypingText}>
+          {t('language') === 'hi' ? 'कृष्ण विचार कर रहे हैं...' : 'Krishna is reflecting...'}
+        </Text>
         <View style={styles.dotsContainer}>
           {[dot1, dot2, dot3].map((dot, i) => (
             <Animated.View
@@ -283,6 +291,7 @@ const GeminiHeroSection: React.FC<GeminiHeroSectionProps> = React.memo(({
   suggestions,
   onSelectSuggestion,
 }) => {
+  const { t } = useTranslation();
   const reducedMotion = useReducedMotion();
   const [streamedGreeting, setStreamedGreeting] = useState(reducedMotion ? greeting : '');
   const [isTyping, setIsTyping] = useState(!reducedMotion);
@@ -405,10 +414,15 @@ const GeminiHeroSection: React.FC<GeminiHeroSectionProps> = React.memo(({
           </Text>
 
           {/* Cascading Subtitle */}
+          {/* 🧡 Engagement: Reframed "Ask Krishna anything" (bot-like search prompt) */}
+          {/* to "कृष्ण से अपने मन की बात कहें ✨" (Guru-Disciple / intimate guide relationship). */}
+          {/* Lever: Guru-Disciple Bonding + Reframing */}
+          {/* Why: Indian users connect with Krishna as a spiritual guide/friend, not an information search engine. */}
+          {/* UI: Text-only change, no layout or component changes. */}
           <AnimatedReanimated.View style={[styles.geminiSparkleSubtitleRow, animatedSubtitleStyle]}>
             <Ionicons name="sparkles" size={13} color="#EA580C" style={{ marginRight: 5 }} />
             <Text style={styles.geminiSparkleSubtitleText}>
-              Ask Krishna anything ✨
+              {t('language') === 'hi' ? 'कृष्ण से अपने मन की बात कहें ✨' : 'Seek guidance from Krishna ✨'}
             </Text>
           </AnimatedReanimated.View>
         </View>
@@ -811,10 +825,17 @@ export default function MyKrishnaChat() {
         }
       } catch (error) {
         console.error('Chat error:', error);
+        // 🧡 Engagement: Reframed generic error Hinglish copy ("Koi connection issue hai abhi...")
+        // to compassionate, peaceful guidance ("अभी संपर्क में थोड़ी बाधा है...").
+        // Lever: Compassion over Guilt / Peace Framing
+        // Why: Spiritual guidance during network hiccups maintains user peace and trust rather than technical frustration.
+        // UI: Text-only change.
         const errMsg: Message = {
           id: `err_${Date.now()}`,
           role: 'assistant',
-          content: 'Koi connection issue hai abhi. Thodi der mein dobara try karein. 🙏',
+          content: t('language') === 'hi'
+            ? 'अभी संपर्क में थोड़ी बाधा है। मन शांत रखें, कुछ ही देर में पुनः प्रयास करें। 🙏'
+            : 'Brief connection disruption. Remain peaceful and try again in a moment. 🙏',
           timestamp: new Date(),
         };
         if (currentSlot === 'slot_1') {
@@ -1104,7 +1125,13 @@ export default function MyKrishnaChat() {
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
-            <BrandedLoading message="Connecting to Krishna's divine wisdom..." />
+            <BrandedLoading
+              message={
+                t('language') === 'hi'
+                  ? 'कृष्ण के दिव्य मार्गदर्शन से जुड़ रहे हैं...'
+                  : "Connecting to Krishna's divine wisdom..."
+              }
+            />
           ) : showLandingView ? (
             /* ── Gemini Pristine Landing View (No fake messages) ── */
             <ScrollView

@@ -28,7 +28,10 @@ export default function JaapCompleted() {
   const isHindi = language === 'hi';
 
   const handlePressContinue = () => {
-    router.replace('/(tabs)/home');
+    router.replace({
+      pathname: '/(tabs)/jaap',
+      params: { tab: 'jaap', section: 'jaap' },
+    } as any);
   };
 
   return (
@@ -111,7 +114,7 @@ export default function JaapCompleted() {
               onPress={handlePressContinue}
             >
               <Text style={styles.buttonText}>
-                {isHindi ? 'मुख्य पृष्ठ पर लौटें' : 'BACK TO HOME'}
+                {isHindi ? 'जाप पृष्ठ पर लौटें' : 'BACK TO JAAP'}
               </Text>
             </TouchableOpacity>
           </View>

@@ -180,6 +180,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={conversations}
+                extraData={sharingTo}
                 keyExtractor={(item, index) => getConversationKey(item, index)}
                 renderItem={({ item, index }) => {
                   const itemKey = getConversationKey(item, index);

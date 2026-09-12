@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 const SafeFlashList = FlashList as any;
 import { useIsFocused } from 'expo-router';
-import { InstagramRefreshControl } from '../CustomRefreshControl';
+import { OmSpinner, OmRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
 import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
@@ -299,7 +299,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       return (
         <View style={styles.emptyFeed}>
           {loadingFeed ? (
-            <ActivityIndicator size="large" color="#FF8D57" />
+            <OmSpinner size="large" color="#FF7A00" />
           ) : (
             <Text style={styles.emptyFeedText}>
               {/* 🧡 Engagement: Reframed bland empty feed text to warm, devotional Hindi primary copy with English fallback */}
@@ -361,6 +361,68 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     }
   }, []);
 
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (isRefreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [isRefreshing, androidRefreshAnim]);
+
+  const listHeader = useMemo(() => {
+    if (Platform.OS === 'android') {
+      const androidHeight = androidRefreshAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 52],
+      });
+      const androidOpacity = androidRefreshAnim.interpolate({
+        inputRange: [0, 0.4, 1],
+        outputRange: [0, 0.5, 1],
+      });
+
+      return (
+        <View style={styles.headerWrapper}>
+          <Animated.View
+            style={[
+              styles.androidRefreshContainer,
+              {
+                height: androidHeight,
+                opacity: androidOpacity,
+              },
+            ]}
+          >
+            <OmSpinner refreshing={isRefreshing} size={36} />
+          </Animated.View>
+          {homeHeader}
+        </View>
+      );
+    }
+
+    // iOS: Native rubber-band overscroll gap
+    return (
+      <View style={styles.headerWrapper}>
+        <View style={styles.omHeaderContainer}>
+          <OmSpinner refreshing={isRefreshing} size={36} />
+        </View>
+        {homeHeader}
+      </View>
+    );
+  }, [homeHeader, isRefreshing, androidRefreshAnim]);
+
   return (
     <View style={{ flex: 1 }}>
       <SafeFlashList
@@ -377,18 +439,18 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
         onViewableItemsChanged={onViewableItemsChangedRef.current}
         onScroll={onScroll}
+        scrollEventThrottle={16}
         drawDistance={1000}
-        removeClippedSubviews={true}
-        ListHeaderComponent={homeHeader}
+        removeClippedSubviews={Platform.OS === 'android'}
+        ListHeaderComponent={listHeader}
         onEndReached={() => {
           if (!hasMoreFeed || loadingMoreFeed) return;
           loadFeedPosts(feedOffset, true, activeTab);
         }}
         refreshControl={
-          <InstagramRefreshControl
+          <OmRefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor="#FFFFFF"
           />
         }
       />
@@ -397,6 +459,21 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
+  headerWrapper: {
+    overflow: 'visible',
+  },
+  omHeaderContainer: {
+    height: 48,
+    marginTop: -48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  androidRefreshContainer: {
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
   emptyFeed: {
     padding: 40,
     alignItems: 'center',

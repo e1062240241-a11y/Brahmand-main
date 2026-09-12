@@ -18,8 +18,10 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   BackHandler,
-  useWindowDimensions
+  useWindowDimensions,
+  Easing,
 } from 'react-native';
+import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -80,6 +82,27 @@ const UserProfileScreen = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const androidRefreshAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (refreshing) {
+        Animated.spring(androidRefreshAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      } else {
+        Animated.timing(androidRefreshAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      }
+    }
+  }, [refreshing, androidRefreshAnim]);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const LIMIT = 30;
@@ -256,14 +279,12 @@ const UserProfileScreen = () => {
       setReplyingToComment(null);
       Keyboard.dismiss();
 
-      // Update top_comments in local state for outer preview
+      // Update comments in local state for outer preview
       setPosts(prev => prev.map(p => {
         if (p.id === selectedCommentPost.id) {
-          const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
           return {
             ...p,
             comments_count: (Number(p.comments_count) || 0) + 1,
-            top_comments: [serverComment, ...currentTop].slice(0, 2)
           };
         }
         return p;
@@ -291,11 +312,9 @@ const UserProfileScreen = () => {
     const targetPostId = selectedCommentPost.id;
     setPosts(prev => prev.map(p => {
       if (p.id === targetPostId) {
-        const currentTop = Array.isArray(p.top_comments) ? p.top_comments : [];
         return {
           ...p,
           comments_count: Math.max(0, (Number(p.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return p;
@@ -303,11 +322,9 @@ const UserProfileScreen = () => {
 
     setSelectedCommentPost((prev: any) => {
       if (prev?.id === targetPostId) {
-        const currentTop = Array.isArray(prev.top_comments) ? prev.top_comments : [];
         return {
           ...prev,
           comments_count: Math.max(0, (Number(prev.comments_count) || 0) - 1),
-          top_comments: currentTop.filter((c: any) => c.id !== commentId),
         };
       }
       return prev;
@@ -320,11 +337,9 @@ const UserProfileScreen = () => {
       if (updatedPostFromServer) {
         setPosts(prev => prev.map(p => {
           if (p.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...p,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return p;
@@ -332,11 +347,9 @@ const UserProfileScreen = () => {
 
         setSelectedCommentPost((prev: any) => {
           if (prev?.id === targetPostId) {
-            const currentTop = Array.isArray(updatedPostFromServer.top_comments) ? updatedPostFromServer.top_comments : [];
             return {
               ...prev,
               ...updatedPostFromServer,
-              top_comments: currentTop.slice(0, 2),
             };
           }
           return prev;
@@ -997,6 +1010,30 @@ const UserProfileScreen = () => {
 
   const ListHeader = () => (
     <View style={styles.headerContent}>
+      {Platform.OS === 'android' ? (
+        <Animated.View
+          style={{
+            height: androidRefreshAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 52],
+            }),
+            opacity: androidRefreshAnim.interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.5, 1],
+            }),
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+          }}
+        >
+          <OmSpinner refreshing={refreshing} size={36} />
+        </Animated.View>
+      ) : (
+        <View style={{ width: '100%', height: 48, marginTop: -48, alignItems: 'center', justifyContent: 'center' }}>
+          <OmSpinner refreshing={refreshing} size={36} />
+        </View>
+      )}
       {/* Profile Header: Avatar and Stats */}
       <View style={styles.profileHeaderRow}>
         <TouchableOpacity
@@ -1114,7 +1151,7 @@ const UserProfileScreen = () => {
   if (loading && !profile && !error) {
     return (
       <SafeAreaView style={[styles.container, styles.centerWrap]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <OmSpinner size="large" color={COLORS.primary} />
       </SafeAreaView>
     );
   }
@@ -1173,7 +1210,7 @@ const UserProfileScreen = () => {
         <View style={styles.commentList}>
           {commentsLoading ? (
             <View style={styles.commentLoadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <OmSpinner size="large" color={COLORS.primary} />
             </View>
           ) : postComments.length === 0 ? (
             <View style={styles.emptyCommentsContainer}>
@@ -1429,7 +1466,7 @@ const UserProfileScreen = () => {
         ListFooterComponent={
           postsLoading ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color={COLORS.textLight} />
+              <OmSpinner size="small" color={COLORS.textLight} />
             </View>
           ) : !hasMore && posts.length > 0 && !isBlocked ? (
             <View style={styles.endOfFeed}>
@@ -1464,7 +1501,7 @@ const UserProfileScreen = () => {
         }}
         onEndReachedThreshold={0.8}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
+          <OmRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
       />

@@ -20,6 +20,36 @@
 ## 2026-09-06 - Avoid Array.sort(() => Math.random() - 0.5) for random selection
 **Learning:** Using `Array.sort(() => Math.random() - 0.5)` to select random items from a large global session pool (like `allSessionPostsRef`) is inefficient for the main UI thread in React Native, introducing unnecessary O(N log N) CPU overhead.
 **Action:** Replace `Array.sort(() => Math.random() - 0.5)` with a partial Fisher-Yates shuffle that randomly selects and caps the required elements in O(K) time.
+
+## 2026-08-28 - Removed O(N) array filtering in dm conversation
+**Learning:** Redundant `.filter()` operations can easily sneak in via helper functions like `deduplicateMessages` even after guarding early returns with `.some()`.
+**Action:** When a state updater first uses `.some()` to check for an item and ensures it does not exist, appending the item safely without a second pass `.filter()` or `.map()` operation minimizes CPU overhead.
+
+## 2026-08-28 - Set state iteration performance
+**Learning:** Passing an iterable directly to a Set constructor (e.g., `new Set(existingSet)`) is highly optimized in V8/JS engines and doesn't create intermediate arrays. Replacing it with a manual JS loop degrades readability and reduces performance. This is totally different from `new Set(existingSet.map(...))` which DOES create an intermediate array!
+**Action:** Do NOT replace `new Set(existingSet)` with manual loops.
+
+## 2026-08-28 - O(N log N) socket sort elimination
+**Learning:** New socket events for a chat or comments feed are always the most recent by definition. Running `Array.sort` on the entire combined feed for every single incoming message introduces massive O(N log N) UI thread overhead as the feed grows.
+**Action:** Directly prepend new socket events via `[newItem, ...prev]` in O(1) time rather than appending and re-sorting the entire array.
 ## 2026-09-07 - Wrap sequential database queries in asyncio.gather for parallel execution
 **Learning:** Sequential database queries (like fetching user_blocks where blockerUid == X, then blockedUid == X) can unnecessarily double network latency.
 **Action:** Always wrap independent backend database queries in `asyncio.gather` so they are fetched concurrently.
+## 2024-05-18 - Optimize Top Comments Query
+**Learning:** Firestore ordered queries with bounds (`limit`, `order_by`) can save significant memory over fetching a large batch and sorting in Python, but they may fail if the composite index hasn't been built yet.
+**Action:** When pushing limits/sorting to the database layer for subsets (like `top_comments`), always wrap the optimized query in a `try...except` block that catches 'requires an index' or '400' errors and falls back to an un-ordered query to prevent the API endpoint from breaking.
+
+## 2024-09-10 - Parallelize User Profile and Edge Queries
+**Learning:** In `GET /users/{user_id}`, parallelize the user document fetch and the `user_follows` edge document fetch using `asyncio.gather` (conditionally firing the edge fetch only if `viewer_id` exists and is not equal to `user_id`) to significantly reduce endpoint latency.
+**Action:** Always look for independent database queries in API routes (e.g. fetching a primary entity and a relation/edge) and batch them using `asyncio.gather` when they don't depend on each other.
+## 2025-02-23 - Batch fetching related models using asyncio.gather
+**Learning:** Sequential calls to fetch related models (such as `db.get_document` for the main entity and another `db.get_document` for edge cases or related information) unnecessarily block execution and increase latency.
+**Action:** When fetching entities that don't depend on each other's data (like `target_user` and `existing_edge` in follow endpoints), always batch them into `asyncio.gather()` to fetch concurrently in the backend.
+
+## 2025-02-23 - FlatList extraData rendering bugs
+**Learning:** React Native's `FlatList` component is purely functional. If a render block depends on external state (like a tracking variable outside of the list data itself), mutations to that external state won't trigger re-renders of the list items unless that state is explicitly passed into `extraData`.
+**Action:** Always ensure that external state utilized in a `renderItem` method is also passed to `FlatList` via the `extraData` prop.
+
+## 2025-02-23 - Avoid new Set() combined with filter for array uniqueness extraction
+**Learning:** Creating intermediate filtered arrays to extract truthy values, passing them to `new Set()` to achieve uniqueness, and finally re-spreading them into an array (e.g., `[...new Set(arr.filter(Boolean))]`) introduces an enormous amount of overhead and memory allocation for simple extraction tasks.
+**Action:** Use a simple `for` loop to manually extract unique and truthy array items if the list doesn't benefit from set theory operations or exceeds nominal lengths.

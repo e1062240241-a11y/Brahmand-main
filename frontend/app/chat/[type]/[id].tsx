@@ -1660,7 +1660,11 @@ const ChatScreen = ({
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No messages yet. Start the conversation!</Text>
+              <Text style={styles.emptyText}>
+                {user?.language === 'hi'
+                  ? 'अभी कोई संदेश नहीं हैं। बातचीत शुरू करें! 🙏'
+                  : 'No messages yet. Start the conversation! 🙏'}
+              </Text>
             </View>
           }
         />
