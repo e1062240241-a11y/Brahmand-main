@@ -55,6 +55,7 @@ export interface FestivalItemData {
 interface HeroHeaderProps {
   userName: string;
   nextFestivalName: string;
+  isHindi?: boolean;
   onTypingComplete: () => void;
 }
 
@@ -62,6 +63,7 @@ interface FestivalItemProps {
   festival: FestivalItemData;
   index: number;
   isReady: boolean;
+  isHindi?: boolean;
   onPress: (index: number) => void;
 }
 
@@ -108,9 +110,10 @@ const formatFestivalDate = (dateStr?: string): string => {
 /**
  * Extract display name from festival data object
  */
-const getFestivalDisplayName = (festival?: FestivalItemData | null): string => {
-  if (!festival) return 'Upcoming Festival';
-  return festival.name || festival.festival_name || festival.title || 'Upcoming Festival';
+const getFestivalDisplayName = (festival?: FestivalItemData | null, isHindi: boolean = false): string => {
+  const fallback = isHindi ? 'आगामी पर्व' : 'Upcoming Festival';
+  if (!festival) return fallback;
+  return festival.name || festival.festival_name || festival.title || fallback;
 };
 
 // ============================================================================
@@ -121,10 +124,12 @@ const getFestivalDisplayName = (festival?: FestivalItemData | null): string => {
 const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
   userName,
   nextFestivalName,
+  isHindi = false,
   onTypingComplete,
 }) => {
   const reducedMotion = useReducedMotion();
-  const targetGreeting = `Hello ${userName || 'Friend'} 👋`;
+  const defaultUser = isHindi ? 'मित्र' : 'Friend';
+  const targetGreeting = isHindi ? `नमस्ते ${userName || defaultUser} 👋` : `Hello ${userName || defaultUser} 👋`;
   const [streamedText, setStreamedText] = useState<string>(reducedMotion ? targetGreeting : '');
   const [isTyping, setIsTyping] = useState<boolean>(!reducedMotion);
 
@@ -135,9 +140,10 @@ const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
   // Cursor opacity animation (Reanimated UI thread - replaces useState/setInterval)
   const cursorOpacity = useSharedValue(1);
 
+  const defaultFestival = isHindi ? 'आगामी पर्व' : 'Upcoming Festival';
   const displayFestival = nextFestivalName && nextFestivalName.trim().length > 0
     ? nextFestivalName.trim()
-    : 'Upcoming Festival';
+    : defaultFestival;
 
   // Typewriter streaming effect
   useEffect(() => {
@@ -215,7 +221,15 @@ const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
       {/* Dynamic Context-Aware Subtitle */}
       <Animated.View style={animatedSubtitleStyle}>
         <Text style={styles.festivalSubMessage}>
-          Your next celebration is here — <Text style={styles.festivalHighlight}>{displayFestival}</Text>. Let's walk through its traditions together. ✨
+          {isHindi ? (
+            <>
+              आपका अगला पर्व आ गया है — <Text style={styles.festivalHighlight}>{displayFestival}</Text>। आइए इसकी परंपराओं को साथ समझें। ✨
+            </>
+          ) : (
+            <>
+              Your next celebration is here — <Text style={styles.festivalHighlight}>{displayFestival}</Text>. Let's walk through its traditions together. ✨
+            </>
+          )}
         </Text>
       </Animated.View>
     </View>
@@ -225,10 +239,10 @@ const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
 HeroHeader.displayName = 'HeroHeader';
 
 // --- 2. Cascading Festival List Card ---
-const FestivalItem: React.FC<FestivalItemProps> = React.memo(({ festival, index, isReady, onPress }: FestivalItemProps) => {
+const FestivalItem: React.FC<FestivalItemProps> = React.memo(({ festival, index, isReady, isHindi = false, onPress }: FestivalItemProps) => {
   const reducedMotion = useReducedMotion();
   const color = CARD_COLORS[index % CARD_COLORS.length];
-  const festivalName = getFestivalDisplayName(festival);
+  const festivalName = getFestivalDisplayName(festival, isHindi);
   const festivalImg = useMemo(() => getFestivalImage(festival), [festival]);
   const formattedDate = useMemo(() => formatFestivalDate(festival.date), [festival.date]);
 
@@ -272,7 +286,7 @@ const FestivalItem: React.FC<FestivalItemProps> = React.memo(({ festival, index,
           <View style={styles.cardInnerPadding}>
             <View style={styles.cardContent}>
               <View style={styles.cardTextContainer}>
-                <Text style={styles.cardLabel}>Festival</Text>
+                <Text style={styles.cardLabel}>{isHindi ? 'त्योहार' : 'Festival'}</Text>
                 <Text style={styles.cardName}>{festivalName}</Text>
                 <Text style={styles.cardDate}>{formattedDate}</Text>
               </View>
@@ -373,6 +387,8 @@ const FestivalPage: React.FC = () => {
     };
   }, [checkGlobalReminderState]);
 
+  const isHindi = user?.language === 'hi';
+
   const handleToggleAll = useCallback(async () => {
     if (isTogglingAll) return;
     setIsTogglingAll(true);
@@ -384,19 +400,24 @@ const FestivalPage: React.FC = () => {
       }
 
       Alert.alert(
-        newValue ? 'All Reminders Set' : 'Reminders Cancelled',
         newValue
-          ? 'You will be notified before every upcoming festival.'
-          : 'All scheduled festival notifications have been removed.'
+          ? (isHindi ? 'सभी रिमाइंडर सेट हो गए' : 'All Reminders Set')
+          : (isHindi ? 'रिमाइंडर रद्द कर दिए गए' : 'Reminders Cancelled'),
+        newValue
+          ? (isHindi ? 'आपको हर आगामी त्योहार से पहले सूचित किया जाएगा।' : 'You will be notified before every upcoming festival.')
+          : (isHindi ? 'सभी निर्धारित त्योहार सूचनाएं हटा दी गई हैं।' : 'All scheduled festival notifications have been removed.')
       );
     } catch (_err) {
-      Alert.alert('Notice', 'Unable to update reminder preferences.');
+      Alert.alert(
+        isHindi ? 'सूचना' : 'Notice',
+        isHindi ? 'रिमाइंडर प्राथमिकताओं को अपडेट करने में असमर्थ।' : 'Unable to update reminder preferences.'
+      );
     } finally {
       if (isMountedRef.current) {
         setIsTogglingAll(false);
       }
     }
-  }, [allRemindersEnabled, festivals, isTogglingAll]);
+  }, [allRemindersEnabled, festivals, isHindi, isTogglingAll]);
 
   const handleItemPress = useCallback(
     (index: number) => {
@@ -413,8 +434,8 @@ const FestivalPage: React.FC = () => {
     router.back();
   }, [router]);
 
-  const userName = useMemo(() => user?.name?.split(' ')[0] || 'Friend', [user?.name]);
-  const nextFestivalName = useMemo(() => getFestivalDisplayName(festivals[0]), [festivals]);
+  const userName = useMemo(() => user?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend'), [user?.name, isHindi]);
+  const nextFestivalName = useMemo(() => getFestivalDisplayName(festivals[0], isHindi), [festivals, isHindi]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: FestivalItemData; index: number }) => (
@@ -422,10 +443,11 @@ const FestivalPage: React.FC = () => {
         festival={item}
         index={index}
         isReady={isTypingComplete}
+        isHindi={isHindi}
         onPress={handleItemPress}
       />
     ),
-    [handleItemPress, isTypingComplete]
+    [handleItemPress, isHindi, isTypingComplete]
   );
 
   const keyExtractor = useCallback(
@@ -438,16 +460,17 @@ const FestivalPage: React.FC = () => {
       <HeroHeader
         userName={userName}
         nextFestivalName={nextFestivalName}
+        isHindi={isHindi}
         onTypingComplete={handleTypingComplete}
       />
     ),
-    [userName, nextFestivalName, handleTypingComplete]
+    [userName, nextFestivalName, isHindi, handleTypingComplete]
   );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <CustomLoader size={70} message="Loading Festivals..." />
+        <CustomLoader size={70} message={isHindi ? 'त्योहार लोड हो रहे हैं...' : 'Loading Festivals...'} />
       </View>
     );
   }
@@ -466,7 +489,7 @@ const FestivalPage: React.FC = () => {
             onPress={handleBackPress}
             accessible={true}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={isHindi ? 'पीछे जाएं' : 'Go back'}
           >
             <Ionicons name="arrow-back" size={26} color="#000000" />
           </TouchableOpacity>
@@ -482,8 +505,8 @@ const FestivalPage: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel={
               allRemindersEnabled
-                ? 'Disable all festival reminders'
-                : 'Enable all festival reminders'
+                ? (isHindi ? 'सभी त्योहार रिमाइंडर बंद करें' : 'Disable all festival reminders')
+                : (isHindi ? 'सभी त्योहार रिमाइंडर चालू करें' : 'Enable all festival reminders')
             }
           >
             <Ionicons
