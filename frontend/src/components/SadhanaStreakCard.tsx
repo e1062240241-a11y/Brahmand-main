@@ -167,11 +167,14 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
               >
                 🪔
               </Text>
+              {/* 🧡 Engagement: Reframed streak title from generic "X Days Sankalpa" to devotional "Sadhana Sankalpa: X Days" */}
+              {/* Lever: Reframing + Sanskara (Ritual/Habit framing) */}
+              {/* UI: Text-only change, no visual components added */}
               <Text style={styles.streakTitleText}>
                 {currentStreak > 0
                   ? isHindi
                     ? `${currentStreak} दिवसीय संकल्प`
-                    : `${currentStreak} Days Sankalpa`
+                    : `Sadhana Sankalpa: ${currentStreak} Days`
                   : isHindi
                   ? 'साधना संकल्प'
                   : 'Sadhana Sankalpa'}
