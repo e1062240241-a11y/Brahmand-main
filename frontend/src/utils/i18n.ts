@@ -304,8 +304,8 @@ export const translations = {
 
     // Notifications
     notificationsTitle: 'Notifications',
-    noNotifications: 'No notifications yet',
-    noNotificationsSub: "You're all caught up! ✨ Explore community posts or start a Jaap session.",
+    noNotifications: 'All is Peaceful ✨',
+    noNotificationsSub: 'No new alerts. Take a quiet moment for Jaap or read the sacred scriptures.',
     markAllRead: 'Mark all read',
 
     // Common
@@ -597,8 +597,8 @@ export const translations = {
 
     // Notifications
     notificationsTitle: 'सूचनाएं',
-    noNotifications: 'अभी कोई सूचना नहीं',
-    noNotificationsSub: 'आपकी सब सूचनाएं देखी जा चुकी हैं! ✨ समुदाय पोस्ट देखें या जाप सत्र शुरू करें।',
+    noNotifications: 'सब शांत और मंगलमय है ✨',
+    noNotificationsSub: 'कोई नई सूचना नहीं है। इस शांत पल में प्रभु का जाप करें या पवित्र ग्रंथ पढ़ें।',
     markAllRead: 'सभी पढ़े हुए चिह्नित करें',
 
     // Common
