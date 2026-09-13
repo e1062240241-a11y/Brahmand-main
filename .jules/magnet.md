@@ -34,3 +34,7 @@
 ## 2026-09-11 - Notifications Empty State Dual Cross-Feature CTAs
 **Learning:** Empty notification screens are high-intent drop-off points. Providing localized, dual-action CTAs ("Start Jaap 🙏" & "Today's Panchang ✨" / "जाप शुरू करें 🙏" & "आज का पंचांग ✨") converts an idle empty screen into a habit-building springboard for daily spiritual practices.
 **Action:** Updated `styles.emptyState` in `frontend/app/notifications.tsx` with a dual-CTA action row connecting Notifications to `/panchang` and `/(tabs)/jaap` with Devanagari Hindi and English localization.
+
+## 2026-09-12 - Language-Aware Festival Screen Greetings & Reminders
+**Learning:** Hardcoded English greetings and alert prompts in festival discovery screens isolate non-English users during major cultural moments. Localizing greetings ("नमस्ते मित्र 👋"), sub-messages ("आपका अगला पर्व आ गया है..."), card labels ("त्योहार"), loader text ("त्योहार लोड हो रहे हैं..."), and reminder toggle alerts in warm Devanagari Hindi deepens cultural belonging and retention.
+**Action:** Updated `frontend/app/festivals.tsx` to conditionally render Devanagari Hindi copy when `user?.language === 'hi'`.
