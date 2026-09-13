@@ -7236,10 +7236,11 @@ async def join_community_direct(
         members = comm.get('members', [])
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
-        # Add user to community members
-        await db.array_union_update('communities', community_id, 'members', [user_id])
-        # Add community to user's communities
-        await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Add user to community members and add community to user's communities
+        await asyncio.gather(
+            db.array_union_update('communities', community_id, 'members', [user_id]),
+            db.array_union_update('users', user_id, 'communities', [community_id])
+        )
         # Invalidate user community cache so next discover call returns is_member=true
         from utils.cache import cache_manager
         await cache_manager.invalidate_user_communities(user_id)
@@ -8639,10 +8640,11 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                     added_member_ids.append(member_id)
 
     circle_id = await db.create_document('circles', circle_data)
-    await db.array_union_update('users', user_id, 'circles', [circle_id])
 
+    tasks = [db.array_union_update('users', user_id, 'circles', [circle_id])]
     for member_id in added_member_ids:
-        await db.array_union_update('users', member_id, 'circles', [circle_id])
+        tasks.append(db.array_union_update('users', member_id, 'circles', [circle_id]))
+    await asyncio.gather(*tasks)
     
     # Send push notification to added members
     if added_member_ids:
@@ -9057,11 +9059,12 @@ async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)
         raise HTTPException(status_code=403, detail="Only admin can delete circle")
     
     # Remove circle from all members' circle lists
+    tasks = []
     for member_id in circle.get('members', []):
-        try:
-            await db.array_remove_update('users', member_id, 'circles', [circle_id])
-        except:
-            pass
+        tasks.append(db.array_remove_update('users', member_id, 'circles', [circle_id]))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     
     # Delete circle
     await db.delete_document('circles', circle_id)
