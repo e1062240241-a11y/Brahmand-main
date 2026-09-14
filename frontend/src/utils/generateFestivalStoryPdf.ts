@@ -191,72 +191,6 @@ function drawJustifiedLine(
   }
 }
 
-// Draw deterministic vector QR code pattern
-function drawQrCodeMatrix(page: any, text: string, startX: number, startY: number, size: number, darkColor: any, lightColor: any) {
-  page.drawRectangle({
-    x: startX,
-    y: startY,
-    width: size,
-    height: size,
-    color: lightColor,
-  });
-
-  const modules = 21;
-  const modSize = size / modules;
-
-  const isFinder = (r: number, c: number) => {
-    if (r < 7 && c < 7) {
-      if (r === 0 || r === 6 || c === 0 || c === 6) return true;
-      if (r >= 2 && r <= 4 && c >= 2 && c <= 4) return true;
-      return false;
-    }
-    if (r < 7 && c >= 14) {
-      const cc = c - 14;
-      if (r === 0 || r === 6 || cc === 0 || cc === 6) return true;
-      if (r >= 2 && r <= 4 && cc >= 2 && cc <= 4) return true;
-      return false;
-    }
-    if (r >= 14 && c < 7) {
-      const rr = r - 14;
-      if (rr === 0 || rr === 6 || c === 0 || c === 6) return true;
-      if (rr >= 2 && rr <= 4 && c >= 2 && c <= 4) return true;
-      return false;
-    }
-    return null;
-  };
-
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash * 31 + text.charCodeAt(i)) | 0;
-  }
-
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      const finder = isFinder(r, c);
-      let isDark = false;
-      if (finder !== null) {
-        isDark = finder;
-      } else {
-        if (r === 6 || c === 6) {
-          isDark = (r + c) % 2 === 0;
-        } else {
-          const bit = Math.abs(Math.sin((r * 21 + c + 1) * hash * 0.13)) > 0.45;
-          isDark = bit;
-        }
-      }
-
-      if (isDark) {
-        page.drawRectangle({
-          x: startX + c * modSize,
-          y: startY + (modules - 1 - r) * modSize,
-          width: modSize,
-          height: modSize,
-          color: darkColor,
-        });
-      }
-    }
-  }
-}
 
 export interface StoryChapter {
   id: number;
@@ -295,8 +229,6 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
   const deepCharcoal = rgb(0.173, 0.173, 0.173); // #2C2C2C Deep Charcoal (NO pure black)
 
   const dateFromData = festival?.date || festival?.start_date;
-  const storyText = sectionValue || festival?.origin || festival?.story || festival?.summary || '';
-  const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [storyText];
 
   if (lower.includes('diwali') || lower.includes('deepavali')) {
     return {
