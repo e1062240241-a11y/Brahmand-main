@@ -249,24 +249,40 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
           }}
           {...panResponder.panHandlers}
         >
-          <Pressable
-            style={({ pressed }) => [
-              styles.outerContainer,
-              Platform.OS === 'ios' && pressed && styles.cardPressed,
-            ]}
-            onPress={handleCardPress}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isHindi
-                ? `साधना संकल्प: ${currentStreak} दिन`
-                : `Sadhana Sankalpa: ${currentStreak} days`
-            }
-          >
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardGradient}
+          {/* Top Header Row: Streak Title + Today's Status Chip */}
+          <View style={styles.topRow}>
+            <View style={styles.streakTitleWrap}>
+              <Text
+                style={[
+                  styles.diyaIcon,
+                  todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
+                ]}
+              >
+                🪔
+              </Text>
+              {/* 🧡 Engagement: Reframed streak title from generic "X Days Sankalpa" to devotional "Sadhana Sankalpa: X Days" */}
+              {/* Lever: Reframing + Sanskara (Ritual/Habit framing) */}
+              {/* UI: Text-only change, no visual components added */}
+              <Text style={styles.streakTitleText}>
+                {currentStreak > 0
+                  ? isHindi
+                    ? `${currentStreak} दिवसीय संकल्प`
+                    : `Sadhana Sankalpa: ${currentStreak} Days`
+                  : isHindi
+                  ? 'साधना संकल्प'
+                  : 'Sadhana Sankalpa'}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.statusChip,
+                statusChipType === 'complete'
+                  ? styles.statusChipComplete
+                  : statusChipType === 'in_progress'
+                  ? styles.statusChipInProgress
+                  : styles.statusChipUnlit,
+              ]}
             >
               {/* Top Header Row: Streak Title + Today's Status Chip */}
               <View style={styles.topRow}>
