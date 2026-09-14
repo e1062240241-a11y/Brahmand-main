@@ -12110,12 +12110,30 @@ async def get_vendors(
     state: Optional[str] = None,
     country: Optional[str] = None,
     limit: int = 50,
+    offset: int = 0,
     token_data: Optional[dict] = Depends(optional_verify_token)
 ):
-    """Get vendors with optional filters and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
+    """Get vendors with optional filters, offset-based pagination, and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
     db = await get_db()
 
-    vendors = await db.query_documents('vendors', limit=limit)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    # Architectural fix: Limit candidate fetch from Firestore to prevent unbounded scans at scale while providing paginated bounds
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+
+    try:
+        vendors = await db.query_documents(
+            'vendors',
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for vendors created_at, falling back to un-ordered query: {query_err}")
+            vendors = await db.query_documents('vendors', limit=fetch_limit)
+        else:
+            raise query_err
 
     vendor_ids = [v['id'] for v in vendors if v.get('id')]
     owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
@@ -12362,7 +12380,7 @@ async def get_vendors(
 
         vendors.sort(key=_compute_ranking)
 
-    return vendors
+    return vendors[safe_offset : safe_offset + safe_limit]
 
 
 @api_router.get("/vendors/my")
