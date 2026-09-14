@@ -210,93 +210,6 @@ function drawJustifiedLine(
   }
 }
 
-// Draw authentic, scannable vector QR code matrix with vintage gold styling & embedded Brahmand logo
-function drawQrCodeMatrix(
-  page: any,
-  text: string,
-  startX: number,
-  startY: number,
-  size: number,
-  darkColor: any,
-  lightColor: any,
-  logoImage?: any
-) {
-  try {
-    const qrcodeGen = require('qrcode-generator');
-    // Error correction Level 'Q' (25%) ensures camera distance scannability even with center logo
-    const qr = qrcodeGen(0, 'Q');
-    qr.addData(text);
-    qr.make();
-    const modules = qr.getModuleCount();
-    const modSize = size / modules;
-
-    page.drawRectangle({
-      x: startX,
-      y: startY,
-      width: size,
-      height: size,
-      color: lightColor,
-    });
-
-    // Compact center cutout boundary taking ~5% of matrix area
-    const logoFrac = logoImage ? 0.18 : 0;
-    const centerStart = logoImage ? Math.floor(modules * (0.5 - logoFrac / 2)) : -1;
-    const centerEnd = logoImage ? Math.ceil(modules * (0.5 + logoFrac / 2)) : -1;
-
-    for (let r = 0; r < modules; r++) {
-      for (let c = 0; c < modules; c++) {
-        // Leave center badge area clear for logo
-        if (logoImage && r >= centerStart && r < centerEnd && c >= centerStart && c < centerEnd) {
-          continue;
-        }
-
-        if (qr.isDark(r, c)) {
-          page.drawRectangle({
-            x: startX + c * modSize,
-            y: startY + (modules - 1 - r) * modSize,
-            width: modSize,
-            height: modSize,
-            color: darkColor,
-          });
-        }
-      }
-    }
-
-    // Embed small central Brahmand vector logo inside QR code
-    if (logoImage) {
-      const centerBoxSize = (centerEnd - centerStart) * modSize;
-      const centerBoxX = startX + centerStart * modSize;
-      const centerBoxY = startY + (modules - centerEnd) * modSize;
-
-      page.drawRectangle({
-        x: centerBoxX,
-        y: centerBoxY,
-        width: centerBoxSize,
-        height: centerBoxSize,
-        color: lightColor,
-        borderColor: rgb(0.784, 0.663, 0.494), // #C8A97E vintage gold
-        borderWidth: 0.6,
-      });
-
-      const iconPad = 1.8;
-      page.drawImage(logoImage, {
-        x: centerBoxX + iconPad,
-        y: centerBoxY + iconPad,
-        width: centerBoxSize - iconPad * 2,
-        height: centerBoxSize - iconPad * 2,
-      });
-    }
-  } catch (qrErr) {
-    console.warn('[PDF] Failed to generate vector QR via qrcode-generator, using fallback:', qrErr);
-    page.drawRectangle({
-      x: startX,
-      y: startY,
-      width: size,
-      height: size,
-      color: lightColor,
-    });
-  }
-}
 
 export interface StoryChapter {
   id: number;
@@ -335,8 +248,6 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
   const deepCharcoal = rgb(0.173, 0.173, 0.173); // #2C2C2C Deep Charcoal (NO pure black)
 
   const dateFromData = festival?.date || festival?.start_date;
-  const storyText = sectionValue || festival?.origin || festival?.story || festival?.summary || '';
-  const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [storyText];
 
   if (lower.includes('diwali') || lower.includes('deepavali')) {
     return {
