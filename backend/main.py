@@ -3338,6 +3338,7 @@ async def download_app_redirect(request: Request):
     query_str = request.url.query or ""
     play_store_base = "https://play.google.com/store/apps/details?id=com.brahmand.app"
     play_store_url = f"{play_store_base}&referrer={quote(query_str)}" if query_str else play_store_base
+    app_store_url = "https://apps.apple.com/in/app/brahmand-app/id6765467224"
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -3456,9 +3457,13 @@ async def download_app_redirect(request: Request):
     (function() {{
       var userAgent = navigator.userAgent || navigator.vendor || window.opera;
       var isAndroid = /android/i.test(userAgent);
+      var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
       var playStoreUrl = "{play_store_url}";
+      var appStoreUrl = "{app_store_url}";
       if (isAndroid) {{
         window.location.replace(playStoreUrl);
+      }} else if (isIOS) {{
+        window.location.replace(appStoreUrl);
       }}
     }})();
   </script>
@@ -3478,7 +3483,7 @@ async def download_app_redirect(request: Request):
     </div>
 
     <a id="downloadBtn" href="{play_store_url}" class="btn">
-      DOWNLOAD ON GOOGLE PLAY ➔
+      DOWNLOAD APP ➔
     </a>
 
     <div class="badges">
@@ -3487,6 +3492,15 @@ async def download_app_redirect(request: Request):
       <span>✓ Safe & Verified</span>
     </div>
   </div>
+  <script>
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    var btn = document.getElementById('downloadBtn');
+    if (btn && isIOS) {{
+      btn.href = "{app_store_url}";
+      btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+    }}
+  </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)

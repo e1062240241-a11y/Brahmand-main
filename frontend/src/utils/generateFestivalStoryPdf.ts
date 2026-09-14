@@ -96,6 +96,12 @@ export function getTrackedBrahmandUrl(
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   const slug = cleanName || 'festival';
+
+  // Ultra-compact URL for QR matrix: Keeps QR modules big and instantly scannable from far away
+  if (placement === 'pdf_qr_scan') {
+    return `https://brahmand.app/download?f=${slug}&s=qr`;
+  }
+
   const params = [
     `source=${slug}_pdf`,
     'utm_source=pdf_katha',
@@ -217,8 +223,8 @@ function drawQrCodeMatrix(
 ) {
   try {
     const qrcodeGen = require('qrcode-generator');
-    // Error correction Level 'M' (15%) or 'Q' (25%) allows center icon without scan disruption
-    const qr = qrcodeGen(0, 'M');
+    // Error correction Level 'Q' (25%) ensures camera distance scannability even with center logo
+    const qr = qrcodeGen(0, 'Q');
     qr.addData(text);
     qr.make();
     const modules = qr.getModuleCount();
@@ -232,8 +238,8 @@ function drawQrCodeMatrix(
       color: lightColor,
     });
 
-    // Center cutout boundary if embedding central logo
-    const logoFrac = logoImage ? 0.24 : 0;
+    // Compact center cutout boundary taking ~5% of matrix area
+    const logoFrac = logoImage ? 0.18 : 0;
     const centerStart = logoImage ? Math.floor(modules * (0.5 - logoFrac / 2)) : -1;
     const centerEnd = logoImage ? Math.ceil(modules * (0.5 + logoFrac / 2)) : -1;
 
@@ -2037,22 +2043,23 @@ export async function renderDynamicFestivalPage2(
   });
 
   // RIGHT SIDE: 35% WIDTH SCANNABLE QR CODE WITH VINTAGE GOLD BORDER & EMBEDDED BRAHMAND ICON
-  const qrSize = 78;
+  const qrSize = 88;
   const qrBoxX = qrColX + (qrColW - qrSize) / 2;
-  const qrBoxY = cardY + 28;
+  const qrBoxY = cardY + 22;
+  const quietZone = 6;
 
-  // Background white box with vintage gold border (#C8A97E)
+  // Background white box with generous quiet zone and vintage gold border (#C8A97E)
   page2.drawRectangle({
-    x: qrBoxX - 4,
-    y: qrBoxY - 4,
-    width: qrSize + 8,
-    height: qrSize + 8,
+    x: qrBoxX - quietZone,
+    y: qrBoxY - quietZone,
+    width: qrSize + quietZone * 2,
+    height: qrSize + quietZone * 2,
     color: rgb(1, 1, 1),
     borderColor: colVintageGold,
     borderWidth: 1.0,
   });
 
-  // Dynamic referral URL for deep-linking & analytics tracking: https://brahmand.app/join?source={festival}_pdf
+  // Dynamic referral URL for deep-linking & analytics tracking: https://brahmand.app/download?f={festival}&s=qr
   const referralQrUrl = getTrackedBrahmandUrl(theme.name, 'pdf_qr_scan');
   drawQrCodeMatrix(
     page2,
@@ -2060,7 +2067,7 @@ export async function renderDynamicFestivalPage2(
     qrBoxX,
     qrBoxY,
     qrSize,
-    colInk,
+    rgb(0.04, 0.04, 0.04), // Pure deep ink for high optical contrast
     rgb(1, 1, 1),
     brahmandLogo // Embedded central vector icon
   );
