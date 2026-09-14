@@ -1919,6 +1919,9 @@ const styles = StyleSheet.create({
   },
   footerLoader: {
     paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   endOfFeed: {
     paddingVertical: 30,

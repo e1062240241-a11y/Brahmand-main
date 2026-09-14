@@ -11,6 +11,7 @@ export interface OmSpinnerProps {
   size?: number | 'small' | 'large';
   color?: string;
   ringColor?: string;
+  pullProgress?: number; // 0 to 1 pull down progress (Snapchat style)
   style?: StyleProp<ViewStyle>;
 }
 
@@ -19,6 +20,7 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
   size = 36,
   color = '#FF6B00',
   ringColor,
+  pullProgress,
   style,
 }) => {
   const numericSize =
@@ -33,6 +35,10 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // If pullProgress is provided and not actively refreshing
+  const isPulling = !refreshing && typeof pullProgress === 'number' && pullProgress > 0;
+  const isVisible = refreshing || isPulling;
 
   useEffect(() => {
     let spinAnim: Animated.CompositeAnimation | null = null;
@@ -79,20 +85,52 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
     };
   }, [refreshing, rotateAnim, pulseAnim]);
 
-  if (!refreshing) return null;
-
-  const spin = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  if (!isVisible) return null;
 
   const strokeWidth = numericSize <= 24 ? 1.8 : 2.5;
   const radius = Math.max(2, (numericSize - (strokeWidth * 2 + 2)) / 2);
 
+  // If refreshing, use active spinning loop
+  // If pulling down, rotate with pull progress (e.g. 0 -> 360 deg) and scale up
+  const dynamicRotate = isPulling
+    ? `${(pullProgress! * 360).toFixed(0)}deg`
+    : rotateAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+      });
+
+  const dynamicScale = isPulling
+    ? Math.min(1, Math.max(0.1, pullProgress!))
+    : pulseAnim;
+
+  const dynamicOpacity = isPulling
+    ? Math.min(1, Math.max(0, pullProgress! * 1.2))
+    : 1;
+
   return (
-    <View style={[styles.omSpinnerContainer, { width: numericSize, height: numericSize }, style]}>
-      {/* Outer Rotating Halo Arc */}
-      <Animated.View style={[styles.ringWrapper, { width: numericSize, height: numericSize, transform: [{ rotate: spin }] }]}>
+    <Animated.View
+      style={[
+        styles.omSpinnerContainer,
+        {
+          width: numericSize,
+          height: numericSize,
+          opacity: dynamicOpacity,
+          transform: [{ scale: isPulling ? dynamicScale : 1 }],
+        },
+        style,
+      ]}
+    >
+      {/* Outer Halo Arc */}
+      <Animated.View
+        style={[
+          styles.ringWrapper,
+          {
+            width: numericSize,
+            height: numericSize,
+            transform: [{ rotate: dynamicRotate }],
+          },
+        ]}
+      >
         <Svg width={numericSize} height={numericSize} viewBox={`0 0 ${numericSize} ${numericSize}`}>
           {/* Subtle translucent ambient ring */}
           <Circle
@@ -118,8 +156,8 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
         </Svg>
       </Animated.View>
 
-      {/* Center ॐ with Subtle Breathing Pulse */}
-      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      {/* Center ॐ */}
+      <Animated.View style={{ transform: [{ scale: isPulling ? 1 : pulseAnim }] }}>
         <Text
           style={[
             styles.omText,
@@ -132,7 +170,7 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
           ॐ
         </Text>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -144,9 +182,10 @@ export const OmRefreshControl: React.FC<
 > = ({ style, colors, progressBackgroundColor, tintColor, ...props }) => {
   return (
     <RefreshControl
-      tintColor={tintColor || (Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.01)' : 'transparent')}
+      tintColor={tintColor || 'transparent'}
       colors={colors || ['transparent']}
       progressBackgroundColor={progressBackgroundColor || 'transparent'}
+      progressViewOffset={Platform.OS === 'android' ? -9999 : undefined}
       style={[{ backgroundColor: 'transparent' }, style]}
       {...props}
     />

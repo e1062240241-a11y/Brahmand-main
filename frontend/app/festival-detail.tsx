@@ -10,7 +10,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING } from '../src/constants/theme';
+import { COLORS, SPACING, FONTS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
 import { CustomLoader } from '../src/components/CustomLoader';
@@ -167,6 +167,8 @@ const FestivalDetailPage: React.FC = () => {
     );
   }
 
+  const festivalTitle = festival.festival_name || festival.name || festival.title || 'Festival Details';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header Bar */}
@@ -181,6 +183,10 @@ const FestivalDetailPage: React.FC = () => {
         >
           <Ionicons name="chevron-back" size={28} color="#000000" />
         </TouchableOpacity>
+
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {festivalTitle}
+        </Text>
 
         <TouchableOpacity
           style={styles.notificationButton}
@@ -244,11 +250,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
+    flex: 1,
+    marginHorizontal: 8,
+  },
   backButton: {
     padding: SPACING.xs,
+    width: 40,
+    alignItems: 'flex-start',
   },
   notificationButton: {
     padding: SPACING.xs,
+    width: 40,
+    alignItems: 'flex-end',
   },
 });
 

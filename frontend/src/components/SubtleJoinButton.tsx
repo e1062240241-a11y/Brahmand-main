@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   Animated,
   Platform,
@@ -15,28 +15,40 @@ interface SubtleJoinButtonProps {
   children: React.ReactNode;
 }
 
+const ANDROID_RIPPLE_CONFIG = {
+  color: 'rgba(255, 107, 0, 0.22)',
+  borderless: false,
+  foreground: true,
+};
+
+// Varnish fix: Eliminated render-scope Animated.Value allocation and inline objects/handlers.
+// Uses lazy ref initialization to guarantee ref persistence without instantiating Animated.Value on every render pass.
 export const SubtleJoinButton = React.memo(({ onPress, style, children }: SubtleJoinButtonProps) => {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnimRef = useRef<Animated.Value | null>(null);
+  if (!scaleAnimRef.current) {
+    scaleAnimRef.current = new Animated.Value(1);
+  }
+  const scaleAnim = scaleAnimRef.current;
 
   const isPressingRef = useRef(false);
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     Animated.timing(scaleAnim, {
       toValue: 0.96, // Smooth subtle press inward
       duration: 70,
       useNativeDriver: true,
     }).start();
-  };
+  }, [scaleAnim]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     Animated.timing(scaleAnim, {
       toValue: 1, // Smooth linear return without bounce
       duration: 100,
       useNativeDriver: true,
     }).start();
-  };
+  }, [scaleAnim]);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (isPressingRef.current) return;
     isPressingRef.current = true;
     try {
@@ -46,7 +58,15 @@ export const SubtleJoinButton = React.memo(({ onPress, style, children }: Subtle
         isPressingRef.current = false;
       }, 800);
     }
-  };
+  }, [onPress]);
+
+  const getStyle = useCallback(
+    ({ pressed }: { pressed: boolean }) => [
+      styles.exactJoinBtn,
+      Platform.OS === 'ios' && pressed && styles.iosPressed,
+    ],
+    []
+  );
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
@@ -54,15 +74,8 @@ export const SubtleJoinButton = React.memo(({ onPress, style, children }: Subtle
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}
-        android_ripple={{
-          color: 'rgba(255, 107, 0, 0.22)',
-          borderless: false,
-          foreground: true,
-        }}
-        style={({ pressed }) => [
-          styles.exactJoinBtn,
-          Platform.OS === 'ios' && pressed && { backgroundColor: 'rgba(255, 243, 230, 0.95)' },
-        ]}
+        android_ripple={ANDROID_RIPPLE_CONFIG}
+        style={getStyle}
       >
         <View
           pointerEvents="none"
@@ -75,6 +88,8 @@ export const SubtleJoinButton = React.memo(({ onPress, style, children }: Subtle
   );
 });
 
+SubtleJoinButton.displayName = 'SubtleJoinButton';
+
 const styles = StyleSheet.create({
   exactJoinBtn: {
     backgroundColor: '#FFF',
@@ -85,6 +100,9 @@ const styles = StyleSheet.create({
     elevation: 2,
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  iosPressed: {
+    backgroundColor: 'rgba(255, 243, 230, 0.95)',
   },
   contentContainer: {
     flexDirection: 'row',

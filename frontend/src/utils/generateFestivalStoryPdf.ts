@@ -19,6 +19,17 @@ import { Asset } from 'expo-asset';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { getFestivalImage } from '../constants/festivalImages';
 
+// Ensure regeneratorRuntime is available for @pdf-lib/fontkit Devanagari complex text shaping
+if (typeof (global as any).regeneratorRuntime === 'undefined') {
+  try {
+    (global as any).regeneratorRuntime = require('regenerator-runtime/runtime');
+  } catch (_e1) {
+    try {
+      (global as any).regeneratorRuntime = require('@babel/runtime/regenerator');
+    } catch (_e2) {}
+  }
+}
+
 // Pure JS Base64 to Uint8Array decoder (cross-platform compatible across iOS, Android, Node)
 function decodeBase64ToUint8(b64: string): Uint8Array {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -74,24 +85,32 @@ export function wrapText(text: string, font: any, fontSize: number, maxWidth: nu
 }
 
 /**
- * Constructs a production-ready tracked UTM Brahmand URL for analytics attribution.
+ * Constructs a production-ready tracked UTM Brahmand URL for analytics attribution and dynamic referral tracking.
  */
 export function getTrackedBrahmandUrl(
   festivalName: string,
-  placement: 'download_button' | 'pdf_footer' | 'whatsapp_status' | 'whatsapp_share' = 'download_button'
+  placement: 'download_button' | 'pdf_footer' | 'whatsapp_status' | 'whatsapp_share' | 'pdf_qr_scan' = 'download_button'
 ): string {
   const cleanName = (festivalName || 'festival')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
-  const slug = cleanName || 'sacred_festival';
+  const slug = cleanName || 'festival';
+
+  // Ultra-compact URL for QR matrix: Keeps QR modules big and instantly scannable from far away
+  if (placement === 'pdf_qr_scan') {
+    return `https://brahmand.app/download?f=${slug}&s=qr`;
+  }
+
   const params = [
+    `source=${slug}_pdf`,
     'utm_source=pdf_katha',
     'utm_medium=whatsapp',
     `utm_campaign=katha_${slug}`,
     `utm_content=${placement}`,
     `festival=${slug}`,
   ].join('&');
+  // Both https://brahmand.app/download and /join work; /download is already live with instant Android Play Store auto-redirect
   return `https://brahmand.app/download?${params}`;
 }
 
@@ -503,21 +522,58 @@ export function getFestivalChapters(festival: any, sectionValue?: string) {
 
 async function loadPdfFonts(doc: PDFDocument) {
   let fontCinzel: any = null;
+  let fontRozha: any = null;
+  let fontPoppins: any = null;
   try {
     const fontkit = require('@pdf-lib/fontkit');
     doc.registerFontkit(fontkit);
-    const cinzelAsset = Asset.fromModule(require('../../assets/fonts/Cinzel-Regular.ttf'));
-    await cinzelAsset.downloadAsync();
-    const fontUri = cinzelAsset.localUri || cinzelAsset.uri;
-    if (fontUri) {
-      const fontBase64 = await FileSystem.readAsStringAsync(fontUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const fontBytes = decodeBase64ToUint8(fontBase64);
-      fontCinzel = await doc.embedFont(fontBytes);
+
+    // 1. Cinzel (English royal serif)
+    try {
+      const cinzelAsset = Asset.fromModule(require('../../assets/fonts/Cinzel-Regular.ttf'));
+      await cinzelAsset.downloadAsync();
+      const fontUri = cinzelAsset.localUri || cinzelAsset.uri;
+      if (fontUri) {
+        const fontBase64 = await FileSystem.readAsStringAsync(fontUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        fontCinzel = await doc.embedFont(decodeBase64ToUint8(fontBase64));
+      }
+    } catch (cinzelErr) {
+      console.warn('[PDF] Cinzel font embedding fallback:', cinzelErr);
+    }
+
+    // 2. Rozha One (Hindi sacred headline serif)
+    try {
+      const rozhaAsset = Asset.fromModule(require('../../assets/fonts/RozhaOne-Regular.ttf'));
+      await rozhaAsset.downloadAsync();
+      const rozhaUri = rozhaAsset.localUri || rozhaAsset.uri;
+      if (rozhaUri) {
+        const rozhaBase64 = await FileSystem.readAsStringAsync(rozhaUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        fontRozha = await doc.embedFont(decodeBase64ToUint8(rozhaBase64));
+      }
+    } catch (rozhaErr) {
+      console.warn('[PDF] RozhaOne font embedding fallback:', rozhaErr);
+    }
+
+    // 3. Poppins (Clean modern Devanagari & English sans-serif)
+    try {
+      const poppinsAsset = Asset.fromModule(require('../../assets/fonts/Poppins-Regular.ttf'));
+      await poppinsAsset.downloadAsync();
+      const poppinsUri = poppinsAsset.localUri || poppinsAsset.uri;
+      if (poppinsUri) {
+        const poppinsBase64 = await FileSystem.readAsStringAsync(poppinsUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        fontPoppins = await doc.embedFont(decodeBase64ToUint8(poppinsBase64));
+      }
+    } catch (poppinsErr) {
+      console.warn('[PDF] Poppins font embedding fallback:', poppinsErr);
     }
   } catch (fontErr) {
-    console.warn('[PDF] Cinzel font embedding fallback to TimesRomanBold:', fontErr);
+    console.warn('[PDF] Fontkit registration or font embedding fallback:', fontErr);
   }
 
   const fontTimes = await doc.embedFont(StandardFonts.TimesRoman);
@@ -546,6 +602,8 @@ async function loadPdfFonts(doc: PDFDocument) {
 
   return {
     fontCinzel,
+    fontRozha,
+    fontPoppins,
     fontTimes,
     fontTimesBold,
     fontTimesItalic,
@@ -878,14 +936,14 @@ export async function renderDynamicFestivalPage1(
   curY -= 22;
 
   // 6. HERO MANDALA WITH FESTIVAL DEITY MEDALLION (Balanced vertical flow closer to header)
-  const mCy = 632;
-  const coreR = 46;
+  const mCy = 595;
+  const coreR = 140;
 
   // Subtle halo
   page1.drawCircle({
     x: cx,
     y: mCy,
-    size: 120,
+    size: 240,
     color: colPeachSoft,
     opacity: 0.45,
   });
@@ -897,7 +955,7 @@ export async function renderDynamicFestivalPage1(
     const rCol = rayColors[r % 4];
     page1.drawLine({
       start: { x: cx + Math.cos(angle) * (coreR + 9), y: mCy + Math.sin(angle) * (coreR + 9) },
-      end: { x: cx + Math.cos(angle) * (coreR + 48), y: mCy + Math.sin(angle) * (coreR + 48) },
+      end: { x: cx + Math.cos(angle) * (coreR + 45), y: mCy + Math.sin(angle) * (coreR + 45) },
       thickness: 1.1,
       color: rCol,
       opacity: 0.75,
@@ -909,8 +967,8 @@ export async function renderDynamicFestivalPage1(
     const angle = (d * 15 * Math.PI) / 180;
     const dCol = rayColors[d % 4];
     page1.drawCircle({
-      x: cx + Math.cos(angle) * (coreR + 52),
-      y: mCy + Math.sin(angle) * (coreR + 52),
+      x: cx + Math.cos(angle) * (coreR + 49),
+      y: mCy + Math.sin(angle) * (coreR + 49),
       size: 1.8,
       color: dCol,
       opacity: 0.8,
@@ -922,10 +980,10 @@ export async function renderDynamicFestivalPage1(
     const angle = (p * 30 * Math.PI) / 180;
     const pCol = p % 2 === 0 ? colPeachDeep : colTerracotta;
     page1.drawEllipse({
-      x: cx + Math.cos(angle) * (coreR + 22),
-      y: mCy + Math.sin(angle) * (coreR + 22),
-      xScale: 9.5,
-      yScale: 4.2,
+      x: cx + Math.cos(angle) * (coreR + 20),
+      y: mCy + Math.sin(angle) * (coreR + 20),
+      xScale: 9,
+      yScale: 4,
       color: pCol,
       rotate: degrees(p * 30 + 90),
       opacity: 0.85,
@@ -933,8 +991,8 @@ export async function renderDynamicFestivalPage1(
   }
 
   // Concentric Rings
-  page1.drawCircle({ x: cx, y: mCy, size: coreR + 15, borderColor: colTerracotta, borderWidth: 1, opacity: 0.85 });
-  page1.drawCircle({ x: cx, y: mCy, size: coreR + 10, borderColor: colRose, borderWidth: 0.7, opacity: 0.65 });
+  page1.drawCircle({ x: cx, y: mCy, size: coreR + 14, borderColor: colTerracotta, borderWidth: 1, opacity: 0.85 });
+  page1.drawCircle({ x: cx, y: mCy, size: coreR + 9, borderColor: colRose, borderWidth: 0.7, opacity: 0.65 });
   page1.drawCircle({ x: cx, y: mCy, size: coreR + 4, borderColor: colPlum, borderWidth: 0.6, opacity: 0.5 });
 
   // Flanking Diyas (Left & Right)
@@ -945,14 +1003,14 @@ export async function renderDynamicFestivalPage1(
     page1.drawEllipse({ x: dx, y: dy, xScale: 12, yScale: 5.5, color: colPeachDeep });
     page1.drawEllipse({ x: dx, y: dy - 1, xScale: 9, yScale: 3, color: colTerracotta });
   };
-  drawDiya(cx - 124, mCy - 20);
-  drawDiya(cx + 124, mCy - 20);
+  drawDiya(cx - 132, mCy - 20);
+  drawDiya(cx + 132, mCy - 20);
 
   // Floating stars/dots
-  page1.drawCircle({ x: cx - 150, y: mCy + 36, size: 2.4, color: colPeachDeep });
-  page1.drawCircle({ x: cx + 150, y: mCy + 36, size: 2.4, color: colPlum });
-  page1.drawCircle({ x: cx - 100, y: mCy + 58, size: 2, color: colAmber });
-  page1.drawCircle({ x: cx + 100, y: mCy + 58, size: 2, color: colRose });
+  page1.drawCircle({ x: cx - 155, y: mCy + 36, size: 2.4, color: colPeachDeep });
+  page1.drawCircle({ x: cx + 155, y: mCy + 36, size: 2.4, color: colPlum });
+  page1.drawCircle({ x: cx - 105, y: mCy + 58, size: 2, color: colAmber });
+  page1.drawCircle({ x: cx + 105, y: mCy + 58, size: 2, color: colRose });
 
   // CENTER MEDALLION: HERO IMAGE CLIPPED IN CIRCLE
   const embeddedHero = await resolveFestivalHeroImage(doc, theme, festival);
@@ -1015,7 +1073,7 @@ export async function renderDynamicFestivalPage1(
   }
 
   // 7. LOCKUP SECTION (Festival Title, Subtitle, Date) - Balanced placement below mandala
-  curY = 485;
+  curY = 385;
 
   // Main Festival Title: Split words for two-tone dynamic typography
   const rawTitle = cleanTextForPdf(theme.name).toUpperCase();
@@ -1028,7 +1086,7 @@ export async function renderDynamicFestivalPage1(
     part2 = titleWords.slice(half).join(' ');
   }
 
-  const titleFontSize = rawTitle.length > 22 ? 24 : (rawTitle.length > 14 ? 28 : 33);
+  const titleFontSize = rawTitle.length > 22 ? 22 : (rawTitle.length > 14 ? 26 : 30);
   const p1W = brandFont.widthOfTextAtSize(part1, titleFontSize);
   const p2W = part2 ? brandFont.widthOfTextAtSize(part2, titleFontSize) : 0;
   const totalTW = p1W + p2W;
@@ -1051,7 +1109,7 @@ export async function renderDynamicFestivalPage1(
     });
   }
 
-  curY -= (titleFontSize * 0.35 + 14);
+  curY -= (titleFontSize * 0.35 + 12);
 
   // Subtitle / Occasion
   const occSub = cleanTextForPdf(theme.subtitle || 'SANATAN DHARMA HERITAGE').toUpperCase();
@@ -1065,13 +1123,13 @@ export async function renderDynamicFestivalPage1(
     color: colTerracottaDk,
   });
 
-  curY -= 17;
+  curY -= 15;
 
   // Date & Tithi Pill Badge
   const dateBadgeText = `${cleanTextForPdf(theme.date).toUpperCase()}   *   ${cleanTextForPdf(theme.tithi).toUpperCase()}`;
-  const dbW = fontHelveticaBold.widthOfTextAtSize(dateBadgeText, 8.2);
-  const dbPillW = dbW + 26;
-  const dbPillH = 16;
+  const dbW = fontHelveticaBold.widthOfTextAtSize(dateBadgeText, 8);
+  const dbPillW = dbW + 24;
+  const dbPillH = 15;
   const dbPillX = (pageWidth - dbPillW) / 2;
 
   page1.drawRectangle({
@@ -1084,14 +1142,14 @@ export async function renderDynamicFestivalPage1(
     borderWidth: 0.6,
   });
   page1.drawText(dateBadgeText, {
-    x: dbPillX + 13,
-    y: curY - dbPillH + 4.5,
-    size: 8.2,
+    x: dbPillX + 12,
+    y: curY - dbPillH + 4,
+    size: 8,
     font: fontHelveticaBold,
     color: colSageDeep,
   });
 
-  curY -= (dbPillH + 16);
+  curY -= (dbPillH + 12);
 
   // 8. JEWEL DIVIDER
   const jwWidth = 260;
@@ -1104,7 +1162,7 @@ export async function renderDynamicFestivalPage1(
   page1.drawRectangle({ x: cx - 20 - 2, y: curY - 2, width: 4, height: 4, color: colTerracotta, rotate: degrees(45) });
   page1.drawRectangle({ x: cx + 20 - 2, y: curY - 2, width: 4, height: 4, color: colSageDeep, rotate: degrees(45) });
 
-  curY -= 18;
+  curY -= 14;
 
   // 9. BLESSING SECTION (Personalized blessing from Brahmand) - ULTRA READABLE
   const isGanesh = /ganesh|vinayaka/i.test(theme.name);
@@ -1121,8 +1179,8 @@ export async function renderDynamicFestivalPage1(
   }
 
   const bCardW = 490;
-  const blessLines = wrapText(blessingParagraph, fontTimes, 10.3, bCardW - 36);
-  const bCardH = 22 + blessLines.length * 15 + 8;
+  const blessLines = wrapText(blessingParagraph, fontTimes, 9.8, bCardW - 36);
+  const bCardH = 20 + blessLines.length * 14 + 6;
   const bCardX = (pageWidth - bCardW) / 2;
   const bCardY = curY - bCardH;
 
@@ -1144,29 +1202,29 @@ export async function renderDynamicFestivalPage1(
   });
 
   const blessEyebrow = 'A   BLESSING   FROM   THE   BRAHMAND   FAMILY';
-  const bewW = brandFont.widthOfTextAtSize(blessEyebrow, 8.5);
+  const bewW = brandFont.widthOfTextAtSize(blessEyebrow, 8);
   page1.drawText(blessEyebrow, {
     x: (pageWidth - bewW) / 2,
-    y: bCardY + bCardH - 14,
-    size: 8.5,
+    y: bCardY + bCardH - 13,
+    size: 8,
     font: brandFont,
     color: colCrimson,
   });
 
-  let blY = bCardY + bCardH - 28;
+  let blY = bCardY + bCardH - 26;
   for (const bLine of blessLines) {
-    const blW = fontTimes.widthOfTextAtSize(bLine, 10.3);
+    const blW = fontTimes.widthOfTextAtSize(bLine, 9.8);
     page1.drawText(bLine, {
       x: (pageWidth - blW) / 2,
       y: blY,
-      size: 10.3,
+      size: 9.8,
       font: fontTimes, // UPRIGHT ROMAN FOR 100% READABILITY
       color: colInk,   // SOLID DEEP INK
     });
-    blY -= 15;
+    blY -= 14;
   }
 
-  curY = bCardY - 45;
+  curY = bCardY - 24;
 
   // 10. VEDIC MANTRA (KEPT, BUT NO BACKGROUND BOX BEHIND IT!)
   const isShiva = /shiv|mahadev|bholenath/i.test(theme.name) || /shiv|mahadev/i.test(theme.deity);
@@ -1201,41 +1259,41 @@ export async function renderDynamicFestivalPage1(
     shloka2 = 'SAHASRANAMA TATTULYAM RAMA NAMA VARANANE';
   }
 
-  const mHeadW = brandFont.widthOfTextAtSize(mHead, 8.5);
+  const mHeadW = brandFont.widthOfTextAtSize(mHead, 8);
   page1.drawText(mHead, {
     x: (pageWidth - mHeadW) / 2,
     y: curY,
-    size: 8.5,
+    size: 8,
     font: brandFont,
     color: colSageDeep,
   });
 
-  curY -= 20;
-  const mTextW = brandFont.widthOfTextAtSize(mText, 14);
+  curY -= 15;
+  const mTextW = brandFont.widthOfTextAtSize(mText, 12.5);
   page1.drawText(mText, {
     x: (pageWidth - mTextW) / 2,
     y: curY,
-    size: 14,
+    size: 12.5,
     font: brandFont,
     color: colCrimson,
   });
 
-  curY -= 18;
-  const s1W = fontTimes.widthOfTextAtSize(shloka1, 9);
+  curY -= 14;
+  const s1W = fontTimes.widthOfTextAtSize(shloka1, 8.5);
   page1.drawText(shloka1, {
     x: (pageWidth - s1W) / 2,
     y: curY,
-    size: 9,
+    size: 8.5,
     font: fontTimes,
     color: colInk,
   });
 
-  curY -= 15;
-  const s2W = fontTimes.widthOfTextAtSize(shloka2, 9);
+  curY -= 12;
+  const s2W = fontTimes.widthOfTextAtSize(shloka2, 8.5);
   page1.drawText(shloka2, {
     x: (pageWidth - s2W) / 2,
     y: curY,
-    size: 9,
+    size: 8.5,
     font: fontTimes,
     color: colInk,
   });
@@ -1363,8 +1421,10 @@ export async function renderDynamicFestivalPage2(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
+  const headingFont = fontRozha || brandFont;
+  const bodyFeatureFont = fontPoppins || fontHelveticaBold;
 
   // Warm Peach + Beige Foundation Palette
   const colPeachSoft = rgb(1.0, 0.910, 0.827);     // #FFE8D3
@@ -1695,177 +1755,280 @@ export async function renderDynamicFestivalPage2(
     }
   }
 
-  // 7. MARKETING & DOWNLOAD BRAHMAND APP (Open, un-congested, no background boxes)
+  // 7. HIGH-CONVERTING MINI-FEATURE MARKETING CARD (65% Left Text / 35% Right QR, Vintage Gold #C8A97E, Embedded Logo QR)
   curY -= 14;
 
-  // Ornamental Divider before download section
-  const divW = 160;
-  const divX = (pageWidth - divW) / 2;
-  page2.drawLine({ start: { x: divX, y: curY }, end: { x: cx - 16, y: curY }, thickness: 0.8, color: colPeachDeep, opacity: 0.85 });
-  page2.drawCircle({ x: cx, y: curY, size: 2.5, color: colCrimson });
-  page2.drawLine({ start: { x: cx + 16, y: curY }, end: { x: divX + divW, y: curY }, thickness: 0.8, color: colPeachDeep, opacity: 0.85 });
+  const cardW = pageWidth - p2Margin * 2; // ~519.28
+  const cardH = 152;
+  const cardX = p2Margin;
+  const cardY = curY - cardH;
 
-  curY -= 16;
+  // Background: 3% antique parchment tint (#FDFBF7) blending naturally into the original paper texture
+  const colParchmentTint = rgb(0.992, 0.984, 0.969); // #FDFBF7
+  const colVintageGold = rgb(0.784, 0.663, 0.494);   // #C8A97E
+  const colMaroonHead = rgb(0.290, 0.082, 0.098);    // #4A1519 Dark Maroon
+  const colFeatureText = rgb(0.200, 0.200, 0.200);   // #333333 Charcoal
 
-  // 1. Headline (Clickable)
-  const mTit = 'DOWNLOAD   THE   BRAHMAND   APP';
-  const mtW = brandFont.widthOfTextAtSize(mTit, 11.5);
-  page2.drawText(mTit, {
-    x: (pageWidth - mtW) / 2,
-    y: curY,
-    size: 11.5,
-    font: brandFont,
-    color: colCrimson,
+  page2.drawRectangle({
+    x: cardX,
+    y: cardY,
+    width: cardW,
+    height: cardH,
+    color: colParchmentTint,
+    borderColor: colVintageGold,
+    borderWidth: 1.0,
   });
-  const downloadButtonUri = getTrackedBrahmandUrl(theme.name, 'download_button');
-  addClickableLink(doc, page2, downloadButtonUri, [
-    (pageWidth - mtW) / 2 - 12,
-    curY - 4,
-    (pageWidth + mtW) / 2 + 12,
-    curY + 14,
-  ]);
 
-  curY -= 15;
+  // Subtle inner accent border with generous padding
+  page2.drawRectangle({
+    x: cardX + 3.5,
+    y: cardY + 3.5,
+    width: cardW - 7,
+    height: cardH - 7,
+    borderColor: rgb(0.91, 0.84, 0.73),
+    borderWidth: 0.5,
+    opacity: 0.5,
+  });
 
-  // 2. The 3 Features requested: LIVE JAAP • DAILY PANCHANG • DAILY SANATAN COMMUNITY
-  const featText = 'LIVE JAAP   *   DAILY PANCHANG   *   DAILY SANATAN COMMUNITY';
-  const ftW = fontHelveticaBold.widthOfTextAtSize(featText, 7.5);
-  page2.drawText(featText, {
-    x: (pageWidth - ftW) / 2,
-    y: curY,
-    size: 7.5,
-    font: fontHelveticaBold,
+  // Top Header Banner with soft cream background
+  const headBoxH = 26;
+  const headBoxY = cardY + cardH - headBoxH;
+  page2.drawRectangle({
+    x: cardX + 1,
+    y: headBoxY,
+    width: cardW - 2,
+    height: headBoxH - 1,
+    color: rgb(0.975, 0.945, 0.915),
+  });
+  page2.drawLine({
+    start: { x: cardX, y: headBoxY },
+    end: { x: cardX + cardW, y: headBoxY },
+    thickness: 0.8,
+    color: colVintageGold,
+  });
+
+  // Header / Eyebrow (BRAHMAND)
+  const eyebrowText = 'BRAHMAND';
+  page2.drawText(eyebrowText, {
+    x: cardX + 14,
+    y: headBoxY + 8,
+    size: 11,
+    font: brandFont,
+    color: colMaroonHead,
+  });
+
+  // Tagline: "Join your Digital Sanatan Community"
+  const taglineText = 'Join your Digital Sanatan Community';
+  page2.drawText(taglineText, {
+    x: cardX + 14 + brandFont.widthOfTextAtSize(eyebrowText, 11) + 12,
+    y: headBoxY + 8.5,
+    size: 9.2,
+    font: fontTimesItalic,
     color: colTerracottaDk,
   });
 
-  curY -= 22;
+  // Split Architecture: 65% (Left Text) + 35% (Right QR)
+  const leftRatio = 0.65;
+  const leftColX = cardX + 14;
+  const leftColW = cardW * leftRatio - 20;
+  const splitLineX = cardX + cardW * leftRatio;
+  const qrColX = splitLineX + 10;
+  const qrColW = cardW - (splitLineX - cardX) - 20;
 
-  // 3. Download Free App Button (Clean & Borderless with generous breathing space before and after)
-  const btnLine1 = 'DOWNLOAD   FREE   APP';
-  const b1W = brandFont.widthOfTextAtSize(btnLine1, 10.5);
-  const btnX = (pageWidth - b1W) / 2;
-  page2.drawText(btnLine1, {
-    x: btnX,
-    y: curY,
-    size: 10.5,
-    font: brandFont,
-    color: colCrimson,
+  // Delicate vertical divider between Left and Right columns
+  page2.drawLine({
+    start: { x: splitLineX, y: cardY + 12 },
+    end: { x: splitLineX, y: headBoxY - 6 },
+    thickness: 0.6,
+    color: rgb(0.85, 0.76, 0.64),
   });
 
-  // Clickable link annotation covering the button text with generous touch padding
-  addClickableLink(doc, page2, downloadButtonUri, [
-    btnX - 18,
-    curY - 10,
-    btnX + b1W + 18,
-    curY + 16,
-  ]);
+  // 3 Exact High-Converting Feature Bullets (Icon + Clear Value Proposition)
+  const featureBullets = [
+    {
+      title: 'Free Kundli: ',
+      desc: 'Instant Vedic Janam Kundli, Dosha analysis & daily predictions at zero cost.',
+    },
+    {
+      title: 'Sanatan SOS: ',
+      desc: 'Real-time emergency assistance and local community support when you need it most.',
+    },
+    {
+      title: 'Vedic Services: ',
+      desc: 'Connect with verified Services, and participate in community seva.',
+    },
+  ];
 
-  curY -= 22;
+  let bulletY = headBoxY - 17;
+  const textFont = fontPoppins || fontHelvetica;
+  const titleFont = fontPoppins || fontHelveticaBold;
 
-  // 4. "AVAILABLE ON GOOGLE PLAY STORE & APP STORE"
-  const storeAvailText = 'AVAILABLE ON GOOGLE PLAY STORE & APP STORE';
-  const satW = fontHelveticaBold.widthOfTextAtSize(storeAvailText, 7.8);
-  page2.drawText(storeAvailText, {
-    x: (pageWidth - satW) / 2,
-    y: curY,
+  for (const b of featureBullets) {
+    // Elegant sacred diamond bullet
+    page2.drawRectangle({
+      x: leftColX + 3.5,
+      y: bulletY + 1.5,
+      width: 4.5,
+      height: 4.5,
+      color: colCrimson,
+      rotate: degrees(45),
+    });
+
+    const tW = titleFont.widthOfTextAtSize(b.title, 8.8);
+    page2.drawText(b.title, {
+      x: leftColX + 12,
+      y: bulletY,
+      size: 8.8,
+      font: titleFont,
+      color: colMaroonHead,
+    });
+
+    const wrappedDesc = wrapText(b.desc, textFont, 8.2, leftColW - tW - 14);
+    if (wrappedDesc.length > 0) {
+      page2.drawText(wrappedDesc[0], {
+        x: leftColX + 12 + tW,
+        y: bulletY,
+        size: 8.2,
+        font: textFont,
+        color: colFeatureText,
+      });
+      if (wrappedDesc.length > 1) {
+        page2.drawText(wrappedDesc.slice(1).join(' '), {
+          x: leftColX + 12,
+          y: bulletY - 9.5,
+          size: 8.2,
+          font: textFont,
+          color: colFeatureText,
+        });
+      }
+    }
+
+    bulletY -= (wrappedDesc.length > 1 ? 23 : 19);
+  }
+
+  // Left Side Action Footer: "Available on Google Play & App Store" + Store badges
+  const actionFooterY = cardY + 13;
+  const storeLabel = 'Available on Google Play & App Store';
+  page2.drawText(storeLabel, {
+    x: leftColX,
+    y: actionFooterY + 14,
     size: 7.8,
     font: fontHelveticaBold,
     color: colSageDeep,
   });
 
-  curY -= 15;
-
-  // Store Badges (Google Play & App Store - Clean, borderless, NO background boxes as requested!)
-  const playText = 'Google Play';
-  const appStoreText = 'App Store';
-  const playScale = 0.48;
-  const appleScale = 0.48;
-  const playIconW = 24 * playScale;
-  const appleIconW = 24 * appleScale;
-  const playTextW = fontHelveticaBold.widthOfTextAtSize(playText, 9);
-  const appStoreTextW = fontHelveticaBold.widthOfTextAtSize(appStoreText, 9);
-
-  const playTotalW = playIconW + 6 + playTextW;
-  const appStoreTotalW = appleIconW + 6 + appStoreTextW;
-  const gapBetweenStores = 36;
-  const totalStoresW = playTotalW + gapBetweenStores + appStoreTotalW;
-  const playStartX = (pageWidth - totalStoresW) / 2;
-  const appStoreStartX = playStartX + playTotalW + gapBetweenStores;
-  const storeRowY = curY;
-
-  // Authentic 4-color Google Play Store triangle icon (vector SVG paths, no box)
+  // Store Badges (Google Play & App Store vector badges)
+  const storeRowY = actionFooterY;
   const playPaths = [
     { p: 'M 3.25 2.14 C 2.87 2.53 2.65 3.14 2.65 3.94 L 2.65 20.06 C 2.65 20.86 2.87 21.47 3.25 21.86 L 3.32 21.93 L 12.44 12.81 L 12.44 12.38 L 12.44 12.38 L 3.32 3.26 Z', c: rgb(0.25, 0.63, 0.96) },
     { p: 'M 15.48 15.85 L 12.44 12.81 L 12.44 12.38 L 15.48 9.34 L 15.56 9.38 L 19.16 11.43 C 20.19 12.01 20.19 12.97 19.16 13.55 L 15.56 15.60 Z', c: rgb(1.0, 0.79, 0.0) },
     { p: 'M 15.56 15.60 L 12.44 12.48 L 3.25 21.86 C 3.59 22.22 4.15 22.27 4.80 21.90 L 15.56 15.60', c: rgb(0.92, 0.26, 0.21) },
     { p: 'M 15.56 9.38 L 4.80 3.28 C 4.15 2.91 3.59 2.96 3.25 3.32 L 12.44 12.51 Z', c: rgb(0.18, 0.73, 0.42) },
   ];
+  const playScale = 0.40;
+  const playIconW = 24 * playScale;
   for (const seg of playPaths) {
-    page2.drawSvgPath(seg.p, { x: playStartX, y: storeRowY + 9, scale: playScale, color: seg.c });
+    page2.drawSvgPath(seg.p, { x: leftColX, y: storeRowY + 7, scale: playScale, color: seg.c });
   }
-
-  page2.drawText(playText, {
-    x: playStartX + playIconW + 6,
+  page2.drawText('Google Play', {
+    x: leftColX + playIconW + 5,
     y: storeRowY,
-    size: 9,
+    size: 8.5,
     font: fontHelveticaBold,
     color: colInk,
   });
+  const playW = playIconW + 5 + fontHelveticaBold.widthOfTextAtSize('Google Play', 8.5);
 
-  const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
-  addClickableLink(doc, page2, playStoreUri, [
-    playStartX - 10,
-    storeRowY - 8,
-    playStartX + playTotalW + 10,
-    storeRowY + 18,
-  ]);
-
-  // Authentic Apple icon (vector SVG path, no box)
+  const appleStartX = leftColX + playW + 16;
   const applePath =
     'M 18.71 19.5 C 17.88 20.74 17.00 21.93 15.66 21.97 C 14.32 22.01 13.88 21.20 12.37 21.20 C 10.84 21.20 10.37 21.93 9.09 21.97 C 7.79 22.01 6.80 20.69 5.96 19.47 C 4.25 17.00 2.94 12.48 4.70 9.42 C 5.57 7.91 7.13 6.95 8.82 6.93 C 10.10 6.91 11.31 7.79 12.10 7.79 C 12.87 7.79 14.33 6.72 15.89 6.89 C 16.55 6.92 18.39 7.15 19.56 8.87 C 19.46 8.93 17.37 10.15 17.39 12.63 C 17.42 15.60 20.00 16.59 20.03 16.60 C 20.00 16.70 19.61 18.06 18.71 19.5 Z M 14.97 4.57 C 15.65 3.75 16.11 2.61 15.98 1.46 C 14.99 1.50 13.79 2.12 13.08 2.95 C 12.45 3.68 11.90 4.85 12.05 5.97 C 13.16 6.06 14.29 5.39 14.97 4.57 Z';
-  page2.drawSvgPath(applePath, { x: appStoreStartX, y: storeRowY + 9, scale: appleScale, color: colInk });
-
-  page2.drawText(appStoreText, {
-    x: appStoreStartX + appleIconW + 6,
+  const appleScale = 0.40;
+  const appleIconW = 24 * appleScale;
+  page2.drawSvgPath(applePath, { x: appleStartX, y: storeRowY + 7, scale: appleScale, color: colInk });
+  page2.drawText('App Store', {
+    x: appleStartX + appleIconW + 5,
     y: storeRowY,
-    size: 9,
+    size: 8.5,
     font: fontHelveticaBold,
     color: colInk,
   });
 
-  const appStoreUri = 'https://brahmand.app/download?platform=ios';
-  addClickableLink(doc, page2, appStoreUri, [
-    appStoreStartX - 10,
+  // RIGHT SIDE: 35% WIDTH SCANNABLE QR CODE WITH VINTAGE GOLD BORDER & EMBEDDED BRAHMAND ICON
+  const qrSize = 88;
+  const qrBoxX = qrColX + (qrColW - qrSize) / 2;
+  const qrBoxY = cardY + 22;
+  const quietZone = 6;
+
+  // Background white box with generous quiet zone and vintage gold border (#C8A97E)
+  page2.drawRectangle({
+    x: qrBoxX - quietZone,
+    y: qrBoxY - quietZone,
+    width: qrSize + quietZone * 2,
+    height: qrSize + quietZone * 2,
+    color: rgb(1, 1, 1),
+    borderColor: colVintageGold,
+    borderWidth: 1.0,
+  });
+
+  // Dynamic referral URL for deep-linking & analytics tracking: https://brahmand.app/download?f={festival}&s=qr
+  const referralQrUrl = getTrackedBrahmandUrl(theme.name, 'pdf_qr_scan');
+  drawQrCodeMatrix(
+    page2,
+    referralQrUrl,
+    qrBoxX,
+    qrBoxY,
+    qrSize,
+    rgb(0.04, 0.04, 0.04), // Pure deep ink for high optical contrast
+    rgb(1, 1, 1),
+    brahmandLogo // Embedded central vector icon
+  );
+
+  // Right side QR Caption: "Scan to Join Free"
+  const qrCaption = 'Scan to Join Free';
+  const capW = brandFont.widthOfTextAtSize(qrCaption, 7.8);
+  page2.drawText(qrCaption, {
+    x: qrBoxX + (qrSize - capW) / 2,
+    y: qrBoxY - 14,
+    size: 7.8,
+    font: brandFont,
+    color: colMaroonHead,
+  });
+
+  // 1. Google Play Badge Link (Dedicated touch target)
+  const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
+  addClickableLink(doc, page2, playStoreUri, [
+    leftColX - 6,
     storeRowY - 8,
-    appStoreStartX + appStoreTotalW + 10,
-    storeRowY + 18,
+    leftColX + playW + 8,
+    storeRowY + 22,
   ]);
 
-  let afterBtnY = storeRowY - 13;
+  // 2. Apple App Store Badge Link (Dedicated touch target - zero overlap)
+  const appStoreUri = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
+  const appleFullW = appleIconW + 5 + fontHelveticaBold.widthOfTextAtSize('App Store', 8.5);
+  addClickableLink(doc, page2, appStoreUri, [
+    appleStartX - 6,
+    storeRowY - 8,
+    appleStartX + appleFullW + 8,
+    storeRowY + 22,
+  ]);
 
-  // 6. DAILY PANCHANG & LIVE JAAP INTEGRATION CALLOUT
-  afterBtnY -= 11;
-  const panchangHook = 'Aaj ka Shubh Muhurat aur Live Jaap join karne ke liye Brahmand App download karein.';
-  const phW = fontTimesItalic.widthOfTextAtSize(panchangHook, 8);
-  page2.drawText(panchangHook, {
-    x: (pageWidth - phW) / 2,
-    y: afterBtnY,
-    size: 8,
-    font: fontTimesItalic,
-    color: colTerracottaDk,
-  });
+  // 3. QR Code Touch Target (Dedicated right column target)
+  addClickableLink(doc, page2, referralQrUrl, [
+    qrBoxX - quietZone,
+    qrBoxY - quietZone - 16,
+    qrBoxX + qrSize + quietZone,
+    qrBoxY + qrSize + quietZone,
+  ]);
 
-  // 7. FEEDBACK LOOP MESSAGE
-  afterBtnY -= 10;
-  const feedbackMsg = 'Did you like this Katha? Share your feedback on the Brahmand App.';
-  const fbW = fontHelvetica.widthOfTextAtSize(feedbackMsg, 7.2);
-  page2.drawText(feedbackMsg, {
-    x: (pageWidth - fbW) / 2,
-    y: afterBtnY,
-    size: 7.2,
-    font: fontHelvetica,
-    color: colSageDeep,
-  });
+  // 4. Upper Card Content Area (Text & features only - strictly ABOVE the store buttons)
+  const cardClickUrl = getTrackedBrahmandUrl(theme.name, 'download_button');
+  addClickableLink(doc, page2, cardClickUrl, [
+    cardX,
+    storeRowY + 24,
+    splitLineX,
+    cardY + cardH,
+  ]);
 
   // 8. FOOTER (Without QR code, matching Page 1)
   const footY = 24;

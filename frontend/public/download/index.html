@@ -117,6 +117,7 @@
       var search = window.location.search || '';
       var userAgent = navigator.userAgent || navigator.vendor || window.opera;
       var isAndroid = /android/i.test(userAgent);
+      var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
 
       // Extract and format UTM referrer
       var queryParams = search.replace(/^\?/, '');
@@ -124,10 +125,13 @@
       if (queryParams) {
         playStoreUrl += '&referrer=' + encodeURIComponent(queryParams);
       }
+      var appStoreUrl = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
 
-      // If mobile user on Android, forward immediately to Play Store with referrer
+      // Mobile smart forward
       if (isAndroid) {
         window.location.replace(playStoreUrl);
+      } else if (isIOS) {
+        window.location.replace(appStoreUrl);
       }
     })();
   </script>
@@ -147,7 +151,7 @@
     </div>
 
     <a id="downloadBtn" href="https://play.google.com/store/apps/details?id=com.brahmand.app" class="btn">
-      DOWNLOAD ON GOOGLE PLAY ➔
+      DOWNLOAD APP ➔
     </a>
 
     <div class="badges">
@@ -158,15 +162,28 @@
   </div>
 
   <script>
-    // Ensure button href has full UTM referrer for desktop/iOS users who stay on the page
+    // Ensure button href has correct platform target for desktop/fallback users
     var search = window.location.search || '';
     var queryParams = search.replace(/^\?/, '');
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+
     var playStoreUrl = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
     if (queryParams) {
       playStoreUrl += '&referrer=' + encodeURIComponent(queryParams);
     }
+    var appStoreUrl = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
+
     var btn = document.getElementById('downloadBtn');
-    if (btn) btn.href = playStoreUrl;
+    if (btn) {
+      if (isIOS) {
+        btn.href = appStoreUrl;
+        btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+      } else {
+        btn.href = playStoreUrl;
+        btn.innerText = 'DOWNLOAD ON GOOGLE PLAY ➔';
+      }
+    }
   </script>
 </body>
 </html>

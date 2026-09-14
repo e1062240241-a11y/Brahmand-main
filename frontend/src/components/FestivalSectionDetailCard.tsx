@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions, ScrollView } from 'react-native';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Share, Alert, Platform, Dimensions, ScrollView, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -135,6 +135,38 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
       : heroImageSource;
 
     const [activeTab, setActiveTab] = useState(0);
+    const contentFade = useRef(new Animated.Value(1)).current;
+    const contentTranslateX = useRef(new Animated.Value(0)).current;
+    const journeyScrollRef = useRef<ScrollView>(null);
+    const isInitialMount = useRef(true);
+
+    useEffect(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+
+      // Smooth, slow left-to-right entrance transition for written story content
+      contentFade.setValue(0);
+      contentTranslateX.setValue(-28);
+
+      journeyScrollRef.current?.scrollTo({ y: 0, animated: true });
+
+      Animated.parallel([
+        Animated.timing(contentFade, {
+          toValue: 1,
+          duration: 520,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentTranslateX, {
+          toValue: 0,
+          duration: 520,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, [activeTab]);
 
     const storyText = sectionValue || enrichment?.origin || festival.origin || festival.story || festival.summary || '';
     const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [storyText];
@@ -429,6 +461,7 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
 
         {/* Scrollable Narrative Content */}
         <ScrollView
+          ref={journeyScrollRef}
           style={styles.journeyScrollableContent}
           contentContainerStyle={styles.journeyScrollableContentInner}
           showsVerticalScrollIndicator={false}
@@ -437,8 +470,16 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
           {/* Top Spacer to showcase the hero artwork */}
           <View style={styles.journeyHeroSpacer} />
 
-          {/* Narrative Chapter Content with Elegant Script Drop-Cap */}
-          <View style={styles.journeyContentSection}>
+          {/* Narrative Chapter Content with Elegant Script Drop-Cap & Smooth Left-to-Right Transition */}
+          <Animated.View
+            style={[
+              styles.journeyContentSection,
+              {
+                opacity: contentFade,
+                transform: [{ translateX: contentTranslateX }],
+              },
+            ]}
+          >
             <View style={styles.dropCapStoryRow}>
               <Text style={styles.dropCapLetter}>
                 {(currentChapter.content || '').charAt(0)}
@@ -459,7 +500,7 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
                 </Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         </ScrollView>
 
         {/* Floating Glassmorphic Journey Card Aligned & Pinned at Bottom */}

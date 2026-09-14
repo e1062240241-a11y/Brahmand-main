@@ -1997,7 +1997,7 @@ export default function ProfileScreen() {
                   </View>
 
                   {commentsLoading ? (
-                    <OmSpinner size={36} color={COLORS.primary} style={{ marginTop: 40 }} />
+                    <OmSpinner size={36} color={COLORS.primary} style={{ marginTop: 40, alignSelf: 'center' }} />
                   ) : postComments.length === 0 ? (
                     <View style={styles.emptyComments}>
                       <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
@@ -2663,35 +2663,48 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   editFieldCard: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   editFieldTitle: {
-    color: '#FFF',
+    color: '#1A1A1A',
     fontSize: 17,
     fontWeight: '700',
     marginBottom: 12,
   },
   editFieldInput: {
     minHeight: 100,
-    color: '#FFF',
+    color: '#111827',
     fontSize: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(243, 244, 246, 0.85)',
+    borderWidth: 1.5,
+    borderColor: '#2563EB',
+    borderRadius: 12,
     padding: 12,
     textAlignVertical: 'top',
   },
   editFieldInputSingle: {
     height: 46,
-    color: '#FFF',
+    color: '#111827',
     fontSize: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(243, 244, 246, 0.85)',
+    borderWidth: 1.5,
+    borderColor: '#2563EB',
+    borderRadius: 12,
     paddingHorizontal: 12,
   },
   editFieldActions: {
@@ -2701,17 +2714,20 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   editFieldCancel: {
-    color: 'rgba(255,255,255,0.65)',
+    color: '#6B7280',
     fontSize: 15,
     fontWeight: '600',
   },
   editFieldSave: {
-    color: '#FF9E00',
+    color: '#EA580C',
     fontSize: 15,
     fontWeight: '700',
   },
   footerLoader: {
     paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   endOfFeed: {
     paddingVertical: 30,
