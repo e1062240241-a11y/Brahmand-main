@@ -37,7 +37,6 @@ import base64
 import math
 import requests
 import aiohttp
-import jwt
 from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -1537,37 +1536,6 @@ def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], 
     return None, None, None
 
 
-def _sanitize_livekit_room(value: str) -> str:
-    normalized = re.sub(r'[^a-zA-Z0-9_-]+', '-', value or 'jaap-live').strip('-')
-    return normalized[:96] or 'jaap-live'
-
-
-def _build_livekit_token(user_id: str, sl_id: str, room: str) -> tuple[str, int]:
-    ttl_seconds = max(settings.LIVEKIT_TOKEN_TTL_SECONDS, 300)
-    now = datetime.now(timezone.utc)
-    expires_at = int((now + timedelta(seconds=ttl_seconds)).timestamp())
-    identity = _sanitize_livekit_room(f"{user_id}-{uuid4().hex[:8]}")
-    participant_name = sl_id or user_id
-
-    payload = {
-        'iss': settings.LIVEKIT_API_KEY,
-        'sub': identity,
-        'name': participant_name,
-        'nbf': int(now.timestamp()),
-        'exp': expires_at,
-        'video': {
-            'roomJoin': True,
-            'room': room,
-            'canPublish': True,
-            'canSubscribe': True,
-            'canPublishData': True,
-        },
-    }
-
-    token = jwt.encode(payload, settings.LIVEKIT_API_SECRET, algorithm='HS256')
-    return token, expires_at
-
-
 @api_router.get("/realtime/ice-servers")
 async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
     """Return STUN/TURN config for realtime audio rooms."""
@@ -1585,30 +1553,6 @@ async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
     return {
         'iceServers': [server for server in ice_servers if server.get('urls')],
         'turnEnabled': bool(turn_urls and username and credential),
-        'expiresAt': expires_at,
-    }
-
-
-@api_router.get("/realtime/sfu-token")
-async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
-    """Return an SFU room token when LiveKit is configured."""
-    livekit_ready = bool(settings.LIVEKIT_URL and settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET)
-    if not livekit_ready:
-        return {
-            'enabled': False,
-            'reason': 'livekit_not_configured',
-        }
-
-    user_id = token_data.get('user_id', 'anonymous') or 'anonymous'
-    sl_id = token_data.get('sl_id') or user_id
-    livekit_room = _sanitize_livekit_room(f"{settings.LIVEKIT_ROOM_PREFIX}-{room}")
-    token, expires_at = _build_livekit_token(user_id, sl_id, livekit_room)
-
-    return {
-        'enabled': True,
-        'url': settings.LIVEKIT_URL,
-        'token': token,
-        'room': livekit_room,
         'expiresAt': expires_at,
     }
 
@@ -11584,8 +11528,8 @@ async def send_blood_request_otp(request: OTPRequest):
         otp_requests_count = 1
 
     # Generate OTP securely (4 digits)
-    import random
-    otp_code = f"{random.randint(1000, 9999)}"
+    import secrets
+    otp_code = f"{secrets.randbelow(9000) + 1000}"
     logger.info(f"[Blood Request OTP] Generated OTP {otp_code} for mobile {mobile}")
 
     # Call NattyFish to send SMS
