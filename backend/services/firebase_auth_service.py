@@ -2,7 +2,7 @@
 import os
 import re
 import logging
-import random
+import secrets
 import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -140,7 +140,7 @@ class FirebaseAuthService:
         else:
             try:
                 from services.nattyfish_service import NattyFishService
-                otp = f"{random.randint(100000, 999999)}"
+                otp = f"{secrets.randbelow(900000) + 100000}"
                 expires_at = datetime.utcnow() + timedelta(minutes=FirebaseAuthService.OTP_EXPIRY_MINUTES)
                 
                 otp_data = {

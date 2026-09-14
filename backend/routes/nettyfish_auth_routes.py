@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from middleware.rate_limiter import auth_rate_limit
 from datetime import datetime, timedelta
-import random
+import secrets
 import os
 import logging
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def generate_otp() -> str:
     """Generate a random 4-digit OTP."""
-    return str(random.randint(1000, 9999))
+    return str(secrets.randbelow(9000) + 1000)
 
 @router.post("/auth/nettyfish/send")
 async def send_nettyfish_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
