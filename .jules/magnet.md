@@ -38,3 +38,7 @@
 ## 2026-09-12 - Language-Aware Festival Screen Greetings & Reminders
 **Learning:** Hardcoded English greetings and alert prompts in festival discovery screens isolate non-English users during major cultural moments. Localizing greetings ("नमस्ते मित्र 👋"), sub-messages ("आपका अगला पर्व आ गया है..."), card labels ("त्योहार"), loader text ("त्योहार लोड हो रहे हैं..."), and reminder toggle alerts in warm Devanagari Hindi deepens cultural belonging and retention.
 **Action:** Updated `frontend/app/festivals.tsx` to conditionally render Devanagari Hindi copy when `user?.language === 'hi'`.
+
+## 2026-09-13 - Language-Aware Horoscope Screen & Jyotish AI Tags
+**Learning:** Hardcoded English headers and category badges in astrology screens (like Jyotish/Horoscope) reduce engagement for Hindi users. Localizing section titles ("आपकी राशि क्या है", "ग्रह विश्लेषण"), AI consult prompts ("एआई से राशिफल परामर्श लें"), metrics labels ("वित्त", "प्रेम", "स्वास्थ्य", "कुल प्रभाव"), and modal action CTAs in warm Devanagari Hindi enhances user belonging and habit-building.
+**Action:** Updated `frontend/app/horoscope.tsx` to check `user?.language === 'hi'` and render localized Devanagari Hindi copy across headers, cards, badges, and modals.
