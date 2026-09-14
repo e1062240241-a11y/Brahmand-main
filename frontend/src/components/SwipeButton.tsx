@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { View, Text, StyleSheet, PanResponder, Dimensions, Platform, LayoutChangeEvent } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +12,8 @@ import Animated, {
   Easing,
   runOnJS,
   SharedValue,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -63,7 +66,7 @@ const ChevronWave = () => {
 };
 
 export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps) {
-  const circleWidth = 48;
+  const circleWidth = 50;
   const padding = 4;
 
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 50);
@@ -72,18 +75,25 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
   const translateX = useSharedValue(0);
   const pulseScale = useSharedValue(1);
   const hintOpacity = useSharedValue(0);
+  const isDragging = useSharedValue(0);
 
   const swipedRef = useRef(false);
   const hasPlayedHintRef = useRef(false);
   const isHintAnimatingRef = useRef(false);
+  const hasPassedThresholdRef = useRef(false);
 
   const triggerOnSwipeComplete = useCallback(() => {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_) {}
     onSwipeComplete();
     setTimeout(() => {
       swipedRef.current = false;
+      hasPassedThresholdRef.current = false;
       translateX.value = withTiming(0, { duration: 250 });
+      isDragging.value = withTiming(0, { duration: 200 });
     }, 1000);
-  }, [onSwipeComplete, translateX]);
+  }, [onSwipeComplete, translateX, isDragging]);
 
   const onHintAnimationEnd = useCallback(() => {
     isHintAnimatingRef.current = false;
@@ -104,7 +114,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
     }
   }, [translateX, pulseScale, hintOpacity]);
 
-  // Onboarding micro-interaction: plays 3 times per page visit after 800-1200ms delay
+  // Onboarding micro-interaction: plays once per page visit after delay
   useEffect(() => {
     if (hasPlayedHintRef.current || slideDistance <= 0) return;
 
@@ -113,10 +123,8 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
       hasPlayedHintRef.current = true;
       isHintAnimatingRef.current = true;
 
-      // 1. Fade in small hint text
       hintOpacity.value = withTiming(1, { duration: 300 });
 
-      // 2. Subtle pulse/glow on ॐ handle (repeated 3 times)
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(1.08, { duration: 350, easing: Easing.out(Easing.ease) }),
@@ -126,11 +134,10 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
         false
       );
 
-      // 3. Slide 20% to right and return smoothly without overshoot (repeated 3 times)
       translateX.value = withRepeat(
         withSequence(
           withTiming(slideDistance * 0.2, { duration: 450, easing: Easing.out(Easing.quad) }),
-          withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true })
+          withSpring(0, { stiffness: 140, damping: 22, mass: 1, overshootClamping: true })
         ),
         3,
         false,
@@ -152,40 +159,90 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) =>
         !swipedRef.current &&
-        gestureState.dx > 3 &&
+        Math.abs(gestureState.dx) > 3 &&
         Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
       onMoveShouldSetPanResponderCapture: (_, gestureState) =>
         !swipedRef.current &&
-        gestureState.dx > 3 &&
+        Math.abs(gestureState.dx) > 3 &&
         Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
       onPanResponderGrant: () => {
         cancelHintAnimation();
         cancelAnimation(translateX);
+        isDragging.value = withTiming(1, { duration: 120 });
+        hasPassedThresholdRef.current = false;
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch (_) {}
       },
       onPanResponderMove: (_, gestureState) => {
         if (swipedRef.current) return;
-        let newX = gestureState.dx;
-        if (newX < 0) newX = 0;
-        if (newX > slideDistance) newX = slideDistance;
-        translateX.value = newX;
+        const rawX = gestureState.dx;
+
+        // Elastic resistance (rubber-banding) for high-responsiveness iOS feel:
+        let calculatedX: number;
+        if (rawX < 0) {
+          // Strong elastic resistance when dragging backwards
+          calculatedX = -Math.pow(Math.abs(rawX), 0.5) * 1.8;
+        } else if (rawX <= slideDistance) {
+          // Responsive 1:1 direct tracking
+          calculatedX = rawX;
+        } else {
+          // Noticeable elastic resistance beyond slide distance
+          const excess = rawX - slideDistance;
+          calculatedX = slideDistance + Math.pow(excess, 0.5) * 1.8;
+        }
+
+        translateX.value = calculatedX;
+
+        // Haptic feedback when crossing the 60% completion threshold
+        if (rawX >= slideDistance * 0.6 && !hasPassedThresholdRef.current) {
+          hasPassedThresholdRef.current = true;
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch (_) {}
+        } else if (rawX < slideDistance * 0.6 && hasPassedThresholdRef.current) {
+          hasPassedThresholdRef.current = false;
+        }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (swipedRef.current) return;
-        if (gestureState.dx >= slideDistance * 0.6) {
+        isDragging.value = withTiming(0, { duration: 150 });
+
+        // Trigger on reaching 55% or on brisk rightward flick (velocity > 0.6)
+        const passedDistance = gestureState.dx >= slideDistance * 0.55;
+        const passedVelocity = gestureState.dx > slideDistance * 0.2 && gestureState.vx > 0.6;
+
+        if (passedDistance || passedVelocity) {
           swipedRef.current = true;
-          translateX.value = withTiming(slideDistance, { duration: 150 }, (finished) => {
+          translateX.value = withSpring(slideDistance, {
+            stiffness: 240,
+            damping: 25,
+            mass: 0.75,
+            overshootClamping: true,
+          }, (finished) => {
             'worklet';
             if (finished) {
               runOnJS(triggerOnSwipeComplete)();
             }
           });
         } else {
-          translateX.value = withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true });
+          translateX.value = withSpring(0, {
+            stiffness: 220,
+            damping: 24,
+            mass: 0.85,
+            overshootClamping: true,
+          });
         }
       },
       onPanResponderTerminate: () => {
         if (!swipedRef.current) {
-          translateX.value = withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true });
+          isDragging.value = withTiming(0, { duration: 150 });
+          translateX.value = withSpring(0, {
+            stiffness: 220,
+            damping: 24,
+            mass: 0.85,
+            overshootClamping: true,
+          });
         }
       },
     })
@@ -198,14 +255,20 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
     }
   };
 
-  // Reanimated 60 FPS animated styles with strict clamping
+  // Main title fades out cleanly and shifts gently to right
   const titleAnimatedStyle = useAnimatedStyle(() => {
     const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    const fadeEnd = slideDistance > 0 ? slideDistance * 0.45 : 1;
+    const opacity = interpolate(clampedX, [0, fadeEnd], [1, 0], Extrapolation.CLAMP);
+    const titleShift = interpolate(clampedX, [0, slideDistance], [0, 14], Extrapolation.CLAMP);
+
     return {
-      opacity: Math.max(0, 1 - (slideDistance > 0 ? clampedX / (slideDistance * 0.5) : 0)),
+      opacity,
+      transform: [{ translateX: titleShift }],
     };
   });
 
+  // Track follow-fill: expands smoothly from left as circle moves
   const trackFillAnimatedStyle = useAnimatedStyle(() => {
     const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
     return {
@@ -213,12 +276,30 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
     };
   });
 
+  // Circular/rounded pod backing that travels together with the circle knob
+  const circularPodAnimatedStyle = useAnimatedStyle(() => {
+    const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    const dragScale = interpolate(isDragging.value, [0, 1], [1, 1.15], Extrapolation.CLAMP);
+    const podOpacity = interpolate(clampedX, [0, slideDistance * 0.5, slideDistance], [0.35, 0.6, 0.85], Extrapolation.CLAMP);
+
+    return {
+      opacity: podOpacity,
+      transform: [
+        { translateX: clampedX },
+        { scale: dragScale },
+      ],
+    };
+  });
+
+  // Circle knob with responsive drag touch feedback
   const circleAnimatedStyle = useAnimatedStyle(() => {
     const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    const dragScale = interpolate(isDragging.value, [0, 1], [1, 1.05], Extrapolation.CLAMP);
+
     return {
       transform: [
         { translateX: clampedX },
-        { scale: pulseScale.value },
+        { scale: pulseScale.value * dragScale },
       ],
     };
   });
@@ -242,20 +323,23 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
         }
       }}
     >
-      {/* Orange track fill */}
+      {/* Dynamic trailing active orange track */}
       <Animated.View style={[styles.filledTrack, trackFillAnimatedStyle]} />
+
+      {/* Backing pod that travels together with the circle knob */}
+      <Animated.View style={[styles.circularPod, circularPodAnimatedStyle]} pointerEvents="none" />
 
       {/* Main button title */}
       <Animated.Text style={[styles.text, titleAnimatedStyle]}>
         {title}
       </Animated.Text>
 
-      {/* 5-6 Right Chevron Arrow Wave Transition (replaces old "Swipe to Join →" text) */}
+      {/* Chevrons guide animation */}
       <Animated.View style={[styles.hintOverlay, hintAnimatedStyle]} pointerEvents="none">
         <ChevronWave />
       </Animated.View>
 
-      {/* ॐ Handle */}
+      {/* ॐ Slide Handle / Thumb */}
       <Animated.View
         style={[styles.circle, circleAnimatedStyle]}
         {...panResponder.panHandlers}
@@ -269,29 +353,45 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 56,
-    backgroundColor: '#E8630A',
-    borderRadius: 28,
+    height: 58,
+    backgroundColor: '#D95600',
+    borderRadius: 29,
     justifyContent: 'center',
     paddingHorizontal: 4,
     position: 'relative',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
   },
   filledTrack: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#FF8800',
-    borderRadius: 28,
+    backgroundColor: '#FF7A00',
+    borderRadius: 29,
+  },
+  circularPod: {
+    position: 'absolute',
+    left: 2,
+    top: 2,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    zIndex: 4,
   },
   text: {
     position: 'absolute',
     width: '100%',
     textAlign: 'center',
     color: '#FFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   hintOverlay: {
     position: 'absolute',
@@ -311,25 +411,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 1.5,
   },
   circle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF4ED',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFDF9',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 6,
     position: 'absolute',
     left: 4,
     zIndex: 10,
   },
   icon: {
-    color: '#E8630A',
-    fontSize: 20,
+    color: '#D95600',
+    fontSize: 22,
     fontWeight: 'bold',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });
+

@@ -420,7 +420,7 @@ const DMMessageItem = React.memo(({
           flexDirection: 'column',
           alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
           flexShrink: 1,
-          maxWidth: '78%'
+          maxWidth: '82%'
         }}>
           <Pressable
             style={({ pressed }) => [
@@ -2280,7 +2280,7 @@ const DirectMessageScreen = () => {
         </View>
 
         <View
-          style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}
+          style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom + 6, 16)) : Math.max(insets.bottom, 12) }]}
         >
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
@@ -2305,11 +2305,13 @@ const DirectMessageScreen = () => {
                 onChangeText={setNewMessage}
                 placeholder={dmT('messagePlaceholder')}
                 placeholderTextColor="#888888"
-                multiline
+                multiline={true}
                 blurOnSubmit={false}
                 style={styles.input}
                 editable={!isInputLocked}
                 returnKeyType="default"
+                enterKeyHint="enter"
+                textAlignVertical="top"
               />
               <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="camera-outline" size={24} color="#000" />
@@ -2348,7 +2350,7 @@ const DirectMessageScreen = () => {
                       borderTopRightRadius: 28,
                       paddingHorizontal: 24,
                       paddingTop: 16,
-                      paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: -4 },
                       shadowOpacity: 0.15,
@@ -2471,7 +2473,7 @@ const DirectMessageScreen = () => {
                   borderTopRightRadius: 28,
                   paddingHorizontal: 24,
                   paddingTop: 16,
-                  paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                  paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: -4 },
                   shadowOpacity: 0.15,
@@ -2598,7 +2600,7 @@ const DirectMessageScreen = () => {
                   borderTopRightRadius: 28,
                   paddingHorizontal: 20,
                   paddingTop: 16,
-                  paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+                  paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                   maxHeight: '80%',
                 }}
               >
@@ -2792,29 +2794,29 @@ const styles = StyleSheet.create({
   requestButtonText: { fontSize: 14, fontWeight: '600' },
   requestDenyButtonText: { color: '#E53935' },
   messagesWrapper: { flex: 1, overflow: 'hidden' },
-  messagesList: { padding: SPACING.md, flexGrow: 1 },
+  messagesList: { paddingVertical: SPACING.sm, paddingHorizontal: 6, flexGrow: 1 },
   dateSeparatorContainer: { width: '100%', alignItems: 'center', marginVertical: SPACING.sm },
   dateSeparator: { paddingHorizontal: SPACING.md, paddingVertical: 4, backgroundColor: 'transparent', borderWidth: 0 },
   dateSeparatorText: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
-  messageContainer: { flexDirection: 'row', marginBottom: SPACING.xs, alignItems: 'flex-end', paddingHorizontal: SPACING.md },
+  messageContainer: { flexDirection: 'row', marginBottom: SPACING.xs, alignItems: 'flex-end', paddingHorizontal: 2 },
   ownMessageContainer: { justifyContent: 'flex-end' },
   messageBubble: {
     maxWidth: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
     borderBottomLeftRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginLeft: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginLeft: 6,
     borderWidth: 0
   },
   ownMessageBubble: {
     backgroundColor: '#FFD5C2',
     borderRadius: 22,
     borderBottomRightRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 4,
     marginLeft: 0
   },
   messageBubblePressed: {
@@ -2826,8 +2828,8 @@ const styles = StyleSheet.create({
   ownMessageText: { color: '#1A1A1A' },
   timeText: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
   ownTimeText: { color: '#8E8E8E' },
-  messageFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 4, marginLeft: 8 },
-  ownMessageFooter: { justifyContent: 'flex-end', marginRight: 8, marginLeft: 0 },
+  messageFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 4, marginLeft: 6 },
+  ownMessageFooter: { justifyContent: 'flex-end', marginRight: 4, marginLeft: 0 },
   statusContainer: { marginLeft: 2 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.xl * 4 },
   emptyText: { marginTop: SPACING.md, fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
@@ -2836,19 +2838,26 @@ const styles = StyleSheet.create({
   inputFieldContainer: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     backgroundColor: '#FFF',
     borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.50)',
     paddingLeft: 16,
-    paddingRight: 17,
-    paddingTop: Platform.OS === 'android' ? 4 : 10,
-    paddingBottom: Platform.OS === 'android' ? 4 : 10,
+    paddingRight: 14,
+    paddingTop: Platform.OS === 'android' ? 6 : 8,
+    paddingBottom: Platform.OS === 'android' ? 6 : 8,
     minHeight: 44,
-    height: Platform.OS === 'android' ? undefined : 44
   },
-  inlineIcon: { paddingHorizontal: 4, paddingVertical: 0, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
+  inlineIcon: {
+    paddingHorizontal: 4,
+    paddingVertical: 0,
+    marginLeft: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 32,
+    marginBottom: Platform.OS === 'android' ? 2 : 0,
+  },
   sendButtonDisabled: { opacity: 0.5 },
   attachmentOverlay: { position: 'absolute', bottom: 60, left: SPACING.sm, width: 160, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 8, paddingVertical: SPACING.xs, zIndex: 20 },
   attachmentOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
@@ -2883,12 +2892,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: 0,
     paddingHorizontal: 0,
-    paddingTop: Platform.OS === 'android' ? 8 : 0,
-    paddingBottom: Platform.OS === 'android' ? 8 : 0,
+    paddingTop: Platform.OS === 'android' ? 4 : 2,
+    paddingBottom: Platform.OS === 'android' ? 4 : 2,
     fontSize: 15,
+    lineHeight: 20,
     fontFamily: 'Inter_400Regular',
     color: '#1A1A1A',
-    maxHeight: 120
+    maxHeight: 120,
+    textAlignVertical: 'top',
   },
   fullScreenMediaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   fullScreenMediaClose: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 24, right: 20, zIndex: 2, padding: 10, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(0,0,0,0.35)' },

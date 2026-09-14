@@ -383,6 +383,34 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     }
   }, [isRefreshing, androidRefreshAnim]);
 
+  const [pullProgress, setPullProgress] = useState(0);
+
+  const handleScroll = useCallback((event: any) => {
+    // Call parent onScroll (which handles tab bar hiding)
+    if (onScroll) {
+      onScroll(event);
+    }
+
+    const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
+    if (yOffset < 0) {
+      // User is pulling down (overscrolling)
+      const pullDist = -yOffset;
+      const progress = Math.min(1, Math.max(0, pullDist / 65));
+      setPullProgress(progress);
+    } else {
+      if (pullProgress !== 0) {
+        setPullProgress(0);
+      }
+    }
+  }, [onScroll, pullProgress]);
+
+  // Reset pullProgress when refresh state changes
+  useEffect(() => {
+    if (isRefreshing) {
+      setPullProgress(0);
+    }
+  }, [isRefreshing]);
+
   const listHeader = useMemo(() => {
     if (Platform.OS === 'android') {
       const androidHeight = androidRefreshAnim.interpolate({
@@ -413,15 +441,20 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     }
 
     // iOS: Native rubber-band overscroll gap
+    // OmSpinner scales and rotates as user pulls down, then continuously spins when isRefreshing is true
     return (
       <View style={styles.headerWrapper}>
         <View style={styles.omHeaderContainer}>
-          <OmSpinner refreshing={isRefreshing} size={36} />
+          <OmSpinner
+            refreshing={isRefreshing}
+            pullProgress={pullProgress}
+            size={36}
+          />
         </View>
         {homeHeader}
       </View>
     );
-  }, [homeHeader, isRefreshing, androidRefreshAnim]);
+  }, [homeHeader, isRefreshing, androidRefreshAnim, pullProgress]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -438,7 +471,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         overrideItemLayout={overrideItemLayout}
         viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
         onViewableItemsChanged={onViewableItemsChangedRef.current}
-        onScroll={onScroll}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
         drawDistance={1000}
         removeClippedSubviews={Platform.OS === 'android'}

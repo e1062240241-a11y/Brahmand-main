@@ -3338,6 +3338,7 @@ async def download_app_redirect(request: Request):
     query_str = request.url.query or ""
     play_store_base = "https://play.google.com/store/apps/details?id=com.brahmand.app"
     play_store_url = f"{play_store_base}&referrer={quote(query_str)}" if query_str else play_store_base
+    app_store_url = "https://apps.apple.com/in/app/brahmand-app/id6765467224"
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -3456,9 +3457,13 @@ async def download_app_redirect(request: Request):
     (function() {{
       var userAgent = navigator.userAgent || navigator.vendor || window.opera;
       var isAndroid = /android/i.test(userAgent);
+      var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
       var playStoreUrl = "{play_store_url}";
+      var appStoreUrl = "{app_store_url}";
       if (isAndroid) {{
         window.location.replace(playStoreUrl);
+      }} else if (isIOS) {{
+        window.location.replace(appStoreUrl);
       }}
     }})();
   </script>
@@ -3478,7 +3483,7 @@ async def download_app_redirect(request: Request):
     </div>
 
     <a id="downloadBtn" href="{play_store_url}" class="btn">
-      DOWNLOAD ON GOOGLE PLAY ➔
+      DOWNLOAD APP ➔
     </a>
 
     <div class="badges">
@@ -3487,6 +3492,15 @@ async def download_app_redirect(request: Request):
       <span>✓ Safe & Verified</span>
     </div>
   </div>
+  <script>
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    var btn = document.getElementById('downloadBtn');
+    if (btn && isIOS) {{
+      btn.href = "{app_store_url}";
+      btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+    }}
+  </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
@@ -7236,10 +7250,11 @@ async def join_community_direct(
         members = comm.get('members', [])
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
-        # Add user to community members
-        await db.array_union_update('communities', community_id, 'members', [user_id])
-        # Add community to user's communities
-        await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Add user to community members and add community to user's communities
+        await asyncio.gather(
+            db.array_union_update('communities', community_id, 'members', [user_id]),
+            db.array_union_update('users', user_id, 'communities', [community_id])
+        )
         # Invalidate user community cache so next discover call returns is_member=true
         from utils.cache import cache_manager
         await cache_manager.invalidate_user_communities(user_id)
@@ -8639,10 +8654,11 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                     added_member_ids.append(member_id)
 
     circle_id = await db.create_document('circles', circle_data)
-    await db.array_union_update('users', user_id, 'circles', [circle_id])
 
+    tasks = [db.array_union_update('users', user_id, 'circles', [circle_id])]
     for member_id in added_member_ids:
-        await db.array_union_update('users', member_id, 'circles', [circle_id])
+        tasks.append(db.array_union_update('users', member_id, 'circles', [circle_id]))
+    await asyncio.gather(*tasks)
     
     # Send push notification to added members
     if added_member_ids:
@@ -9057,11 +9073,12 @@ async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)
         raise HTTPException(status_code=403, detail="Only admin can delete circle")
     
     # Remove circle from all members' circle lists
+    tasks = []
     for member_id in circle.get('members', []):
-        try:
-            await db.array_remove_update('users', member_id, 'circles', [circle_id])
-        except:
-            pass
+        tasks.append(db.array_remove_update('users', member_id, 'circles', [circle_id]))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     
     # Delete circle
     await db.delete_document('circles', circle_id)

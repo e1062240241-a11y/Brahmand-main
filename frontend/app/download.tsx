@@ -1,37 +1,92 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { getFestivalList } from '../src/services/api';
 
 const PLAY_STORE_BASE = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
+const APP_STORE_BASE = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
 
 export default function DownloadScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
+  const isIOS = useMemo(() => {
+    if (Platform.OS === 'ios') return true;
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+    }
+    return false;
+  }, []);
+
   const handleOpenStore = () => {
-    // Construct Play Store URL with full UTM install referrer
+    if (isIOS) {
+      const iosUrl = (params.app_store_url as string) || APP_STORE_BASE;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.replace(iosUrl);
+      } else {
+        Linking.openURL(iosUrl).catch((err) => console.warn('Failed to open App Store:', err));
+      }
+      return;
+    }
+
+    // Android / Default: Construct Play Store URL with full UTM install referrer
+    const festivalSlug = (params.festival as string) || (params.f as string) || '';
+    const sourceParam = (params.source as string) || (params.s as string) || 'pdf_qr';
     const queryEntries = Object.entries(params)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join('&');
+    const referrerStr = queryEntries || `utm_source=${sourceParam}&utm_medium=pdf&utm_campaign=katha_${festivalSlug}&festival=${festivalSlug}`;
 
-    const fullUrl = queryEntries
-      ? `${PLAY_STORE_BASE}&referrer=${encodeURIComponent(queryEntries)}`
-      : PLAY_STORE_BASE;
+    const fullUrl = `${PLAY_STORE_BASE}&referrer=${encodeURIComponent(referrerStr)}`;
 
-    Linking.openURL(fullUrl).catch((err) => {
-      console.warn('Failed to open store link:', err);
-    });
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.replace(fullUrl);
+    } else {
+      Linking.openURL(fullUrl).catch((err) => {
+        console.warn('Failed to open store link:', err);
+      });
+    }
   };
 
   useEffect(() => {
-    // If opened on Android Web, immediately redirect to Play Store with referrer
+    // 1. If user is inside the native app (Android or iOS):
+    // They already have Brahmand installed! Route directly to the festival or home.
+    if (Platform.OS !== 'web') {
+      const festivalSlug = (params.festival as string) || (params.f as string) || '';
+      if (festivalSlug) {
+        getFestivalList()
+          .then((res) => {
+            const items = res.data || [];
+            const idx = items.findIndex((f: any) => {
+              const name = (f.festival_name || f.name || f.title || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_');
+              return name.includes(festivalSlug) || festivalSlug.includes(name);
+            });
+            if (idx >= 0) {
+              router.replace(`/festival-detail?index=${idx}`);
+            } else {
+              router.replace('/festivals');
+            }
+          })
+          .catch(() => {
+            router.replace('/festivals');
+          });
+      } else {
+        router.replace('/(tabs)/home');
+      }
+      return;
+    }
+
+    // 2. If opened on Web browser (new user who scanned QR / clicked link):
+    // Auto-redirect to the appropriate platform store (Android -> Play Store, iOS -> App Store)
     if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
-      const isAndroid = /android/i.test(navigator.userAgent || '');
-      if (isAndroid) {
+      const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      if (isMobile) {
         handleOpenStore();
       }
     }
@@ -80,7 +135,7 @@ export default function DownloadScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.ctaButton}
           >
-            <Text style={styles.ctaButtonText}>DOWNLOAD ON GOOGLE PLAY ➔</Text>
+            <Text style={styles.ctaButtonText}>{isIOS ? 'DOWNLOAD ON APP STORE ➔' : 'DOWNLOAD ON GOOGLE PLAY ➔'}</Text>
           </LinearGradient>
         </TouchableOpacity>
 

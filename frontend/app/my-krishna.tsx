@@ -38,7 +38,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
-import { BrandedLoading } from '../src/components/BrandedLoading';
+import { CustomLoader } from '../src/components/CustomLoader';
 import { useAuthStore } from '../src/store/authStore';
 import { useTranslation } from '../src/utils/i18n';
 
@@ -1125,7 +1125,9 @@ export default function MyKrishnaChat() {
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
-            <BrandedLoading
+            <CustomLoader
+              size={70}
+              color="#EA580C"
               message={
                 t('language') === 'hi'
                   ? 'कृष्ण के दिव्य मार्गदर्शन से जुड़ रहे हैं...'
@@ -1248,7 +1250,7 @@ export default function MyKrishnaChat() {
                 >
                   {inputText.trim() ? (
                     <LinearGradient
-                      colors={['#F97316', '#EA580C']}
+                      colors={['#2563EB', '#1D4ED8']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.sendBtnGradient}
@@ -1862,7 +1864,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   sendBtnActive: {
-    shadowColor: '#EA580C',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 6,

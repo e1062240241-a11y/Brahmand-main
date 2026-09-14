@@ -495,16 +495,24 @@ class FirebaseCommunityService:
             logger.warning(f"Could not fetch communities: {e}")
             communities = []
 
-        # Sort by actual members count
-        communities.sort(key=lambda c: len(c.get('members', [])), reverse=True)
+        # Sort by stored member_count or fallback to length of members array
+        def _get_count(c: dict) -> int:
+            cnt = c.get('member_count')
+            if cnt is not None:
+                return cnt
+            return len(c.get('members', []) or [])
 
-        # Fetch user's joined communities to mark is_member
+        communities.sort(key=_get_count, reverse=True)
+
+        # Architectural fix: Use db.get_document_fields to fetch ONLY the 'communities' field.
+        # This prevents Firestore from transferring massive array fields (like followers/following with 100k+ UIDs)
+        # over the network into memory during community discovery.
         joined_set: set = set()
         if user_id:
             try:
-                user = await db.get_document('users', user_id)
-                if user:
-                    joined_set = set(user.get('communities', []))
+                user_doc = await db.get_document_fields('users', user_id, ['communities'])
+                if user_doc:
+                    joined_set = set(user_doc.get('communities', []) or [])
             except Exception as e:
                 logger.warning(f"Could not fetch user communities for is_member flag: {e}")
 
@@ -514,7 +522,7 @@ class FirebaseCommunityService:
             "type": c['type'],
             "code": c.get('code', ''),
             "photo": c.get('photo'),
-            "member_count": len(c.get('members', [])),
+            "member_count": _get_count(c),
             "is_member": c['id'] in joined_set
         } for c in communities]
     

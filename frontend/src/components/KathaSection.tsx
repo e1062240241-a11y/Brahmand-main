@@ -6,14 +6,17 @@ import {
   Pressable,
   Image,
   Platform,
-  Alert,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Svg, Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { api } from '../services/api';
-import { AnimatedGoldKathaTitle } from './AnimatedGoldKathaTitle';
 import { useTranslation } from '../utils/i18n';
+import { SubtleJoinButton } from './SubtleJoinButton';
+import { AnimatedDoubleArrow } from './AnimatedDoubleArrow';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface KathaCardData {
   id: string;
@@ -64,34 +67,20 @@ export const KathaSection = React.memo(({
     }
   }, [onNavigate]);
 
-  const handleLiveCheck = useCallback(() => {
-    safeNavigate(async () => {
-      try {
-        const res = await api.get('/katha/status');
-        if (res.data && res.data.is_live) {
-          router.push('/library/katha' as any);
-          return;
-        }
-      } catch (_e) {}
-      Alert.alert(
-        '🔴 LIVE Katha Broadcast',
-        'Shravan Live Katha starts daily at 8:00 AM IST & 8:00 PM IST.',
-        [{ text: 'OK', style: 'default' }]
-      );
-    });
-  }, [safeNavigate, router]);
-
   const handleCardPress = useCallback((route?: string) => {
     safeNavigate(() => {
       router.push((route || '/library/katha') as any);
     });
   }, [safeNavigate, router]);
 
+  const kathaTitle = t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha';
+  const joinLabel = t('language') === 'hi' ? 'शामिल हों' : 'Join';
+
   return (
     <View style={styles.container}>
       {/* Authentic Sacred Shravan Katha Section Header */}
       <View style={styles.authenticKathaHeaderContainer}>
-        {/* Main Title Row with Authentic Brass/Gold Ornaments */}
+        {/* Main Title Row with Authentic Brass/Gold Ornaments (Clean static text, no animation) */}
         <View style={styles.authenticTitleRow}>
           {/* Left Brass Ornament Divider */}
           <View style={styles.brassOrnamentSide}>
@@ -104,8 +93,10 @@ export const KathaSection = React.memo(({
             <Text style={styles.brassOrnamentSymbol}>❖</Text>
           </View>
 
-          {/* Devotional Banner Title Stack: Gold Gradient + Glow + Breathing + Clamp Sizing */}
-          <AnimatedGoldKathaTitle title={t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'} />
+          {/* Clean Static Title without animation */}
+          <Text style={styles.staticKathaTitle}>
+            {kathaTitle}
+          </Text>
 
           {/* Right Brass Ornament Divider */}
           <View style={styles.brassOrnamentSide}>
@@ -118,69 +109,46 @@ export const KathaSection = React.memo(({
             />
           </View>
         </View>
-
-        {/* Subdued Authentic Status Bar (Live & 30 Days Info) */}
-        <View style={styles.authenticMetaNavRow}>
-          {/* Live Indicator Badge */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.authenticLiveBadge,
-              pressed && Platform.OS === 'ios' && { opacity: 0.85 }
-            ]}
-            onPress={handleLiveCheck}
-          >
-            <View style={styles.authenticRedDot} />
-            <Text style={styles.authenticLiveText}>LIVE</Text>
-          </Pressable>
-
-          <View style={styles.authenticMetaDivider} />
-
-          {/* 30 Days Info Badge */}
-          <View style={styles.authentic30DaysBtn}>
-            <Ionicons name="calendar-outline" size={13} color="#8A5A2B" style={{ marginRight: 4 }} />
-            <Text style={styles.authentic30DaysText}>
-              {t('language') === 'hi' ? '30 दिवस' : '30 Days'}
-            </Text>
-          </View>
-        </View>
       </View>
 
-      {/* Katha Cards List / Container (Ready for future multiple cards) */}
+      {/* Katha Cards List / Container */}
       <View style={styles.cardsContainer}>
         {cards.map((card) => (
           <View key={card.id} style={styles.bookCardKatha}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.coverBoxKatha,
-                pressed && Platform.OS === 'ios' && { opacity: 0.92, transform: [{ scale: 0.985 }] }
-              ]}
-              android_ripple={{
-                color: 'rgba(168, 85, 247, 0.12)',
-                borderless: false,
-                foreground: true,
-              }}
-              onPress={() => handleCardPress(card.route)}
-            >
+            <View style={styles.coverBoxKatha}>
               <Image
                 source={{ uri: card.imageUrl }}
                 style={styles.coverImgKatha}
                 resizeMode="cover"
               />
+
+              {/* Bottom Join Button Overlay like Live Jaap Cards */}
+              <LinearGradient
+                colors={['transparent', 'rgba(0, 0, 0, 0.75)']}
+                style={styles.cardGradientOverlay}
+              >
+                <View style={styles.cardBottomActionArea}>
+                  <SubtleJoinButton
+                    style={styles.joinBtnStyle}
+                    onPress={() => handleCardPress(card.route)}
+                  >
+                    <View style={styles.joinBtnInner}>
+                      <Text style={styles.joinBtnText} numberOfLines={1}>Watch now</Text>
+                      <AnimatedDoubleArrow color="#FF6600" size={12} />
+                    </View>
+                  </SubtleJoinButton>
+                </View>
+              </LinearGradient>
+
               <View style={styles.progressTrackKatha}>
                 <View style={[styles.progressFillKatha, { width: `${card.progressPercent ?? 0}%` }]} />
               </View>
-            </Pressable>
+            </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.bookMetaKatha,
-                pressed && { opacity: 0.7 }
-              ]}
-              onPress={() => handleCardPress(card.route)}
-            >
+            <View style={styles.bookMetaKatha}>
               <Text style={styles.bookNameKatha}>{card.title}</Text>
               <Text style={styles.bookSubKatha}>{card.subtitle}</Text>
-            </Pressable>
+            </View>
           </View>
         ))}
       </View>
@@ -223,45 +191,13 @@ const styles = StyleSheet.create({
     color: '#C5A059',
     fontSize: 10,
   },
-  authenticMetaNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-    gap: 12,
-    zIndex: 1,
-  },
-  authenticLiveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  authenticRedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EB5757',
-  },
-  authenticLiveText: {
-    color: '#EB5757',
-    fontSize: 11,
-    fontWeight: '700',
+  staticKathaTitle: {
+    fontSize: Math.min(Math.max(SCREEN_WIDTH * 0.058, 20), 24),
+    fontWeight: '800',
+    color: '#78350F',
+    textAlign: 'center',
     letterSpacing: 0.5,
-  },
-  authenticMetaDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(197, 160, 89, 0.4)',
-  },
-  authentic30DaysBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  authentic30DaysText: {
-    color: '#8A5A2B',
-    fontSize: 11.5,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   cardsContainer: {
     paddingHorizontal: 16,
@@ -271,13 +207,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   bookCardKatha: {
-    width: 192,
+    width: 175,
   },
   coverBoxKatha: {
     width: '100%',
-    height: 250,
+    height: 200,
     position: 'relative',
-    borderRadius: 20,
+    borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#1A0A00',
     shadowColor: '#000',
@@ -290,12 +226,41 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  cardGradientOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 80,
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+  },
+  cardBottomActionArea: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinBtnStyle: {
+    width: '92%',
+  },
+  joinBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  joinBtnText: {
+    color: '#FF6600',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
   progressTrackKatha: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 4,
+    height: 3,
     backgroundColor: 'rgba(160,65,0,0.20)',
   },
   progressFillKatha: {
@@ -305,20 +270,20 @@ const styles = StyleSheet.create({
   },
   bookMetaKatha: {
     paddingHorizontal: 4,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: 8,
+    paddingBottom: 6,
     alignItems: 'center',
   },
   bookNameKatha: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14.5,
+    fontWeight: '700',
     color: '#1B1C1C',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    marginBottom: 4,
+    marginBottom: 2,
     textAlign: 'center',
   },
   bookSubKatha: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#5A4136',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     letterSpacing: 0.2,

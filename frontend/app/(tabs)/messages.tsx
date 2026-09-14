@@ -1493,6 +1493,57 @@ function MessagesScreen({
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
+      {/* Fixed Sticky Header for Top Tabs */}
+      <View style={{ paddingTop: insets.top + 6, paddingBottom: 4, zIndex: 10 }}>
+        <View style={styles.segmentedTrack}>
+          {/* Animated sliding thumb — single source of truth */}
+          <Animated.View
+            style={[
+              styles.segmentThumb,
+              {
+                transform: [{
+                  translateX: segmentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, (width - 32 - 8) / 2],
+                  }),
+                }],
+              },
+            ]}
+            pointerEvents="none"
+          />
+
+          {/* Community tab */}
+          <Pressable
+            style={styles.segmentPill}
+            onPress={() => handleTabSwitch('Community')}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeTopTab === 'Community' && styles.segmentTextActive,
+              ]}
+            >
+              {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+            </Text>
+          </Pressable>
+
+          {/* Private Chat tab */}
+          <Pressable
+            style={styles.segmentPill}
+            onPress={() => handleTabSwitch('Private Chat')}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeTopTab === 'Private Chat' && styles.segmentTextActive,
+              ]}
+            >
+              {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       <ScrollView
         style={styles.mainContent}
         contentContainerStyle={styles.mainContentContainer}
@@ -1536,64 +1587,6 @@ function MessagesScreen({
               <OmSpinner refreshing={refreshing} size={36} />
             </View>
           )}
-
-          <View
-            style={styles.headerPadding}
-            onLayout={(e) => {
-              const { height } = e.nativeEvent.layout;
-              setCommunityHeaderLayout({ x: 0, y: insets.top || 0, width, height });
-            }}
-          >
-            <SafeAreaView edges={['top']}>
-              <View style={styles.segmentedTrack}>
-                {/* Animated sliding thumb — single source of truth */}
-                <Animated.View
-                  style={[
-                    styles.segmentThumb,
-                    {
-                      transform: [{
-                        translateX: segmentAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, (width - 32 - 8) / 2],
-                        }),
-                      }],
-                    },
-                  ]}
-                  pointerEvents="none"
-                />
-
-                {/* Community tab */}
-                <Pressable
-                  style={styles.segmentPill}
-                  onPress={() => handleTabSwitch('Community')}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      activeTopTab === 'Community' && styles.segmentTextActive,
-                    ]}
-                  >
-                    {t('language') === 'hi' ? 'समुदाय' : 'Community'}
-                  </Text>
-                </Pressable>
-
-                {/* Private Chat tab */}
-                <Pressable
-                  style={styles.segmentPill}
-                  onPress={() => handleTabSwitch('Private Chat')}
-                >
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      activeTopTab === 'Private Chat' && styles.segmentTextActive,
-                    ]}
-                  >
-                    {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
-                  </Text>
-                </Pressable>
-              </View>
-            </SafeAreaView>
-          </View>
         </View>
         {activeTopTab === 'Community' ? (
           !hasValidLocation ? (

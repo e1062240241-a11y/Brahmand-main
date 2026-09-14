@@ -131,7 +131,7 @@ export default function KathaPage() {
   const [episodes, setEpisodes] = useState<KathaEpisode[]>([]);
   const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'LATEST' | 'PART1' | 'PART2'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'PART2'>('ALL');
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
     mode: 'OFF_AIR',
@@ -183,16 +183,11 @@ export default function KathaPage() {
   const filteredEpisodes = useMemo(() => {
     if (!episodes) return [];
     let list = [...episodes];
-    if (activeFilter === 'LATEST') {
-      const todayList = episodes.filter(e => isEpisodeToday(e));
-      list = todayList.length > 0 ? todayList : episodes.filter(e => e.is_new || e.episode_number === maxEpisodeNumber);
-    } else if (activeFilter === 'PART1') {
-      list = episodes.filter(e => (e.episode_number || 0) <= 10);
-    } else if (activeFilter === 'PART2') {
+    if (activeFilter === 'PART2') {
       list = episodes.filter(e => (e.episode_number || 0) > 10);
     }
     return list.sort((a, b) => (b.episode_number || 0) - (a.episode_number || 0));
-  }, [episodes, activeFilter, isEpisodeToday, maxEpisodeNumber]);
+  }, [episodes, activeFilter]);
 
   // Video & Controls State
   const [isPlaying, setIsPlaying] = useState(true);
@@ -974,25 +969,6 @@ export default function KathaPage() {
               >
                 <Text style={[styles.filterChipText, activeFilter === 'ALL' && styles.filterChipTextActive]}>
                   All Episodes
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, activeFilter === 'LATEST' && styles.filterChipActive]}
-                onPress={() => setActiveFilter('LATEST')}
-              >
-                <View style={styles.chipRedDot} />
-                <Text style={[styles.filterChipText, activeFilter === 'LATEST' && styles.filterChipTextActive]}>
-                  Latest (Today)
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterChip, activeFilter === 'PART1' && styles.filterChipActive]}
-                onPress={() => setActiveFilter('PART1')}
-              >
-                <Text style={[styles.filterChipText, activeFilter === 'PART1' && styles.filterChipTextActive]}>
-                  Day 1 - 10
                 </Text>
               </TouchableOpacity>
 
