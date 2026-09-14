@@ -6565,7 +6565,7 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     Then any additional joined communities
     """
     db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
+    user = await db.get_document_fields('users', token_data["user_id"], ['id', 'default_communities', 'communities'])
     if not user:
         return []
     

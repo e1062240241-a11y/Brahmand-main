@@ -343,7 +343,7 @@ class FirebaseCommunityService:
             return cached
         
         db = await FirebaseCommunityService.get_db()
-        user = await db.get_document('users', user_id)
+        user = await db.get_document_fields('users', user_id, ['communities'])
         if not user:
             raise ValueError("User not found")
         
@@ -510,9 +510,9 @@ class FirebaseCommunityService:
         joined_set: set = set()
         if user_id:
             try:
-                user_doc = await db.get_document_fields('users', user_id, ['communities'])
-                if user_doc:
-                    joined_set = set(user_doc.get('communities', []) or [])
+                user = await db.get_document_fields('users', user_id, ['communities'])
+                if user:
+                    joined_set = set(user.get('communities', []))
             except Exception as e:
                 logger.warning(f"Could not fetch user communities for is_member flag: {e}")
 
