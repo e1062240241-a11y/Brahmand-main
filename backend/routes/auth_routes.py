@@ -66,7 +66,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
 
 
 @router.post("/token/refresh")
-async def refresh_token(request: Request):
+async def refresh_token(request: Request, _: bool = Depends(auth_rate_limit)):
     """Refresh an expired JWT token without requiring re-login.
     
     Accepts the old (possibly expired) token in the Authorization header.
