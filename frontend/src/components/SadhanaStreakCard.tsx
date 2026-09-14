@@ -33,8 +33,9 @@ export interface SadhanaStreakCardProps {
  * 🎨 Varnish Optimization:
  * 1. Wrapped in React.memo to prevent unnecessary re-renders when parent screen re-renders.
  * 2. Moved fallback empty object ({}) creation inside useMemo to keep dependency references stable.
- * 3. Replaced useRef().current animation value creation with useMemo to adhere strictly to React 19 rules (avoiding ref access during render) and eliminate lint errors.
- * 4. Includes swipe-to-dismiss gesture for fluid micro-interactions.
+ * 3. Replaced unsafe `useMemo(() => new Animated.Value(...))` with lazy ref initialization (`useRef<Animated.Value | null>(null)`) to strictly comply with React 19 ref persistence without render-pass allocations.
+ * 4. Fixed malformed JSX structure by removing accidental duplicate header row & restored missing Pressable/LinearGradient tags.
+ * 5. Moved inline animated container styles into StyleSheet.create.
  */
 export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
   function SadhanaStreakCard({ onPressChant }) {
@@ -43,8 +44,16 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
     const isHindi = language === 'hi';
 
     const [isDismissed, setIsDismissed] = useState(false);
-    const swipeX = useMemo(() => new Animated.Value(0), []);
-    const collapseAnim = useMemo(() => new Animated.Value(1), []);
+
+    // Lazy ref initialization prevents object creation on every render pass while guaranteeing ref persistence
+    const swipeXRef = useRef<Animated.Value | null>(null);
+    if (!swipeXRef.current) swipeXRef.current = new Animated.Value(0);
+    const swipeX = swipeXRef.current;
+
+    const collapseAnimRef = useRef<Animated.Value | null>(null);
+    if (!collapseAnimRef.current) collapseAnimRef.current = new Animated.Value(1);
+    const collapseAnim = collapseAnimRef.current;
+
     const isSwipingRef = useRef(false);
 
     const rawDailyHanuman = usePassportStore((state) => state.daily_hanuman_count);
@@ -65,9 +74,13 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
     } = streakData;
 
     // Pulse animation for today's active dot: ONLY when todayCount > 0 (diya is lit) and incomplete
-    // Initialized with useMemo to prevent accessing refs during render in React 19
-    const pulseAnim = useMemo(() => new Animated.Value(1), []);
-    const glowAnim = useMemo(() => new Animated.Value(0.6), []);
+    const pulseAnimRef = useRef<Animated.Value | null>(null);
+    if (!pulseAnimRef.current) pulseAnimRef.current = new Animated.Value(1);
+    const pulseAnim = pulseAnimRef.current;
+
+    const glowAnimRef = useRef<Animated.Value | null>(null);
+    if (!glowAnimRef.current) glowAnimRef.current = new Animated.Value(0.6);
+    const glowAnim = glowAnimRef.current;
 
     useEffect(() => {
       // 🪔 Core Domain Rule: Diya flame pulse/glow only starts once user has performed jaap today!
@@ -231,58 +244,35 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
 
     return (
       <Animated.View
-        style={{
-          opacity: collapseAnim,
-          transform: [{ scaleY: collapseAnim }],
-          overflow: 'hidden',
-          marginBottom: collapseAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 10],
-          }),
-        }}
+        style={[
+          styles.collapseWrapper,
+          {
+            opacity: collapseAnim,
+            transform: [{ scaleY: collapseAnim }],
+            marginBottom: collapseAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 10],
+            }),
+          },
+        ]}
       >
         <Animated.View
-          style={{
-            transform: [{ translateX: swipeX }],
-            opacity: cardOpacity,
-            backgroundColor: 'transparent',
-          }}
+          style={[
+            styles.swipeWrapper,
+            {
+              transform: [{ translateX: swipeX }],
+              opacity: cardOpacity,
+            },
+          ]}
           {...panResponder.panHandlers}
         >
-          {/* Top Header Row: Streak Title + Today's Status Chip */}
-          <View style={styles.topRow}>
-            <View style={styles.streakTitleWrap}>
-              <Text
-                style={[
-                  styles.diyaIcon,
-                  todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
-                ]}
-              >
-                🪔
-              </Text>
-              {/* 🧡 Engagement: Reframed streak title from generic "X Days Sankalpa" to devotional "Sadhana Sankalpa: X Days" */}
-              {/* Lever: Reframing + Sanskara (Ritual/Habit framing) */}
-              {/* UI: Text-only change, no visual components added */}
-              <Text style={styles.streakTitleText}>
-                {currentStreak > 0
-                  ? isHindi
-                    ? `${currentStreak} दिवसीय संकल्प`
-                    : `Sadhana Sankalpa: ${currentStreak} Days`
-                  : isHindi
-                  ? 'साधना संकल्प'
-                  : 'Sadhana Sankalpa'}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.statusChip,
-                statusChipType === 'complete'
-                  ? styles.statusChipComplete
-                  : statusChipType === 'in_progress'
-                  ? styles.statusChipInProgress
-                  : styles.statusChipUnlit,
-              ]}
+          <Pressable
+            onPress={handleCardPress}
+            style={({ pressed }) => [styles.outerContainer, pressed && styles.cardPressed]}
+          >
+            <LinearGradient
+              colors={['#FFF8F0', '#FFF1E0']}
+              style={styles.cardGradient}
             >
               {/* Top Header Row: Streak Title + Today's Status Chip */}
               <View style={styles.topRow}>
@@ -299,7 +289,7 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
                     {currentStreak > 0
                       ? isHindi
                         ? `${currentStreak} दिवसीय संकल्प`
-                        : `${currentStreak} Days Sankalpa`
+                        : `Sadhana Sankalpa: ${currentStreak} Days`
                       : isHindi
                       ? 'साधना संकल्प'
                       : 'Sadhana Sankalpa'}
@@ -405,6 +395,12 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
 SadhanaStreakCard.displayName = 'SadhanaStreakCard';
 
 const styles = StyleSheet.create({
+  collapseWrapper: {
+    overflow: 'hidden',
+  },
+  swipeWrapper: {
+    backgroundColor: 'transparent',
+  },
   outerContainer: {
     width: CARD_WIDTH,
     alignSelf: 'center',
