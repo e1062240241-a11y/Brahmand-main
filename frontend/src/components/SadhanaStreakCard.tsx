@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -30,6 +31,11 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressCha
   const { language } = useTranslation();
   const router = useRouter();
   const isHindi = language === 'hi';
+
+  const [isDismissed, setIsDismissed] = useState(false);
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const collapseAnim = useRef(new Animated.Value(1)).current;
+  const isSwipingRef = useRef(false);
 
   const dailyHanuman = usePassportStore((state) => state.daily_hanuman_count) || {};
   const dailyOther = usePassportStore((state) => state.daily_other_jaap_count) || {};
@@ -89,7 +95,83 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressCha
     }
   }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
 
+  // Lightweight Right-to-Left Swipe-to-Hide PanResponder
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Trigger only on intentional horizontal swipe left (dx < -10)
+        return (
+          gestureState.dx < -10 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+        );
+      },
+      onPanResponderGrant: () => {
+        isSwipingRef.current = true;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dx < 0) {
+          // Direct tracking leftwards
+          swipeX.setValue(gestureState.dx);
+        } else {
+          // Elastic resistance if dragging right
+          swipeX.setValue(Math.pow(gestureState.dx, 0.6) * 2);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const dismissThreshold = -(SCREEN_WIDTH * 0.35);
+        const fastFlickLeft = gestureState.dx < -50 && gestureState.vx < -0.6;
+
+        if (gestureState.dx <= dismissThreshold || fastFlickLeft) {
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch (_) {}
+
+          // Animate card off screen to the left with physics velocity
+          Animated.timing(swipeX, {
+            toValue: -SCREEN_WIDTH - 50,
+            duration: 220,
+            useNativeDriver: true,
+          }).start(() => {
+            // Smoothly collapse height and margins to 0
+            Animated.timing(collapseAnim, {
+              toValue: 0,
+              duration: 180,
+              useNativeDriver: false,
+            }).start(() => {
+              setIsDismissed(true);
+              isSwipingRef.current = false;
+            });
+          });
+        } else {
+          // Spring back smoothly to origin
+          Animated.spring(swipeX, {
+            toValue: 0,
+            stiffness: 240,
+            damping: 22,
+            mass: 0.8,
+            useNativeDriver: true,
+          }).start(() => {
+            isSwipingRef.current = false;
+          });
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeX, {
+          toValue: 0,
+          stiffness: 240,
+          damping: 22,
+          mass: 0.8,
+          useNativeDriver: true,
+        }).start(() => {
+          isSwipingRef.current = false;
+        });
+      },
+    })
+  ).current;
+
   const handleCardPress = () => {
+    if (isSwipingRef.current) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     if (onPressChant) {
       onPressChant();
@@ -124,26 +206,55 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressCha
     statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
   }
 
+  if (isDismissed) {
+    return null;
+  }
+
+  const cardOpacity = swipeX.interpolate({
+    inputRange: [-CARD_WIDTH * 0.8, 0],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.outerContainer,
-        Platform.OS === 'ios' && pressed && styles.cardPressed,
-      ]}
-      onPress={handleCardPress}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isHindi
-          ? `साधना संकल्प: ${currentStreak} दिन`
-          : `Sadhana Sankalpa: ${currentStreak} days`
-      }
+    <Animated.View
+      style={{
+        opacity: collapseAnim,
+        transform: [{ scaleY: collapseAnim }],
+        overflow: 'hidden',
+        marginBottom: collapseAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 10],
+        }),
+      }}
     >
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
+      <Animated.View
+        style={{
+          transform: [{ translateX: swipeX }],
+          opacity: cardOpacity,
+          backgroundColor: 'transparent',
+        }}
+        {...panResponder.panHandlers}
       >
+        <Pressable
+          style={({ pressed }) => [
+            styles.outerContainer,
+            Platform.OS === 'ios' && pressed && styles.cardPressed,
+          ]}
+          onPress={handleCardPress}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isHindi
+              ? `साधना संकल्प: ${currentStreak} दिन`
+              : `Sadhana Sankalpa: ${currentStreak} days`
+          }
+        >
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
         {/* Top Header Row: Streak Title + Today's Status Chip */}
         <View style={styles.topRow}>
           <View style={styles.streakTitleWrap}>
@@ -256,6 +367,8 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressCha
         </View>
       </LinearGradient>
     </Pressable>
+  </Animated.View>
+</Animated.View>
   );
 };
 
@@ -277,7 +390,7 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
       },
       android: {
-        elevation: 2,
+        elevation: 0,
       },
     }),
   },
