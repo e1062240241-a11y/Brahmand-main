@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useRef } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform, Animated, Easing } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,6 +85,36 @@ const FestivalSectionDetailPage = () => {
   const [isSharing, setIsSharing] = useState<boolean>(false);
 
   const catalogRef = useRef<any>(null);
+  const loadingAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(loadingAnim, {
+      toValue: isSharing ? 1 : 0,
+      duration: 250,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      useNativeDriver: false,
+    }).start();
+  }, [isSharing]);
+
+  const buttonWidth = loadingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [126, 38],
+  });
+
+  const buttonPadding = loadingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [12, 0],
+  });
+
+  const contentOpacity = loadingAnim.interpolate({
+    inputRange: [0, 0.35],
+    outputRange: [1, 0],
+  });
+
+  const loaderOpacity = loadingAnim.interpolate({
+    inputRange: [0.5, 1],
+    outputRange: [0, 1],
+  });
 
   useEffect(() => {
     const loadFestival = async () => {
@@ -138,26 +168,36 @@ const FestivalSectionDetailPage = () => {
 
       // Robust fallback if view capture was null or failed
       if (!imageUri) {
-        const fallbackImg = getFestivalImage(festival);
-        if (fallbackImg?.uri) {
-          imageUri = fallbackImg.uri;
+        const generatedImageUri = getFestivalImage(festival);
+        if (generatedImageUri) {
+          imageUri = generatedImageUri;
         }
       }
 
-      const statusTrackedUrl = getTrackedBrahmandUrl(
-        festivalName,
-        targetApp === 'whatsapp' ? 'whatsapp_status' : 'whatsapp_share'
-      );
-      await shareFestivalCard(
-        imageUri,
-        festivalName,
-        `🌸 *${festivalName} Sacred Katha & Darshan* 🌸\n\n` +
-        `Read the authentic sacred katha, daily panchang & live jaap on Brahmand App.\n\n` +
-        `📲 Download Brahmand App:\n👉 ${statusTrackedUrl}`,
-        targetApp
-      );
+      if (!imageUri) {
+        console.warn('[FestivalSectionDetail] Both ViewShot capture and fallback image failed');
+        return;
+      }
+
+      const webUrl = getTrackedBrahmandUrl(festivalName, targetApp === 'whatsapp' ? 'whatsapp_status' : 'whatsapp_share');
+      const message = `✨ Explore *${festivalName}* on Brahmand! ✨\n\nDiscover the profound divine story, rituals, and sacred significance:\n${webUrl}`;
+
+      const shareResult = await safeShareFile(imageUri, {
+        mimeType: 'image/png',
+        dialogTitle: `Share ${festivalName}`,
+        UTI: 'public.png',
+        message: message,
+      });
+
+      if (!shareResult.shared && shareResult.error) {
+        console.log('[FestivalSectionDetail Debug] Falling back to standard Share API due to:', shareResult.error);
+        await Share.share({
+          message: `${message}\n${imageUri}`,
+          title: `Share ${festivalName}`,
+        });
+      }
     } catch (err) {
-      console.warn('Failed to share festival image', err);
+      console.warn('Failed to share festival section image:', err);
     } finally {
       setIsSharing(false);
     }
@@ -166,7 +206,7 @@ const FestivalSectionDetailPage = () => {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <CustomLoader size={70} message="Loading Festival Section..." />
+        <CustomLoader />
       </View>
     );
   }
@@ -174,43 +214,46 @@ const FestivalSectionDetailPage = () => {
   if (error || !festival) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || 'Something went wrong.'}</Text>
+        <Text style={styles.errorText}>{error || 'Festival not found.'}</Text>
       </View>
     );
   }
 
   const renderContent = () => (
-    <SafeAreaView style={{ flex: 1 }} edges={isStorySection ? [] : ['top']}>
-      {/* Offscreen Full Master Catalog Image Container for Sharing Snapshot */}
+    <SafeAreaView edges={isStorySection ? [] : ['top']} style={{ flex: 1 }}>
+      {/* Hidden Master Catalog Card for Screenshot/Capture */}
       <View
         style={{
           position: 'absolute',
           left: -9999,
-          top: 0,
-          width: 480,
-          height: 853,
-          zIndex: -9999,
+          top: -9999,
+          opacity: 1,
+          zIndex: -1,
         }}
         pointerEvents="none"
       >
         <View
-          ref={catalogRef}
           collapsable={false}
           style={{ width: 480, height: 853, backgroundColor: '#0F0818' }}
         >
-          <FestivalMasterCatalogCard festival={festival} />
+          <FestivalMasterCatalogCard
+            ref={catalogRef}
+            festival={festival}
+          />
         </View>
       </View>
-
-      {/* Top Header Bar */}
-      <View
-        style={[
-          styles.header,
-          isStorySection && styles.headerStoryFloating,
-        ]}
-      >
-          <TouchableOpacity 
-            style={[styles.backButton, isStorySection && styles.storyHeaderButtonCircle]} 
+        {/* Header */}
+        <View
+          style={[
+            styles.header,
+            isStorySection && styles.headerStoryFloating
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.backButton,
+              isStorySection && styles.storyHeaderButtonCircle
+            ]}
             onPress={() => {
               if (router.canGoBack()) {
                 router.back();
@@ -236,38 +279,66 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          {/* Share as PDF Button */}
-          <TouchableOpacity 
-            style={[
-              styles.sharePdfButton, 
-              isStorySection && styles.storySharePdfButton
-            ]} 
-            onPress={isStorySection ? handleSharePdf : () => handleShareImage('generic')}
-            activeOpacity={0.7}
-            disabled={isSharing}
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Share as PDF"
-          >
-            {isSharing ? (
-              <ActivityIndicator
-                size="small"
-                color={isStorySection ? '#FFFFFF' : '#111827'}
-              />
-            ) : (
-              <View style={styles.sharePdfContent}>
-                <Ionicons
-                  name="document-text-outline"
-                  size={17}
-                  color={isStorySection ? '#FFFFFF' : '#111827'}
-                />
-                <Text style={[styles.sharePdfText, isStorySection && styles.storySharePdfText]}>
-                  Share as PDF
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Share as PDF Button - Only in 1st (story) section */}
+          {isStorySection ? (
+            <TouchableOpacity 
+              onPress={handleSharePdf}
+              activeOpacity={0.8}
+              disabled={isSharing}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Share as PDF"
+            >
+              <Animated.View
+                style={[
+                  styles.sharePdfButton, 
+                  styles.storySharePdfButton,
+                  {
+                    width: buttonWidth,
+                    paddingHorizontal: buttonPadding,
+                    overflow: 'hidden',
+                  }
+                ]}
+              >
+                <Animated.View
+                  style={[
+                    styles.sharePdfContent,
+                    {
+                      opacity: contentOpacity,
+                    }
+                  ]}
+                  pointerEvents={isSharing ? 'none' : 'auto'}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={17}
+                    color="#111827"
+                  />
+                  <Text numberOfLines={1} style={[styles.sharePdfText, styles.storySharePdfText]}>
+                    Share as PDF
+                  </Text>
+                </Animated.View>
+
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    opacity: loaderOpacity,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  pointerEvents="none"
+                >
+                  <ActivityIndicator
+                    size="small"
+                    color="#111827"
+                  />
+                </Animated.View>
+              </Animated.View>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
         </View>
 
         {isStorySection ? (
@@ -323,8 +394,7 @@ const FestivalSectionDetailPage = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: SPACING.xl,
-    backgroundColor: 'transparent',
+    paddingBottom: 24,
   },
   centered: {
     flex: 1,
@@ -401,9 +471,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   storySharePdfButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sharePdfContent: {
     flexDirection: 'row',
@@ -416,9 +491,8 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   storySharePdfText: {
-    color: '#FFFFFF',
+    color: '#111827',
   },
 });
 
 export default FestivalSectionDetailPage;
-

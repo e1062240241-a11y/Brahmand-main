@@ -226,6 +226,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
               disabled={loading}
               accessibilityRole="button"
               accessibilityLabel="Detect current location"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="location-sharp" size={18} color="#E53935" />
             </TouchableOpacity>
@@ -250,6 +251,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
               style={styles.rightIcon}
               accessibilityRole="button"
               accessibilityLabel="Clear search input"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="close-circle" size={18} color="#BBB" />
             </TouchableOpacity>

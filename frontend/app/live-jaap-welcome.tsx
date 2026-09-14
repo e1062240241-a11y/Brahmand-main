@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+  SharedValue,
+} from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
@@ -22,6 +31,54 @@ import { useTranslation } from '../src/utils/i18n';
 import { usePassportStore, calculateSadhanaStreak } from '../src/store/passportStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const VERTICAL_CHEVRONS = [0, 1, 2];
+
+const VerticalChevronItem = React.memo(function VerticalChevronItem({
+  index,
+  waveProgress,
+}: {
+  index: number;
+  waveProgress: SharedValue<number>;
+}) {
+  const animStyle = useAnimatedStyle(() => {
+    'worklet';
+    const phase = (waveProgress.value - index * 0.2 + 1) % 1;
+    const opacity = 0.2 + 0.8 * Math.sin(phase * Math.PI);
+    const translateY = Math.sin(phase * Math.PI) * 4;
+
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.verticalChevronWrap, animStyle]}>
+      <Ionicons name="chevron-down" size={16} color="#78350F" />
+    </Animated.View>
+  );
+});
+
+const VerticalChevronWave = () => {
+  const waveProgress = useSharedValue(0);
+
+  useEffect(() => {
+    waveProgress.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [waveProgress]);
+
+  return (
+    <View style={styles.verticalChevronsCol}>
+      {VERTICAL_CHEVRONS.map((i) => (
+        <VerticalChevronItem key={i} index={i} waveProgress={waveProgress} />
+      ))}
+    </View>
+  );
+};
 
 // 🧡 Engagement: Reframed generic/transactional instructions into devotional and Satsang-inspired guidelines.
 // Lever: Reframing + Social Proof / Satsang Feeling + Devotion over Productivity
@@ -209,6 +266,43 @@ export default function LiveJaapWelcomeScreen() {
     return calculateSadhanaStreak(dailyHanuman, dailyOther);
   }, [dailyHanuman, dailyOther]);
 
+  // Scroll indicator state for overflow guidelines content: default to true so it shows immediately
+  const [canScrollMore, setCanScrollMore] = useState(true);
+  const [isTimedOut, setIsTimedOut] = useState(false);
+  const hintOpacity = useSharedValue(1);
+  const contentHeightRef = useRef(0);
+  const scrollHeightRef = useRef(0);
+
+  // Auto-hide the down arrow wave animation after 2.5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      hintOpacity.value = withTiming(0, { duration: 500, easing: Easing.out(Easing.ease) });
+      setTimeout(() => {
+        setIsTimedOut(true);
+      }, 500);
+    }, 2500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [hintOpacity]);
+
+  const hintAnimatedStyle = useAnimatedStyle(() => {
+    'worklet';
+    return {
+      opacity: hintOpacity.value,
+    };
+  });
+
+  const checkScrollEnd = useCallback((offsetY: number, layoutH: number, contentH: number) => {
+    if (contentH > layoutH + 12) {
+      const isAtBottom = layoutH + offsetY >= contentH - 16;
+      setCanScrollMore(!isAtBottom);
+    } else {
+      setCanScrollMore(false);
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ gestureEnabled: false }} />
@@ -307,23 +401,55 @@ export default function LiveJaapWelcomeScreen() {
             </Text>
           </View>
 
-          {/* GUIDELINES LIST */}
-          <ScrollView 
-            style={{ flex: 1, marginTop: 15 }} 
-            contentContainerStyle={{ paddingBottom: 20, alignItems: 'center' }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.guidelinesContainer}>
-              {getGuidelines(t('language')).map((item, index, arr) => (
-                <View key={item.id} style={[styles.card, index === arr.length - 1 ? styles.cardNoBorder : null]}>
-                  <View style={styles.cardTextContent}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardDesc}>{item.desc}</Text>
+          {/* GUIDELINES LIST WITH ANIMATED SCROLL DOWN HINT */}
+          <View style={styles.guidelinesWrapper}>
+            <ScrollView 
+              style={styles.guidelinesScrollView} 
+              contentContainerStyle={styles.guidelinesScrollContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={(e) => {
+                const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+                checkScrollEnd(contentOffset.y, layoutMeasurement.height, contentSize.height);
+              }}
+              onContentSizeChange={(w, h) => {
+                contentHeightRef.current = h;
+                if (scrollHeightRef.current > 0) {
+                  checkScrollEnd(0, scrollHeightRef.current, h);
+                }
+              }}
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                scrollHeightRef.current = h;
+                if (contentHeightRef.current > 0) {
+                  checkScrollEnd(0, h, contentHeightRef.current);
+                }
+              }}
+              scrollEventThrottle={16}
+            >
+              <View style={styles.guidelinesContainer}>
+                {getGuidelines(t('language')).map((item, index, arr) => (
+                  <View key={item.id} style={[styles.card, index === arr.length - 1 ? styles.cardNoBorder : null]}>
+                    <View style={styles.cardTextContent}>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={styles.cardDesc}>{item.desc}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Multiple flowing brown down-arrows wave animation (clean, no circular background) */}
+            {canScrollMore && !isTimedOut && (
+              <Animated.View style={[styles.scrollHintContainer, hintAnimatedStyle]} pointerEvents="none">
+                <LinearGradient
+                  colors={['rgba(248, 237, 231, 0)', 'rgba(248, 237, 231, 0.95)']}
+                  style={styles.scrollHintGradient}
+                >
+                  <VerticalChevronWave />
+                </LinearGradient>
+              </Animated.View>
+            )}
+          </View>
 
           {/* JOIN BUTTON */}
           <View style={styles.footerContainer}>
@@ -470,6 +596,44 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', // SF Pro fallback
     fontStyle: 'normal',
     lineHeight: 24,
+  },
+  guidelinesWrapper: {
+    flex: 1,
+    marginTop: 15,
+    position: 'relative',
+    width: '100%',
+  },
+  guidelinesScrollView: {
+    flex: 1,
+  },
+  guidelinesScrollContent: {
+    paddingBottom: 24,
+    alignItems: 'center',
+  },
+  scrollHintContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    height: 48,
+    zIndex: 10,
+  },
+  scrollHintGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 4,
+  },
+  verticalChevronsCol: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verticalChevronWrap: {
+    marginVertical: -3.5,
   },
   guidelinesContainer: { 
     width: 286,

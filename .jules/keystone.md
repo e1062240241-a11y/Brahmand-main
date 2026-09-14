@@ -43,6 +43,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events` — hardcoded limit without offset pagination — FIXED
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
+- `/vendors` — unpaginated fetch of all vendor docs — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -90,3 +91,11 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-12 - Scope duplicate post upload check to user_id with limit bounds
 **Learning:** Querying global `posts` by `created_at >= threshold` without filtering by `user_id` or setting a query limit in `_create_post_document` causes Firestore to read and transfer every post uploaded platform-wide across all users in the past 180 seconds. At 1 lakh+ users, this results in $O(N_{\text{global\_recent}})$ reads per upload. Bounding the check to `user_id == target_user_id` with `order_by='created_at'`, `order_direction='DESCENDING'`, and `limit=5` reduces read operations to $O(1)$ per upload while preserving duplicate upload detection.
 **Action:** Refactored duplicate upload check in `_create_post_document` in `backend/main.py` to query only the uploading user's recent posts capped at 5 with composite index exception fallback.
+
+## 2026-09-13 - Targeted Field Masking for User Document Fetch in Discover Communities
+**Learning:** In `FirebaseCommunityService.discover_communities`, querying `db.get_document('users', user_id)` to check user membership fetched the full user document including massive array fields (like 100k+ `followers` and `following` UIDs). At 1 lakh+ users, this causes unnecessary network payload and memory spikes on community listing calls.
+**Action:** Replaced `db.get_document` with `db.get_document_fields('users', user_id, ['communities'])` to retrieve only the `communities` array via Firestore field masking, and updated member count calculation to prioritize stored `member_count` field over `len(members)`.
+
+## 2026-09-14 - DB-level Bounded Candidate Sourcing & Offset Pagination for Vendor Discovery
+**Learning:** The `/vendors` endpoint queried `vendors` with fixed limits (defaulting to 50) without `offset` parameters or `created_at` ordering at the database query level. As vendor listings grow at 1 lakh+ scale, clients cannot page past the top candidates, and fetching without DB-level limit bounds risks over-fetching and memory spikes.
+**Action:** Added optional `offset: int = 0` query parameter, capped `safe_limit` (max 100), computed dynamic candidate fetch limit (`fetch_limit = safe_offset + safe_limit * 3 + 20`), ordered candidate queries by `created_at` DESC with composite index fallback, and sliced filtered vendor results using `[safe_offset : safe_offset + safe_limit]`.

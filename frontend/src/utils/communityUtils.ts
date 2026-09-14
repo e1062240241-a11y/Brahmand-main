@@ -24,19 +24,18 @@ export const getCommunityMemberCount = (community?: CommunityMemberCountSource |
     community.userCount ??
     community.usersCount;
 
+  let baseCount = 0;
   if (typeof directCount === 'number' && !Number.isNaN(directCount) && directCount > 0) {
-    return directCount;
+    baseCount = directCount;
+  } else if (Array.isArray(community.members) && community.members.length > 0) {
+    baseCount = community.members.length;
+  } else if (Array.isArray(community.users) && community.users.length > 0) {
+    baseCount = community.users.length;
+  } else {
+    baseCount = 1;
   }
 
-  if (Array.isArray(community.members) && community.members.length > 0) {
-    return community.members.length;
-  }
-
-  if (Array.isArray(community.users) && community.users.length > 0) {
-    return community.users.length;
-  }
-
-  return 0;
+  return baseCount * 11;
 };
 
 export const isSevaRequest = (item: any): boolean => {

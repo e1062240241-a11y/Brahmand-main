@@ -56,7 +56,13 @@ try {
   console.warn('expo-video unavailable:', error);
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const getScreenDimensions = () => {
+  const screen = Dimensions.get('screen');
+  const window = Dimensions.get('window');
+  return Platform.OS === 'android' ? screen : window;
+};
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = getScreenDimensions();
 
 const NativeVideoPlayer = React.memo(({
   mediaUrl,
@@ -113,7 +119,9 @@ const NativeVideoPlayer = React.memo(({
       onError={handlePosterError}
     />
   ) : (
-    <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
+    <View style={{ width: '100%', height: '100%', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color="#fff" />
+    </View>
   );
 
   if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
@@ -787,7 +795,11 @@ const ReelVideoItem = React.memo(({
 
       {isVideo && showSpinner && (
         <View style={{
-          ...StyleSheet.absoluteFillObject,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           zIndex: 15,
           justifyContent: 'center',
           alignItems: 'center',
@@ -1798,8 +1810,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   ).current;
 
   useEffect(() => {
-    const handler = ({ window }: { window: { width: number; height: number } }) => {
-      setScreenSize({ width: window.width, height: window.height });
+    const handler = () => {
+      const dims = getScreenDimensions();
+      setScreenSize({ width: dims.width, height: dims.height });
     };
     const subscription = Dimensions.addEventListener?.('change', handler);
     return () => subscription?.remove?.();
@@ -2228,10 +2241,16 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             snapToAlignment="start"
             decelerationRate="fast"
             disableIntervalMomentum={true}
+            contentContainerStyle={videos.length === 0 ? { flex: 1 } : undefined}
+            ListEmptyComponent={
+              <View style={{ height: screenSize.height, width: screenSize.width, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            }
             ListFooterComponent={
               loading ? (
-                <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
+                <View style={{ height: screenSize.height, width: screenSize.width, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color="#fff" />
                 </View>
               ) : null
             }

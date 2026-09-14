@@ -167,7 +167,7 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
     } else if (eventStatus === 'between_streams') {
         badgeBg = 'rgba(30, 25, 20, 0.88)';
         badgeBorder = '#FFD700';
-        badgeText = '8:00 AM & 8:00 PM';
+        badgeText = 'SHRAVAN KATHA';
         badgeIcon = '📺';
     } else if (eventStatus === 'campaign_completed' || eventStatus === 'ended') {
         badgeBg = 'rgba(40, 40, 40, 0.85)';
@@ -1337,27 +1337,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                             </Text>
                                                         </View>
 
-                                                        {/* Dynamic Supporting Text */}
-                                                        <Text style={{
-                                                            color: '#FFFFFF',
-                                                            opacity: 0.95,
-                                                            fontWeight: '600',
-                                                            fontSize: Platform.OS === 'android' ? 10 : 11,
-                                                            marginTop: Platform.OS === 'android' ? 1 : 3,
-                                                            textShadowColor: 'rgba(0,0,0,0.95)',
-                                                            textShadowOffset: { width: 0, height: 1 },
-                                                            textShadowRadius: 3,
-                                                        }}>
-                                                            {(eventStatus as any) === 'live'
-                                                                ? '🔴 अभी LIVE प्रसारण चल रहा है'
-                                                                : (eventStatus as any) === 'starting_soon'
-                                                                    ? '⏰ सुबह 8:00 बजे शुरू होगा'
-                                                                    : (eventStatus as any) === 'between_streams'
-                                                                        ? 'Next Live • 8:00 AM'
-                                                                        : (eventStatus as any) === 'campaign_completed' || (eventStatus as any) === 'ended'
-                                                                            ? '🕉 Shravan Katha Series Completed'
-                                                                            : 'हर दिन सुबह 8:00 बजे LIVE'}
-                                                        </Text>
+
 
                                                         {/* DYNAMIC CTA BUTTON & ALIGNED COUNTDOWN TIMER ACCORDING TO LIVE EVENT LIFECYCLE */}
                                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'android' ? 4 : 6 }}>
@@ -1421,20 +1401,19 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                             ) : ((eventStatus as any) === 'between_streams' || (eventStatus as any) === 'ended') ? (
                                                                 <Pressable
                                                                     style={({ pressed }) => ({
-                                                                        backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                                                                        borderWidth: 1,
-                                                                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                                        backgroundColor: '#FF6600',
                                                                         borderRadius: 20,
-                                                                        paddingHorizontal: 12,
+                                                                        paddingHorizontal: 14,
                                                                         paddingVertical: Platform.OS === 'android' ? 5 : 6,
                                                                         flexDirection: 'row',
                                                                         alignItems: 'center',
+                                                                        elevation: 3,
                                                                         transform: [{ scale: pressed ? 0.95 : 1 }],
                                                                     })}
                                                                     onPress={handleNavigateKatha}
                                                                 >
-                                                                    <Ionicons name="play-circle" size={14} color="#FFD700" style={{ marginRight: 5 }} />
-                                                                    <Text style={{ color: '#FFF8E7', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 }}>Watch Previous Katha</Text>
+                                                                    <Ionicons name="play-circle" size={14} color="#FFF" style={{ marginRight: 5 }} />
+                                                                    <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>Watch Now</Text>
                                                                 </Pressable>
                                                             ) : (
                                                                 <UiverseNotifyButton
@@ -1466,7 +1445,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     }}
                                                                 />
                                                             )}
-                                                            <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} isFocused={isFocused} />
                                                         </View>
                                                     </View>
                                                 </View>

@@ -1788,7 +1788,7 @@ const ChatScreen = ({
                         borderTopRightRadius: 28,
                         paddingHorizontal: 24,
                         paddingTop: 16,
-                        paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                        paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: -4 },
                         shadowOpacity: 0.15,
@@ -1914,7 +1914,7 @@ const ChatScreen = ({
                       borderTopRightRadius: 28,
                       paddingHorizontal: 24,
                       paddingTop: 16,
-                      paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: -4 },
                       shadowOpacity: 0.15,
@@ -2041,7 +2041,7 @@ const ChatScreen = ({
                       borderTopRightRadius: 28,
                       paddingHorizontal: 20,
                       paddingTop: 16,
-                      paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+                      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 36) : Math.max(insets.bottom + 20, 28),
                       maxHeight: '80%',
                     }}
                   >

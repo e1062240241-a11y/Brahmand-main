@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -33,12 +34,18 @@ export interface SadhanaStreakCardProps {
  * 1. Wrapped in React.memo to prevent unnecessary re-renders when parent screen re-renders.
  * 2. Moved fallback empty object ({}) creation inside useMemo to keep dependency references stable.
  * 3. Replaced useRef().current animation value creation with useMemo to adhere strictly to React 19 rules (avoiding ref access during render) and eliminate lint errors.
+ * 4. Includes swipe-to-dismiss gesture for fluid micro-interactions.
  */
 export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
   function SadhanaStreakCard({ onPressChant }) {
     const { language } = useTranslation();
     const router = useRouter();
     const isHindi = language === 'hi';
+
+    const [isDismissed, setIsDismissed] = useState(false);
+    const swipeX = useMemo(() => new Animated.Value(0), []);
+    const collapseAnim = useMemo(() => new Animated.Value(1), []);
+    const isSwipingRef = useRef(false);
 
     const rawDailyHanuman = usePassportStore((state) => state.daily_hanuman_count);
     const rawDailyOther = usePassportStore((state) => state.daily_other_jaap_count);
@@ -101,7 +108,83 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
       }
     }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
 
+    // Lightweight Right-to-Left Swipe-to-Hide PanResponder
+    const panResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          // Trigger only on intentional horizontal swipe left (dx < -10)
+          return (
+            gestureState.dx < -10 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+          );
+        },
+        onPanResponderGrant: () => {
+          isSwipingRef.current = true;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dx < 0) {
+            // Direct tracking leftwards
+            swipeX.setValue(gestureState.dx);
+          } else {
+            // Elastic resistance if dragging right
+            swipeX.setValue(Math.pow(gestureState.dx, 0.6) * 2);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const dismissThreshold = -(SCREEN_WIDTH * 0.35);
+          const fastFlickLeft = gestureState.dx < -50 && gestureState.vx < -0.6;
+
+          if (gestureState.dx <= dismissThreshold || fastFlickLeft) {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch (_) {}
+
+            // Animate card off screen to the left with physics velocity
+            Animated.timing(swipeX, {
+              toValue: -SCREEN_WIDTH - 50,
+              duration: 220,
+              useNativeDriver: true,
+            }).start(() => {
+              // Smoothly collapse height and margins to 0
+              Animated.timing(collapseAnim, {
+                toValue: 0,
+                duration: 180,
+                useNativeDriver: false,
+              }).start(() => {
+                setIsDismissed(true);
+                isSwipingRef.current = false;
+              });
+            });
+          } else {
+            // Spring back smoothly to origin
+            Animated.spring(swipeX, {
+              toValue: 0,
+              stiffness: 240,
+              damping: 22,
+              mass: 0.8,
+              useNativeDriver: true,
+            }).start(() => {
+              isSwipingRef.current = false;
+            });
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(swipeX, {
+            toValue: 0,
+            stiffness: 240,
+            damping: 22,
+            mass: 0.8,
+            useNativeDriver: true,
+          }).start(() => {
+            isSwipingRef.current = false;
+          });
+        },
+      })
+    ).current;
+
     const handleCardPress = () => {
+      if (isSwipingRef.current) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       if (onPressChant) {
         onPressChant();
@@ -136,25 +219,35 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
       statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
     }
 
+    if (isDismissed) {
+      return null;
+    }
+
+    const cardOpacity = swipeX.interpolate({
+      inputRange: [-CARD_WIDTH * 0.8, 0],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+
     return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.outerContainer,
-          Platform.OS === 'ios' && pressed && styles.cardPressed,
-        ]}
-        onPress={handleCardPress}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isHindi
-            ? `साधना संकल्प: ${currentStreak} दिन`
-            : `Sadhana Sankalpa: ${currentStreak} days`
-        }
+      <Animated.View
+        style={{
+          opacity: collapseAnim,
+          transform: [{ scaleY: collapseAnim }],
+          overflow: 'hidden',
+          marginBottom: collapseAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 10],
+          }),
+        }}
       >
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardGradient}
+        <Animated.View
+          style={{
+            transform: [{ translateX: swipeX }],
+            opacity: cardOpacity,
+            backgroundColor: 'transparent',
+          }}
+          {...panResponder.panHandlers}
         >
           {/* Top Header Row: Streak Title + Today's Status Chip */}
           <View style={styles.topRow}>
@@ -167,11 +260,14 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
               >
                 🪔
               </Text>
+              {/* 🧡 Engagement: Reframed streak title from generic "X Days Sankalpa" to devotional "Sadhana Sankalpa: X Days" */}
+              {/* Lever: Reframing + Sanskara (Ritual/Habit framing) */}
+              {/* UI: Text-only change, no visual components added */}
               <Text style={styles.streakTitleText}>
                 {currentStreak > 0
                   ? isHindi
                     ? `${currentStreak} दिवसीय संकल्प`
-                    : `${currentStreak} Days Sankalpa`
+                    : `Sadhana Sankalpa: ${currentStreak} Days`
                   : isHindi
                   ? 'साधना संकल्प'
                   : 'Sadhana Sankalpa'}
@@ -188,86 +284,120 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
                   : styles.statusChipUnlit,
               ]}
             >
-              <Text
-                style={[
-                  styles.statusChipText,
-                  statusChipType === 'complete'
-                    ? styles.statusTextComplete
-                    : statusChipType === 'in_progress'
-                    ? styles.statusTextInProgress
-                    : styles.statusTextUnlit,
-                ]}
-                numberOfLines={1}
-              >
-                {statusChipText}
-              </Text>
-            </View>
-          </View>
-
-          {/* 7-Day Micro Tracker Row */}
-          <View style={styles.weekRow}>
-            {weekDays.map((day: WeekDayStreakInfo, index: number) => {
-              const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
-
-              return (
-                <View key={day.dateStr} style={styles.dayCol}>
+              {/* Top Header Row: Streak Title + Today's Status Chip */}
+              <View style={styles.topRow}>
+                <View style={styles.streakTitleWrap}>
                   <Text
                     style={[
-                      styles.dayLabel,
-                      day.isToday && styles.dayLabelToday,
+                      styles.diyaIcon,
+                      todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
                     ]}
                   >
-                    {displayLabel}
+                    🪔
                   </Text>
+                  <Text style={styles.streakTitleText}>
+                    {currentStreak > 0
+                      ? isHindi
+                        ? `${currentStreak} दिवसीय संकल्प`
+                        : `${currentStreak} Days Sankalpa`
+                      : isHindi
+                      ? 'साधना संकल्प'
+                      : 'Sadhana Sankalpa'}
+                  </Text>
+                </View>
 
-                  <View style={styles.dotSlot}>
-                    {day.isToday && !day.isCompleted ? (
-                      todayCount > 0 ? (
-                        // 🪔 Diya is LIT with flame glow and pulsing animation
-                        <Animated.View
-                          style={[
-                            styles.dotCircle,
-                            styles.todayLitPendingDot,
-                            {
-                              transform: [{ scale: pulseAnim }],
-                              opacity: glowAnim,
-                            },
-                          ]}
-                        >
-                          <Text style={styles.todayDiyaMiniLit}>🪔</Text>
-                        </Animated.View>
-                      ) : (
-                        // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
-                        <View style={[styles.dotCircle, styles.todayUnlitDot]}>
-                          <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
-                        </View>
-                      )
-                    ) : day.isCompleted ? (
-                      <View style={[styles.dotCircle, styles.completedDot]}>
-                        <Text style={styles.lotusMini}>🪷</Text>
-                      </View>
-                    ) : (
-                      <View
+                <View
+                  style={[
+                    styles.statusChip,
+                    statusChipType === 'complete'
+                      ? styles.statusChipComplete
+                      : statusChipType === 'in_progress'
+                      ? styles.statusChipInProgress
+                      : styles.statusChipUnlit,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusChipText,
+                      statusChipType === 'complete'
+                        ? styles.statusTextComplete
+                        : statusChipType === 'in_progress'
+                        ? styles.statusTextInProgress
+                        : styles.statusTextUnlit,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {statusChipText}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 7-Day Micro Tracker Row */}
+              <View style={styles.weekRow}>
+                {weekDays.map((day: WeekDayStreakInfo, index: number) => {
+                  const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
+
+                  return (
+                    <View key={day.dateStr} style={styles.dayCol}>
+                      <Text
                         style={[
-                          styles.dotCircle,
-                          day.isFuture ? styles.futureDot : styles.pastEmptyDot,
+                          styles.dayLabel,
+                          day.isToday && styles.dayLabelToday,
                         ]}
                       >
-                        <View
-                          style={[
-                            styles.innerEmptyPoint,
-                            day.isFuture && styles.innerPointFuture,
-                          ]}
-                        />
+                        {displayLabel}
+                      </Text>
+
+                      <View style={styles.dotSlot}>
+                        {day.isToday && !day.isCompleted ? (
+                          todayCount > 0 ? (
+                            // 🪔 Diya is LIT with flame glow and pulsing animation
+                            <Animated.View
+                              style={[
+                                styles.dotCircle,
+                                styles.todayLitPendingDot,
+                                {
+                                  transform: [{ scale: pulseAnim }],
+                                  opacity: glowAnim,
+                                },
+                              ]}
+                            >
+                              <Text style={styles.todayDiyaMiniLit}>🪔</Text>
+                            </Animated.View>
+                          ) : (
+                            // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
+                            <View style={[styles.dotCircle, styles.todayUnlitDot]}>
+                              <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
+                            </View>
+                          )
+                        ) : day.isCompleted ? (
+                          <View style={[styles.dotCircle, styles.completedDot]}>
+                            <Text style={styles.lotusMini}>🪷</Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.dotCircle,
+                              day.isFuture ? styles.futureDot : styles.pastEmptyDot,
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.innerEmptyPoint,
+                                day.isFuture && styles.innerPointFuture,
+                              ]}
+                            />
+                          </View>
+                        )}
                       </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </LinearGradient>
-      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
     );
   }
 );

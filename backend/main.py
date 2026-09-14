@@ -37,7 +37,6 @@ import base64
 import math
 import requests
 import aiohttp
-import jwt
 from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -1537,37 +1536,6 @@ def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], 
     return None, None, None
 
 
-def _sanitize_livekit_room(value: str) -> str:
-    normalized = re.sub(r'[^a-zA-Z0-9_-]+', '-', value or 'jaap-live').strip('-')
-    return normalized[:96] or 'jaap-live'
-
-
-def _build_livekit_token(user_id: str, sl_id: str, room: str) -> tuple[str, int]:
-    ttl_seconds = max(settings.LIVEKIT_TOKEN_TTL_SECONDS, 300)
-    now = datetime.now(timezone.utc)
-    expires_at = int((now + timedelta(seconds=ttl_seconds)).timestamp())
-    identity = _sanitize_livekit_room(f"{user_id}-{uuid4().hex[:8]}")
-    participant_name = sl_id or user_id
-
-    payload = {
-        'iss': settings.LIVEKIT_API_KEY,
-        'sub': identity,
-        'name': participant_name,
-        'nbf': int(now.timestamp()),
-        'exp': expires_at,
-        'video': {
-            'roomJoin': True,
-            'room': room,
-            'canPublish': True,
-            'canSubscribe': True,
-            'canPublishData': True,
-        },
-    }
-
-    token = jwt.encode(payload, settings.LIVEKIT_API_SECRET, algorithm='HS256')
-    return token, expires_at
-
-
 @api_router.get("/realtime/ice-servers")
 async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
     """Return STUN/TURN config for realtime audio rooms."""
@@ -1585,30 +1553,6 @@ async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
     return {
         'iceServers': [server for server in ice_servers if server.get('urls')],
         'turnEnabled': bool(turn_urls and username and credential),
-        'expiresAt': expires_at,
-    }
-
-
-@api_router.get("/realtime/sfu-token")
-async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
-    """Return an SFU room token when LiveKit is configured."""
-    livekit_ready = bool(settings.LIVEKIT_URL and settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET)
-    if not livekit_ready:
-        return {
-            'enabled': False,
-            'reason': 'livekit_not_configured',
-        }
-
-    user_id = token_data.get('user_id', 'anonymous') or 'anonymous'
-    sl_id = token_data.get('sl_id') or user_id
-    livekit_room = _sanitize_livekit_room(f"{settings.LIVEKIT_ROOM_PREFIX}-{room}")
-    token, expires_at = _build_livekit_token(user_id, sl_id, livekit_room)
-
-    return {
-        'enabled': True,
-        'url': settings.LIVEKIT_URL,
-        'token': token,
-        'room': livekit_room,
         'expiresAt': expires_at,
     }
 
@@ -3338,6 +3282,7 @@ async def download_app_redirect(request: Request):
     query_str = request.url.query or ""
     play_store_base = "https://play.google.com/store/apps/details?id=com.brahmand.app"
     play_store_url = f"{play_store_base}&referrer={quote(query_str)}" if query_str else play_store_base
+    app_store_url = "https://apps.apple.com/in/app/brahmand-app/id6765467224"
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -3456,9 +3401,13 @@ async def download_app_redirect(request: Request):
     (function() {{
       var userAgent = navigator.userAgent || navigator.vendor || window.opera;
       var isAndroid = /android/i.test(userAgent);
+      var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
       var playStoreUrl = "{play_store_url}";
+      var appStoreUrl = "{app_store_url}";
       if (isAndroid) {{
         window.location.replace(playStoreUrl);
+      }} else if (isIOS) {{
+        window.location.replace(appStoreUrl);
       }}
     }})();
   </script>
@@ -3478,7 +3427,7 @@ async def download_app_redirect(request: Request):
     </div>
 
     <a id="downloadBtn" href="{play_store_url}" class="btn">
-      DOWNLOAD ON GOOGLE PLAY ➔
+      DOWNLOAD APP ➔
     </a>
 
     <div class="badges">
@@ -3487,6 +3436,15 @@ async def download_app_redirect(request: Request):
       <span>✓ Safe & Verified</span>
     </div>
   </div>
+  <script>
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    var btn = document.getElementById('downloadBtn');
+    if (btn && isIOS) {{
+      btn.href = "{app_store_url}";
+      btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+    }}
+  </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
@@ -7236,10 +7194,11 @@ async def join_community_direct(
         members = comm.get('members', [])
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
-        # Add user to community members
-        await db.array_union_update('communities', community_id, 'members', [user_id])
-        # Add community to user's communities
-        await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Add user to community members and add community to user's communities
+        await asyncio.gather(
+            db.array_union_update('communities', community_id, 'members', [user_id]),
+            db.array_union_update('users', user_id, 'communities', [community_id])
+        )
         # Invalidate user community cache so next discover call returns is_member=true
         from utils.cache import cache_manager
         await cache_manager.invalidate_user_communities(user_id)
@@ -8639,10 +8598,11 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                     added_member_ids.append(member_id)
 
     circle_id = await db.create_document('circles', circle_data)
-    await db.array_union_update('users', user_id, 'circles', [circle_id])
 
+    tasks = [db.array_union_update('users', user_id, 'circles', [circle_id])]
     for member_id in added_member_ids:
-        await db.array_union_update('users', member_id, 'circles', [circle_id])
+        tasks.append(db.array_union_update('users', member_id, 'circles', [circle_id]))
+    await asyncio.gather(*tasks)
     
     # Send push notification to added members
     if added_member_ids:
@@ -9057,11 +9017,12 @@ async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)
         raise HTTPException(status_code=403, detail="Only admin can delete circle")
     
     # Remove circle from all members' circle lists
+    tasks = []
     for member_id in circle.get('members', []):
-        try:
-            await db.array_remove_update('users', member_id, 'circles', [circle_id])
-        except:
-            pass
+        tasks.append(db.array_remove_update('users', member_id, 'circles', [circle_id]))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     
     # Delete circle
     await db.delete_document('circles', circle_id)
@@ -11584,8 +11545,8 @@ async def send_blood_request_otp(request: OTPRequest):
         otp_requests_count = 1
 
     # Generate OTP securely (4 digits)
-    import random
-    otp_code = f"{random.randint(1000, 9999)}"
+    import secrets
+    otp_code = f"{secrets.randbelow(9000) + 1000}"
     logger.info(f"[Blood Request OTP] Generated OTP {otp_code} for mobile {mobile}")
 
     # Call NattyFish to send SMS
@@ -12093,12 +12054,30 @@ async def get_vendors(
     state: Optional[str] = None,
     country: Optional[str] = None,
     limit: int = 50,
+    offset: int = 0,
     token_data: Optional[dict] = Depends(optional_verify_token)
 ):
-    """Get vendors with optional filters and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
+    """Get vendors with optional filters, offset-based pagination, and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
     db = await get_db()
 
-    vendors = await db.query_documents('vendors', limit=limit)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    # Architectural fix: Limit candidate fetch from Firestore to prevent unbounded scans at scale while providing paginated bounds
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+
+    try:
+        vendors = await db.query_documents(
+            'vendors',
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for vendors created_at, falling back to un-ordered query: {query_err}")
+            vendors = await db.query_documents('vendors', limit=fetch_limit)
+        else:
+            raise query_err
 
     vendor_ids = [v['id'] for v in vendors if v.get('id')]
     owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
@@ -12345,7 +12324,7 @@ async def get_vendors(
 
         vendors.sort(key=_compute_ranking)
 
-    return vendors
+    return vendors[safe_offset : safe_offset + safe_limit]
 
 
 @api_router.get("/vendors/my")
