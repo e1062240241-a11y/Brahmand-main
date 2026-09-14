@@ -2092,7 +2092,7 @@ export async function renderDynamicFestivalPage2(
     storeRowY + 18,
   ]);
 
-  const appStoreUri = 'https://brahmand.app/download?platform=ios';
+  const appStoreUri = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
   const appleFullW = appleIconW + 5 + fontHelveticaBold.widthOfTextAtSize('App Store', 8.5);
   addClickableLink(doc, page2, appStoreUri, [
     appleStartX - 4,
