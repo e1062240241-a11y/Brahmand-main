@@ -2273,8 +2273,8 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         community_ids.append(country_community['id'])
     
     # Add user to communities
-    for cid in community_ids:
-        await db.add_member_to_community(cid, user_id)
+    if community_ids:
+        await asyncio.gather(*(db.add_member_to_community(cid, user_id) for cid in community_ids))
     
     # Update user with location and communities
     existing_defaults = (user.get('default_communities', []) if user else []) or []
@@ -2287,9 +2287,9 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     
     # Invalidate cache
     await cache_manager.invalidate_user(user_id)
-    for cid in community_ids:
-        await cache_manager.invalidate_community(cid)
-        await cache_manager.invalidate_user_communities(user_id)
+    if community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
+    await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
@@ -2492,8 +2492,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
             unique_community_ids.append(cid)
     
     # Add user to all communities
-    for cid in unique_community_ids:
-        await db.add_member_to_community(cid, user_id)
+    if unique_community_ids:
+        await asyncio.gather(*(db.add_member_to_community(cid, user_id) for cid in unique_community_ids))
     
     # Update user with locations and default communities
     update_data['default_communities'] = unique_community_ids  # Store IDs of default communities (cannot leave)
@@ -2503,8 +2503,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Invalidate cache
     await cache_manager.invalidate_user(user_id)
-    for cid in unique_community_ids:
-        await cache_manager.invalidate_community(cid)
+    if unique_community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
