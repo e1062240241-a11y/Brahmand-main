@@ -2083,31 +2083,39 @@ export async function renderDynamicFestivalPage2(
     color: colMaroonHead,
   });
 
-  // Direct Clickable Link annotations over Google Play and App Store badges
+  // 1. Google Play Badge Link (Dedicated touch target)
   const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
   addClickableLink(doc, page2, playStoreUri, [
-    leftColX - 4,
-    storeRowY - 6,
-    leftColX + playW + 4,
-    storeRowY + 18,
+    leftColX - 6,
+    storeRowY - 8,
+    leftColX + playW + 8,
+    storeRowY + 22,
   ]);
 
+  // 2. Apple App Store Badge Link (Dedicated touch target - zero overlap)
   const appStoreUri = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
   const appleFullW = appleIconW + 5 + fontHelveticaBold.widthOfTextAtSize('App Store', 8.5);
   addClickableLink(doc, page2, appStoreUri, [
-    appleStartX - 4,
-    storeRowY - 6,
-    appleStartX + appleFullW + 4,
-    storeRowY + 18,
+    appleStartX - 6,
+    storeRowY - 8,
+    appleStartX + appleFullW + 8,
+    storeRowY + 22,
   ]);
 
-  // FULL CARD CONTAINER CLICKABLE OVERLAY (4. Technical Implementation Detail)
-  // Ensures any touch on the card (text, icon, QR) in WhatsApp or mobile viewers triggers the download
+  // 3. QR Code Touch Target (Dedicated right column target)
+  addClickableLink(doc, page2, referralQrUrl, [
+    qrBoxX - quietZone,
+    qrBoxY - quietZone - 16,
+    qrBoxX + qrSize + quietZone,
+    qrBoxY + qrSize + quietZone,
+  ]);
+
+  // 4. Upper Card Content Area (Text & features only - strictly ABOVE the store buttons)
   const cardClickUrl = getTrackedBrahmandUrl(theme.name, 'download_button');
   addClickableLink(doc, page2, cardClickUrl, [
     cardX,
-    cardY,
-    cardX + cardW,
+    storeRowY + 24,
+    splitLineX,
     cardY + cardH,
   ]);
 
