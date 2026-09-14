@@ -27,124 +27,149 @@ export interface SadhanaStreakCardProps {
   onPressChant?: () => void;
 }
 
-export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressChant }) => {
-  const { language } = useTranslation();
-  const router = useRouter();
-  const isHindi = language === 'hi';
+/**
+ * SadhanaStreakCard
+ *
+ * 🎨 Varnish Optimization:
+ * 1. Wrapped in React.memo to prevent unnecessary re-renders when parent screen re-renders.
+ * 2. Moved fallback empty object ({}) creation inside useMemo to keep dependency references stable.
+ * 3. Replaced useRef().current animation value creation with useMemo to adhere strictly to React 19 rules (avoiding ref access during render) and eliminate lint errors.
+ * 4. Includes swipe-to-dismiss gesture for fluid micro-interactions.
+ */
+export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
+  function SadhanaStreakCard({ onPressChant }) {
+    const { language } = useTranslation();
+    const router = useRouter();
+    const isHindi = language === 'hi';
 
-  const [isDismissed, setIsDismissed] = useState(false);
-  const swipeX = useRef(new Animated.Value(0)).current;
-  const collapseAnim = useRef(new Animated.Value(1)).current;
-  const isSwipingRef = useRef(false);
+    const [isDismissed, setIsDismissed] = useState(false);
+    const swipeX = useMemo(() => new Animated.Value(0), []);
+    const collapseAnim = useMemo(() => new Animated.Value(1), []);
+    const isSwipingRef = useRef(false);
 
-  const dailyHanuman = usePassportStore((state) => state.daily_hanuman_count) || {};
-  const dailyOther = usePassportStore((state) => state.daily_other_jaap_count) || {};
+    const rawDailyHanuman = usePassportStore((state) => state.daily_hanuman_count);
+    const rawDailyOther = usePassportStore((state) => state.daily_other_jaap_count);
 
-  // Calculate streak data in IST
-  const streakData = useMemo(() => {
-    return calculateSadhanaStreak(dailyHanuman, dailyOther);
-  }, [dailyHanuman, dailyOther]);
+    // Calculate streak data in IST with stable fallback references
+    const streakData = useMemo(() => {
+      const dailyHanuman = rawDailyHanuman || {};
+      const dailyOther = rawDailyOther || {};
+      return calculateSadhanaStreak(dailyHanuman, dailyOther);
+    }, [rawDailyHanuman, rawDailyOther]);
 
-  const {
-    currentStreak,
-    isTodayCompleted,
-    todayCount,
-    weekDays,
-  } = streakData;
+    const {
+      currentStreak,
+      isTodayCompleted,
+      todayCount,
+      weekDays,
+    } = streakData;
 
-  // Pulse animation for today's active dot: ONLY when todayCount > 0 (diya is lit) and incomplete
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.6)).current;
+    // Pulse animation for today's active dot: ONLY when todayCount > 0 (diya is lit) and incomplete
+    // Initialized with useMemo to prevent accessing refs during render in React 19
+    const pulseAnim = useMemo(() => new Animated.Value(1), []);
+    const glowAnim = useMemo(() => new Animated.Value(0.6), []);
 
-  useEffect(() => {
-    // 🪔 Core Domain Rule: Diya flame pulse/glow only starts once user has performed jaap today!
-    if (todayCount > 0 && !isTodayCompleted) {
-      const pulseLoop = Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.15,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(glowAnim, {
-              toValue: 1,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-            Animated.timing(glowAnim, {
-              toValue: 0.5,
-              duration: 950,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      );
-      pulseLoop.start();
-      return () => pulseLoop.stop();
-    } else {
-      pulseAnim.setValue(1);
-      glowAnim.setValue(1);
-    }
-  }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
-
-  // Lightweight Right-to-Left Swipe-to-Hide PanResponder
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Trigger only on intentional horizontal swipe left (dx < -10)
-        return (
-          gestureState.dx < -10 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+    useEffect(() => {
+      // 🪔 Core Domain Rule: Diya flame pulse/glow only starts once user has performed jaap today!
+      if (todayCount > 0 && !isTodayCompleted) {
+        const pulseLoop = Animated.loop(
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(pulseAnim, {
+                toValue: 1.15,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+              Animated.timing(pulseAnim, {
+                toValue: 1,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.sequence([
+              Animated.timing(glowAnim, {
+                toValue: 1,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+              Animated.timing(glowAnim, {
+                toValue: 0.5,
+                duration: 950,
+                useNativeDriver: true,
+              }),
+            ]),
+          ])
         );
-      },
-      onPanResponderGrant: () => {
-        isSwipingRef.current = true;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dx < 0) {
-          // Direct tracking leftwards
-          swipeX.setValue(gestureState.dx);
-        } else {
-          // Elastic resistance if dragging right
-          swipeX.setValue(Math.pow(gestureState.dx, 0.6) * 2);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const dismissThreshold = -(SCREEN_WIDTH * 0.35);
-        const fastFlickLeft = gestureState.dx < -50 && gestureState.vx < -0.6;
+        pulseLoop.start();
+        return () => pulseLoop.stop();
+      } else {
+        pulseAnim.setValue(1);
+        glowAnim.setValue(1);
+      }
+    }, [todayCount, isTodayCompleted, pulseAnim, glowAnim]);
 
-        if (gestureState.dx <= dismissThreshold || fastFlickLeft) {
-          try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          } catch (_) {}
+    // Lightweight Right-to-Left Swipe-to-Hide PanResponder
+    const panResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          // Trigger only on intentional horizontal swipe left (dx < -10)
+          return (
+            gestureState.dx < -10 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+          );
+        },
+        onPanResponderGrant: () => {
+          isSwipingRef.current = true;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dx < 0) {
+            // Direct tracking leftwards
+            swipeX.setValue(gestureState.dx);
+          } else {
+            // Elastic resistance if dragging right
+            swipeX.setValue(Math.pow(gestureState.dx, 0.6) * 2);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const dismissThreshold = -(SCREEN_WIDTH * 0.35);
+          const fastFlickLeft = gestureState.dx < -50 && gestureState.vx < -0.6;
 
-          // Animate card off screen to the left with physics velocity
-          Animated.timing(swipeX, {
-            toValue: -SCREEN_WIDTH - 50,
-            duration: 220,
-            useNativeDriver: true,
-          }).start(() => {
-            // Smoothly collapse height and margins to 0
-            Animated.timing(collapseAnim, {
-              toValue: 0,
-              duration: 180,
-              useNativeDriver: false,
+          if (gestureState.dx <= dismissThreshold || fastFlickLeft) {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            } catch (_) {}
+
+            // Animate card off screen to the left with physics velocity
+            Animated.timing(swipeX, {
+              toValue: -SCREEN_WIDTH - 50,
+              duration: 220,
+              useNativeDriver: true,
             }).start(() => {
-              setIsDismissed(true);
+              // Smoothly collapse height and margins to 0
+              Animated.timing(collapseAnim, {
+                toValue: 0,
+                duration: 180,
+                useNativeDriver: false,
+              }).start(() => {
+                setIsDismissed(true);
+                isSwipingRef.current = false;
+              });
+            });
+          } else {
+            // Spring back smoothly to origin
+            Animated.spring(swipeX, {
+              toValue: 0,
+              stiffness: 240,
+              damping: 22,
+              mass: 0.8,
+              useNativeDriver: true,
+            }).start(() => {
               isSwipingRef.current = false;
             });
-          });
-        } else {
-          // Spring back smoothly to origin
+          }
+        },
+        onPanResponderTerminate: () => {
           Animated.spring(swipeX, {
             toValue: 0,
             stiffness: 240,
@@ -154,223 +179,214 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = ({ onPressCha
           }).start(() => {
             isSwipingRef.current = false;
           });
-        }
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(swipeX, {
-          toValue: 0,
-          stiffness: 240,
-          damping: 22,
-          mass: 0.8,
-          useNativeDriver: true,
-        }).start(() => {
-          isSwipingRef.current = false;
+        },
+      })
+    ).current;
+
+    const handleCardPress = () => {
+      if (isSwipingRef.current) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      if (onPressChant) {
+        onPressChant();
+      } else {
+        // Direct live experience route: open live jaap welcome
+        router.push({
+          pathname: '/live-jaap-welcome',
+          params: { mantraType: 'hanuman', fromStreak: 'true' },
         });
-      },
-    })
-  ).current;
+      }
+    };
 
-  const handleCardPress = () => {
-    if (isSwipingRef.current) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    if (onPressChant) {
-      onPressChant();
+    // Hindi day abbreviations
+    const hindiDayLabels = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
+
+    // Status Chip Text & Styling
+    // 🪔 Diya only reflects lit state when todayCount > 0 or completed
+    let statusChipText = '';
+    let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
+
+    if (isTodayCompleted) {
+      statusChipType = 'complete';
+      statusChipText = isHindi ? '✨ दीप प्रज्वलित' : '✨ Diya Lit';
+    } else if (todayCount > 0) {
+      statusChipType = 'in_progress';
+      const remaining = Math.max(0, 108 - todayCount);
+      statusChipText = isHindi
+        ? `🪔 ${remaining} शेष`
+        : `🪔 ${remaining} left`;
     } else {
-      // Direct live experience route: open live jaap welcome
-      router.push({
-        pathname: '/live-jaap-welcome',
-        params: { mantraType: 'hanuman', fromStreak: 'true' },
-      });
+      statusChipType = 'unlit';
+      statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
     }
-  };
 
-  // Hindi day abbreviations
-  const hindiDayLabels = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
+    if (isDismissed) {
+      return null;
+    }
 
-  // Status Chip Text & Styling
-  // 🪔 Diya only reflects lit state when todayCount > 0 or completed
-  let statusChipText = '';
-  let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
+    const cardOpacity = swipeX.interpolate({
+      inputRange: [-CARD_WIDTH * 0.8, 0],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
 
-  if (isTodayCompleted) {
-    statusChipType = 'complete';
-    statusChipText = isHindi ? '✨ दीप प्रज्वलित' : '✨ Diya Lit';
-  } else if (todayCount > 0) {
-    statusChipType = 'in_progress';
-    const remaining = Math.max(0, 108 - todayCount);
-    statusChipText = isHindi
-      ? `🪔 ${remaining} शेष`
-      : `🪔 ${remaining} left`;
-  } else {
-    statusChipType = 'unlit';
-    statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
-  }
-
-  if (isDismissed) {
-    return null;
-  }
-
-  const cardOpacity = swipeX.interpolate({
-    inputRange: [-CARD_WIDTH * 0.8, 0],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  return (
-    <Animated.View
-      style={{
-        opacity: collapseAnim,
-        transform: [{ scaleY: collapseAnim }],
-        overflow: 'hidden',
-        marginBottom: collapseAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 10],
-        }),
-      }}
-    >
+    return (
       <Animated.View
         style={{
-          transform: [{ translateX: swipeX }],
-          opacity: cardOpacity,
-          backgroundColor: 'transparent',
+          opacity: collapseAnim,
+          transform: [{ scaleY: collapseAnim }],
+          overflow: 'hidden',
+          marginBottom: collapseAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 10],
+          }),
         }}
-        {...panResponder.panHandlers}
       >
-        <Pressable
-          style={({ pressed }) => [
-            styles.outerContainer,
-            Platform.OS === 'ios' && pressed && styles.cardPressed,
-          ]}
-          onPress={handleCardPress}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isHindi
-              ? `साधना संकल्प: ${currentStreak} दिन`
-              : `Sadhana Sankalpa: ${currentStreak} days`
-          }
+        <Animated.View
+          style={{
+            transform: [{ translateX: swipeX }],
+            opacity: cardOpacity,
+            backgroundColor: 'transparent',
+          }}
+          {...panResponder.panHandlers}
         >
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-        {/* Top Header Row: Streak Title + Today's Status Chip */}
-        <View style={styles.topRow}>
-          <View style={styles.streakTitleWrap}>
-            <Text
-              style={[
-                styles.diyaIcon,
-                todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
-              ]}
-            >
-              🪔
-            </Text>
-            <Text style={styles.streakTitleText}>
-              {currentStreak > 0
-                ? isHindi
-                  ? `${currentStreak} दिवसीय संकल्प`
-                  : `${currentStreak} Days Sankalpa`
-                : isHindi
-                ? 'साधना संकल्प'
-                : 'Sadhana Sankalpa'}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.statusChip,
-              statusChipType === 'complete'
-                ? styles.statusChipComplete
-                : statusChipType === 'in_progress'
-                ? styles.statusChipInProgress
-                : styles.statusChipUnlit,
+          <Pressable
+            style={({ pressed }) => [
+              styles.outerContainer,
+              Platform.OS === 'ios' && pressed && styles.cardPressed,
             ]}
+            onPress={handleCardPress}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isHindi
+                ? `साधना संकल्प: ${currentStreak} दिन`
+                : `Sadhana Sankalpa: ${currentStreak} days`
+            }
           >
-            <Text
-              style={[
-                styles.statusChipText,
-                statusChipType === 'complete'
-                  ? styles.statusTextComplete
-                  : statusChipType === 'in_progress'
-                  ? styles.statusTextInProgress
-                  : styles.statusTextUnlit,
-              ]}
-              numberOfLines={1}
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 248, 238, 0.92)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cardGradient}
             >
-              {statusChipText}
-            </Text>
-          </View>
-        </View>
+              {/* Top Header Row: Streak Title + Today's Status Chip */}
+              <View style={styles.topRow}>
+                <View style={styles.streakTitleWrap}>
+                  <Text
+                    style={[
+                      styles.diyaIcon,
+                      todayCount === 0 && !isTodayCompleted ? styles.diyaIconUnlit : styles.diyaIconLit,
+                    ]}
+                  >
+                    🪔
+                  </Text>
+                  <Text style={styles.streakTitleText}>
+                    {currentStreak > 0
+                      ? isHindi
+                        ? `${currentStreak} दिवसीय संकल्प`
+                        : `${currentStreak} Days Sankalpa`
+                      : isHindi
+                      ? 'साधना संकल्प'
+                      : 'Sadhana Sankalpa'}
+                  </Text>
+                </View>
 
-        {/* 7-Day Micro Tracker Row */}
-        <View style={styles.weekRow}>
-          {weekDays.map((day: WeekDayStreakInfo, index: number) => {
-            const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
-
-            return (
-              <View key={day.dateStr} style={styles.dayCol}>
-                <Text
+                <View
                   style={[
-                    styles.dayLabel,
-                    day.isToday && styles.dayLabelToday,
+                    styles.statusChip,
+                    statusChipType === 'complete'
+                      ? styles.statusChipComplete
+                      : statusChipType === 'in_progress'
+                      ? styles.statusChipInProgress
+                      : styles.statusChipUnlit,
                   ]}
                 >
-                  {displayLabel}
-                </Text>
-
-                <View style={styles.dotSlot}>
-                  {day.isToday && !day.isCompleted ? (
-                    todayCount > 0 ? (
-                      // 🪔 Diya is LIT with flame glow and pulsing animation
-                      <Animated.View
-                        style={[
-                          styles.dotCircle,
-                          styles.todayLitPendingDot,
-                          {
-                            transform: [{ scale: pulseAnim }],
-                            opacity: glowAnim,
-                          },
-                        ]}
-                      >
-                        <Text style={styles.todayDiyaMiniLit}>🪔</Text>
-                      </Animated.View>
-                    ) : (
-                      // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
-                      <View style={[styles.dotCircle, styles.todayUnlitDot]}>
-                        <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
-                      </View>
-                    )
-                  ) : day.isCompleted ? (
-                    <View style={[styles.dotCircle, styles.completedDot]}>
-                      <Text style={styles.lotusMini}>🪷</Text>
-                    </View>
-                  ) : (
-                    <View
-                      style={[
-                        styles.dotCircle,
-                        day.isFuture ? styles.futureDot : styles.pastEmptyDot,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.innerEmptyPoint,
-                          day.isFuture && styles.innerPointFuture,
-                        ]}
-                      />
-                    </View>
-                  )}
+                  <Text
+                    style={[
+                      styles.statusChipText,
+                      statusChipType === 'complete'
+                        ? styles.statusTextComplete
+                        : statusChipType === 'in_progress'
+                        ? styles.statusTextInProgress
+                        : styles.statusTextUnlit,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {statusChipText}
+                  </Text>
                 </View>
               </View>
-            );
-          })}
-        </View>
-      </LinearGradient>
-    </Pressable>
-  </Animated.View>
-</Animated.View>
-  );
-};
+
+              {/* 7-Day Micro Tracker Row */}
+              <View style={styles.weekRow}>
+                {weekDays.map((day: WeekDayStreakInfo, index: number) => {
+                  const displayLabel = isHindi ? hindiDayLabels[index] : day.dayLabel;
+
+                  return (
+                    <View key={day.dateStr} style={styles.dayCol}>
+                      <Text
+                        style={[
+                          styles.dayLabel,
+                          day.isToday && styles.dayLabelToday,
+                        ]}
+                      >
+                        {displayLabel}
+                      </Text>
+
+                      <View style={styles.dotSlot}>
+                        {day.isToday && !day.isCompleted ? (
+                          todayCount > 0 ? (
+                            // 🪔 Diya is LIT with flame glow and pulsing animation
+                            <Animated.View
+                              style={[
+                                styles.dotCircle,
+                                styles.todayLitPendingDot,
+                                {
+                                  transform: [{ scale: pulseAnim }],
+                                  opacity: glowAnim,
+                                },
+                              ]}
+                            >
+                              <Text style={styles.todayDiyaMiniLit}>🪔</Text>
+                            </Animated.View>
+                          ) : (
+                            // 🪔 Diya is UNLIT: Waiting for user to perform their first chant today
+                            <View style={[styles.dotCircle, styles.todayUnlitDot]}>
+                              <Text style={styles.todayDiyaMiniUnlit}>🪔</Text>
+                            </View>
+                          )
+                        ) : day.isCompleted ? (
+                          <View style={[styles.dotCircle, styles.completedDot]}>
+                            <Text style={styles.lotusMini}>🪷</Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.dotCircle,
+                              day.isFuture ? styles.futureDot : styles.pastEmptyDot,
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.innerEmptyPoint,
+                                day.isFuture && styles.innerPointFuture,
+                              ]}
+                            />
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+    );
+  }
+);
+
+SadhanaStreakCard.displayName = 'SadhanaStreakCard';
 
 const styles = StyleSheet.create({
   outerContainer: {
@@ -390,7 +406,7 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
       },
       android: {
-        elevation: 0,
+        elevation: 2,
       },
     }),
   },

@@ -789,9 +789,14 @@ export default function HomeScreen() {
     followingSetRef.current = new Set(arr);
   }, [user]);
 
+  const homeSearchAbortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     const query = searchTerm.trim();
-    if (!searchActive || !query) {
+    if (!searchActive || !query || query.length < 2) {
+      if (homeSearchAbortRef.current) {
+        homeSearchAbortRef.current.abort();
+      }
       setSearchResults([]);
       setHashtagResults([]);
       setLoadingUsers(false);
@@ -799,22 +804,33 @@ export default function HomeScreen() {
       return;
     }
 
+    if (homeSearchAbortRef.current) {
+      homeSearchAbortRef.current.abort();
+    }
+
     const debounce = setTimeout(async () => {
+      const controller = new AbortController();
+      homeSearchAbortRef.current = controller;
+
       if (query.startsWith('#')) {
         const normalizedQuery = query.replace(/^#+/, '');
-        if (!normalizedQuery) {
+        if (normalizedQuery.length < 2) {
           setHashtagResults([]);
           return;
         }
         setLoadingHashtags(true);
         try {
           const response = await searchByHashtag(normalizedQuery, 20, 0);
+          if (controller.signal.aborted) return;
           setHashtagResults(Array.isArray(response.data) ? response.data : response.data?.items || []);
-        } catch (error) {
+        } catch (error: any) {
+          if (error.name === 'AbortError' || controller.signal.aborted) return;
           console.warn('Failed to search hashtags from home:', error);
           setHashtagResults([]);
         } finally {
-          setLoadingHashtags(false);
+          if (!controller.signal.aborted) {
+            setLoadingHashtags(false);
+          }
         }
         return;
       }
@@ -822,16 +838,25 @@ export default function HomeScreen() {
       setLoadingUsers(true);
       try {
         const res = await getAllUsers(query);
+        if (controller.signal.aborted) return;
         setSearchResults(res.data || []);
-      } catch (error) {
+      } catch (error: any) {
+        if (error.name === 'AbortError' || controller.signal.aborted) return;
         console.warn('Failed to load users for home search:', error);
         setSearchResults([]);
       } finally {
-        setLoadingUsers(false);
+        if (!controller.signal.aborted) {
+          setLoadingUsers(false);
+        }
       }
-    }, 250);
+    }, 400);
 
-    return () => clearTimeout(debounce);
+    return () => {
+      clearTimeout(debounce);
+      if (homeSearchAbortRef.current) {
+        homeSearchAbortRef.current.abort();
+      }
+    };
   }, [searchTerm, searchActive]);
 
   const handleHomeScroll = useCallback((event: any) => {

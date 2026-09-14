@@ -58,6 +58,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
   const [selectedItem, setSelectedItem] = useState<HospitalSuggestion | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Sync external value
   useEffect(() => {
@@ -69,21 +70,31 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
-  // Search logic starting from 1st character (minimumQueryLength = 1)
+  // Search logic starting from 2nd character (minimumQueryLength = 2)
   const performSearch = useCallback(async (queryText: string) => {
     const q = queryText.trim();
-    if (q.length < 1) {
+    if (q.length < 2) {
       setSuggestions([]);
       setLoading(false);
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     try {
       const response = await searchHospitals(q, 10);
+      if (controller.signal.aborted) return;
       const rows = response?.data?.results || response?.data || [];
       if (Array.isArray(rows) && rows.length > 0) {
         const normalized: HospitalSuggestion[] = rows
@@ -98,11 +109,16 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       } else {
         setSuggestions([]);
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || controller.signal.aborted) {
+        return;
+      }
       console.warn('Hospital search failed:', err);
       setSuggestions([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -116,14 +132,17 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       clearTimeout(debounceRef.current);
     }
 
-    if (text.trim().length < 1) {
+    if (text.trim().length < 2) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       setSuggestions([]);
       return;
     }
 
     debounceRef.current = setTimeout(() => {
       performSearch(text);
-    }, 300);
+    }, 400);
   };
 
   const handleSelectHospital = (item: HospitalSuggestion) => {
@@ -180,7 +199,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
 
   const handleFocus = () => {
     setIsFocused(true);
-    if (hospitalQuery.trim().length >= 1 && !selectedItem) {
+    if (hospitalQuery.trim().length >= 2 && !selectedItem) {
       performSearch(hospitalQuery);
     }
   };
@@ -192,7 +211,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
     }, 250);
   };
 
-  const showSuggestions = isFocused && hospitalQuery.trim().length >= 1 && !selectedItem;
+  const showSuggestions = isFocused && hospitalQuery.trim().length >= 2 && !selectedItem;
 
   return (
     <View style={[styles.container, containerStyle]}>

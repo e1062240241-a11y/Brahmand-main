@@ -745,16 +745,28 @@ async def _create_post_document(
 
     # 2. DB Filter Layer (fallback)
     try:
-        from datetime import timedelta, timezone
-        threshold_dt = datetime.now(timezone.utc) - timedelta(seconds=180)
-        # If mock database is active, use string comparison; otherwise use datetime
-        threshold = (threshold_dt.isoformat() + 'Z') if db.use_mock else threshold_dt
-        
-        recent_global_posts = await db.query_documents(
-            'posts',
-            filters=[('created_at', '>=', threshold)]
-        )
-        recent_posts = [p for p in recent_global_posts if p.get('user_id') == user_id]
+        # Architectural fix: Scope duplicate upload check to user_id with limit bounds
+        # and DESC ordering instead of querying ALL global posts across all users created in the last 180s.
+        # This prevents O(N_global_recent) reads and reduces Firestore read cost to O(1) per post upload.
+        try:
+            recent_posts = await db.query_documents(
+                'posts',
+                filters=[('user_id', '==', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=5
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(f"Firestore composite index missing for posts user_id + created_at in duplicate upload check, falling back to un-ordered query: {query_err}")
+                recent_posts = await db.query_documents(
+                    'posts',
+                    filters=[('user_id', '==', user_id)],
+                    limit=10
+                )
+            else:
+                raise query_err
+
         if recent_posts:
             recent_posts.sort(key=lambda x: x.get('created_at') or datetime(1970, 1, 1), reverse=True)
             for recent in recent_posts[:5]:  # Check the last 5 uploads

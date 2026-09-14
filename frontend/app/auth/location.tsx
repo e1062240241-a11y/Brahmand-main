@@ -166,11 +166,30 @@ export default function LocationSetupScreen() {
     return parts.join(', ');
   };
 
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const fetchSuggestions = async (query: string) => {
-    if (!query || query.length < 3) {
+    if (!query || query.trim().length < 2) {
+      if (searchAbortControllerRef.current) {
+        searchAbortControllerRef.current.abort();
+      }
       setSuggestions([]);
       return;
     }
+
+    if (searchAbortControllerRef.current) {
+      searchAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    searchAbortControllerRef.current = controller;
 
     try {
       const response = await fetch(
@@ -179,10 +198,12 @@ export default function LocationSetupScreen() {
           headers: {
             'User-Agent': 'BrahmandApp/1.0',
           },
+          signal: controller.signal,
         }
       );
+      if (controller.signal.aborted) return;
       const data = await response.json();
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && !controller.signal.aborted) {
         const formatted = data.map((item: any) => ({
           ...item,
           formatted_name: getCleanPlaceName(item),
@@ -196,7 +217,8 @@ export default function LocationSetupScreen() {
         
         setSuggestions(unique.slice(0, 5));
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || controller.signal.aborted) return;
       console.warn('Error fetching place suggestions:', err);
     }
   };

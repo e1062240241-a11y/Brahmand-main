@@ -104,7 +104,8 @@ export function getTrackedBrahmandUrl(
     `utm_content=${placement}`,
     `festival=${slug}`,
   ].join('&');
-  return `https://brahmand.app/join?${params}`;
+  // Both https://brahmand.app/download and /join work; /download is already live with instant Android Play Store auto-redirect
+  return `https://brahmand.app/download?${params}`;
 }
 
 /**
