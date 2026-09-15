@@ -42,3 +42,7 @@
 ## 2026-09-13 - Language-Aware Horoscope Screen & Jyotish AI Tags
 **Learning:** Hardcoded English headers and category badges in astrology screens (like Jyotish/Horoscope) reduce engagement for Hindi users. Localizing section titles ("आपकी राशि क्या है", "ग्रह विश्लेषण"), AI consult prompts ("एआई से राशिफल परामर्श लें"), metrics labels ("वित्त", "प्रेम", "स्वास्थ्य", "कुल प्रभाव"), and modal action CTAs in warm Devanagari Hindi enhances user belonging and habit-building.
 **Action:** Updated `frontend/app/horoscope.tsx` to check `user?.language === 'hi'` and render localized Devanagari Hindi copy across headers, cards, badges, and modals.
+
+## 2026-09-14 - Language-Aware Library Search & Inspiration Polish
+**Learning:** Hardcoded English text in search inputs, headers, quote banners, and section CTAs in discovery screens (like Library) breaks context for non-English users. Conditionally rendering Devanagari Hindi text (`"पुस्तक, लेखक या विषय खोजें..."`, `"सभी देखें ›"`, etc.) based on `useLanguageStore` maintains warm cultural alignment without affecting layout or component interfaces.
+**Action:** Updated `frontend/app/library/index.tsx` header title, search placeholder, quote text, and section CTA to render localized Devanagari Hindi when `language === 'hi'`.
