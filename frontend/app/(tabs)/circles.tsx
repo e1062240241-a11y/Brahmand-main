@@ -124,11 +124,15 @@ export default function CirclesScreen() {
       {circles.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="ellipse-outline" size={64} color={COLORS.textLight} />
-          <Text style={styles.emptyTitle}>{isHindi ? 'अभी कोई सर्कल नहीं' : 'No Circles Yet'}</Text>
+          {/* 🧡 Engagement: Reframed transactional empty state ("No Circles Yet") to devotional Satsang & Mandal framing.
+              Lever: Reframing + Social Proof / Satsang Feeling
+              Why: "मण्डल" (Mandal) and "साझा साधना" (Shared Sadhana) connect deeply with Sanatan spiritual community traditions (Satsang), turning a plain empty screen into a warm invitation for group devotion.
+              UI: Text-only change, zero structural component modifications. */}
+          <Text style={styles.emptyTitle}>{isHindi ? 'अभी कोई मण्डल नहीं ✨' : 'No Circles Yet ✨'}</Text>
           <Text style={styles.emptyText}>
             {isHindi
-              ? 'अपने परिवार, मित्रों या मंदिर समुदाय के लिए एक सर्कल बनाएं 🙏'
-              : 'Create a circle for your family, friends, or temple community'}
+              ? 'अपने परिवार, मित्रों या सत्संग समूह के साथ मण्डल बनाकर साझा साधना शुरू करें 🙏'
+              : 'Create a mandal to share sadhana with your family, friends, or satsang group 🙏'}
           </Text>
         </View>
       ) : (
