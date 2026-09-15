@@ -53,3 +53,6 @@
 ## 2025-02-23 - Avoid new Set() combined with filter for array uniqueness extraction
 **Learning:** Creating intermediate filtered arrays to extract truthy values, passing them to `new Set()` to achieve uniqueness, and finally re-spreading them into an array (e.g., `[...new Set(arr.filter(Boolean))]`) introduces an enormous amount of overhead and memory allocation for simple extraction tasks.
 **Action:** Use a simple `for` loop to manually extract unique and truthy array items if the list doesn't benefit from set theory operations or exceeds nominal lengths.
+## 2025-02-15 - Concurrent Document Mutations
+**Learning:** In backend FastAPI Firestore implementations, batching sequential `db.array_remove_update` or similar document mutations on the *same* document using `asyncio.gather` can lead to destructive race conditions and data loss due to concurrent updates on the identical record. Additionally, using `return_exceptions=True` in concurrent gathers blindly swallows runtime errors, bypassing `try...except` safety blocks.
+**Action:** When optimizing database sequences, keep mutations on identical documents sequential to guarantee consistency. Reserve `asyncio.gather` specifically for concurrent fetch operations (like pulling multiple distinct user documents) where read isolation is safe and N+1 latency can be aggressively eliminated.
