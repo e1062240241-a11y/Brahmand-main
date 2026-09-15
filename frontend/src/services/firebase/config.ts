@@ -37,14 +37,19 @@ function normalizePhone(phone: string): string {
   return digits;
 }
 
+const isProduction = process.env.EXPO_PUBLIC_APP_ENV === 'production';
+
 export const anonymousPhoneNumbers = new Set(
-  anonymousPhoneList
+  isProduction
+    ? []
+    :   anonymousPhoneList
     .split(',')
     .map((item: string) => normalizePhone(item.trim()))
     .filter(Boolean)
 );
 
 export function isAnonymousPhone(phone: string): boolean {
+  if (isProduction) return false;
   return anonymousPhoneNumbers.has(normalizePhone(phone));
 }
 

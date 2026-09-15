@@ -1143,7 +1143,11 @@ async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: d
 
 def _get_configured_firebase_test_numbers() -> List[str]:
     """Read configured Firebase testing numbers from env."""
-    raw_values = ['1234567890']
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    if env != "development":
+        return []
+
+    raw_values = []
     single = os.getenv('FIREBASE_TEST_PHONE_NUMBER', '')
     multiple = os.getenv('FIREBASE_TEST_PHONE_NUMBERS', '')
 
@@ -9465,7 +9469,8 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
         "reason": reason,
     }
 
-    use_mock = os.getenv("USE_MOCK_OTP", "false").lower() == "true" or aadhaar_number.startswith("1234")
+    is_dev = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    use_mock = is_dev and (os.getenv("USE_MOCK_OTP", "false").lower() == "true" or aadhaar_number.startswith("1234"))
     resp_data = {}
     reference_id = None
 
@@ -9543,7 +9548,8 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
     if not otp:
         raise HTTPException(status_code=400, detail="otp is required")
 
-    use_mock = reference_id.startswith("mock_ref_") or os.getenv("USE_MOCK_OTP", "false").lower() == "true"
+    is_dev = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    use_mock = is_dev and (reference_id.startswith("mock_ref_") or os.getenv("USE_MOCK_OTP", "false").lower() == "true")
     resp_data = {"message": "OTP verified successfully (MOCK)"}
 
     if not use_mock:
@@ -13104,7 +13110,8 @@ async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), to
         "reason": reason,
     }
 
-    use_mock = os.getenv("USE_MOCK_OTP", "false").lower() == "true" or aadhaar_number.startswith("1234")
+    is_dev = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    use_mock = is_dev and (os.getenv("USE_MOCK_OTP", "false").lower() == "true" or aadhaar_number.startswith("1234"))
     resp_data = {}
     reference_id = None
 
@@ -13172,7 +13179,8 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
     if not otp:
         raise HTTPException(status_code=400, detail="otp is required")
 
-    use_mock = reference_id.startswith("mock_ref_") or os.getenv("USE_MOCK_OTP", "false").lower() == "true"
+    is_dev = os.getenv("ENVIRONMENT", "development").lower() == "development"
+    use_mock = is_dev and (reference_id.startswith("mock_ref_") or os.getenv("USE_MOCK_OTP", "false").lower() == "true")
     resp_data = {"message": "OTP verified successfully (MOCK)"}
 
     if not use_mock:
