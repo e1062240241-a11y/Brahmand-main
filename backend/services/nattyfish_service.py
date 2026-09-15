@@ -80,7 +80,8 @@ class NattyFishService:
         if not text:
             raise HTTPException(status_code=400, detail="Message text is required")
 
-        use_mock = os.getenv("USE_MOCK_OTP", "false").lower() == "true"
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        use_mock = env == "development" and os.getenv("USE_MOCK_OTP", "false").lower() == "true"
         mobile_10 = _normalize_phone(phone)
         mobile_e164 = _with_country_code(mobile_10)
 

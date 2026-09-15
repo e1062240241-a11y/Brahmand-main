@@ -51,8 +51,18 @@ class FirebaseAuthService:
         raise ValueError("Invalid phone number")
 
     @staticmethod
+    def _is_dev_mock_allowed() -> bool:
+        """Check if development mock OTPs/test phones are permitted in current environment."""
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        use_mock_otp = os.getenv("USE_MOCK_OTP", "false").lower() in ("1", "true", "yes")
+        return env == "development" and use_mock_otp
+
+    @staticmethod
     def get_anonymous_phone_set() -> set[str]:
         """Get predefined anonymous login phone numbers from env."""
+        if not FirebaseAuthService._is_dev_mock_allowed():
+            return set()
+
         if FirebaseAuthService._anonymous_phone_set is not None:
             return FirebaseAuthService._anonymous_phone_set
 
@@ -94,6 +104,8 @@ class FirebaseAuthService:
 
     @staticmethod
     def is_test_phone(normalized_phone: str) -> bool:
+        if not FirebaseAuthService._is_dev_mock_allowed():
+            return False
         digits = normalized_phone.replace("+", "")
         return digits.endswith("1234567890")
 
@@ -304,6 +316,9 @@ class FirebaseAuthService:
         language: str = "English"
     ) -> Dict[str, Any]:
         """Login or register a predefined anonymous user without OTP."""
+        if not FirebaseAuthService._is_dev_mock_allowed():
+            raise ValueError("Anonymous login is disabled in production")
+
         normalized_phone = FirebaseAuthService.normalize_phone(phone)
         if not FirebaseAuthService.is_anonymous_phone(normalized_phone):
             raise ValueError("Phone number is not configured for anonymous login")

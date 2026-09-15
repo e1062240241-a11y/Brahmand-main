@@ -95,12 +95,17 @@ export default function PhoneScreen() {
         return;
       }
 
+      const isProduction = process.env.EXPO_PUBLIC_APP_ENV === 'production';
+      const useMockOTP = process.env.EXPO_PUBLIC_USE_MOCK_OTP === 'true';
+
       const digits = fullPhone.replace(/[^0-9]/g, '');
       const isMockNumber =
-        digits.endsWith('1234567890') ||
-        digits.endsWith('9876543210') ||
-        digits.includes('9999') ||
-        digits.includes('1111');
+        !isProduction &&
+        useMockOTP &&
+        (digits.endsWith('1234567890') ||
+          digits.endsWith('9876543210') ||
+          digits.includes('9999') ||
+          digits.includes('1111'));
 
       if (isMockNumber) {
         console.log('[Phone Auth] Detected mock testing number, using backend OTP service');
