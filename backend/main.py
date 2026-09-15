@@ -686,6 +686,11 @@ async def _create_post_document(
     if not isinstance(user_loc, dict):
         user_loc = {}
 
+    # Extract hashtags from caption for DB-level indexing and search
+    import re as _re
+    _clean_caption = (caption or '').strip()
+    _extracted_hashtags = list(set(_re.findall(r'#(\w+)', _clean_caption.lower())))
+
     post_doc = {
         'user_id': user_id,
         'username': user.get('name') or user.get('sl_id') or 'User',
@@ -694,7 +699,8 @@ async def _create_post_document(
         'media_path': object_path,
         'media_type': media_type,
         'content_type': content_type,
-        'caption': (caption or '').strip(),
+        'caption': _clean_caption,
+        'hashtags': _extracted_hashtags,
         'source': source,
         'filter_name': filter_name,
         'visibility': 'public',
@@ -4804,28 +4810,50 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     user_id = token_data['user_id']
     safe_limit = max(1, min(limit, 100))
     safe_offset = max(0, offset)
-    
+    normalized_hashtag = hashtag.strip().lower().lstrip('#')
+
+    fetch_limit = safe_offset + safe_limit + 10
     try:
-        fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+        # Architectural fix: Perform targeted DB-level query filtering by hashtags array
+        # with created_at DESC ordering instead of fetching 500 un-filtered recent global posts.
+        # This reduces Firestore read operations from O(N_global_recent) to O(limit_hashtag_posts).
         posts = await db.query_documents(
-            'posts', 
-            limit=fetch_count, 
-            order_by='created_at', 
-            order_direction='DESCENDING'
+            'posts',
+            filters=[('hashtags', 'array_contains', normalized_hashtag)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
         )
-    except Exception as e:
-        logger.error("Firestore query error in get_posts_by_hashtag: %s", e)
-        posts = []
-        
-    normalized_hashtag = hashtag.strip().lower()
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for posts hashtags + created_at, falling back to un-ordered hashtags query: {query_err}")
+            try:
+                posts = await db.query_documents(
+                    'posts',
+                    filters=[('hashtags', 'array_contains', normalized_hashtag)],
+                    limit=fetch_limit
+                )
+            except Exception as unorder_err:
+                logger.warning(f"Fallback un-ordered hashtags query failed, using legacy global recent scan: {unorder_err}")
+                posts = await db.query_documents(
+                    'posts',
+                    limit=min(500, max(100, safe_offset + safe_limit + 20)),
+                    order_by='created_at',
+                    order_direction='DESCENDING'
+                )
+        else:
+            logger.error("Firestore query error in get_posts_by_hashtag: %s", query_err)
+            posts = []
 
     def _matches_hashtag(post: dict) -> bool:
+        doc_hashtags = post.get('hashtags')
+        if isinstance(doc_hashtags, list) and normalized_hashtag in doc_hashtags:
+            return True
         caption = (post.get('caption') or '').lower()
         if not caption:
             return False
         if f'#{normalized_hashtag}' in caption:
             return True
-        # also allow search without the leading hash
         return any(
             token.strip('.,!?:;"\'()[]{}') == normalized_hashtag
             for token in caption.split()
