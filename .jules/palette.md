@@ -1,13 +1,3 @@
-## 2024-05-18 - Added accessibility attributes to Switch component
-**Learning:** In React Native, `<Switch>` components do not inherently link to adjacent `<Text>` labels for accessibility (unlike HTML forms). When screen readers interact with a bare `<Switch>`, they only announce "switch" without context.
-**Action:** To ensure screen readers announce them properly, explicitly apply `accessibilityRole="switch"` and a descriptive `accessibilityLabel` to the `<Switch>` element.
-## 2023-10-24 - Missing Accessibility Attributes in Modals
-**Learning:** Complex form modals (like `CreatePostModal`) often lack `accessibilityRole="button"` and `accessibilityLabel` on interactive custom components (like nested `TouchableOpacity` elements for date/time pickers and media selectors). This makes it difficult for screen readers to navigate and understand the available actions.
-**Action:** Always add `accessibilityRole="button"` and descriptive `accessibilityLabel` to any `TouchableOpacity` acting as a functional button (especially icon-only buttons or custom input selectors like Date/Time pickers) to ensure proper screen reader support.
-## $(date +%Y-%m-%d) - SOS Flow Modal Accessibility Improvements
-**Learning:** Found that critical emergency screens like `SOSFlowModal` had nested `TouchableOpacity` elements (such as location pickers, back buttons, and emergency type selections) lacking explicit accessibility attributes and proper `hitSlop` targets. During emergencies, making icon-only targets larger and ensuring screen readers can announce emergency states is paramount. Also learned to ensure plan step grounding explicitly references existing `styles.something` identifiers and to avoid installing missing type definitions during verification (which pollutes the lockfile).
-**Action:** Add `accessibilityRole="button"`, meaningful `accessibilityLabel` strings, and `hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}` to all interactive `TouchableOpacity` components in critical modals. Also ensure `pnpm-lock.yaml` and `package.json` are not inadvertently modified when attempting to satisfy local TS checks.
-
-## 2024-05-18 - Added hitSlop to small icon buttons
-**Learning:** React Native's default touch target for small icon buttons (e.g. `size={18}`) is often too small for accessible tap targets, causing frustration. Adding `hitSlop` is crucial for accessibility without messing up visual layouts.
-**Action:** Always add a `hitSlop` prop (e.g., `{ top: 10, bottom: 10, left: 10, right: 10 }`) to `TouchableOpacity` icon-only buttons that are under 44x44 points.
+## 2026-09-15 - Added missing accessibility labels to FeedItems
+**Learning:** React Native's `TouchableOpacity` does not automatically provide semantic meaning to screen readers if it only contains an icon (like `Ionicons`). For custom feed actions like Call, WhatsApp, Share, and specific state buttons (like 'Mark as Fulfilled' or 'Going'), explicit `accessibilityRole="button"` and `accessibilityLabel` are required to ensure blind/low-vision users can understand the button's purpose without visual context.
+**Action:** When adding new icon-only actionable elements (`TouchableOpacity` or `Pressable`) in feed cards or lists, always verify that `accessibilityRole="button"` and a context-aware `accessibilityLabel` (e.g., "Call organizer") are included.
