@@ -11471,7 +11471,7 @@ async def ask_astrology_question(
 # =================== BLOOD REQUEST OTP ===================
 
 @api_router.post("/blood-request/send-otp")
-async def send_blood_request_otp(request: OTPRequest):
+async def send_blood_request_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
     """
     Send OTP for Blood Request creation.
     Enforces 30 seconds resend cooldown and rate limits.
@@ -11584,7 +11584,7 @@ async def send_blood_request_otp(request: OTPRequest):
 
 
 @api_router.post("/blood-request/verify-otp")
-async def verify_blood_request_otp(request: OTPVerify):
+async def verify_blood_request_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
     """
     Verify OTP for Blood Request creation.
     Enforces maximum 5 attempts and 5 minutes expiry.
