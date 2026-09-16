@@ -21,7 +21,7 @@ LEET_MAP = {
     '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's',
     '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i',
     '+': 't', '#': 'h', '(': 'c', '&': 'a', '9': 'g',
-    '|': 'l', '0': 'o', 'vv': 'w', 'vv': 'w'
+    '|': 'l', 'vv': 'w'
 }
 
 # Hindi offensive words (common Devanagari scripts)
