@@ -46,3 +46,7 @@
 ## 2026-09-14 - Language-Aware Library Search & Inspiration Polish
 **Learning:** Hardcoded English text in search inputs, headers, quote banners, and section CTAs in discovery screens (like Library) breaks context for non-English users. Conditionally rendering Devanagari Hindi text (`"पुस्तक, लेखक या विषय खोजें..."`, `"सभी देखें ›"`, etc.) based on `useLanguageStore` maintains warm cultural alignment without affecting layout or component interfaces.
 **Action:** Updated `frontend/app/library/index.tsx` header title, search placeholder, quote text, and section CTA to render localized Devanagari Hindi when `language === 'hi'`.
+
+## 2026-09-15 - Community Badges Language-Aware Polish & Passport CTA
+**Learning:** Cold developer notes (e.g. "created to avoid unmatched route issues") in secondary community screens alienate users and diminish app quality. Replacing developer text with warm, localized spiritual encouragement ("साधना में निरंतरता बनाए रखें...") and adding a cross-feature CTA button to Brahmand Passport (`/passport`) seamlessly turns an empty state into a retention-driving milestone screen.
+**Action:** Updated `frontend/app/badges.tsx` to conditionally render warm Devanagari Hindi copy (`"सामुदायिक सम्मान एवं बैज"`, `"यहाँ आपकी साधना..."`) and added a cross-feature CTA button linking directly to `/passport`.
