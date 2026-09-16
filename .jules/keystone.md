@@ -44,6 +44,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
+- `/admin/kyc/pending` — unpaginated user query & full scan on vendors collection — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -99,3 +100,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-14 - DB-level Bounded Candidate Sourcing & Offset Pagination for Vendor Discovery
 **Learning:** The `/vendors` endpoint queried `vendors` with fixed limits (defaulting to 50) without `offset` parameters or `created_at` ordering at the database query level. As vendor listings grow at 1 lakh+ scale, clients cannot page past the top candidates, and fetching without DB-level limit bounds risks over-fetching and memory spikes.
 **Action:** Added optional `offset: int = 0` query parameter, capped `safe_limit` (max 100), computed dynamic candidate fetch limit (`fetch_limit = safe_offset + safe_limit * 3 + 20`), ordered candidate queries by `created_at` DESC with composite index fallback, and sliced filtered vendor results using `[safe_offset : safe_offset + safe_limit]`.
+
+## 2026-09-15 - Targeted Vendor Batch Lookup & Bounded Query for Admin KYC Queue
+**Learning:** The `/admin/kyc/pending` endpoint executed an un-indexed full collection scan on the `vendors` collection (`db.query_documents('vendors')`) on every invocation to build a vendor details map in memory. At 1 lakh+ scale, this results in $O(N_{\text{all\_vendors}})$ Firestore document reads per request. Restricting candidate user fetches with DB-level limits (`fetch_limit = offset + limit`) and executing chunked `owner_id in candidate_uids` batch queries reduces vendor reads to $O(N_{\text{page\_users}})$.
+**Action:** Added `limit` (default 50) and `offset` (default 0) query parameters to `get_pending_kyc` in `backend/main.py`, capped user candidate reads at the DB layer, and replaced full `vendors` collection scans with targeted chunked queries filtering `vendors` on `('owner_id', 'in', chunk)` for candidate user IDs.

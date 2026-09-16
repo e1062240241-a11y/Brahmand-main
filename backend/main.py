@@ -9942,7 +9942,12 @@ async def sync_legacy_kyc_data_in_db():
 
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
+async def get_pending_kyc(
+    status: Optional[str] = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
     """Get all users with pending or verified KYC (admin only)"""
     db, _ = await _ensure_admin_user(token_data)
 
@@ -9954,19 +9959,40 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
     elif status == 'all':
         target_statuses = ['pending', 'manual_review', 'verified', 'rejected']
 
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)])
+        # Architectural fix: Limit candidate user fetch at DB level to (offset + limit)
+        # to prevent O(N_all_users) Firestore document reads and memory spikes.
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)], limit=fetch_limit)
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
-        all_users = await db.query_documents('users')
+        all_users = await db.query_documents('users', limit=fetch_limit * 3)
         pending = [
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
 
-    # Fetch vendor map for missing field fill
-    vendors = await db.query_documents('vendors')
-    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
+    # Slice candidates to page range
+    pending = (pending or [])[safe_offset:safe_offset + safe_limit]
+
+    # Architectural fix: Replace full db.query_documents('vendors') scan with targeted
+    # batch queries for candidate user IDs to reduce reads from O(N_all_vendors) to O(N_pending_users).
+    pending_uids = [u.get('id') for u in pending if u and u.get('id')]
+    vendor_by_owner = {}
+    if pending_uids:
+        chunk_size = 30
+        for i in range(0, len(pending_uids), chunk_size):
+            chunk = pending_uids[i:i + chunk_size]
+            try:
+                v_docs = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_docs or []):
+                    if v and v.get('owner_id'):
+                        vendor_by_owner[v['owner_id']] = v
+            except Exception as v_err:
+                logger.warning(f"/admin/kyc/pending vendor lookup failed for chunk: {v_err}")
     
     result = []
     for u in (pending or []):
