@@ -185,7 +185,13 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
                 </View>
               )}
             </View>
-            <TouchableOpacity onPress={() => onDelete(item.id)} style={{ padding: 4 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              onPress={() => onDelete(item.id)}
+              style={{ padding: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Post options"
+            >
               <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
             </TouchableOpacity>
           </View>
@@ -370,12 +376,16 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
             <TouchableOpacity
               style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
               onPress={() => onCall(phone)}
+              accessibilityRole="button"
+              accessibilityLabel="Call organizer"
             >
               <Ionicons name="call" size={18} color="#16A34A" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
               onPress={() => onWhatsApp(phone, item.title)}
+              accessibilityRole="button"
+              accessibilityLabel="WhatsApp organizer"
             >
               <FontAwesome5 name="whatsapp" size={18} color="#059669" />
             </TouchableOpacity>
@@ -385,7 +395,12 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
         <View style={{ flex: 1, marginHorizontal: 8 }}>
           {item.user_id === user?.id || item.sender_id === user?.id ? (
             !isFulfilled && (
-              <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => onResolve(item)}>
+              <TouchableOpacity
+                style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                onPress={() => onResolve(item)}
+                accessibilityRole="button"
+                accessibilityLabel="Mark as Fulfilled"
+              >
                 <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
               </TouchableOpacity>
             )
@@ -398,7 +413,12 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
           ) : null}
         </View>
 
-        <TouchableOpacity style={styles.actionIconBtn} onPress={() => onShare(item)}>
+        <TouchableOpacity
+          style={styles.actionIconBtn}
+          onPress={() => onShare(item)}
+          accessibilityRole="button"
+          accessibilityLabel="Share event"
+        >
           <Ionicons name="share-social-outline" size={18} color="#888" />
         </TouchableOpacity>
       </View>
@@ -526,6 +546,8 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
             <TouchableOpacity
               style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
               onPress={() => onCall(phone)}
+              accessibilityRole="button"
+              accessibilityLabel="Call volunteer"
             >
               <Ionicons name="call" size={18} color="#16A34A" />
             </TouchableOpacity>
@@ -533,6 +555,8 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
             <TouchableOpacity
               style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
               onPress={() => onWhatsApp(phone, item.title || item.content || item.description)}
+              accessibilityRole="button"
+              accessibilityLabel="WhatsApp volunteer"
             >
               <FontAwesome5 name="whatsapp" size={18} color="#059669" />
             </TouchableOpacity>
@@ -542,7 +566,12 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
         <View style={{ flex: 1, marginHorizontal: 8 }}>
           {item.user_id === user?.id || item.sender_id === user?.id ? (
             !isFulfilled && (
-              <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => onResolve(item)}>
+              <TouchableOpacity
+                style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                onPress={() => onResolve(item)}
+                accessibilityRole="button"
+                accessibilityLabel="Mark as Fulfilled"
+              >
                 <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
               </TouchableOpacity>
             )
@@ -555,7 +584,12 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
           ) : null}
         </View>
 
-        <TouchableOpacity style={styles.actionIconBtn} onPress={() => onShare(item)}>
+        <TouchableOpacity
+          style={styles.actionIconBtn}
+          onPress={() => onShare(item)}
+          accessibilityRole="button"
+          accessibilityLabel="Share Seva"
+        >
           <Ionicons name="share-social-outline" size={18} color="#888" />
         </TouchableOpacity>
       </View>
@@ -706,12 +740,16 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
               <TouchableOpacity
                 style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
                 onPress={() => onCall(phone)}
+                accessibilityRole="button"
+                accessibilityLabel="Call requester"
               >
                 <Ionicons name="call" size={18} color="#16A34A" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
                 onPress={() => onWhatsApp(phone, item.title || item.content)}
+                accessibilityRole="button"
+                accessibilityLabel="WhatsApp requester"
               >
                 <FontAwesome5 name="whatsapp" size={18} color="#059669" />
               </TouchableOpacity>
@@ -721,7 +759,12 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
               !isFulfilled && (
-                <TouchableOpacity style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]} onPress={() => onResolve(item)}>
+                <TouchableOpacity
+                  style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                  onPress={() => onResolve(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mark as Fulfilled"
+                >
                   <Text style={styles.helpBtnText}>Mark as Fulfilled</Text>
                 </TouchableOpacity>
               )
@@ -739,6 +782,8 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
                     <TouchableOpacity
                       onPress={() => onToggleInterest(item)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: interest.userInterested ? '#D1FAE5' : '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: interest.userInterested ? '#059669' : '#BBF7D0' }}
+                      accessibilityRole="button"
+                      accessibilityLabel={interest.userInterested ? (isLostFound ? 'Found' : 'Going') : (isLostFound ? 'Mark as found' : 'Mark as going')}
                     >
                       <Ionicons name="checkmark" size={16} color={interest.userInterested ? '#059669' : '#34D399'} />
                       <Text style={{ fontSize: 12, fontWeight: '700', color: interest.userInterested ? '#059669' : '#34D399' }}>
@@ -749,6 +794,8 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
                       <TouchableOpacity
                         style={{ backgroundColor: '#FEF2F2', padding: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FECACA' }}
                         onPress={() => {}}
+                        accessibilityRole="button"
+                        accessibilityLabel="Not going"
                       >
                         <Ionicons name="close" size={16} color="#EF4444" />
                       </TouchableOpacity>
@@ -765,7 +812,12 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
             ) : null}
           </View>
 
-          <TouchableOpacity style={styles.actionIconBtn} onPress={() => onShare(item)}>
+          <TouchableOpacity
+            style={styles.actionIconBtn}
+            onPress={() => onShare(item)}
+            accessibilityRole="button"
+            accessibilityLabel="Share request"
+          >
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
         </View>
