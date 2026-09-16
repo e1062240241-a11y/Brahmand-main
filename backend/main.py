@@ -2903,14 +2903,18 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
         # Remove current user from target's following
         await db.array_remove_update('users', user_id, 'following', [current_user_id])
         
+        # ⚡ Bolt Optimization: Concurrently fetch documents for count updates
+        u1, u2 = await asyncio.gather(
+            db.get_document('users', current_user_id),
+            db.get_document('users', user_id)
+        )
+
         # Update counts
-        u1 = await db.get_document('users', current_user_id)
         if u1:
             await db.update_document('users', current_user_id, {
                 'followers_count': len(u1.get('followers', []) or []),
                 'following_count': len(u1.get('following', []) or [])
             })
-        u2 = await db.get_document('users', user_id)
         if u2:
             await db.update_document('users', user_id, {
                 'followers_count': len(u2.get('followers', []) or []),
