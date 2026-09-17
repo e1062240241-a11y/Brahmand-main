@@ -50,3 +50,7 @@
 ## 2026-09-15 - Community Badges Language-Aware Polish & Passport CTA
 **Learning:** Cold developer notes (e.g. "created to avoid unmatched route issues") in secondary community screens alienate users and diminish app quality. Replacing developer text with warm, localized spiritual encouragement ("साधना में निरंतरता बनाए रखें...") and adding a cross-feature CTA button to Brahmand Passport (`/passport`) seamlessly turns an empty state into a retention-driving milestone screen.
 **Action:** Updated `frontend/app/badges.tsx` to conditionally render warm Devanagari Hindi copy (`"सामुदायिक सम्मान एवं बैज"`, `"यहाँ आपकी साधना..."`) and added a cross-feature CTA button linking directly to `/passport`.
+
+## 2026-09-16 - Active Community Requests List Language-Aware Empty State
+**Learning:** Hardcoded English empty state text in mutual aid and community help screens ("No Requests Found") feels impersonal and transactional to Hindi users. Conditionally displaying warm Devanagari Hindi copy ("कोई सहायता अनुरोध उपलब्ध नहीं है ✨", "सहायता अनुरोध पोस्ट करें 🙏") based on `useLanguageStore` encourages active community participation and mutual support.
+**Action:** Updated `frontend/app/community-request/list.tsx` to conditionally render polite Devanagari Hindi titles, subtitles, and CTA buttons when `language === 'hi'`.
