@@ -1,3 +1,7 @@
 ## 2026-09-15 - Added missing accessibility labels to FeedItems
 **Learning:** React Native's `TouchableOpacity` does not automatically provide semantic meaning to screen readers if it only contains an icon (like `Ionicons`). For custom feed actions like Call, WhatsApp, Share, and specific state buttons (like 'Mark as Fulfilled' or 'Going'), explicit `accessibilityRole="button"` and `accessibilityLabel` are required to ensure blind/low-vision users can understand the button's purpose without visual context.
 **Action:** When adding new icon-only actionable elements (`TouchableOpacity` or `Pressable`) in feed cards or lists, always verify that `accessibilityRole="button"` and a context-aware `accessibilityLabel` (e.g., "Call organizer") are included.
+
+## 2026-09-17 - Added missing accessibility labels to DarshanAartiSchedule elements
+**Learning:** Complex interactive elements like schedule cards (`AartiRow` and `HeroTimingCard`) wrapped in `Pressable` require explicit accessibility roles and aggregated labels to prevent screen readers from awkwardly reading out individual, disjointed child `<Text>` nodes. Setting an `accessibilityLabel` that combines variables (e.g. `Opening Time ${openingTime}, Closing Time ${closingTime}`) creates a much smoother experience.
+**Action:** When using a `Pressable` block to wrap a grouped UI element containing multiple data points, use a comprehensive `accessibilityLabel` at the root wrapper to provide a unified summary to screen reader users instead of relying on default child traversal.

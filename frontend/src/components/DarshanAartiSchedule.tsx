@@ -58,6 +58,8 @@ const AartiRow: React.FC<{
   return (
     <Animated.View entering={FadeInRight.delay(100 + index * 80).duration(400)}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Aarti ${item.name} at ${item.time}`}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={({ pressed }) => [
@@ -118,7 +120,12 @@ const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = (
 
   return (
     <Animated.View entering={FadeInDown.duration(450)}>
-      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Opening Time ${openingTime}, Closing Time ${closingTime}`}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
         <Animated.View style={[styles.timingsCard, animatedCardStyle]}>
           <View style={styles.timingItem}>
             <View style={[styles.timingIconWrap, { backgroundColor: '#FEF3C7' }]}>
