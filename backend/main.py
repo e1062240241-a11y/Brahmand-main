@@ -5597,13 +5597,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         await db.update_user(target_user_id, user_updates)
         await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
         
-        # Grant Community Access
-        user = await db.get_document('users', target_user_id)
-        if not user:
-             return {"status": "error", "message": "User document not found"}
-             
-        loc = user.get('location') or user.get('home_location')
-        
+        # ⚡ Bolt Optimization: Removed redundant sequential db.get_document fetch
         # Grant Community Access
         user = await db.get_document('users', target_user_id)
         if not user:
