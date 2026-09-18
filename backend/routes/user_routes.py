@@ -97,18 +97,6 @@ async def setup_dual_location(
         raise HTTPException(status_code=400, detail="Validation error")
 
 
-@router.get("/search/{sl_id}")
-async def search_user_by_sl_id(
-    sl_id: str,
-    token_data: dict = Depends(verify_token)
-):
-    """Search for a user by their Sanatan Lok ID"""
-    try:
-        return await UserService.search_by_sl_id(sl_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Resource not found")
-
-
 @router.get("/verification-status")
 async def get_verification_status(token_data: dict = Depends(verify_token)):
     """Get user's verification status"""
@@ -136,15 +124,6 @@ async def request_verification(
 async def get_profile_completion(token_data: dict = Depends(verify_token)):
     """Get profile completion percentage"""
     return await UserService.get_profile_completion(token_data["user_id"])
-
-
-@router.get("/horoscope")
-async def get_horoscope(token_data: dict = Depends(verify_token)):
-    """Get user's horoscope (if birth details are complete)"""
-    try:
-        return await UserService.get_horoscope(token_data["user_id"])
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Validation error")
 
 
 @router.post("/personality-verification")

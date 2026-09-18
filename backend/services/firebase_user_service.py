@@ -74,24 +74,6 @@ class FirebaseUserService:
         return await FirebaseUserService.get_profile(user_id)
     
     @staticmethod
-    async def search_by_sl_id(sl_id: str) -> Dict[str, Any]:
-        """Search user by SL ID"""
-        db = await FirebaseUserService.get_db()
-        user = await db.get_user_by_sl_id(sl_id)
-        if not user:
-            raise ValueError("User not found")
-        
-        return {
-            "id": user.get("id"),
-            "sl_id": user["sl_id"],
-            "name": user["name"],
-            "photo": user.get("photo"),
-            "badges": user.get("badges", []),
-            "is_verified": user.get("is_verified", False),
-            "verification_level": user.get("verification_level", "state")
-        }
-    
-    @staticmethod
     async def get_all_users(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """Get all registered users (for private chat user list)"""
         db = await FirebaseUserService.get_db()
@@ -331,44 +313,6 @@ class FirebaseUserService:
             "missing_fields": [f for f in fields if not user.get(f)]
         }
     
-    @staticmethod
-    async def get_horoscope(user_id: str) -> Dict[str, Any]:
-        """Get horoscope"""
-        user = await FirebaseUserService.get_profile(user_id)
-        
-        birth_fields = ["date_of_birth", "place_of_birth", "time_of_birth"]
-        if not all(user.get(f) for f in birth_fields):
-            raise ValueError("Complete birth details to view horoscope")
-        
-        dob = user.get("date_of_birth", "2000-01-01")
-        month = int(dob.split("-")[1]) if dob else 1
-        
-        zodiac_signs = [
-            "Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini",
-            "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"
-        ]
-        zodiac = zodiac_signs[(month - 1) % 12]
-        
-        daily_insights = [
-            "Today is favorable for spiritual activities and prayers.",
-            "Financial matters will improve. Focus on savings.",
-            "Health needs attention. Practice yoga and meditation.",
-            "Relationships will strengthen. Spend time with family.",
-            "Career growth is indicated. Take on new responsibilities.",
-            "Travel may bring new opportunities. Stay positive."
-        ]
-        
-        day_of_year = datetime.utcnow().timetuple().tm_yday
-        
-        return {
-            "zodiac_sign": zodiac,
-            "rashi": zodiac,
-            "daily_horoscope": daily_insights[day_of_year % len(daily_insights)],
-            "lucky_color": ["Orange", "White", "Yellow", "Red", "Green"][day_of_year % 5],
-            "lucky_number": (day_of_year % 9) + 1,
-            "auspicious_time": "10:30 AM - 12:00 PM"
-        }
-
     @staticmethod
     async def submit_personality_verification(user_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Submit personality verification details and documents"""
