@@ -137,7 +137,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <>
             <View style={styles.header}>
               <Text style={styles.title}>Report</Text>
-              <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report" accessibilityRole="button">
+              <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report" accessibilityRole="button" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>

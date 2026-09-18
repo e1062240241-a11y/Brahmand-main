@@ -214,22 +214,26 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
     const hindiDayLabels = ['सो', 'मं', 'बु', 'गु', 'शु', 'श', 'र'];
 
     // Status Chip Text & Styling
-    // 🪔 Diya only reflects lit state when todayCount > 0 or completed
+    // 🧡 Engagement: Reframed transactional status chip text into devotional Sanskara (संस्कार) and Zeigarnik proximity copy.
+    // Lever: Reframing + Proximity to Completion + Sanskara/Habit
+    // Why: "आज का साधना दीप जलाएं 🪔" frames lighting the daily diya as a sacred daily ritual (संस्कार) rather than a task.
+    //      "🪔 बस ${remaining} जाप और" emphasizes closeness to completing the daily mala, urging immediate completion.
+    // UI: Text-only change, zero structural or visual component modifications.
     let statusChipText = '';
     let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
 
     if (isTodayCompleted) {
       statusChipType = 'complete';
-      statusChipText = isHindi ? '✨ दीप प्रज्वलित' : '✨ Diya Lit';
+      statusChipText = isHindi ? '✨ साधना दीप प्रज्वलित 🙏' : '✨ Sadhana Diya Lit 🙏';
     } else if (todayCount > 0) {
       statusChipType = 'in_progress';
       const remaining = Math.max(0, 108 - todayCount);
       statusChipText = isHindi
-        ? `🪔 ${remaining} शेष`
-        : `🪔 ${remaining} left`;
+        ? `🪔 बस ${remaining} जाप और`
+        : `🪔 Just ${remaining} More Chants`;
     } else {
       statusChipType = 'unlit';
-      statusChipText = isHindi ? 'दीप प्रज्वलित करें 🙏' : 'Light Diya Today 🙏';
+      statusChipText = isHindi ? 'आज का साधना दीप जलाएं 🪔' : 'Light Today\'s Sadhana Diya 🪔';
     }
 
     if (isDismissed) {
@@ -288,11 +292,11 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
                   <Text style={styles.streakTitleText}>
                     {currentStreak > 0
                       ? isHindi
-                        ? `${currentStreak} दिवसीय संकल्प`
-                        : `Sadhana Sankalpa: ${currentStreak} Days`
+                        ? `${currentStreak} दिवसीय साधना संकल्प 🚩`
+                        : `${currentStreak}-Day Sadhana Sankalpa 🚩`
                       : isHindi
-                      ? 'साधना संकल्प'
-                      : 'Sadhana Sankalpa'}
+                      ? 'साधना संकल्प 🚩'
+                      : 'Sadhana Sankalpa 🚩'}
                   </Text>
                 </View>
 

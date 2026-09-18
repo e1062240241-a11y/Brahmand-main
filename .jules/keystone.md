@@ -44,6 +44,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
+- `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -103,3 +104,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-15 - DB-level `array_contains` Indexing & Querying for Hashtag Posts
 **Learning:** `GET /posts/hashtag` fetched 500 recent global posts into memory before filtering by caption in Python. At 1 lakh+ users, this caused $O(N_{\text{global\_recent}})$ reads per query while missing hashtag posts beyond the top 500 global window. Storing a normalized `hashtags` array on post creation and using Firestore `filters=[('hashtags', 'array_contains', normalized_hashtag)]` ordered by `created_at` DESC bounds database reads to $O(\text{limit})$, preventing global scans.
 **Action:** Updated `_create_post_document` in `backend/main.py` to extract and store `hashtags` arrays from captions, and refactored `get_posts_by_hashtag` to query `hashtags` directly at the DB layer with composite index exception fallback.
+
+## 2026-09-16 - Offset-based pagination & chunked vendor lookups for admin KYC pending requests
+**Learning:** `GET /admin/kyc/pending` previously executed `db.query_documents('vendors')` without filters or limits, fetching all vendor documents across the platform into memory ($O(N_{\text{vendors}})$ reads). Combined with unpaginated user queries for candidate KYC statuses, this endpoint risked memory exhaustion and slow response times as user and vendor numbers grew.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) parameters to `GET /admin/kyc/pending`, applied `limit=fetch_limit` to user document queries, and replaced the global `vendors` scan with chunked queries (`filters=[('owner_id', 'in', chunk)]`) targeted specifically to candidate user UIDs.

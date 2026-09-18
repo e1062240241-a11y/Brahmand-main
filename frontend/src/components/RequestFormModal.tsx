@@ -721,6 +721,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               onPress={onClose}
               style={({ pressed }) => [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <Ionicons name="chevron-back" size={28} color={COLORS.text} />
             </Pressable>
