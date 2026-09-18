@@ -1843,7 +1843,15 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")
 
-    if username.lower() != expected_username.lower() or password != expected_password:
+    import secrets
+
+    # encode to bytes to handle non-ascii characters without crashing compare_digest
+    user_bytes = username.lower().encode('utf-8')
+    exp_user_bytes = expected_username.lower().encode('utf-8')
+    pass_bytes = password.encode('utf-8')
+    exp_pass_bytes = expected_password.encode('utf-8')
+
+    if not secrets.compare_digest(user_bytes, exp_user_bytes) or not secrets.compare_digest(pass_bytes, exp_pass_bytes):
         logger.warning(f"Admin login attempt failed for username: '{username}' (expected: '{expected_username}')")
         raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
