@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { 
-  ScrollView, 
   TouchableOpacity, 
-  Image, 
   Text, 
   StyleSheet, 
   Platform, 
@@ -14,8 +12,12 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 
+interface CategoryAssetSource {
+  uri: string;
+}
+
 // Map of category names to their respective local assets
-const CATEGORY_IMAGES: Record<string, any> = {
+const CATEGORY_IMAGES: Record<string, CategoryAssetSource> = {
   gym: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/gym.webp' },
   travel: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/travel.webp' },
   catering: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/halvai.webp' },
@@ -39,7 +41,11 @@ const CATEGORY_IMAGES: Record<string, any> = {
   hammer: { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/hammer_custom.webp' },
 };
 
-const getCategoryIconSource = (category: string) => {
+const DEFAULT_FALLBACK_IMAGE: CategoryAssetSource = {
+  uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Decorator.webp',
+};
+
+const getCategoryIconSource = (category: string): CategoryAssetSource => {
   const normalized = category.toLowerCase().trim();
   if (CATEGORY_IMAGES[normalized]) {
     return CATEGORY_IMAGES[normalized];
@@ -51,7 +57,7 @@ const getCategoryIconSource = (category: string) => {
     }
   }
   // Default fallback image
-  return { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Decorator.webp' };
+  return DEFAULT_FALLBACK_IMAGE;
 };
 
 export interface VendorCategoriesProps {
@@ -66,12 +72,77 @@ export interface VendorCategoriesProps {
   imageSize?: number;
 }
 
-export const VendorCategories: React.FC<VendorCategoriesProps> = ({
-  categories = ['GYM', 'Travel', 'Catering', 'Beauty', 'Decorator'],
+interface CategoryItemProps {
+  category: string;
+  isActive: boolean;
+  imageSize: number;
+  itemStyle?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  onPress: (category: string) => void;
+}
+
+// Varnish fix: Extract memoized CategoryItem to eliminate inline function closures and style object creations during render pass
+const CategoryItem = React.memo<CategoryItemProps>(({
+  category,
+  isActive,
+  imageSize,
+  itemStyle,
+  textStyle,
+  onPress,
+}) => {
+  const finalImageSize = Platform.OS === 'android' ? 26 : imageSize;
+  const imageStyle = useMemo(
+    () => ({ width: finalImageSize, height: finalImageSize }),
+    [finalImageSize]
+  );
+
+  const handlePress = useCallback(() => {
+    onPress(category);
+  }, [category, onPress]);
+
+  const source = useMemo(() => getCategoryIconSource(category), [category]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[
+        styles.categoryItem,
+        isActive && styles.activeItem,
+        itemStyle,
+      ]}
+      onPress={handlePress}
+    >
+      <View style={[styles.iconCircle, isActive && styles.activeIconCircle]}>
+        <ExpoImage
+          source={source}
+          style={imageStyle}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+      </View>
+      <Text
+        style={[
+          styles.categoryText,
+          isActive && styles.activeText,
+          textStyle,
+        ]}
+        numberOfLines={1}
+      >
+        {category}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+CategoryItem.displayName = 'CategoryItem';
+
+const DEFAULT_CATEGORIES = ['GYM', 'Travel', 'Catering', 'Beauty', 'Decorator'];
+
+// Varnish fix: Wrap component with React.memo and prevent random reshuffling on parent render passes
+export const VendorCategories = React.memo<VendorCategoriesProps>(({
+  categories = DEFAULT_CATEGORIES,
   activeCategory,
   onCategoryPress,
   horizontal = true,
-  tintColor = '#F26522',
   containerStyle,
   itemStyle,
   textStyle,
@@ -79,78 +150,45 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 }) => {
   const router = useRouter();
 
-  // Shuffle categories once on mount to keep order stable per session/mount lifecycle
-  const [shuffledCategories] = React.useState(() => {
+  // Stable category key ensures list is only reshuffled when item contents actually change, preserving order stability across parent re-renders
+  const categoriesKey = categories.join(',');
+  const shuffledCategories = useMemo(() => {
     const list = [...categories];
     for (let i = list.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [list[i], list[j]] = [list[j], list[i]];
     }
     return list;
-  });
+  }, [categoriesKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handlePress = (category: string) => {
+  const handlePress = useCallback((category: string) => {
     if (onCategoryPress) {
       onCategoryPress(category);
     } else {
       router.push(`/vendor/category/${category}` as any);
     }
-  };
-
-  const renderItem = (category: string, index: number) => {
-    const isActive = activeCategory?.toLowerCase() === category.toLowerCase();
-    const finalImageSize = Platform.OS === 'android' ? 26 : imageSize;
-    
-    return (
-      <TouchableOpacity
-        key={`${category}-${index}`}
-        activeOpacity={0.8}
-        style={[
-          styles.categoryItem,
-          isActive && styles.activeItem,
-          itemStyle
-        ]}
-        onPress={() => handlePress(category)}
-      >
-        <View style={[styles.iconCircle, isActive && styles.activeIconCircle]}>
-          <ExpoImage
-            source={getCategoryIconSource(category)}
-            style={[
-              { width: finalImageSize, height: finalImageSize },
-              styles.image
-            ]}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-          />
-        </View>
-        <Text 
-          style={[
-            styles.categoryText,
-            isActive && styles.activeText,
-            textStyle
-          ]}
-          numberOfLines={1}
-        >
-          {category}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  if (horizontal) {
-    return (
-      <View style={[styles.horizontalContainer, containerStyle]}>
-        {shuffledCategories.map((cat, i) => renderItem(cat, i))}
-      </View>
-    );
-  }
+  }, [onCategoryPress, router]);
 
   return (
-    <View style={[styles.gridContainer, containerStyle]}>
-      {shuffledCategories.map((cat, i) => renderItem(cat, i))}
+    <View style={[horizontal ? styles.horizontalContainer : styles.gridContainer, containerStyle]}>
+      {shuffledCategories.map((cat, i) => {
+        const isActive = activeCategory?.toLowerCase() === cat.toLowerCase();
+        return (
+          <CategoryItem
+            key={`${cat}-${i}`}
+            category={cat}
+            isActive={isActive}
+            imageSize={imageSize}
+            itemStyle={itemStyle}
+            textStyle={textStyle}
+            onPress={handlePress}
+          />
+        );
+      })}
     </View>
   );
-};
+});
+VendorCategories.displayName = 'VendorCategories';
 
 const styles = StyleSheet.create({
   horizontalContainer: {
@@ -194,9 +232,6 @@ const styles = StyleSheet.create({
   activeIconCircle: {
     backgroundColor: '#FF6B00',
     borderColor: '#FF6B00',
-  },
-  image: {
-    // Standard constraints
   },
   categoryText: {
     fontSize: 11,
