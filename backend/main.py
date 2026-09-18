@@ -9412,6 +9412,7 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
         if v_list:
             vendor_id = v_list[0]['id']
             
+    vendor = None
     if vendor_id:
         vendor = await db.get_document('vendors', vendor_id)
         if vendor:
@@ -9424,10 +9425,8 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
                 await db.update_document('vendors', vendor_id, {'kyc_status': 'verified'})
 
     kyc_phone = user.get('kyc_verified_phone') or user.get('phone') or user.get('phone_number')
-    if not kyc_phone and vendor_id:
-        vendor = await db.get_document('vendors', vendor_id)
-        if vendor:
-            kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
+    if not kyc_phone and vendor_id and vendor:
+        kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
 
     return {
         "kyc_status": kyc_status,  # pending/verified/rejected
