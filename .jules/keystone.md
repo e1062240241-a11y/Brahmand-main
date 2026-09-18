@@ -44,6 +44,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
+- `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -103,3 +104,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-15 - DB-level `array_contains` Indexing & Querying for Hashtag Posts
 **Learning:** `GET /posts/hashtag` fetched 500 recent global posts into memory before filtering by caption in Python. At 1 lakh+ users, this caused $O(N_{\text{global\_recent}})$ reads per query while missing hashtag posts beyond the top 500 global window. Storing a normalized `hashtags` array on post creation and using Firestore `filters=[('hashtags', 'array_contains', normalized_hashtag)]` ordered by `created_at` DESC bounds database reads to $O(\text{limit})$, preventing global scans.
 **Action:** Updated `_create_post_document` in `backend/main.py` to extract and store `hashtags` arrays from captions, and refactored `get_posts_by_hashtag` to query `hashtags` directly at the DB layer with composite index exception fallback.
+
+## 2026-09-16 - Offset Pagination & Targeted Vendor Chunk Queries for Admin KYC Pending Endpoint
+**Learning:** `GET /admin/kyc/pending` performed an unpaginated query on `users` and scanned the entire `vendors` collection (`db.query_documents('vendors')`) to merge vendor details for pending user KYC reviews. At 1 lakh+ users / thousands of vendors, downloading all vendor documents on every admin review call causes $O(N_{\text{all\_vendors}})$ Firestore reads and high memory consumption.
+**Action:** Added `limit` and `offset` pagination parameters to `GET /admin/kyc/pending`, bounded candidate user queries at the database layer, and replaced full vendor collection downloads with targeted chunked queries (`filters=[('owner_id', 'in', chunk)]`) for only the candidate user IDs on the active page.
