@@ -5,6 +5,9 @@ import {
   TouchableOpacity,
   Platform,
   StyleSheet,
+  StyleProp,
+  ViewStyle,
+  ImageStyle,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
@@ -15,9 +18,14 @@ import { getFestivalImage } from '../../constants/festivalImages';
 import { FONTS } from '../../constants/theme';
 
 export interface CommunityMediaItemProps {
-  media: string | any;
-  style: any;
-  onPress?: () => void;
+  /**
+   * 🎨 Varnish Optimization:
+   * Proper typing for media object/string and style prop to avoid `any`.
+   * Static container style in StyleSheet eliminates array allocation during render.
+   */
+  media: string | { uri?: string; type?: string; media_type?: string; mediaType?: string } | null;
+  style?: StyleProp<ImageStyle | ViewStyle>;
+  onPress?: (dimensions?: { x: number; y: number; width: number; height: number } | null) => void;
   isActive?: boolean;
 }
 
@@ -61,7 +69,7 @@ export const CommunityMediaItem = React.memo(({
 
   if (isVideo) {
     return (
-      <Wrapper ref={ref} {...wrapperProps} style={[{ backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }, style]}>
+      <Wrapper ref={ref} {...wrapperProps} style={[feedItemStyles.videoContainer, style]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
       </Wrapper>
     );
@@ -860,5 +868,10 @@ const feedItemStyles = StyleSheet.create({
     width: '100%',
     height: 220,
     borderRadius: 16,
+  },
+  videoContainer: {
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

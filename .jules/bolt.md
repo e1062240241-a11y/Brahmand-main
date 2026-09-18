@@ -56,7 +56,6 @@
 ## 2025-02-15 - Concurrent Document Mutations
 **Learning:** In backend FastAPI Firestore implementations, batching sequential `db.array_remove_update` or similar document mutations on the *same* document using `asyncio.gather` can lead to destructive race conditions and data loss due to concurrent updates on the identical record. Additionally, using `return_exceptions=True` in concurrent gathers blindly swallows runtime errors, bypassing `try...except` safety blocks.
 **Action:** When optimizing database sequences, keep mutations on identical documents sequential to guarantee consistency. Reserve `asyncio.gather` specifically for concurrent fetch operations (like pulling multiple distinct user documents) where read isolation is safe and N+1 latency can be aggressively eliminated.
-
-## 2025-02-23 - Phased Batch Mutation with asyncio.gather
-**Learning:** While concurrent mutations on the *same* document cause race conditions, mutations on *different* documents can be safely executed concurrently using `asyncio.gather`. In situations where reciprocal actions update two different documents symmetrically (e.g. removing mutual follow edges where A updates B's followers and B updates A's following), grouping these distinct document updates into phased `asyncio.gather` blocks safely eliminates sequential network latency.
-**Action:** Use phased `asyncio.gather` blocks to group independent document mutations, ensuring no single block targets the exact same document ID twice.
+## 2025-02-23 - Avoid sequential identical database queries
+**Learning:** In long endpoint handlers (like `update_user_verification`), duplicated code blocks from merges or refactors can introduce completely redundant sequential database fetches (`db.get_document` for the exact same document ID), causing unnecessary network roundtrips and latency.
+**Action:** When removing duplicate blocks, always ensure you preserve any critical variable assignments (like `loc = user.get(...)`) from the removed section in the remaining section to prevent `NameError` regressions, and add a comment indicating the optimization.

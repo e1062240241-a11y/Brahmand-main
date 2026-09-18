@@ -1,18 +1,18 @@
 """Helper utilities"""
-import random
+import secrets
 import string
 from typing import Optional, Tuple, Dict, Any
 
 
 def generate_sl_id() -> str:
     """Generate unique Sanatan Lok ID"""
-    return f"SL-{random.randint(100000, 999999)}"
+    return f"SL-{secrets.randbelow(900000) + 100000}"
 
 
 def generate_circle_code(name: str) -> str:
     """Generate circle code from name"""
     clean_name = ''.join(c for c in name.upper() if c.isalnum())[:6]
-    random_suffix = ''.join(random.choices(string.digits, k=3))
+    random_suffix = ''.join(secrets.choice(string.digits) for _ in range(3))
     return f"{clean_name}{random_suffix}"
 
 
@@ -24,7 +24,7 @@ def generate_community_code(name: str) -> str:
 
 def generate_temple_id() -> str:
     """Generate unique Temple ID"""
-    return f"TPL-{random.randint(1000, 9999)}"
+    return f"TPL-{secrets.randbelow(9000) + 1000}"
 
 
 def serialize_doc(doc: Optional[Dict]) -> Optional[Dict]:
