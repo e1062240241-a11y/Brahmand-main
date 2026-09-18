@@ -970,6 +970,7 @@ export const UploadPostModal = ({
               style={styles.iconBtn}
               accessibilityLabel="Close modal"
               accessibilityRole="button"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <MaterialIcons name="close" size={28} color={COLORS.text} />
             </TouchableOpacity>
