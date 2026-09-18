@@ -1843,7 +1843,15 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")
 
-    if username.lower() != expected_username.lower() or password != expected_password:
+    import secrets
+
+    # encode to bytes to handle non-ascii characters without crashing compare_digest
+    user_bytes = username.lower().encode('utf-8')
+    exp_user_bytes = expected_username.lower().encode('utf-8')
+    pass_bytes = password.encode('utf-8')
+    exp_pass_bytes = expected_password.encode('utf-8')
+
+    if not secrets.compare_digest(user_bytes, exp_user_bytes) or not secrets.compare_digest(pass_bytes, exp_pass_bytes):
         logger.warning(f"Admin login attempt failed for username: '{username}' (expected: '{expected_username}')")
         raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
@@ -2896,12 +2904,15 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
         # ⚡ Bolt Optimization: Use phased asyncio.gather to concurrently remove cross-references
         # on distinct documents, avoiding same-document race conditions while reducing sequential latency.
         # Phase 1: Mutate target user's followers and current user's following
+        # ⚡ Bolt Optimization: Concurrently remove follow relationships safely in phases
+        # Phase 1: Modify target user's followers and current user's following
         await asyncio.gather(
             db.array_remove_update('users', user_id, 'followers', [current_user_id]),
             db.array_remove_update('users', current_user_id, 'following', [user_id])
         )
         
         # Phase 2: Mutate current user's followers and target user's following
+        # Phase 2: Modify current user's followers and target user's following
         await asyncio.gather(
             db.array_remove_update('users', current_user_id, 'followers', [user_id]),
             db.array_remove_update('users', user_id, 'following', [current_user_id])
@@ -5601,13 +5612,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         await db.update_user(target_user_id, user_updates)
         await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
         
-        # Grant Community Access
-        user = await db.get_document('users', target_user_id)
-        if not user:
-             return {"status": "error", "message": "User document not found"}
-             
-        loc = user.get('location') or user.get('home_location')
-        
+        # ⚡ Bolt Optimization: Removed redundant sequential db.get_document fetch
         # Grant Community Access
         user = await db.get_document('users', target_user_id)
         if not user:
@@ -7276,10 +7281,28 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     # Build complete members_details array for frontend
     members_details = []
     
-    # 1. Fetch owner
     owner_id = comm.get('owner_id')
+    admin_ids = comm.get('admin_ids', [])
+    member_ids = comm.get('members', comm.get('member_ids', []))
+
+    # ⚡ Bolt Optimization: Batch fetch all community participants (owner, admins, members)
+    # concurrently instead of sequential db.get_document/db.get_documents_batch calls to reduce latency.
+    all_member_ids = set()
     if owner_id:
-        owner = await db.get_document('users', owner_id)
+        all_member_ids.add(owner_id)
+    if admin_ids:
+        all_member_ids.update(admin_ids)
+    if member_ids:
+        all_member_ids.update(member_ids)
+
+    user_map = {}
+    if all_member_ids:
+        all_users = await db.get_documents_batch('users', list(all_member_ids))
+        user_map = {u['id']: u for u in all_users if u and 'id' in u}
+
+    # 1. Process owner
+    if owner_id:
+        owner = user_map.get(owner_id)
         if owner:
             comm['owner_name'] = owner.get('name', 'Community Owner')
             members_details.append({
@@ -7289,14 +7312,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                 'role': 'Owner'
             })
             
-    # 2. Fetch admins
-    admin_ids = comm.get('admin_ids', [])
+    # 2. Process admins
     if admin_ids:
-        admins = await db.get_documents_batch('users', admin_ids)
-        admin_map = {a['id']: a for a in admins if a and 'id' in a}
         comm['admin_names'] = []
         for aid in admin_ids:
-            admin_doc = admin_map.get(aid)
+            admin_doc = user_map.get(aid)
             if admin_doc:
                 comm['admin_names'].append(admin_doc.get('name', 'Admin'))
                 members_details.append({
@@ -7306,14 +7326,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                     'role': 'Admin'
                 })
                 
-    # 3. Fetch regular members (support both 'members' and 'member_ids' fields)
-    member_ids = comm.get('members', comm.get('member_ids', []))
+    # 3. Process regular members
     if member_ids:
-        members = await db.get_documents_batch('users', member_ids)
-        member_map = {m['id']: m for m in members if m and 'id' in m}
         comm['member_names'] = []
         for mid in member_ids:
-            member_doc = member_map.get(mid)
+            member_doc = user_map.get(mid)
             if member_doc:
                 # Avoid duplicates if owner or admin is also in members
                 if any(m['id'] == mid for m in members_details):
@@ -7567,10 +7584,10 @@ async def send_community_message(
 async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 25, before_timestamp: Optional[str] = None, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
-    # Resolve fallback community IDs
+    # ⚡ Bolt Optimization: Concurrently fetch user and community documents if no fallback resolution is needed
     if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+        user = await db.get_document('users', user_id)
         target_type = 'city'
         if community_id == 'maharashtra-fallback':
             target_type = 'state'
@@ -7601,8 +7618,12 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
                             break
             except Exception as ex:
                 logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py get: {ex}")
-
-    community = await db.get_document('communities', community_id)
+        community = await db.get_document('communities', community_id)
+    else:
+        user, community = await asyncio.gather(
+            db.get_document('users', user_id),
+            db.get_document('communities', community_id)
+        )
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
@@ -9977,9 +9998,19 @@ async def sync_legacy_kyc_data_in_db():
 
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
-    """Get all users with pending or verified KYC (admin only)"""
+async def get_pending_kyc(
+    status: Optional[str] = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get all users with pending or verified KYC with pagination (admin only)"""
+    """Get all users with pending or verified KYC (admin only) with offset pagination and chunked vendor lookups"""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     target_statuses = ['pending', 'manual_review']
     if status == 'verified':
@@ -9989,22 +10020,66 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
     elif status == 'all':
         target_statuses = ['pending', 'manual_review', 'verified', 'rejected']
 
+    # Architectural fix: Bounded candidate fetch at DB level prevents streaming all user documents into memory.
+    fetch_limit = safe_offset + safe_limit * 2 + 10
     try:
-        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)])
+        # Architectural fix: Limit the candidate user document fetch at DB level
+        # to prevent scanning the entire users collection at scale
+        pending = await db.query_documents(
+            'users',
+            filters=[('kyc_status', 'in', target_statuses)],
+            limit=fetch_limit
+        )
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
-        all_users = await db.query_documents('users')
+        all_users = await db.query_documents('users', limit=fetch_limit * 2)
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)], limit=fetch_limit)
+    except Exception as query_error:
+        logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
+        all_users = await db.query_documents('users', limit=fetch_limit)
         pending = [
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
 
-    # Fetch vendor map for missing field fill
-    vendors = await db.query_documents('vendors')
-    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
+    # Architectural fix: Targeted chunked vendor lookups for candidate users
+    # instead of downloading all vendor documents platform-wide (O(N_vendors) -> O(limit))
+    pending_user_ids = [u.get('id') for u in (pending or []) if u.get('id')]
+    vendor_by_owner = {}
+    # Paginate candidate users for the requested offset and limit
+    paginated_pending = (pending or [])[safe_offset : safe_offset + safe_limit]
+
+    # Architectural fix: Targeted chunked vendor lookups for only the candidate UIDs on this page
+    # instead of scanning and downloading the entire 'vendors' collection (O(N_all_vendors) -> O(page_size)).
+    candidate_user_ids = [u.get('id') for u in paginated_pending if u.get('id')]
+    vendor_by_owner = {}
+    if candidate_user_ids:
+        chunk_size = 10
+        for i in range(0, len(candidate_user_ids), chunk_size):
+            chunk = candidate_user_ids[i:i + chunk_size]
+            try:
+                v_chunk = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_chunk or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor chunk for owner_ids {chunk}: {v_err}")
     
+    if pending_user_ids:
+        for i in range(0, len(pending_user_ids), 30):
+            chunk = pending_user_ids[i:i + 30]
+            try:
+                v_docs = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_docs or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor batch for KYC pending: {v_err}")
+
     result = []
-    for u in (pending or []):
+    for u in paginated_pending:
         u_id = u.get('id')
         v = vendor_by_owner.get(u_id) or {}
         
@@ -10028,7 +10103,7 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
             'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
         })
 
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/admin/kyc/sync-legacy")

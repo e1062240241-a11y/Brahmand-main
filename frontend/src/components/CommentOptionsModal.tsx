@@ -69,7 +69,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Comment Options</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close options">
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close options" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>

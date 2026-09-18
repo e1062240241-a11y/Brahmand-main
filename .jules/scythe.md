@@ -1,3 +1,6 @@
 ## 2026-09-11 - Dynamic References in React Native
 **Learning:** In React Native/Expo codebases, ESLint might flag properties destructured from a context or hook state as unused (e.g. `createPostState`), but completely deleting the destructured elements might cause unexpected dependency issues or type mismatch if you're not careful. More critically, ESLint struggles with `useState` and internal function usage inside `[id].tsx`.
 **Action:** When removing dead code from complex React Native files, strictly use AST parsing or string replacement, and always verify zero usages of a component (like `CosmicCharacterRing`) via global `grep` before deletion. Never rely solely on ESLint's `no-unused-vars` in this environment.
+## 2024-05-18 - [Unused Notification Methods]
+**Learning:** Found multiple unused push notification wrappers (`notify_scripture_reading_reminder`, `notify_festival_reminder`) and their associated string constants (`TYPE_EVENT`, `TYPE_SYSTEM`) that were never integrated into background workers or cron jobs.
+**Action:** Always verify if helper functions built for features that were never fully launched (like scheduled reminders) are actually dead code before removing them, as they have no callers.

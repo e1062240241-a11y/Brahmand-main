@@ -59,3 +59,10 @@
 ## 2026-09-18 - Phased asyncio.gather for mutual cross-references
 **Learning:** Grouping mutual relation removals (e.g., removing A from B's followers and B from A's following) into phases with `asyncio.gather` allows concurrent execution of independent updates on distinct documents, completely eliminating sequential latency while maintaining safety against same-document race conditions.
 **Action:** When removing cross-references, structure them in phased `asyncio.gather` blocks, ensuring each phase mutates distinctly unique documents (e.g., Phase 1 mutates User A's followers and User B's following).
+
+## 2025-02-23 - Batch fetching distinct lists of entities
+**Learning:** In community or group profile endpoints, sequential fetches (e.g. fetching the owner `await db.get_document()`, then fetching admins `await db.get_documents_batch()`, then fetching members `await db.get_documents_batch()`) introduce entirely avoidable network latency.
+**Action:** When a route handler requires hydrating different classifications or arrays of user objects, extract all unique IDs upfront and execute a single consolidated `await db.get_documents_batch()`, then map the hydrated objects to their respective classifications in-memory.
+## 2025-02-23 - Avoid sequential identical database queries
+**Learning:** In long endpoint handlers (like `update_user_verification`), duplicated code blocks from merges or refactors can introduce completely redundant sequential database fetches (`db.get_document` for the exact same document ID), causing unnecessary network roundtrips and latency.
+**Action:** When removing duplicate blocks, always ensure you preserve any critical variable assignments (like `loc = user.get(...)`) from the removed section in the remaining section to prevent `NameError` regressions, and add a comment indicating the optimization.
