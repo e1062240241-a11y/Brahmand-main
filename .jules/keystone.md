@@ -44,6 +44,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
+- `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
