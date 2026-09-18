@@ -9973,11 +9973,13 @@ async def get_pending_kyc(
     offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
+    """Get all users with pending or verified KYC with pagination (admin only)"""
     """Get all users with pending or verified KYC (admin only) with offset pagination and chunked vendor lookups"""
     db, _ = await _ensure_admin_user(token_data)
 
     safe_limit = max(1, min(limit, 100))
     safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     target_statuses = ['pending', 'manual_review']
     if status == 'verified':
@@ -9990,6 +9992,16 @@ async def get_pending_kyc(
     # Architectural fix: Bounded candidate fetch at DB level prevents streaming all user documents into memory.
     fetch_limit = safe_offset + safe_limit * 2 + 10
     try:
+        # Architectural fix: Limit the candidate user document fetch at DB level
+        # to prevent scanning the entire users collection at scale
+        pending = await db.query_documents(
+            'users',
+            filters=[('kyc_status', 'in', target_statuses)],
+            limit=fetch_limit
+        )
+    except Exception as query_error:
+        logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
+        all_users = await db.query_documents('users', limit=fetch_limit * 2)
         pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)], limit=fetch_limit)
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
@@ -9999,6 +10011,10 @@ async def get_pending_kyc(
             if u.get('kyc_status') in target_statuses
         ]
 
+    # Architectural fix: Targeted chunked vendor lookups for candidate users
+    # instead of downloading all vendor documents platform-wide (O(N_vendors) -> O(limit))
+    pending_user_ids = [u.get('id') for u in (pending or []) if u.get('id')]
+    vendor_by_owner = {}
     # Paginate candidate users for the requested offset and limit
     paginated_pending = (pending or [])[safe_offset : safe_offset + safe_limit]
 
@@ -10019,6 +10035,18 @@ async def get_pending_kyc(
             except Exception as v_err:
                 logger.warning(f"Failed to fetch vendor chunk for owner_ids {chunk}: {v_err}")
     
+    if pending_user_ids:
+        for i in range(0, len(pending_user_ids), 30):
+            chunk = pending_user_ids[i:i + 30]
+            try:
+                v_docs = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_docs or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor batch for KYC pending: {v_err}")
+
     result = []
     for u in paginated_pending:
         u_id = u.get('id')
@@ -10044,7 +10072,7 @@ async def get_pending_kyc(
             'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
         })
 
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/admin/kyc/sync-legacy")
