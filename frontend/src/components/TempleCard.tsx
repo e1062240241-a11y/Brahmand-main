@@ -10,19 +10,39 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+export interface TempleItem {
+  id?: string;
+  temple_id?: string;
+  templeId?: string;
+  deity?: unknown;
+  [key: string]: unknown;
+}
+
+export interface RouterLike {
+  push: (href: string) => void;
+  [key: string]: unknown;
+}
+
 interface TempleCardProps {
-  item: any;
+  item: TempleItem;
   safeItemId: string;
   safeName: string;
   imageSource: ImageSourcePropType | { uri: string };
-  router: any;
+  router: RouterLike;
   t: (key: string) => string;
-  renderSafeText: (val: any) => string;
+  renderSafeText: (val: unknown) => string;
   getTranslatedTempleName: (name: string) => string;
   getTranslatedTempleLocation: (location: string, templeName?: string) => string;
-  getTempleLocation: (temple: any) => string;
+  getTempleLocation: (temple: TempleItem) => string;
 }
 
+const ANDROID_RIPPLE_CONFIG = {
+  color: 'rgba(255, 107, 0, 0.15)',
+  borderless: false,
+};
+
+// Varnish fix: Eliminated inline style objects and inline ripple config to prevent GC pressure and re-render allocations.
+// Replaced `any` types with proper interface definitions (`TempleItem`, `RouterLike`).
 export const TempleCard = React.memo(({
   item,
   safeItemId,
@@ -75,13 +95,13 @@ export const TempleCard = React.memo(({
     <Pressable
       style={({ pressed }) => [
         styles.newTempleCard,
-        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+        pressed && Platform.OS === 'ios' && styles.iosPressed,
       ]}
-      android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
+      android_ripple={ANDROID_RIPPLE_CONFIG}
       onPress={handlePress}
     >
       {hasError ? (
-        <View style={[styles.newTempleCardImg, { backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA' }]}>
+        <View style={[styles.newTempleCardImg, styles.errorImageContainer]}>
           <MaterialCommunityIcons name="temple-hindu" size={40} color="#FF6B00" />
         </View>
       ) : (
@@ -121,10 +141,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  iosPressed: {
+    opacity: 0.8,
+  },
   newTempleCardImg: {
     width: 80,
     height: 95,
     borderRadius: 12,
+  },
+  errorImageContainer: {
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
   newTempleCardInfo: {
     flex: 1,
