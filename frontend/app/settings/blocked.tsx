@@ -28,6 +28,7 @@ interface BlockedUser {
 
 export default function BlockedAccountsScreen() {
   const { t } = useTranslation();
+  const isHindi = t('language') === 'hi';
   const router = useRouter();
   
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
@@ -62,7 +63,12 @@ export default function BlockedAccountsScreen() {
       }
     } catch (error) {
       console.error('Error fetching blocked users:', error);
-      Alert.alert(t('error'), 'Failed to fetch blocked users list.');
+      Alert.alert(
+        t('error'),
+        isHindi
+          ? 'अवरुद्ध उपयोगकर्ताओं की सूची लोड करने में असमर्थ।'
+          : 'Failed to fetch blocked users list.'
+      );
     } finally {
       setLoading(false);
     }
@@ -91,10 +97,18 @@ export default function BlockedAccountsScreen() {
       await api.post(`/users/${userId}/unblock`);
       // Update local state by filtering out the unblocked user
       setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
-      Alert.alert('Success', t('unblockSuccess'));
+      Alert.alert(
+        isHindi ? 'सफलता' : 'Success',
+        t('unblockSuccess')
+      );
     } catch (error) {
       console.error('Error unblocking user:', error);
-      Alert.alert(t('error'), 'Failed to unblock user. Please try again.');
+      Alert.alert(
+        t('error'),
+        isHindi
+          ? 'उपयोगकर्ता का अवरोध हटाने में असमर्थ। कृपया पुनः प्रयास करें।'
+          : 'Failed to unblock user. Please try again.'
+      );
     } finally {
       setUnblockingIds((prev) => prev.filter((id) => id !== userId));
     }
@@ -154,7 +168,7 @@ export default function BlockedAccountsScreen() {
           onPress={handleBack}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={isHindi ? 'वापस जाएं' : 'Go back'}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
@@ -180,7 +194,7 @@ export default function BlockedAccountsScreen() {
                 onPress={() => setSearchQuery('')}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityRole="button"
-                accessibilityLabel="Clear search"
+                accessibilityLabel={isHindi ? 'खोज साफ़ करें' : 'Clear search'}
               >
                 <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
@@ -208,12 +222,18 @@ export default function BlockedAccountsScreen() {
             <Ionicons name="ban-outline" size={64} color={COLORS.textSecondary} />
           </View>
           <Text style={styles.emptyTitle}>
-            {searchQuery ? 'No results found' : t('noBlockedUsers')}
+            {searchQuery
+              ? (isHindi ? 'कोई परिणाम नहीं मिला' : 'No results found')
+              : t('noBlockedUsers')}
           </Text>
           <Text style={styles.emptySubtitle}>
             {searchQuery
-              ? 'Try searching with a different name or SL ID.'
-              : 'Accounts that you block will show up here.'}
+              ? (isHindi
+                  ? 'किसी अन्य नाम या SL ID से खोजने का प्रयास करें।'
+                  : 'Try searching with a different name or SL ID.')
+              : (isHindi
+                  ? 'जिन खातों को आप ब्लॉक करेंगे, वे यहाँ दिखाई देंगे।'
+                  : 'Accounts that you block will show up here.')}
           </Text>
         </View>
       )}
