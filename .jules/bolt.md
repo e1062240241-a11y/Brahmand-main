@@ -56,6 +56,10 @@
 ## 2025-02-15 - Concurrent Document Mutations
 **Learning:** In backend FastAPI Firestore implementations, batching sequential `db.array_remove_update` or similar document mutations on the *same* document using `asyncio.gather` can lead to destructive race conditions and data loss due to concurrent updates on the identical record. Additionally, using `return_exceptions=True` in concurrent gathers blindly swallows runtime errors, bypassing `try...except` safety blocks.
 **Action:** When optimizing database sequences, keep mutations on identical documents sequential to guarantee consistency. Reserve `asyncio.gather` specifically for concurrent fetch operations (like pulling multiple distinct user documents) where read isolation is safe and N+1 latency can be aggressively eliminated.
+
+## 2025-02-23 - Batch fetching distinct lists of entities
+**Learning:** In community or group profile endpoints, sequential fetches (e.g. fetching the owner `await db.get_document()`, then fetching admins `await db.get_documents_batch()`, then fetching members `await db.get_documents_batch()`) introduce entirely avoidable network latency.
+**Action:** When a route handler requires hydrating different classifications or arrays of user objects, extract all unique IDs upfront and execute a single consolidated `await db.get_documents_batch()`, then map the hydrated objects to their respective classifications in-memory.
 ## 2025-02-23 - Avoid sequential identical database queries
 **Learning:** In long endpoint handlers (like `update_user_verification`), duplicated code blocks from merges or refactors can introduce completely redundant sequential database fetches (`db.get_document` for the exact same document ID), causing unnecessary network roundtrips and latency.
 **Action:** When removing duplicate blocks, always ensure you preserve any critical variable assignments (like `loc = user.get(...)`) from the removed section in the remaining section to prevent `NameError` regressions, and add a comment indicating the optimization.

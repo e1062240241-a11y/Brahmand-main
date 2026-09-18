@@ -7277,10 +7277,28 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     # Build complete members_details array for frontend
     members_details = []
     
-    # 1. Fetch owner
     owner_id = comm.get('owner_id')
+    admin_ids = comm.get('admin_ids', [])
+    member_ids = comm.get('members', comm.get('member_ids', []))
+
+    # ⚡ Bolt Optimization: Batch fetch all community participants (owner, admins, members)
+    # concurrently instead of sequential db.get_document/db.get_documents_batch calls to reduce latency.
+    all_member_ids = set()
     if owner_id:
-        owner = await db.get_document('users', owner_id)
+        all_member_ids.add(owner_id)
+    if admin_ids:
+        all_member_ids.update(admin_ids)
+    if member_ids:
+        all_member_ids.update(member_ids)
+
+    user_map = {}
+    if all_member_ids:
+        all_users = await db.get_documents_batch('users', list(all_member_ids))
+        user_map = {u['id']: u for u in all_users if u and 'id' in u}
+
+    # 1. Process owner
+    if owner_id:
+        owner = user_map.get(owner_id)
         if owner:
             comm['owner_name'] = owner.get('name', 'Community Owner')
             members_details.append({
@@ -7290,14 +7308,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                 'role': 'Owner'
             })
             
-    # 2. Fetch admins
-    admin_ids = comm.get('admin_ids', [])
+    # 2. Process admins
     if admin_ids:
-        admins = await db.get_documents_batch('users', admin_ids)
-        admin_map = {a['id']: a for a in admins if a and 'id' in a}
         comm['admin_names'] = []
         for aid in admin_ids:
-            admin_doc = admin_map.get(aid)
+            admin_doc = user_map.get(aid)
             if admin_doc:
                 comm['admin_names'].append(admin_doc.get('name', 'Admin'))
                 members_details.append({
@@ -7307,14 +7322,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                     'role': 'Admin'
                 })
                 
-    # 3. Fetch regular members (support both 'members' and 'member_ids' fields)
-    member_ids = comm.get('members', comm.get('member_ids', []))
+    # 3. Process regular members
     if member_ids:
-        members = await db.get_documents_batch('users', member_ids)
-        member_map = {m['id']: m for m in members if m and 'id' in m}
         comm['member_names'] = []
         for mid in member_ids:
-            member_doc = member_map.get(mid)
+            member_doc = user_map.get(mid)
             if member_doc:
                 # Avoid duplicates if owner or admin is also in members
                 if any(m['id'] == mid for m in members_details):
@@ -7568,10 +7580,10 @@ async def send_community_message(
 async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 25, before_timestamp: Optional[str] = None, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
-    # Resolve fallback community IDs
+    # ⚡ Bolt Optimization: Concurrently fetch user and community documents if no fallback resolution is needed
     if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+        user = await db.get_document('users', user_id)
         target_type = 'city'
         if community_id == 'maharashtra-fallback':
             target_type = 'state'
@@ -7602,8 +7614,12 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
                             break
             except Exception as ex:
                 logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py get: {ex}")
-
-    community = await db.get_document('communities', community_id)
+        community = await db.get_document('communities', community_id)
+    else:
+        user, community = await asyncio.gather(
+            db.get_document('users', user_id),
+            db.get_document('communities', community_id)
+        )
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
