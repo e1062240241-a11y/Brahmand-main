@@ -1843,7 +1843,15 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")
 
-    if username.lower() != expected_username.lower() or password != expected_password:
+    import secrets
+
+    # encode to bytes to handle non-ascii characters without crashing compare_digest
+    user_bytes = username.lower().encode('utf-8')
+    exp_user_bytes = expected_username.lower().encode('utf-8')
+    pass_bytes = password.encode('utf-8')
+    exp_pass_bytes = expected_password.encode('utf-8')
+
+    if not secrets.compare_digest(user_bytes, exp_user_bytes) or not secrets.compare_digest(pass_bytes, exp_pass_bytes):
         logger.warning(f"Admin login attempt failed for username: '{username}' (expected: '{expected_username}')")
         raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
@@ -2893,15 +2901,18 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
     
     # Also unfollow each other if they follow each other!
     try:
-        # Remove current user from target's followers
-        await db.array_remove_update('users', user_id, 'followers', [current_user_id])
-        # Remove target user from current's following
-        await db.array_remove_update('users', current_user_id, 'following', [user_id])
+        # ⚡ Bolt Optimization: Concurrently remove follow relationships safely in phases
+        # Phase 1: Modify target user's followers and current user's following
+        await asyncio.gather(
+            db.array_remove_update('users', user_id, 'followers', [current_user_id]),
+            db.array_remove_update('users', current_user_id, 'following', [user_id])
+        )
         
-        # Remove target user from current's followers
-        await db.array_remove_update('users', current_user_id, 'followers', [user_id])
-        # Remove current user from target's following
-        await db.array_remove_update('users', user_id, 'following', [current_user_id])
+        # Phase 2: Modify current user's followers and target user's following
+        await asyncio.gather(
+            db.array_remove_update('users', current_user_id, 'followers', [user_id]),
+            db.array_remove_update('users', user_id, 'following', [current_user_id])
+        )
         
         # ⚡ Bolt Optimization: Concurrently fetch documents for count updates
         u1, u2 = await asyncio.gather(
@@ -5597,13 +5608,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         await db.update_user(target_user_id, user_updates)
         await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
         
-        # Grant Community Access
-        user = await db.get_document('users', target_user_id)
-        if not user:
-             return {"status": "error", "message": "User document not found"}
-             
-        loc = user.get('location') or user.get('home_location')
-        
+        # ⚡ Bolt Optimization: Removed redundant sequential db.get_document fetch
         # Grant Community Access
         user = await db.get_document('users', target_user_id)
         if not user:
@@ -9989,9 +9994,19 @@ async def sync_legacy_kyc_data_in_db():
 
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
-    """Get all users with pending or verified KYC (admin only)"""
+async def get_pending_kyc(
+    status: Optional[str] = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get all users with pending or verified KYC with pagination (admin only)"""
+    """Get all users with pending or verified KYC (admin only) with offset pagination and chunked vendor lookups"""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     target_statuses = ['pending', 'manual_review']
     if status == 'verified':
@@ -10001,22 +10016,66 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
     elif status == 'all':
         target_statuses = ['pending', 'manual_review', 'verified', 'rejected']
 
+    # Architectural fix: Bounded candidate fetch at DB level prevents streaming all user documents into memory.
+    fetch_limit = safe_offset + safe_limit * 2 + 10
     try:
-        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)])
+        # Architectural fix: Limit the candidate user document fetch at DB level
+        # to prevent scanning the entire users collection at scale
+        pending = await db.query_documents(
+            'users',
+            filters=[('kyc_status', 'in', target_statuses)],
+            limit=fetch_limit
+        )
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
-        all_users = await db.query_documents('users')
+        all_users = await db.query_documents('users', limit=fetch_limit * 2)
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)], limit=fetch_limit)
+    except Exception as query_error:
+        logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
+        all_users = await db.query_documents('users', limit=fetch_limit)
         pending = [
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
 
-    # Fetch vendor map for missing field fill
-    vendors = await db.query_documents('vendors')
-    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
+    # Architectural fix: Targeted chunked vendor lookups for candidate users
+    # instead of downloading all vendor documents platform-wide (O(N_vendors) -> O(limit))
+    pending_user_ids = [u.get('id') for u in (pending or []) if u.get('id')]
+    vendor_by_owner = {}
+    # Paginate candidate users for the requested offset and limit
+    paginated_pending = (pending or [])[safe_offset : safe_offset + safe_limit]
+
+    # Architectural fix: Targeted chunked vendor lookups for only the candidate UIDs on this page
+    # instead of scanning and downloading the entire 'vendors' collection (O(N_all_vendors) -> O(page_size)).
+    candidate_user_ids = [u.get('id') for u in paginated_pending if u.get('id')]
+    vendor_by_owner = {}
+    if candidate_user_ids:
+        chunk_size = 10
+        for i in range(0, len(candidate_user_ids), chunk_size):
+            chunk = candidate_user_ids[i:i + chunk_size]
+            try:
+                v_chunk = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_chunk or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor chunk for owner_ids {chunk}: {v_err}")
     
+    if pending_user_ids:
+        for i in range(0, len(pending_user_ids), 30):
+            chunk = pending_user_ids[i:i + 30]
+            try:
+                v_docs = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_docs or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor batch for KYC pending: {v_err}")
+
     result = []
-    for u in (pending or []):
+    for u in paginated_pending:
         u_id = u.get('id')
         v = vendor_by_owner.get(u_id) or {}
         
@@ -10040,7 +10099,7 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
             'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
         })
 
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 
 @api_router.post("/admin/kyc/sync-legacy")
