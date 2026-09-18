@@ -56,6 +56,9 @@
 ## 2025-02-15 - Concurrent Document Mutations
 **Learning:** In backend FastAPI Firestore implementations, batching sequential `db.array_remove_update` or similar document mutations on the *same* document using `asyncio.gather` can lead to destructive race conditions and data loss due to concurrent updates on the identical record. Additionally, using `return_exceptions=True` in concurrent gathers blindly swallows runtime errors, bypassing `try...except` safety blocks.
 **Action:** When optimizing database sequences, keep mutations on identical documents sequential to guarantee consistency. Reserve `asyncio.gather` specifically for concurrent fetch operations (like pulling multiple distinct user documents) where read isolation is safe and N+1 latency can be aggressively eliminated.
+## 2026-09-18 - Phased asyncio.gather for mutual cross-references
+**Learning:** Grouping mutual relation removals (e.g., removing A from B's followers and B from A's following) into phases with `asyncio.gather` allows concurrent execution of independent updates on distinct documents, completely eliminating sequential latency while maintaining safety against same-document race conditions.
+**Action:** When removing cross-references, structure them in phased `asyncio.gather` blocks, ensuring each phase mutates distinctly unique documents (e.g., Phase 1 mutates User A's followers and User B's following).
 
 ## 2025-02-23 - Batch fetching distinct lists of entities
 **Learning:** In community or group profile endpoints, sequential fetches (e.g. fetching the owner `await db.get_document()`, then fetching admins `await db.get_documents_batch()`, then fetching members `await db.get_documents_batch()`) introduce entirely avoidable network latency.

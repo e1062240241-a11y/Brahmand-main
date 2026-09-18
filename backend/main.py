@@ -2901,6 +2901,9 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
     
     # Also unfollow each other if they follow each other!
     try:
+        # ⚡ Bolt Optimization: Use phased asyncio.gather to concurrently remove cross-references
+        # on distinct documents, avoiding same-document race conditions while reducing sequential latency.
+        # Phase 1: Mutate target user's followers and current user's following
         # ⚡ Bolt Optimization: Concurrently remove follow relationships safely in phases
         # Phase 1: Modify target user's followers and current user's following
         await asyncio.gather(
@@ -2908,6 +2911,7 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
             db.array_remove_update('users', current_user_id, 'following', [user_id])
         )
         
+        # Phase 2: Mutate current user's followers and target user's following
         # Phase 2: Modify current user's followers and target user's following
         await asyncio.gather(
             db.array_remove_update('users', current_user_id, 'followers', [user_id]),
