@@ -192,7 +192,8 @@ class FirebaseAuthService:
                 'attempts': otp_record.get('attempts', 0) + 1
             })
 
-        if otp_record["otp"] != otp and not (use_mock and otp == FirebaseAuthService.MOCK_OTP):
+        import secrets
+        if not secrets.compare_digest(otp_record["otp"].encode('utf-8'), otp.encode('utf-8')) and not (use_mock and otp == FirebaseAuthService.MOCK_OTP):
             raise ValueError("Invalid OTP")
         
         expires_at = otp_record["expires_at"]
