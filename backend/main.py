@@ -1833,6 +1833,9 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
 
+    if not username.isascii() or not password.isascii():
+        raise HTTPException(status_code=400, detail="Invalid characters in username or password")
+
     raw_user = os.getenv('ADMIN_PANEL_USERNAME')
     raw_pass = os.getenv('ADMIN_PANEL_PASSWORD')
 
