@@ -66,3 +66,6 @@
 ## 2025-02-23 - Avoid sequential identical database queries
 **Learning:** In long endpoint handlers (like `update_user_verification`), duplicated code blocks from merges or refactors can introduce completely redundant sequential database fetches (`db.get_document` for the exact same document ID), causing unnecessary network roundtrips and latency.
 **Action:** When removing duplicate blocks, always ensure you preserve any critical variable assignments (like `loc = user.get(...)`) from the removed section in the remaining section to prevent `NameError` regressions, and add a comment indicating the optimization.
+## 2024-10-10 - Eliminate redundant database queries in FastAPI backend
+**Learning:** Sequential `db.get_document` calls fetching the exact same document ID (e.g. for `vendors`) were occurring multiple times within single endpoint executions (like `get_kyc_status`). This causes unnecessary database round-trips and adds N+1 latency in otherwise linear pathways.
+**Action:** Lift the document fetch into a broader variable scope (`vendor = None`, then fetch) early in the route, and reuse that variable for all subsequent checks later in the same function instead of executing a new fetch query.
