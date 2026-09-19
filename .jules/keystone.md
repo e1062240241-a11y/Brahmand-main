@@ -45,6 +45,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/users` — unpaginated large user fetch — FIXED
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
 - `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
+- `/admin/sos-misuse-reports` — full collection scan of all SOS misuse reports — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -108,3 +109,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-16 - Offset-based pagination & chunked vendor lookups for admin KYC pending requests
 **Learning:** `GET /admin/kyc/pending` previously executed `db.query_documents('vendors')` without filters or limits, fetching all vendor documents across the platform into memory ($O(N_{\text{vendors}})$ reads). Combined with unpaginated user queries for candidate KYC statuses, this endpoint risked memory exhaustion and slow response times as user and vendor numbers grew.
 **Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) parameters to `GET /admin/kyc/pending`, applied `limit=fetch_limit` to user document queries, and replaced the global `vendors` scan with chunked queries (`filters=[('owner_id', 'in', chunk)]`) targeted specifically to candidate user UIDs.
+
+## 2026-09-17 - Offset-based pagination & DB query bounds for SOS misuse reports
+**Learning:** `GET /admin/sos-misuse-reports` previously called `db.query_documents('sos_misuse_reports')` without limits or pagination parameters, streaming every historical misuse report across the entire platform into memory before sorting in Python ($O(N_{\text{reports}})$ reads). At 1 lakh+ scale, this endpoint would cause high memory usage, database read spikes, and client request timeouts.
+**Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `GET /admin/sos-misuse-reports`, enforced DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback handling to slice results gracefully.
