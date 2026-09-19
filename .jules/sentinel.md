@@ -6,3 +6,7 @@
 **Vulnerability:** Weak PRNG used for generating potentially sensitive IDs (`SL_ID`, `Circle Code`, `Temple ID`) using Python's standard `random` module.
 **Learning:** `random` module is predictable and should not be used for generating sensitive data. It is easy to assume `random` is sufficient for application IDs, but predictability can lead to enumeration attacks or ID collisions.
 **Prevention:** Always use the `secrets` module (`secrets.choice`, `secrets.randbelow`) for generating IDs, tokens, or any values requiring unpredictability.
+## 2024-05-18 - Prevent Timing Attacks in OTP Verification
+**Vulnerability:** Standard string comparisons (`!=` and `==`) were used to verify user-submitted OTPs against stored OTPs in `firebase_auth_service.py` and `nettyfish_auth_routes.py`. These operators leak information about the match position via comparison execution time, creating a timing attack vulnerability.
+**Learning:** Even simple numerical codes (like 4-6 digit OTPs) must be verified securely to prevent sophisticated timing attacks that might deduce the OTP faster than brute force.
+**Prevention:** Always use `secrets.compare_digest` for security-sensitive token/string comparisons. Remember to encode strings to UTF-8 bytes (`str.encode('utf-8')`) before passing them to `compare_digest` to prevent `TypeError` when inputs might contain non-ASCII characters.
