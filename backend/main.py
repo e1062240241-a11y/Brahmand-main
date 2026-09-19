@@ -16674,6 +16674,24 @@ async def _jaap_reminder_worker():
                             chunk_results = await asyncio.gather(*fallback_tasks[i:i + chunk_size], return_exceptions=True)
                             results.extend(chunk_results)
 
+                        # ⚡ Bolt Optimization: Batch fetch user stats and user docs upfront to avoid N+1 queries in the loop
+                        unique_uids = list({r['uid'] for r in fallback_reminders if r.get('uid')})
+                        user_jaap_stats_map = {}
+                        users_map = {}
+                        if unique_uids:
+                            try:
+                                stats_docs, users_docs = await asyncio.gather(
+                                    db.get_documents_batch("user_jaap_stats", unique_uids),
+                                    db.get_documents_batch("users", unique_uids),
+                                    return_exceptions=True
+                                )
+                                if not isinstance(stats_docs, Exception):
+                                    user_jaap_stats_map = {doc['id']: doc for doc in stats_docs if doc and 'id' in doc}
+                                if not isinstance(users_docs, Exception):
+                                    users_map = {doc['id']: doc for doc in users_docs if doc and 'id' in doc}
+                            except Exception as err:
+                                logger.warning(f"Error batch fetching user stats: {err}")
+
                         for r, result in zip(fallback_reminders, results):
                             uid = r['uid']
                             mantra_type = r['mantra_type']
@@ -16711,7 +16729,7 @@ async def _jaap_reminder_worker():
                             is_today_completed = False
                             today_count = 0
                             try:
-                                stats_doc = await db.get_document("user_jaap_stats", uid)
+                                stats_doc = user_jaap_stats_map.get(uid)
                                 if stats_doc:
                                     user_streak = int(stats_doc.get("current_streak", 0))
                                     if stats_doc.get("last_jaap_date") == date_str:
@@ -16719,7 +16737,7 @@ async def _jaap_reminder_worker():
                                         today_count = int(stats_doc.get("today_count", 0))
                                 else:
                                     # Fallback to users doc
-                                    u_doc = await db.get_document("users", uid)
+                                    u_doc = users_map.get(uid)
                                     if u_doc:
                                         user_streak = int(u_doc.get("sadhana_streak", 0))
                                         if u_doc.get("last_jaap_date") == date_str:

@@ -69,3 +69,6 @@
 ## 2024-10-10 - Eliminate redundant database queries in FastAPI backend
 **Learning:** Sequential `db.get_document` calls fetching the exact same document ID (e.g. for `vendors`) were occurring multiple times within single endpoint executions (like `get_kyc_status`). This causes unnecessary database round-trips and adds N+1 latency in otherwise linear pathways.
 **Action:** Lift the document fetch into a broader variable scope (`vendor = None`, then fetch) early in the route, and reuse that variable for all subsequent checks later in the same function instead of executing a new fetch query.
+## 2024-05-14 - Batch Fetch Fallback Reminder Data
+**Learning:** In the `check_and_send_jaap_reminders` task, iterating over fallback reminders and querying `user_jaap_stats` and `users` synchronously inside the loop creates an N+1 query problem, slowing down the background task.
+**Action:** Extract all unique user IDs from the batch array before the loop, fetch the required stats and user documents concurrently using `asyncio.gather` and `db.get_documents_batch`, and create dictionaries for O(1) in-loop lookups.
