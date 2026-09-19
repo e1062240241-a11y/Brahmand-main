@@ -63,6 +63,7 @@ export default function DiscoverCommunitiesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const isHindi = user?.language === 'hi';
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const androidRefreshAnim = useRef(new Animated.Value(0)).current;
@@ -533,7 +534,9 @@ export default function DiscoverCommunitiesScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="people-outline" size={18} color="#437953" />
-              <Text style={styles.sectionTitle}>All Local Communities</Text>
+              <Text style={styles.sectionTitle}>
+                {isHindi ? 'सभी स्थानीय समुदाय' : 'All Local Communities'}
+              </Text>
             </View>
 
             {filteredGroups.length === 0 ? (
@@ -541,17 +544,25 @@ export default function DiscoverCommunitiesScreen() {
                 <View style={styles.emptyIconCircle}>
                   <Ionicons name="people-outline" size={48} color="#FF3400" />
                 </View>
-                <Text style={styles.emptyTitle}>No Communities Found</Text>
+                <Text style={styles.emptyTitle}>
+                  {isHindi ? 'कोई समुदाय नहीं मिला' : 'No Communities Found'}
+                </Text>
                 <Text style={styles.emptySubtitle}>
                   {searchQuery.trim()
-                    ? "We couldn't find any groups matching your query."
-                    : "No user groups have been created yet."}
+                    ? isHindi
+                      ? 'आपकी खोज से मेल खाता कोई समुदाय नहीं मिला।'
+                      : "We couldn't find any groups matching your query."
+                    : isHindi
+                    ? 'अभी तक कोई समुदाय नहीं बनाया गया है।'
+                    : 'No user groups have been created yet.'}
                 </Text>
                 <TouchableOpacity
                   style={styles.emptyCreateBtn}
                   onPress={() => router.push('/community/create')}
                 >
-                  <Text style={styles.emptyCreateBtnText}>Create the First One</Text>
+                  <Text style={styles.emptyCreateBtnText}>
+                    {isHindi ? 'पहला समुदाय बनाएं 🙏' : 'Create the First One'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (

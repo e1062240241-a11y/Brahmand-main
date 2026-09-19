@@ -56,5 +56,9 @@
 **Action:** Updated `frontend/app/community-request/list.tsx` to conditionally render polite Devanagari Hindi titles, subtitles, and CTA buttons when `language === 'hi'`.
 
 ## 2026-09-17 - Language-Aware Blocked Accounts Empty State & Error Alerts
-**Learning:** Hardcoded English messages in security and account management screens (such as Blocked Accounts search empty state and error/success alerts) break trust and continuity for Hindi users. Conditionally rendering warm Devanagari Hindi copy ("कोई परिणाम नहीं मिला", "अवरुद्ध उपयोगकर्ताओं की सूची लोड करने में असमर्थ।") ensures a seamless, respectful user experience across all settings screens.
+**Learning:** Hardcoded English messages in security and account management screens (such as Blocked Accounts search empty state and error/success alerts) break trust and continuity for Hindi users. Conditionally rendering warm Devanagari Hindi copy ("कोई परिणाम नहीं मिला", "अवरुद्ध उपयोगकर्ताओं की सूची लोड करने में समर्थ।") ensures a seamless, respectful user experience across all settings screens.
 **Action:** Updated `frontend/app/settings/blocked.tsx` to check `t('language') === 'hi'` and render localized Devanagari Hindi text for search empty states, error alerts, and accessibility labels.
+
+## 2026-09-18 - Language-Aware Local Community Discovery Header & Empty States
+**Learning:** Hardcoded English section titles and empty state prompts in community discovery screens discourage Hindi-first users from forming or joining local groups. Conditionally rendering Devanagari Hindi copy ("सभी स्थानीय समुदाय", "कोई समुदाय नहीं मिला", "पहला समुदाय बनाएं 🙏") fosters a warm sense of belonging and encourages local community creation.
+**Action:** Updated `frontend/app/community/discover.tsx` to conditionally render Devanagari Hindi text across local community section headers, empty state titles, search query fallbacks, and creation CTA buttons when `user?.language === 'hi'`.
