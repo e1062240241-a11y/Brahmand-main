@@ -1151,7 +1151,8 @@ export const UploadPostModal = ({
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode("1:1")}
                     accessibilityLabel="Select 1:1 aspect ratio"
-                    accessibilityRole="button"
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: aspectRatioMode === "1:1" }}
                     style={[
                       styles.aspectRatioBtn,
                       aspectRatioMode === "1:1" && styles.aspectRatioBtnActive,
@@ -1165,7 +1166,8 @@ export const UploadPostModal = ({
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode("4:5")}
                     accessibilityLabel="Select 4:5 aspect ratio"
-                    accessibilityRole="button"
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: aspectRatioMode === "4:5" }}
                     style={[
                       styles.aspectRatioBtn,
                       aspectRatioMode === "4:5" && styles.aspectRatioBtnActive,
@@ -1179,7 +1181,8 @@ export const UploadPostModal = ({
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode("1.91:1")}
                     accessibilityLabel="Select 1.91:1 aspect ratio"
-                    accessibilityRole="button"
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: aspectRatioMode === "1.91:1" }}
                     style={[
                       styles.aspectRatioBtn,
                       aspectRatioMode === "1.91:1" &&
@@ -1198,7 +1201,8 @@ export const UploadPostModal = ({
                   <TouchableOpacity
                     onPress={() => setAspectRatioMode("9:16")}
                     accessibilityLabel="Select 9:16 aspect ratio"
-                    accessibilityRole="button"
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: aspectRatioMode === "9:16" }}
                     style={[
                       styles.aspectRatioBtn,
                       aspectRatioMode === "9:16" && styles.aspectRatioBtnActive,
