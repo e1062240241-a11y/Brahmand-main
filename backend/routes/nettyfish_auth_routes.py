@@ -110,7 +110,7 @@ async def verify_nettyfish_otp(request: OTPVerify, _: bool = Depends(auth_rate_l
     if attempts >= 5:
         raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-    if record.get("otp") != user_otp:
+    if not secrets.compare_digest(record.get("otp", "").encode("utf-8"), user_otp.encode("utf-8")):
         doc.reference.update({"attempts": attempts + 1})
         raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
 
