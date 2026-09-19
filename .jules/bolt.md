@@ -69,3 +69,6 @@
 ## 2024-10-10 - Eliminate redundant database queries in FastAPI backend
 **Learning:** Sequential `db.get_document` calls fetching the exact same document ID (e.g. for `vendors`) were occurring multiple times within single endpoint executions (like `get_kyc_status`). This causes unnecessary database round-trips and adds N+1 latency in otherwise linear pathways.
 **Action:** Lift the document fetch into a broader variable scope (`vendor = None`, then fetch) early in the route, and reuse that variable for all subsequent checks later in the same function instead of executing a new fetch query.
+## 2024-10-26 - Async Batch Member Removal
+**Learning:** Synchronous read-modify-write loops over Firestore documents cause blocking N+1 latency.
+**Action:** Abstracted removal into a single async database method and executed them concurrently using asyncio.gather.

@@ -2225,24 +2225,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
                     non_location_community_ids.append(cid)
                 
     # Remove user from the old location-based communities in the communities collection
-    for cid in old_location_community_ids:
-        try:
-            comm_ref = db.client.collection('communities').document(cid)
-            def _remove_member():
-                doc = comm_ref.get()
-                if doc.exists:
-                    data = doc.to_dict()
-                    members = data.get('members', [])
-                    if user_id in members:
-                        members.remove(user_id)
-                        comm_ref.update({
-                            'members': members,
-                            'member_count': len(members)
-                        })
-            await db._run_sync(_remove_member)
-            await db._cache.delete(f"communities:{cid}")
-        except Exception as e:
-            logger.error(f"Failed to remove user from old community {cid}: {e}")
+    if old_location_community_ids:
+        await asyncio.gather(*(db.remove_member_from_community(cid, user_id) for cid in old_location_community_ids), return_exceptions=True)
             
     update_data = {}
     default_community_ids = []  # Track the 5 default communities (cannot leave)
