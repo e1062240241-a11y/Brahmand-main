@@ -21,10 +21,10 @@ import { getAgoraToken } from '../../services/api';
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
-  ClientRoleType,
+
   IRtcEngine,
   RtcConnection,
-  IRtcEngineEventHandler,
+
   AudioScenarioType,
   AudioProfileType,
 } from 'react-native-agora';
@@ -53,7 +53,6 @@ const TOTAL_MANTRA_DURATION = 29276;
 
 const BG_MUSIC = 'https://brahmandfeed23.b-cdn.net/audio/gayatri_mantra.m4a';
 
-type VoiceTransport = 'sfu' | 'agora';
 
 export const LiveMantraRoom = () => {
   useKeepAwake();
@@ -61,15 +60,12 @@ export const LiveMantraRoom = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [roomMuted, setRoomMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [micStatus, setMicStatus] = useState('Connecting to live room…');
   const [isConnected, setIsConnected] = useState(false);
   const [participantLabel, setParticipantLabel] = useState('Joining room...');
-  const [remoteSpeakers, setRemoteSpeakers] = useState<string[]>([]);
   const [remotePeers, setRemotePeers] = useState<string[]>([]);
-  const [voiceTransport, setVoiceTransport] = useState<VoiceTransport>('sfu');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
 
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
@@ -83,10 +79,8 @@ export const LiveMantraRoom = () => {
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
 
-  const isMountedRef = useRef(true);
   const isMicEnabledRef = useRef(isMicEnabled);
   const micPermissionGrantedRef = useRef(micPermissionGranted);
-  const roomMutedRef = useRef(roomMuted);
 
   const bgPlayer = useAudioPlayer(BG_MUSIC, { keepAudioSessionActive: true });
   const playerStatus = useAudioPlayerStatus(bgPlayer);
@@ -132,13 +126,6 @@ export const LiveMantraRoom = () => {
     }
   }, [playerStatus?.currentTime, playerStatus?.duration, currentIndex, isHolding]);
 
-
-  const addRemoteSpeaker = (peerId: string) => {
-    setRemoteSpeakers((current) => {
-      if (current.includes(peerId)) return current;
-      return [...current, peerId].slice(-5);
-    });
-  };
 
   const addRemotePeer = (peerId: string) => {
     setRemotePeers((current) => {
@@ -211,11 +198,7 @@ export const LiveMantraRoom = () => {
             console.warn('[Agora] Failed to decode stream message', e);
           }
         },
-        onRemoteAudioStateChanged: (connection: RtcConnection, remoteUid: number, state: number) => {
-          if (state === 2) { // RemoteAudioStateDecoding
-            addRemoteSpeaker(String(remoteUid));
-          }
-        },
+
         onError: (err: number, msg: string) => {
           console.error('[Agora] Connection Error:', err, msg);
           setMicStatus(`Connection error: ${err}`);
@@ -357,9 +340,7 @@ export const LiveMantraRoom = () => {
 
     setIsMicEnabled(true);
     isMicEnabledRef.current = true;
-    if (!roomMuted) {
-      await startVoiceLoop();
-    }
+    await startVoiceLoop();
   };
 
   const addReaction = (emoji: string, broadcast = true) => {
@@ -384,28 +365,12 @@ export const LiveMantraRoom = () => {
   };
 
   useEffect(() => {
-    roomMutedRef.current = roomMuted;
-  }, [roomMuted]);
-
-  useEffect(() => {
     isMicEnabledRef.current = isMicEnabled;
   }, [isMicEnabled]);
 
   useEffect(() => {
     micPermissionGrantedRef.current = micPermissionGranted;
   }, [micPermissionGranted]);
-
-  const handleRoomMute = async () => {
-    const nextRoomMuted = !roomMuted;
-    setRoomMuted(nextRoomMuted);
-    if (nextRoomMuted) {
-      await stopVoiceLoop();
-      setMicStatus('Room muted');
-    } else if (isMicEnabled) {
-      await startVoiceLoop();
-      setMicStatus('Room live');
-    }
-  };
 
   useEffect(() => {
     const initAudioMode = async () => {
@@ -455,12 +420,12 @@ export const LiveMantraRoom = () => {
   }, [router]);
 
   useEffect(() => {
-    if (isMicEnabled && !roomMuted && isConnected) {
+    if (isMicEnabled && isConnected) {
       startVoiceLoop();
     }
     // Mic state transitions are guarded by refs inside the voice loop.
 
-  }, [isMicEnabled, roomMuted, isConnected]);
+  }, [isMicEnabled, isConnected]);
 
   useEffect(() => {
     const anim1 = Animated.loop(
@@ -513,14 +478,6 @@ export const LiveMantraRoom = () => {
       useNativeDriver: true,
     }).start();
   }, [activeIndexAnim, currentIndex]);
-
-  const handleClose = useCallback(() => {
-    if (router.canGoBack?.()) {
-      router.back();
-    } else {
-      router.replace('/live-mantra');
-    }
-  }, [router]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
