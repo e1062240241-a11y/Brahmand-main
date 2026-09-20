@@ -62,3 +62,7 @@
 ## 2026-09-18 - Language-Aware Local Community Discovery Header & Empty States
 **Learning:** Hardcoded English section titles and empty state prompts in community discovery screens discourage Hindi-first users from forming or joining local groups. Conditionally rendering Devanagari Hindi copy ("सभी स्थानीय समुदाय", "कोई समुदाय नहीं मिला", "पहला समुदाय बनाएं 🙏") fosters a warm sense of belonging and encourages local community creation.
 **Action:** Updated `frontend/app/community/discover.tsx` to conditionally render Devanagari Hindi text across local community section headers, empty state titles, search query fallbacks, and creation CTA buttons when `user?.language === 'hi'`.
+
+## 2026-09-19 - Passport Progress Screen Language-Aware Polish & Empty States
+**Learning:** Hardcoded English text on spiritual progress tracking screens (like Passport Progress) disconnects Hindi users from their milestones. Conditionally rendering Devanagari Hindi headers ("पासपोर्ट प्रगति"), section labels ("जाप पूर्ण करें", "अध्ययन पूर्ण करें"), input prompts ("मालाएं (उदा. 108)"), and warm empty state prompts ("अभी कोई बैज नहीं है... 🙏") deepens personal connection and encourages daily habit tracking.
+**Action:** Updated `frontend/app/passport/progress.tsx` with `useLanguageStore` to conditionally display Devanagari Hindi copy across stats, headers, forms, and empty states when `language === 'hi'`.
