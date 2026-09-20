@@ -2043,7 +2043,18 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     if attempts >= 5:
         raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-    if record.get("otp") != otp:
+    import secrets
+    stored_otp_raw = record.get("otp")
+    if stored_otp_raw is None:
+        def _increment_attempts():
+            doc.reference.update({"attempts": attempts + 1})
+        await db._run_sync(_increment_attempts)
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+    stored_otp_val = str(stored_otp_raw).encode("utf-8")
+    provided_otp_val = str(otp).encode("utf-8")
+
+    if not secrets.compare_digest(stored_otp_val, provided_otp_val):
         def _increment_attempts():
             doc.reference.update({"attempts": attempts + 1})
         await db._run_sync(_increment_attempts)
@@ -11511,7 +11522,11 @@ async def verify_blood_request_otp(request: OTPVerify, _: bool = Depends(auth_ra
     stored_otp = record.get("otp")
     logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: input={otp}, stored={stored_otp}, attempt={attempts}")
     
-    if not stored_otp or stored_otp != otp:
+    import secrets
+    stored_otp_bytes = str(stored_otp).encode("utf-8") if stored_otp else b""
+    provided_otp_bytes = str(otp).encode("utf-8")
+
+    if not stored_otp or not secrets.compare_digest(stored_otp_bytes, provided_otp_bytes):
         if attempts >= 5:
             raise HTTPException(
                 status_code=400,
@@ -13074,7 +13089,16 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         if docs:
             doc = docs[0]
             record = doc.to_dict()
-            if record.get("otp") != otp:
+
+            import secrets
+            stored_otp_raw = record.get("otp")
+            if stored_otp_raw is None:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            stored_otp_val = str(stored_otp_raw).encode("utf-8")
+            provided_otp_val = str(otp).encode("utf-8")
+
+            if not secrets.compare_digest(stored_otp_val, provided_otp_val):
                 raise HTTPException(status_code=400, detail="Invalid OTP")
             # If valid, just delete the doc so it can't be reused
             def _delete_doc():
