@@ -160,24 +160,24 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
       )}
 
       <View style={styles.postMainRow}>
-        <View style={[styles.postLeftCol, { width: 38, alignItems: 'center' }]}>
+        <View style={[styles.postLeftCol, feedItemStyles.postLeftColWidth]}>
           {hasPrevThreadConnection ? (
-            <View style={{ position: 'absolute', left: 19, top: 0, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
+            <View style={feedItemStyles.threadLinePrev} />
           ) : (
             <>
               <Avatar name={userName} photo={userPhoto} size={38} />
               {hasNextThreadConnection && (
-                <View style={{ position: 'absolute', left: 19, top: 38, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
+                <View style={feedItemStyles.threadLineNext} />
               )}
             </>
           )}
         </View>
 
-        <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 19 }]}>
+        <View style={[styles.postRightCol, hasPrevThreadConnection && feedItemStyles.paddingLeft19]}>
           <View style={styles.postHeaderRow}>
             <View style={styles.postNameContainer}>
               <Text style={styles.feedPostUserName} numberOfLines={1}>{userName}</Text>
-              {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={15} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={15} color="#FF6B00" style={feedItemStyles.verifiedBadge} />}
               <Text style={styles.postHandle} numberOfLines={1}>
                 {` ${userHandle}`}
               </Text>
@@ -188,14 +188,14 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
                 </View>
               )}
               {item.category && item.category !== 'Feed' && item.category !== 'Others' && (
-                <View style={[styles.categoryBadge, { marginLeft: 6 }]}>
+                <View style={[styles.categoryBadge, feedItemStyles.marginLeft6]}>
                   <Text style={styles.categoryBadgeText}>{item.category}</Text>
                 </View>
               )}
             </View>
             <TouchableOpacity
               onPress={() => onDelete(item.id)}
-              style={{ padding: 4 }}
+              style={feedItemStyles.ellipsisBtn}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
               accessibilityLabel="Post options"
@@ -365,24 +365,24 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
         </View>
       </View>
 
-      <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
+      <View style={[styles.festEventFooter, feedItemStyles.cardFooterBorder]}>
         <View style={styles.festOrgDetailsRow}>
           <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
-          <View style={{ marginLeft: 8, flex: 1 }}>
+          <View style={feedItemStyles.flex1Ml8}>
             <View style={styles.festOrgNameRow}>
               <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={feedItemStyles.marginLeft4} />}
             </View>
             <Text style={styles.festOrgLabel}>Organizer • {getTimeAgo(item.start_time || item.created_at || item.timestamp)}</Text>
           </View>
         </View>
       </View>
 
-      <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
+      <View style={[styles.eventActionRow, feedItemStyles.actionRowContainer]}>
         {phone ? (
           <>
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+              style={[styles.actionIconBtn, feedItemStyles.callBtnBg]}
               onPress={() => onCall(phone)}
               accessibilityRole="button"
               accessibilityLabel="Call organizer"
@@ -390,7 +390,7 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
               <Ionicons name="call" size={18} color="#16A34A" />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+              style={[styles.actionIconBtn, feedItemStyles.whatsappBtnBg]}
               onPress={() => onWhatsApp(phone, item.title)}
               accessibilityRole="button"
               accessibilityLabel="WhatsApp organizer"
@@ -400,11 +400,11 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
           </>
         ) : null}
 
-        <View style={{ flex: 1, marginHorizontal: 8 }}>
+        <View style={feedItemStyles.flex1Mh8}>
           {item.user_id === user?.id || item.sender_id === user?.id ? (
             !isFulfilled && (
               <TouchableOpacity
-                style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                style={[styles.helpBtn, feedItemStyles.resolveBtnBg]}
                 onPress={() => onResolve(item)}
                 accessibilityRole="button"
                 accessibilityLabel="Mark as Fulfilled"
@@ -415,8 +415,8 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
           ) : null}
 
           {isFulfilled ? (
-            <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-              <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+            <View style={[styles.helpBtn, feedItemStyles.fulfilledBtnBg]}>
+              <Text style={[styles.helpBtnText, feedItemStyles.fulfilledBtnText]}>Completed ✅</Text>
             </View>
           ) : null}
         </View>
@@ -432,38 +432,23 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
       </View>
 
       {!(item.user_id === user?.id || item.sender_id === user?.id || item.organizer_id === user?.id) && (
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginTop: 12,
-          paddingTop: 12,
-          borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
-        }}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ fontSize: 13, color: '#64748B', fontFamily: FONTS.regular }}>
+        <View style={feedItemStyles.attendFooterContainer}>
+          <View style={feedItemStyles.flex1Mr12}>
+            <Text style={feedItemStyles.attendQuestionText}>
               Want to attend?
             </Text>
             {rsvp === 'yes' && (
-              <Text style={{ fontSize: 11, color: '#1D9BF0', marginTop: 2, fontFamily: FONTS.regular }}>
+              <Text style={feedItemStyles.attendResponseSharedText}>
                 Your response has been shared with organizer.
               </Text>
             )}
           </View>
           <TouchableOpacity
             onPress={() => onAttend(item.id, rsvp !== 'yes', item)}
-            style={{
-              backgroundColor: rsvp === 'yes' ? '#1D9BF0' : '#FFFFFF',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: '#1D9BF0',
-            }}
+            style={rsvp === 'yes' ? feedItemStyles.attendBtnActive : feedItemStyles.attendBtn}
             activeOpacity={0.7}
           >
-            <Text style={{ color: rsvp === 'yes' ? '#FFFFFF' : '#1D9BF0', fontSize: 13, fontWeight: '700' }}>
+            <Text style={rsvp === 'yes' ? feedItemStyles.attendBtnTextActive : feedItemStyles.attendBtnText}>
               I will attend
             </Text>
           </TouchableOpacity>
@@ -535,24 +520,24 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
         </View>
       </View>
 
-      <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
+      <View style={[styles.festEventFooter, feedItemStyles.cardFooterBorder]}>
         <View style={styles.festOrgDetailsRow}>
           <Avatar name={item.user?.name || item.user_name || 'User'} size={32} photo={item.user?.photo} />
-          <View style={{ marginLeft: 8, flex: 1 }}>
+          <View style={feedItemStyles.flex1Ml8}>
             <View style={styles.festOrgNameRow}>
               <Text style={styles.festOrgName} numberOfLines={1}>{item.user?.name || item.user_name || 'User'}</Text>
-              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={feedItemStyles.marginLeft4} />}
             </View>
             <Text style={styles.festOrgLabel}>Volunteer • {item.location || 'Local'}</Text>
           </View>
         </View>
       </View>
 
-      <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
+      <View style={[styles.eventActionRow, feedItemStyles.actionRowContainer]}>
         {phone ? (
           <>
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+              style={[styles.actionIconBtn, feedItemStyles.callBtnBg]}
               onPress={() => onCall(phone)}
               accessibilityRole="button"
               accessibilityLabel="Call volunteer"
@@ -561,7 +546,7 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+              style={[styles.actionIconBtn, feedItemStyles.whatsappBtnBg]}
               onPress={() => onWhatsApp(phone, item.title || item.content || item.description)}
               accessibilityRole="button"
               accessibilityLabel="WhatsApp volunteer"
@@ -571,11 +556,11 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
           </>
         ) : null}
 
-        <View style={{ flex: 1, marginHorizontal: 8 }}>
+        <View style={feedItemStyles.flex1Mh8}>
           {item.user_id === user?.id || item.sender_id === user?.id ? (
             !isFulfilled && (
               <TouchableOpacity
-                style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                style={[styles.helpBtn, feedItemStyles.resolveBtnBg]}
                 onPress={() => onResolve(item)}
                 accessibilityRole="button"
                 accessibilityLabel="Mark as Fulfilled"
@@ -586,8 +571,8 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
           ) : null}
 
           {isFulfilled ? (
-            <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-              <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+            <View style={[styles.helpBtn, feedItemStyles.fulfilledBtnBg]}>
+              <Text style={[styles.helpBtnText, feedItemStyles.fulfilledBtnText]}>Completed ✅</Text>
             </View>
           ) : null}
         </View>
@@ -684,23 +669,23 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
 
   return (
     <View style={styles.festEventCard}>
-      <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 6 }]}>
+      <View style={[styles.requestOwnerRow, feedItemStyles.requestOwnerRowAlign]}>
         <Avatar name={ownerName} photo={item.user?.photo} size={34} />
-        <View style={{ marginLeft: 8, flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Text style={[styles.feedPostUserName, { fontSize: 13 }]} numberOfLines={1}>{ownerName}</Text>
-            {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 2 }} />}
-            <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}>
+        <View style={feedItemStyles.flex1Ml8}>
+          <View style={feedItemStyles.requestMetaRow}>
+            <Text style={[styles.feedPostUserName, feedItemStyles.fontSize13]} numberOfLines={1}>{ownerName}</Text>
+            {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={feedItemStyles.verifiedBadgeSmall} />}
+            <Text style={[styles.postHandle, feedItemStyles.fontSize11]} numberOfLines={1}>
               {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
             </Text>
-            <Text style={[styles.postHandle, { fontSize: 11 }]} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
-            <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4, borderWidth: 1, borderColor: '#E2E8F0' }}>
-              <Text style={{ fontSize: 9, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+            <Text style={[styles.postHandle, feedItemStyles.fontSize11]} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+            <View style={feedItemStyles.requestBadgeTag}>
+              <Text style={feedItemStyles.requestBadgeTagText}>{requestTypeLabel}</Text>
             </View>
           </View>
         </View>
       </View>
-      <View style={[{ backgroundColor: 'transparent', borderRadius: 14, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : 'rgba(0,0,0,0.06)', padding: 10 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
+      <View style={[feedItemStyles.requestCardInner, isFulfilled ? feedItemStyles.requestCardInnerFulfilled : feedItemStyles.requestCardInnerPending]}>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
             <CommunityMediaItem
@@ -740,13 +725,13 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
           </View>
         </View>
 
-        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 8 }} />
+        <View style={feedItemStyles.dividerLine} />
 
-        <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
+        <View style={[styles.eventActionRow, feedItemStyles.actionRowZeroTopMargin]}>
           {phone ? (
             <>
               <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+                style={[styles.actionIconBtn, feedItemStyles.callBtnBg]}
                 onPress={() => onCall(phone)}
                 accessibilityRole="button"
                 accessibilityLabel="Call requester"
@@ -754,7 +739,7 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
                 <Ionicons name="call" size={18} color="#16A34A" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+                style={[styles.actionIconBtn, feedItemStyles.whatsappBtnBg]}
                 onPress={() => onWhatsApp(phone, item.title || item.content)}
                 accessibilityRole="button"
                 accessibilityLabel="WhatsApp requester"
@@ -764,11 +749,11 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
             </>
           ) : null}
 
-          <View style={{ flex: 1, marginHorizontal: 8 }}>
+          <View style={feedItemStyles.flex1Mh8}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
               !isFulfilled && (
                 <TouchableOpacity
-                  style={[styles.helpBtn, { backgroundColor: '#F59E0B', width: '100%' }]}
+                  style={[styles.helpBtn, feedItemStyles.resolveBtnBg]}
                   onPress={() => onResolve(item)}
                   accessibilityRole="button"
                   accessibilityLabel="Mark as Fulfilled"
@@ -783,24 +768,27 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
                 if (!isLostFound && !isTemple) return null;
                 const interest = interestMap[item.id] ?? { count: item.interested_count || 0, userInterested: (item.interested_by || []).includes(user?.id) };
                 return (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 12, color: '#666', flex: 1 }}>
+                  <View style={feedItemStyles.gap8Row}>
+                    <Text style={feedItemStyles.interestQuestionText}>
                       {isLostFound ? 'Did you find this?' : 'Will you attend?'}
                     </Text>
                     <TouchableOpacity
                       onPress={() => onToggleInterest(item)}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: interest.userInterested ? '#D1FAE5' : '#F0FDF4', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: interest.userInterested ? '#059669' : '#BBF7D0' }}
+                      style={[
+                        feedItemStyles.interestBtn,
+                        interest.userInterested ? feedItemStyles.interestBtnActive : feedItemStyles.interestBtnInactive
+                      ]}
                       accessibilityRole="button"
                       accessibilityLabel={interest.userInterested ? (isLostFound ? 'Found' : 'Going') : (isLostFound ? 'Mark as found' : 'Mark as going')}
                     >
                       <Ionicons name="checkmark" size={16} color={interest.userInterested ? '#059669' : '#34D399'} />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: interest.userInterested ? '#059669' : '#34D399' }}>
+                      <Text style={[feedItemStyles.interestBtnText, { color: interest.userInterested ? '#059669' : '#34D399' }]}>
                         {interest.count > 0 ? `${interest.count} ${isLostFound ? 'found' : 'going'}` : isLostFound ? 'Found' : 'Going'}
                       </Text>
                     </TouchableOpacity>
                     {isTemple && !interest.userInterested && (
                       <TouchableOpacity
-                        style={{ backgroundColor: '#FEF2F2', padding: 6, borderRadius: 20, borderWidth: 1, borderColor: '#FECACA' }}
+                        style={feedItemStyles.notGoingBtn}
                         onPress={() => {}}
                         accessibilityRole="button"
                         accessibilityLabel="Not going"
@@ -814,8 +802,8 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
             ) : null}
 
             {isFulfilled ? (
-              <View style={[styles.helpBtn, { backgroundColor: '#D1FAE5', width: '100%' }]}>
-                <Text style={[styles.helpBtnText, { color: '#166534' }]}>Completed ✅</Text>
+              <View style={[styles.helpBtn, feedItemStyles.fulfilledBtnBg]}>
+                <Text style={[styles.helpBtnText, feedItemStyles.fulfilledBtnText]}>Completed ✅</Text>
               </View>
             ) : null}
           </View>
@@ -873,5 +861,219 @@ const feedItemStyles = StyleSheet.create({
     backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  postLeftColWidth: {
+    width: 38,
+    alignItems: 'center',
+  },
+  paddingLeft19: {
+    paddingLeft: 19,
+  },
+  threadLinePrev: {
+    position: 'absolute',
+    left: 19,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: '#CFD9DE',
+    zIndex: 1,
+  },
+  threadLineNext: {
+    position: 'absolute',
+    left: 19,
+    top: 38,
+    bottom: 0,
+    width: 2,
+    backgroundColor: '#CFD9DE',
+    zIndex: 1,
+  },
+  verifiedBadge: {
+    marginLeft: 2,
+  },
+  verifiedBadgeSmall: {
+    marginLeft: 2,
+  },
+  marginLeft4: {
+    marginLeft: 4,
+  },
+  marginLeft6: {
+    marginLeft: 6,
+  },
+  ellipsisBtn: {
+    padding: 4,
+  },
+  flex1Ml8: {
+    marginLeft: 8,
+    flex: 1,
+  },
+  flex1Mh8: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  flex1Mr12: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardFooterBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingBottom: 12,
+  },
+  actionRowContainer: {
+    marginTop: 12,
+    paddingHorizontal: 0,
+  },
+  actionRowZeroTopMargin: {
+    marginTop: 0,
+    paddingHorizontal: 0,
+  },
+  callBtnBg: {
+    backgroundColor: '#F0FDF4',
+  },
+  whatsappBtnBg: {
+    backgroundColor: '#ECFDF5',
+  },
+  resolveBtnBg: {
+    backgroundColor: '#F59E0B',
+    width: '100%',
+  },
+  fulfilledBtnBg: {
+    backgroundColor: '#D1FAE5',
+    width: '100%',
+  },
+  fulfilledBtnText: {
+    color: '#166534',
+  },
+  attendFooterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  attendQuestionText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontFamily: FONTS.regular,
+  },
+  attendResponseSharedText: {
+    fontSize: 11,
+    color: '#1D9BF0',
+    marginTop: 2,
+    fontFamily: FONTS.regular,
+  },
+  attendBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1D9BF0',
+  },
+  attendBtnActive: {
+    backgroundColor: '#1D9BF0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1D9BF0',
+  },
+  attendBtnText: {
+    color: '#1D9BF0',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  attendBtnTextActive: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  requestOwnerRowAlign: {
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    marginBottom: 6,
+  },
+  requestMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  fontSize13: {
+    fontSize: 13,
+  },
+  fontSize11: {
+    fontSize: 11,
+  },
+  requestBadgeTag: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  requestBadgeTagText: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  requestCardInner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+  },
+  requestCardInnerPending: {
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  requestCardInnerFulfilled: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#A7F3D0',
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 8,
+  },
+  gap8Row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  interestQuestionText: {
+    fontSize: 12,
+    color: '#666',
+    flex: 1,
+  },
+  interestBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  interestBtnActive: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#059669',
+  },
+  interestBtnInactive: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  interestBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  notGoingBtn: {
+    backgroundColor: '#FEF2F2',
+    padding: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
 });

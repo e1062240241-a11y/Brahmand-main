@@ -91,7 +91,11 @@ interface UpcomingJaapCardProps {
  */
 const UpcomingJaapCard = React.memo(({ jaap, isHindi, onPress }: UpcomingJaapCardProps) => {
   const displayName = isHindi ? jaap.titleHi : jaap.title;
-  const comingSoonText = isHindi ? 'जल्द ही आ रहा है' : 'COMING SOON';
+  // 🧡 Engagement: Reframed transactional coming soon text "जल्द ही आ रहा है" to devotional anticipation "शीघ्र प्रारंभ 🚩".
+  // Lever: Reframing + Devotional Anticipation (Culture over Utility)
+  // Why: "शीघ्र प्रारंभ" creates sacred anticipation for upcoming collective sadhana rather than product release speak.
+  // UI: Text-only change, no visual components or layout structure altered.
+  const comingSoonText = isHindi ? 'शीघ्र प्रारंभ 🚩' : 'COMING SOON';
 
   const handleCardPress = useCallback(() => {
     onPress(jaap);
@@ -152,11 +156,14 @@ export const UpcomingJaapsSection = React.memo(({
       return;
     }
     const title = isHindi ? jaap.titleHi : jaap.title;
+    // 🧡 Engagement: Reframed alert from service update ("सेवा जल्द ही आ रही है। कृपया प्रतीक्षा करें!") to devotional intention ("की सामूहिक साधना जल्द ही प्रारंभ होगी। प्रभु भक्ति का संकल्प लें!").
+    // Lever: Reframing + Sanskara/Sankalpa (Devotion over Productivity)
+    // UI: Text-only change, zero UI or visual modifications.
     Alert.alert(
-      isHindi ? '🙏 जल्द ही आ रहा है' : '🙏 Coming Soon',
+      isHindi ? '🪔 शीघ्र ही साधना आरंभ होगी' : '🪔 Sacred Practice Starting Soon',
       isHindi
-        ? `${title} सेवा जल्द ही आ रही है। कृपया प्रतीक्षा करें!`
-        : `${title} is coming soon. Stay tuned!`
+        ? `${title} की सामूहिक साधना जल्द ही प्रारंभ होगी। प्रभु भक्ति का संकल्प लें!`
+        : `Collective chanting for ${title} is commencing soon. Prepare your heart for devotion!`
     );
   }, [onCardPress, isHindi]);
 
@@ -164,8 +171,10 @@ export const UpcomingJaapsSection = React.memo(({
     <View style={styles.container}>
       {/* More Upcoming Jaaps Section Header */}
       <View style={styles.sectionHeaderParity}>
+        {/* 🧡 Engagement: Reframed generic header "और आगामी जाप" to collective devotion "आगामी सामूहिक साधना".
+            Lever: Social Proof / Satsang Framing (Collectiveness over Individuality) */}
         <Text style={styles.sectionTitleText}>
-          {isHindi ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
+          {isHindi ? 'आगामी सामूहिक साधना' : 'Upcoming Collective Sadhana'}
         </Text>
       </View>
 

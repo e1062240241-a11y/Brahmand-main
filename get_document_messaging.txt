@@ -1,0 +1,129 @@
+    ) -> Dict[str, Any]:
+        """Send message to community subgroup"""
+        db = await FirebaseMessagingService.get_db()
+
+        # Get user
+        user = await db.get_document('users', user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        # Resolve fallback community IDs
+        if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+--
+                            db.client.collection('users').document(user_id).update,
+                            {'communities': firestore.ArrayUnion(missing_ids)}
+                        )
+                        user['communities'] = user.get('communities', []) + missing_ids
+
+                    fetched = await db.get_documents_batch('communities', community_ids)
+                    for comm in fetched:
+                        if comm and comm.get('type') == target_type:
+                            community_id = comm.get('id')
+                            break
+                except Exception as ex:
+--
+
+        # Check membership
+        is_member = community_id in user.get('communities', [])
+        if not is_member:
+            # Check the community document directly to see if the user is in the members list
+            community = await db.get_document('communities', community_id)
+            if community:
+                if user_id in community.get('members', []):
+                    is_member = True
+                    # Sync back to user document so future checks are fast
+                    try:
+--
+
+        if not is_member:
+            raise ValueError("Not a community member")
+
+        # Check verification (state and country groups / subgroups require verification)
+        community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
+        is_restricted_group = (subgroup_type in ['state', 'country', 'national']) or ((community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False)
+
+        if is_restricted_group and not user.get('is_verified', False):
+            raise ValueError("Only verified members can post in State & National community groups")
+
+--
+        """Get messages from community chat with In-Memory Circular Buffer & Verification Guard Gate"""
+        db = await FirebaseMessagingService.get_db()
+
+        user = None
+        if user_id:
+            user = await db.get_document('users', user_id)
+
+        # Verification Guard Gate: State & National subgroups require Personality Verification
+        is_restricted_subgroup = subgroup_type in ['state', 'national', 'country']
+        if is_restricted_subgroup and user and not user.get('is_verified', False):
+            logger.info(f"Guard Gate: Unverified user {user_id} blocked from fetching {subgroup_type} community messages.")
+--
+                        await db._run_sync(
+                            db.client.collection('users').document(user_id).update,
+                            {'communities': firestore.ArrayUnion(missing_ids)}
+                        )
+
+                    fetched = await db.get_documents_batch('communities', community_ids)
+                    for comm in fetched:
+                        if comm and comm.get('type') == target_type:
+                            community_id = comm.get('id')
+                            break
+                except Exception as ex:
+--
+
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+--
+
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]
+--
+            for chat in chats if len(chat.get('participants', [])) > 0 and any(p != user_id for p in chat['participants'])
+        ]))
+
+        other_users_map = {}
+        if other_ids:
+            other_users_list = await db.get_documents_batch('users', other_ids)
+            # `get_documents_batch` returns docs with `id` populated from `doc.id`
+            other_users_map = {u['id']: u for u in other_users_list if u and 'id' in u}
+
+        for chat in chats:
+            participants = chat.get('participants', [])
+--
+    ) -> List[Dict[str, Any]]:
+        """Get DM messages"""
+        db = await FirebaseMessagingService.get_db()
+
+        # Verify user is participant
+        chat = await db.get_document('chats', conversation_id)
+        if not chat or user_id not in chat.get('participants', []):
+            raise ValueError("Not authorized")
+
+        messages = await db.get_chat_messages(conversation_id, limit)
+
+        # Dynamically decorate with current sender verification status
+        if messages:
+            sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+            if sender_ids:
+                users_list = await db.get_documents_batch('users', sender_ids)
+                users_map = {u['id']: u for u in users_list if 'id' in u}
+                for msg in messages:
+                    sender_id = msg.get('sender_id')
+                    if sender_id and sender_id in users_map:
+                        user_doc = users_map[sender_id]

@@ -1,0 +1,2503 @@
+        notified_user_ids.append(target_user_id)
+
+    return notified_user_ids
+
+async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    media_path = post.get('media_path')
+
+--
+
+    admin_user_ids = [x.strip() for x in os.getenv('ADMIN_USER_IDS', '').split(',') if x.strip()]
+    if user_id in admin_user_ids:
+        return True
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        return False
+
+    if user.get('is_admin') is True:
+        return True
+--
+    }
+
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict | None = None):
+    """Upsert vendor review snapshot used by future admin panel."""
+    if not vendor:
+        vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        return
+
+    if not vendor.get('phone_number') and not vendor.get('contact_number'):
+        owner_id = vendor.get('owner_id')
+        if owner_id:
+            try:
+                user_doc = await db.get_document('users', owner_id)
+                if user_doc:
+                    owner_phone = user_doc.get('kyc_verified_phone') or user_doc.get('phone') or user_doc.get('phone_number')
+                    if owner_phone:
+                        vendor['phone_number'] = owner_phone
+                        vendor['contact_number'] = owner_phone
+--
+        raise HTTPException(status_code=500, detail="Anonymous login failed")
+
+@api_router.post("/auth/logout")
+async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    fcm_token = str(data.get('fcm_token', '')).strip()
+    if fcm_token:
+--
+    return {"users": anonymous_users}
+
+@api_router.post("/admin/anonymous-users/{user_id}/disable")
+async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(verify_token)):
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user or not user.get('anonymous_account'):
+        raise HTTPException(status_code=404, detail="Anonymous user not found")
+    if user.get('anonymous_disabled'):
+        return {"message": "Anonymous user already disabled"}
+    await FirebaseAuthService.disable_anonymous_user(user_id)
+--
+# =================== USER ENDPOINTS ===================
+
+@api_router.get("/user/profile")
+async def get_profile(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Normalize followers/following to always be proper lists (guard against None)
+    user['followers'] = list(user.get('followers') or [])
+--
+async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    # Pre-fetch user document to merge in-memory, avoiding read-after-write
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if update_data:
+        photo_data = update_data.get('photo')
+--
+@api_router.put("/user/profile/extended")
+async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    update_data = {k: v for k, v in update.dict().items() if v is not None}
+
+    user_doc = await db.get_document('users', token_data["user_id"])
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if update_data:
+        await db.update_document('users', token_data["user_id"], update_data)
+--
+    return results
+
+@api_router.delete("/user/saved-kundlis/{profile_id}")
+async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    doc = await db.get_document("saved_kundlis", profile_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Saved profile not found")
+    if doc.get("user_id") != token_data["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this profile")
+    await db.delete_document("saved_kundlis", profile_id)
+--
+    """Delete user profile, including posts and comments."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # 1. Fetch user to verify they exist
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 2. Verify OTP
+    phone = user.get('phone_number')
+--
+@api_router.post("/user/location")
+async def setup_location(location: LocationSetup, token_data: dict = Depends(verify_token)):
+    """Setup user location and join communities"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot set location")
+
+    loc = normalize_location(location.dict())
+    if not loc:
+--
+    await cache_manager.invalidate_user(user_id)
+    if community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
+    await cache_manager.invalidate_user_communities(user_id)
+
+    user = await db.get_document('users', user_id)
+    return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
+
+@api_router.post("/user/current-location")
+async def update_current_location(location: dict, token_data: dict = Depends(verify_token)):
+    """Update the user's current GPS location."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot update current location")
+    latitude = location.get('latitude')
+    longitude = location.get('longitude')
+    if latitude is None or longitude is None:
+--
+    3. Country Group (Bharat)
+    4. Office Area Group (if provided)
+    """
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('anonymous_account'):
+        raise HTTPException(status_code=403, detail="Anonymous accounts cannot update dual location")
+
+
+    # Get user's currently joined communities to find old location-based ones
+    current_communities = (user.get('communities', []) if user else []) or []
+    non_location_community_ids = []
+    old_location_community_ids = []
+
+    if current_communities:
+        comm_docs = await db.get_documents_batch('communities', list(current_communities))
+        for comm in comm_docs:
+            if comm:
+                cid = comm['id']
+                if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
+                    old_location_community_ids.append(cid)
+--
+    await cache_manager.invalidate_user(user_id)
+    if unique_community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
+    await cache_manager.invalidate_user_communities(user_id)
+
+    user = await db.get_document('users', user_id)
+    return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
+
+@api_router.get("/user/search/{sl_id}")
+async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+--
+    ]
+
+    # ⚡ Bolt Optimization: Concurrently fetch user profile and follow edge to prevent sequential latency
+    async def fetch_edge():
+        if viewer_id and viewer_id != user_id:
+            return await db.get_document('user_follows', f"{viewer_id}_{user_id}")
+        return None
+
+    async def fetch_user():
+        fields = SCALAR_FIELDS + ['followers', 'following'] if include_lists else SCALAR_FIELDS
+        return await db.get_document_fields('users', user_id, fields)
+
+    edge, doc = await asyncio.gather(fetch_edge(), fetch_user())
+
+    if not doc:
+        raise HTTPException(status_code=404, detail='User not found')
+--
+        following_list = None  # not loaded
+        # Pre-backfill fallback: edge doc missing but this may be an existing
+        # array-only follow. Only then do we fetch JUST the followers array to
+        # check membership — after backfill this branch never runs.
+        if not is_following and viewer_id and (doc.get('followers_count') or 0) > 0:
+            arr_doc = await db.get_document_fields('users', user_id, ['followers'])
+            if arr_doc and viewer_id in (arr_doc.get('followers') or []):
+                is_following = True
+
+    # Stored counters (maintained atomically by follow/unfollow); fall back to
+    # array length only for legacy docs missing the counter fields.
+--
+
+    db = await get_db()
+    viewer_id = token_data.get('user_id')
+
+    # 1. Fetch target user to verify existence & total count in O(1)
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    total_count = (
+        target_user.get('followers_count') or 0
+--
+            'next_cursor': None,
+            'total_count': total_count
+        }
+
+    # 3. Stage 2: Single Batch Profile Hydration (Server-Side)
+    hydrated_users_list = await db.get_documents_batch('users', edge_uids)
+    hydrated_users_map = {
+        u.get('id', u.get('user_id', '')): u
+        for u in hydrated_users_list
+        if isinstance(u, dict)
+    }
+--
+
+    # 5. Stage 3: Viewer Relationship Resolution (1 Batch Check)
+    viewer_follow_map = {}
+    if viewer_id:
+        viewer_edge_ids = [f"{viewer_id}_{target_uid}" for target_uid in matched_uids]
+        raw_viewer_edges = await db.get_documents_batch('user_follows', viewer_edge_ids)
+        viewer_edge_map = {
+            e.get('id', ''): e
+            for e in raw_viewer_edges
+            if isinstance(e, dict)
+        }
+--
+        # Query blocks where blockerUid is the current user
+        blocks = await db.query_documents('user_blocks', filters=[('blockerUid', '==', current_user_id)])
+        blocked_users = []
+        blocked_uids = [b.get('blockedUid') for b in blocks if b.get('blockedUid')]
+        if blocked_uids:
+            user_docs = await db.get_documents_batch('users', blocked_uids)
+            user_map = {u['id']: u for u in user_docs if u}
+            for b in blocks:
+                blocked_uid = b.get('blockedUid')
+                if blocked_uid:
+                    user_doc = user_map.get(blocked_uid)
+--
+@api_router.get("/share/profile/{user_id}", response_class=HTMLResponse)
+@api_router.get("/profile/{user_id}", response_class=HTMLResponse)
+async def share_profile_preview(user_id: str):
+    """Generate dynamic HTML Open Graph preview card for shared profile links."""
+    db = await get_db()
+    user_doc = await db.get_document('users', user_id)
+
+    title = "Brahmand Profile"
+    description = "Check out this profile on Brahmand - Connect with your local spiritual community."
+    image_url = DEFAULT_BRAHMAND_LOGO
+
+--
+
+@api_router.get("/share/post/{post_id}", response_class=HTMLResponse)
+async def share_post_preview(post_id: str):
+    """Generate dynamic HTML Open Graph preview card for shared post links."""
+    db = await get_db()
+    post = await db.get_document('posts', post_id)
+
+    title = "Brahmand"
+    description = "Connect with your local spiritual community, find temples, jaap rooms, and emergency services."
+    image_url = DEFAULT_BRAHMAND_LOGO
+
+--
+
+@api_router.get('/posts/{post_id}/views')
+@api_router.post('/posts/{post_id}/view')
+async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    user_id = token_data.get('user_id')
+    current_views = post.get('views_count', 0) or 0
+--
+    if getattr(file, "filename", None):
+        file.filename = os.path.basename(file.filename.replace("\\", "/"))
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    if user.get('is_blocked'):
+        from datetime import datetime, timezone
+--
+    mute_audio: Optional[str] = None,
+):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    if user.get('is_blocked'):
+        from datetime import datetime, timezone
+--
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    target_user_id = user_id if user_id else current_user_id
+
+    # Sanity check: verify the target user exists
+    target_user = await db.get_document('users', target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    safe_limit = max(1, min(limit, 50))
+
+--
+        paged_posts = recent_unseen + older_unseen + seen_returned
+
+    # ── Enrich posts with author info and like status ─────────────
+    post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
+    try:
+        authors_data = await db.get_documents_batch('users', post_author_ids)
+        authors_by_id = {a['id']: a for a in authors_data}
+    except Exception:
+        authors_by_id = {}
+
+    semaphore = asyncio.Semaphore(15)
+--
+    duration_seconds = max(1.0, float(data.get('duration_seconds', 1)))
+    rewatched = bool(data.get('rewatched', False))
+    completion = min(1.0, watch_seconds / duration_seconds)
+
+    try:
+        post = await db.get_document('posts', post_id)
+        if not post:
+            raise HTTPException(status_code=404, detail='Post not found')
+
+        # Rolling averages
+        views = max(1, int(post.get('views_count', 0) or 0))
+--
+        })
+
+        # Update user interest preferences
+        cat = post.get('category', 'spirituality')
+        try:
+            prefs_doc = await db.get_document('feed_preferences', user_id)
+            cat_scores = (prefs_doc or {}).get('category_scores', {})
+            old_score = float(cat_scores.get(cat, 0))
+            # Increase if watched > 50%, decrease slightly if skipped
+            delta = 1.0 if completion >= 0.5 else -0.3
+            cat_scores[cat] = round(max(0, min(100, old_score + delta)), 2)
+--
+async def get_feed_preferences(token_data: dict = Depends(verify_token)):
+    """Get the current user's category interest scores."""
+    db = await get_db()
+    user_id = token_data['user_id']
+    try:
+        doc = await db.get_document('feed_preferences', user_id)
+        return {'category_scores': (doc or {}).get('category_scores', {})}
+    except Exception:
+        return {'category_scores': {}}
+
+@api_router.get('/posts/hashtag')
+--
+
+    post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
+    authors_by_id = {}
+    if post_author_ids:
+        try:
+            author_docs = await db.get_documents_batch('users', post_author_ids)
+            for u in author_docs:
+                if u:
+                    authors_by_id[u['id']] = u
+        except Exception as e:
+            logger.error(f"Error batch fetching post authors: {e}")
+--
+
+@api_router.get('/posts/{post_id}')
+async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    post_author_id = post.get('user_id')
+--
+        raise HTTPException(status_code=403, detail='You do not have permission to view this post')
+
+    author = None
+    if post.get('user_id'):
+        try:
+            author = await db.get_document('users', post['user_id'])
+        except Exception:
+            author = None
+
+    if author:
+        post['user_photo'] = author.get('photo')
+--
+@api_router.post('/posts/{post_id}/repost')
+async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    original_post = await db.get_document('posts', post_id)
+    if not original_post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    original_owner_id = original_post.get('user_id')
+    if original_owner_id:
+        blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+        if original_owner_id in blocked_user_ids:
+            raise HTTPException(status_code=403, detail='Repost not allowed due to a block relationship')
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    repost_doc = {
+        'user_id': user_id,
+--
+@api_router.post('/posts/{post_id}/like')
+async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    post_owner_id = post.get('user_id')
+    if post_owner_id:
+--
+
+        # Push notification logic for new likes
+        post_owner_id = post.get('user_id')
+        if post_owner_id and post_owner_id != user_id:
+            try:
+                actor_user = await db.get_document('users', user_id)
+                actor_name = (
+                    (actor_user or {}).get('name')
+                    or (actor_user or {}).get('sl_id')
+                    or 'Someone'
+                )
+--
+
+    # Atomic server-side increment/decrement was applied above via db.increment_field,
+    # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
+
+    # Return the updated state immediately
+    updated_post = await db.get_document('posts', post_id)
+    if not updated_post:
+        updated_post = post.copy()
+        updated_post['id'] = post_id
+
+    # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
+--
+async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data: dict = Depends(verify_token)):
+    """Update post details (currently only caption supported)"""
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail='You can only edit your own posts')
+--
+        return {"message": "No changes requested", "post": post}
+
+    update_data['updated_at'] = datetime.utcnow()
+
+    await db.update_document('posts', post_id, update_data)
+    updated_post = await db.get_document('posts', post_id)
+
+    return {
+        "message": "Post updated successfully",
+        "post": updated_post
+    }
+--
+@api_router.delete('/posts/{post_id}')
+async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail='You can only delete your own posts')
+--
+@api_router.post('/posts/{post_id}/comments')
+async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    text = str(data.get('text') or '').strip()
+    if not text:
+--
+            raise HTTPException(status_code=403, detail='Comment not allowed due to a block relationship')
+
+    parent_id = data.get('parent_id')
+    parent_comment = None
+    if parent_id:
+        parent_comment = await db.get_document('post_comments', parent_id)
+        if not parent_comment or parent_comment.get('post_id') != post_id:
+            raise HTTPException(status_code=400, detail='Parent comment not found')
+
+        parent_comment_user_id = parent_comment.get('user_id')
+        if parent_comment_user_id:
+            blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+            if parent_comment_user_id in blocked_user_ids:
+                raise HTTPException(status_code=403, detail='Reply not allowed due to a block relationship')
+
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail='User not found')
+
+    comment_doc = {
+        'post_id': post_id,
+--
+    # Atomic server-side increment for comments_count prevents read-modify-write race conditions
+    await db.increment_field('posts', post_id, 'comments_count', 1)
+    prev_comments_count = (post.get('comments_count', 0) or 0)
+    comments_count = prev_comments_count + 1
+
+    updated_post = await db.get_document('posts', post_id)
+    if not updated_post:
+        # Fallback if document not found in cache/db immediately
+        updated_post = post.copy()
+        updated_post['id'] = post_id
+
+--
+
+@api_router.get('/posts/{post_id}/comments')
+async def get_post_comments(post_id: str, request: Request, limit: int = 200, offset: int = 0, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    safe_limit = max(1, min(limit, 500))
+    safe_offset = max(0, offset)
+--
+
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+--
+@api_router.delete('/posts/{post_id}/comments/{comment_id}')
+async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    comment = await db.get_document('post_comments', comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail='Comment not found')
+
+    if comment.get('post_id') != post_id:
+        raise HTTPException(status_code=400, detail='Comment does not belong to this post')
+--
+    # Atomic server-side decrement for comments_count prevents read-modify-write race conditions
+    await db.increment_field('posts', post_id, 'comments_count', -1)
+    prev_comments_count = (post.get('comments_count', 0) or 0)
+    comments_count = max(0, prev_comments_count - 1)
+
+    updated_post = await db.get_document('posts', post_id)
+    if not updated_post:
+        updated_post = post.copy()
+        updated_post['id'] = post_id
+    updated_post['comments_count'] = comments_count
+    updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
+--
+@api_router.post('/posts/{post_id}/report')
+async def report_post(post_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    reporter_id = token_data['user_id']
+
+    post = await db.get_document('posts', post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail='Post not found')
+
+    if post.get('user_id') == reporter_id:
+        raise HTTPException(status_code=400, detail='You cannot report your own post')
+--
+    }
+
+@api_router.get("/user/verification-status")
+async def get_verification_status(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "is_verified": user.get("is_verified", False),
+        "member_type": "Verified Member" if user.get("is_verified") else "Basic Member",
+--
+    user_id = token_data["user_id"]
+    if user_id == 'admin':
+        return token_data
+
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user or (not user.get("is_admin") and user.get("role") != "admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return token_data
+
+@api_router.get("/admin/personality-verifications")
+--
+async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):
+    """Approve or Reject a personality verification request"""
+    db = await get_db()
+
+    # 1. Get the verification request
+    verif = await db.get_document('personality_verifications', request_id)
+    if not verif:
+        raise HTTPException(status_code=404, detail="Verification request not found")
+
+    target_user_id = verif['user_id']
+
+--
+        await db.update_user(target_user_id, user_updates)
+        await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
+
+        # ⚡ Bolt Optimization: Removed redundant sequential db.get_document fetch
+        # Grant Community Access
+        user = await db.get_document('users', target_user_id)
+        if not user:
+             return {"status": "error", "message": "User document not found"}
+
+        loc = user.get('location') or user.get('home_location')
+
+--
+        raise HTTPException(status_code=500, detail="An internal server error occurred")
+
+@api_router.get("/user/profile-completion")
+async def get_profile_completion(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    fields = [
+        "name", "photo", "language", "location", "kuldevi", "kuldevi_temple_area",
+--
+    }
+
+@api_router.get("/user/horoscope")
+async def get_horoscope(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not all(
+--
+    4. State
+    5. Country
+    Then any additional joined communities
+    """
+    db = await get_db()
+    user = await db.get_document_fields('users', token_data["user_id"], ['id', 'default_communities', 'communities'])
+    if not user:
+        return []
+
+    # Type order for sorting
+    TYPE_ORDER = {
+--
+    user_comm_ids = set(user.get('communities', []) or [])
+    seen_ids = set()
+
+    if user_comm_ids:
+        try:
+            fetched_comms = await db.get_documents_batch('communities', list(user_comm_ids))
+            for comm in fetched_comms:
+                if comm:
+                    comm_type = comm.get('type', 'other')
+                    if comm_type in ['home_area', 'area']:
+                        continue
+--
+            responses = req.get('responses', {})
+
+            invited_ids = list(set(admin_ids + member_ids))
+            users_data = []
+            if invited_ids:
+                users_data = await db.get_documents_batch('users', invited_ids)
+
+            admins_list = []
+            members_list = []
+
+            for u in users_data:
+--
+
+        request_id = await db.create_document('community_creation_requests', request_data)
+        request_data['id'] = request_id
+
+        # 5. Fetch owner name
+        owner_user = await db.get_document('users', owner_id)
+        owner_name = owner_user.get('name') if owner_user else "A user"
+
+        # 6. Send in-app notifications + push notifications to all invited admins and members
+        notification_docs = []
+        for admin_id in admin_ids:
+--
+
+        if status not in ['accepted', 'declined']:
+            raise HTTPException(status_code=400, detail="Status must be either 'accepted' or 'declined'")
+
+        # 1. Fetch the request
+        request_doc = await db.get_document('community_creation_requests', request_id)
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Community creation request not found")
+
+        # Delete corresponding notification so the button doesn't remain
+        try:
+--
+            blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+            if owner_id in blocked_user_ids:
+                raise HTTPException(status_code=403, detail="Responding not allowed due to a block relationship.")
+
+        # 2. Fetch responder name
+        responder_user = await db.get_document('users', user_id)
+        responder_name = (responder_user.get('name') if responder_user else None) or "A user"
+        comm_name = request_doc.get('name', 'Community')
+
+        responses = request_doc.get('responses', {})
+        responses[user_id] = status
+--
+        db = await get_db()
+        owner_id = token_data["user_id"]
+        target_user_id = data.user_id
+
+        # 1. Fetch the request
+        request_doc = await db.get_document('community_creation_requests', request_id)
+        if not request_doc:
+            raise HTTPException(status_code=404, detail="Community creation request not found")
+
+        # 2. Check owner permission
+        if request_doc.get('owner_id') != owner_id:
+--
+        responses = request_doc.get('responses', {})
+        if responses.get(target_user_id, 'pending') != 'pending':
+            raise HTTPException(status_code=400, detail=f"User has already responded: {responses.get(target_user_id)}")
+
+        # 6. Fetch owner name
+        owner_user = await db.get_document('users', owner_id)
+        owner_name = (owner_user.get('name') if owner_user else None) or "A user"
+        comm_name = request_doc.get('name', 'Community')
+
+        role = "admin" if target_user_id in admin_ids else "member"
+
+--
+):
+    """Directly join a live user_group community."""
+    try:
+        db = await get_db()
+        user_id = token_data["user_id"]
+        comm = await db.get_document('communities', community_id)
+        if not comm:
+            raise HTTPException(status_code=404, detail="Community not found")
+        if comm.get('type') != 'user_group':
+            raise HTTPException(status_code=400, detail="Only user group communities can be joined directly.")
+        members = comm.get('members', [])
+--
+    return await FirebaseCommunityService.discover_communities(token_data["user_id"])
+
+@api_router.get("/communities/{community_id}")
+async def get_community(community_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    comm = await db.get_document('communities', community_id)
+    if not comm:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    # Enforce personality verification access limits for state/country groups
+    comm_type = comm.get('type')
+    if comm_type in ['state', 'country']:
+        user = await db.get_document('users', token_data["user_id"])
+        is_verified = user.get('is_verified', False) if user else False
+        verification_level = user.get('verification_level', 'state') if user else 'state'
+        if not is_verified:
+            raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+        if comm_type == 'country' and verification_level != 'national':
+--
+    if member_ids:
+        all_member_ids.update(member_ids)
+
+    user_map = {}
+    if all_member_ids:
+        all_users = await db.get_documents_batch('users', list(all_member_ids))
+        user_map = {u['id']: u for u in all_users if u and 'id' in u}
+
+    # 1. Process owner
+    if owner_id:
+        owner = user_map.get(owner_id)
+--
+    return {"message": "Rules agreed"}
+
+@api_router.get("/communities/{community_id}/stats")
+async def get_community_stats(community_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    comm = await db.get_document('communities', community_id)
+    return {
+        "community_id": community_id,
+        "name": comm['name'] if comm else "Unknown",
+        "member_count": len(comm.get('members', [])) if comm else 0,
+        "new_messages": 0
+--
+    community_id: str, subgroup_type: str, message: MessageCreate,
+    token_data: dict = Depends(verify_token), _: bool = Depends(messaging_rate_limit)
+):
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Resolve fallback community IDs
+    if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+--
+                        db.client.collection('users').document(user_id).update,
+                        {'communities': firestore.ArrayUnion(missing_ids)}
+                    )
+                    user['communities'] = user.get('communities', []) + missing_ids
+
+                fetched = await db.get_documents_batch('communities', community_ids)
+                for comm in fetched:
+                    if comm and comm.get('type') == target_type and comm.get('id'):
+                        community_id = str(comm['id'])
+                        break
+            except Exception as ex:
+--
+
+    # Check membership
+    is_member = community_id in user.get('communities', [])
+    if not is_member:
+        # Check the community document directly to see if the user is in the members list
+        community = await db.get_document('communities', community_id)
+        if community:
+            if user_id in community.get('members', []):
+                is_member = True
+                # Sync back to user document
+                try:
+--
+
+    if not is_member:
+        raise HTTPException(status_code=403, detail="Not a community member")
+
+    # Check verification (state and country groups require verification)
+    community_doc = locals().get('community') or await db.get_document('communities', community_id)
+    comm_type = community_doc.get('type') if community_doc else None
+    if comm_type in ['state', 'country']:
+        is_verified = user.get('is_verified', False)
+        verification_level = user.get('verification_level', 'state')
+        if not is_verified:
+--
+        raise HTTPException(status_code=400, detail=reason)
+
+    chat_id = f"community_{community_id}_{subgroup_type}"
+
+    # Ensure chat exists
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        await db.set_document('chats', chat_id, {
+            'type': 'community', 'community_id': community_id, 'subgroup_type': subgroup_type
+        })
+
+--
+    except Exception as mention_err:
+        logger.warning('Community message mention notification failed for %s: %s', msg_id, mention_err)
+
+    # Send push notification to community members
+    try:
+        comm = await db.get_document('communities', community_id)
+        comm_name = comm.get('name', 'Community') if comm else 'Community'
+        await push_service.notify_community_message(
+            community_id=community_id,
+            community_name=comm_name,
+            sender_name=user['name'],
+--
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # ⚡ Bolt Optimization: Concurrently fetch user and community documents if no fallback resolution is needed
+    if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+        user = await db.get_document('users', user_id)
+        target_type = 'city'
+        if community_id == 'maharashtra-fallback':
+            target_type = 'state'
+        elif community_id == 'bharat-fallback':
+            target_type = 'country'
+--
+                    await db._run_sync(
+                        db.client.collection('users').document(user_id).update,
+                        {'communities': firestore.ArrayUnion(missing_ids)}
+                    )
+
+                fetched = await db.get_documents_batch('communities', community_ids)
+                for comm in fetched:
+                    if comm and comm.get('type') == target_type:
+                        cid = comm.get('id')
+                        if cid:
+                            community_id = str(cid)
+                            break
+            except Exception as ex:
+                logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py get: {ex}")
+        community = await db.get_document('communities', community_id)
+    else:
+        user, community = await asyncio.gather(
+            db.get_document('users', user_id),
+            db.get_document('communities', community_id)
+        )
+--
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
+    sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
+    sender_map: dict = {}
+    if sender_ids:
+        try:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            for u in users_list:
+                if u and u.get('id'):
+                    sender_map[u['id']] = {
+                        'is_verified': u.get('is_verified', False),
+                        'verification_level': u.get('verification_level', 'state'),
+--
+    if not liked:
+        # Send notification to the message owner
+        msg_owner_id = msg.get('sender_id')
+        if msg_owner_id and msg_owner_id != user_id:
+            try:
+                community = await db.get_document('communities', community_id)
+                comm_name = community.get('name', 'Community') if community else 'Community'
+                actor_user = await db.get_document('users', user_id)
+                actor_name = (actor_user.get('name') or actor_user.get('sl_id') or 'Someone') if actor_user else 'Someone'
+
+                # Create notification doc
+                await db.create_document('notifications', {
+                    'user_id': msg_owner_id,
+--
+
+    text = str(data.get('text') or '').strip()
+    if not text:
+        raise HTTPException(status_code=400, detail='Comment text is required')
+
+    user = (await db.get_document('users', user_id)) or {}
+    comment_doc = {
+        'post_id': message_id,
+        'user_id': user_id,
+        'username': user.get('name') or user.get('sl_id') or 'User',
+        'user_photo': user.get('photo'),
+--
+
+    # Dynamically decorate with current sender verification status
+    if comments:
+        user_ids = list(set([c['user_id'] for c in comments if 'user_id' in c]))
+        if user_ids:
+            users_list = await db.get_documents_batch('users', user_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for c in comments:
+                uid = c.get('user_id')
+                if uid and uid in users_map:
+                    user_doc = users_map[uid]
+--
+@api_router.delete("/comments/{comment_id}")
+async def delete_comment(comment_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    user_id = token_data['user_id']
+
+    comment = await db.get_document('post_comments', comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    if comment.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own comments")
+--
+                chat_id = await db.get_chat_id_for_message(post_id)
+
+            if chat_id:
+                await db.update_chat_message(chat_id, post_id, {'comments_count': new_count})
+            else:
+                post = await db.get_document('posts', post_id)
+                if post:
+                    await db.update_document('posts', post_id, {'comments_count': new_count})
+        except Exception:
+            pass
+
+--
+    1. Check if chat exists between the two users (members array contains both)
+    2. If exists -> send message to that chat
+    3. If not exists -> create new chat document with chat_type: "private"
+    """
+    db = await get_db()
+    sender = await db.get_document('users', token_data["user_id"])
+    recipient = await db.get_user_by_sl_id(message.recipient_sl_id)
+
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender user not found")
+    if not recipient:
+--
+    # Create deterministic chat_id from sorted user IDs
+    sorted_members = sorted([sender_id, recipient_id])
+    chat_id = f"private_{'_'.join(sorted_members)}"
+
+    # Check if chat exists
+    chat = await db.get_document('chats', chat_id)
+    now = datetime.utcnow()
+    # Legacy chats created before request feature may have no request_status.
+    # Treat these as approved to preserve existing conversations.
+    request_status = (chat or {}).get('request_status', 'approved') if chat else 'pending'
+    if request_status not in ('pending', 'approved', 'rejected'):
+--
+                    'request_retry_after': None,
+                    'request_updated_at': now,
+                    'last_message': (message.content or "")[:100],
+                    'updated_at': now,
+                })
+                chat = await db.get_document('chats', chat_id)
+                request_status = 'pending'
+                request_by = sender_id
+            else:
+                raise HTTPException(
+                    status_code=403,
+--
+                continue
+            other_user_ids.append(other_id)
+            chat_to_other_id[chat['id']] = other_id
+
+    # 2. Batch fetch user profiles
+    users_list = await db.get_documents_batch('users', list(set(other_user_ids)))
+    users_map = {u['id']: u for u in users_list}
+
+    # 3. Fetch last messages for each chat (limited concurrency to prevent exhaustion)
+    semaphore = asyncio.Semaphore(10)
+
+--
+async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Get metadata for a single private chat conversation (strongly consistent by ID)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+--
+    other_id = [m for m in members if m != user_id]
+    other_id = other_id[0] if other_id else None
+
+    other_user = {}
+    if other_id:
+        other_user_doc = await db.get_document('users', other_id)
+        if other_user_doc:
+            other_user = {
+                "id": other_id,
+                "name": other_user_doc.get('name', 'Unknown'),
+                "sl_id": other_user_doc.get('sl_id', ''),
+--
+    """Get messages from a private chat"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Verify user is part of this chat
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+--
+
+    # Dynamically decorate with current sender verification status
+    if messages:
+        sender_ids = list(set([msg['sender_id'] for msg in messages if 'sender_id' in msg]))
+        if sender_ids:
+            users_list = await db.get_documents_batch('users', sender_ids)
+            users_map = {u['id']: u for u in users_list if 'id' in u}
+            for msg in messages:
+                sender_id = msg.get('sender_id')
+                if sender_id and sender_id in users_map:
+                    user_doc = users_map[sender_id]
+--
+async def approve_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Approve a pending direct message request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Only private chat requests can be approved")
+    if user_id not in chat.get('members', []):
+--
+async def deny_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Deny a pending direct message request and lock requester for 24 hours"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Only private chat requests can be denied")
+    if user_id not in chat.get('members', []):
+--
+async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_token)):
+    """Clear all messages in a private chat"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    if chat.get('chat_type') != 'private':
+        raise HTTPException(status_code=400, detail="Can only clear private chats")
+--
+    """Mark all messages in a chat as read by the current user"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Verify user is part of this chat
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    if user_id not in chat.get('members', []):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Check if user has read receipts enabled
+    user = await db.get_document('users', user_id)
+    if not (user or {}).get('privacy_settings', {}).get('read_receipts', True):
+        # User has disabled read receipts, don't update
+        return {"message": "Read receipts disabled"}
+
+    # Get all messages and mark them as read
+--
+
+@api_router.get("/user/privacy-settings")
+async def get_privacy_settings(token_data: dict = Depends(verify_token)):
+    """Get user's privacy settings"""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    # Default privacy settings
+    default_settings = {
+        'read_receipts': True,  # Show double tick when messages are read
+        'online_status': True,  # Show online/last seen status
+--
+                    for member_id in circle.get('members', []):
+                        if member_id != user_id:
+                            all_member_ids.add(member_id)
+
+            # Fetch all user details in a single batch query
+            users_data = await db.get_documents_batch('users', list(all_member_ids))
+            users_by_id = {u['id']: u for u in users_data if u and 'id' in u}
+
+            for circle in fetched_circles:
+                if circle:
+                    # Check if this is a cultural group
+--
+@api_router.post("/circles")
+async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_token)):
+    """Create a new circle (private group chat)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    # Generate unique invite code
+    code = generate_circle_code(data.name)
+    while await db.find_one('circles', [('code', '==', code)]):
+        code = generate_circle_code(data.name)
+--
+    if data.member_ids:
+        # Filter and deduplicate valid member IDs to fetch
+        valid_member_ids = list(set([m_id for m_id in data.member_ids if m_id and m_id != user_id and m_id not in circle_data['members']]))
+
+        if valid_member_ids:
+            member_docs_list = await db.get_documents_batch('users', valid_member_ids)
+            member_docs_by_id = {doc.get('id', ''): doc for doc in member_docs_list if doc}
+
+            for member_id in valid_member_ids:
+                member_doc = member_docs_by_id.get(member_id)
+                if member_doc:
+--
+async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
+    """Get circle details"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    # Check if user is member
+    if user_id not in circle.get('members', []):
+--
+
+    # Get member details
+    members_info = []
+    member_ids = circle.get('members', [])
+    if member_ids:
+        members = await db.get_documents_batch('users', member_ids)
+        for member in members:
+            if member:
+                members_info.append({
+                    "user_id": member['id'],
+                    "name": member['name'],
+--
+async def update_circle(circle_id: str, data: CircleUpdate, token_data: dict = Depends(verify_token)):
+    """Update circle details (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can update circle")
+--
+@api_router.post("/circles/join")
+async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)):
+    """Join a circle using invite code"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    code = data.code.upper()
+
+    circle = await db.find_one('circles', [('code', '==', code)])
+    if not circle:
+        raise HTTPException(status_code=404, detail="Invalid circle code")
+--
+async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_token)):
+    """Get pending join requests for a circle (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can view requests")
+--
+async def approve_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
+    """Approve a join request (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can approve requests")
+--
+async def transfer_circle_admin(circle_id: str, member_id: str, token_data: dict = Depends(verify_token)):
+    """Add a co-admin to the circle while keeping existing admins."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can assign admin rights")
+--
+async def reject_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
+    """Reject a join request (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can reject requests")
+--
+async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict = Depends(verify_token)):
+    """Invite user to circle by SL-ID (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can invite members")
+--
+async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token)):
+    """Leave a circle"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if user_id not in circle.get('members', []):
+        raise HTTPException(status_code=400, detail="Not a member of this circle")
+--
+async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)):
+    """Delete a circle (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can delete circle")
+--
+async def remove_circle_member(circle_id: str, member_id: str, token_data: dict = Depends(verify_token)):
+    """Remove a member from circle (admin only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if not _is_circle_admin(circle, user_id):
+        raise HTTPException(status_code=403, detail="Only admin can remove members")
+--
+    _: bool = Depends(messaging_rate_limit)
+):
+    """Send a message to a circle chat"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if user_id not in circle.get('members', []):
+        raise HTTPException(status_code=403, detail="Not a member of this circle")
+--
+        raise HTTPException(status_code=400, detail=reason)
+
+    chat_id = f"circle_{circle_id}"
+
+    # Ensure chat exists
+    chat = await db.get_document('chats', chat_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    sender_name = user.get('name') or user.get('sl_id') or 'User'
+
+--
+async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict = Depends(verify_token)):
+    """Get messages from a circle chat"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    circle = await db.get_document('circles', circle_id)
+    if not circle:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    if user_id not in circle.get('members', []):
+        raise HTTPException(status_code=403, detail="Not a member of this circle")
+--
+
+@api_router.post("/temples")
+async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
+    """Create a new temple page (KYC required)"""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check KYC verification for temple role
+--
+
+@api_router.post("/temples/{temple_id}/posts")
+async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depends(verify_token)):
+    """Create a temple announcement (temple admin only)"""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+
+    # Verify temple and admin status
+    temple = await db.get_document('temples', temple_id)
+    if not temple:
+        raise HTTPException(status_code=404, detail="Temple not found")
+
+    if temple.get('admin_id') != token_data['user_id']:
+        raise HTTPException(status_code=403, detail="Only temple admin can post announcements")
+
+    chat_id = f"temple_{temple_id}"
+
+    # Ensure chat exists
+    chat = await db.get_document('chats', chat_id)
+    if not chat:
+        await db.set_document('chats', chat_id, {
+            'type': 'temple_channel',
+            'temple_id': temple_id,
+            'temple_name': temple.get('name'),
+--
+@api_router.get("/kyc/status")
+async def get_kyc_status(token_data: dict = Depends(verify_token)):
+    """Get user's KYC status"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        return {"kyc_status": None, "is_verified": False}
+
+    kyc_status = user.get('kyc_status')
+    is_verified = bool(user.get('is_verified'))
+--
+        if v_list:
+            vendor_id = v_list[0]['id']
+
+    vendor = None
+    if vendor_id:
+        vendor = await db.get_document('vendors', vendor_id)
+        if vendor:
+            v_status = vendor.get('kyc_status')
+            if v_status == 'verified' and kyc_status != 'verified':
+                kyc_status = 'verified'
+                is_verified = True
+--
+        raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
+    if id_type == 'pan' and len(id_number) != 10:
+        raise HTTPException(status_code=400, detail="PAN must be 10 characters")
+
+    if id_type == 'aadhaar':
+        user_doc = await db.get_document('users', user_id)
+        user_phone = user_doc.get('phone', '')
+        otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
+        has_id_photo = bool(data.get('id_photo'))
+        if not otp_verified and not user_phone.startswith("+919999") and not has_id_photo:
+            raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
+--
+
+    phone_number = (data.get('phone_number') or data.get('phone') or data.get('kyc_verified_phone') or '').strip()
+    full_name = (data.get('full_name') or '').strip()
+    date_of_birth = (data.get('date_of_birth') or data.get('dob') or '').strip()
+
+    user_doc = await db.get_document('users', user_id)
+    if not phone_number and user_doc:
+        phone_number = (
+            user_doc.get('kyc_verified_phone')
+            or user_doc.get('phone')
+            or user_doc.get('phone_number')
+--
+    kyc_data['kyc_match_distance'] = match_result.get('distance')
+    kyc_data['kyc_match_reason'] = match_result.get('reason')
+
+    await db.update_document('users', user_id, kyc_data)
+
+    user_doc = await db.get_document('users', user_id)
+    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
+    if kyc_role == 'vendor' or is_vendor_user:
+        vendor_id = user_doc.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+--
+    Admin endpoint to verify or reject KYC
+    data: { action: 'verify' | 'reject', rejection_reason?: string }
+    """
+    db, _ = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    action = data.get('action')
+    current_status = target_user.get('kyc_status')
+--
+                # Find vendor where owner_id = user_id
+                v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+                if v_list:
+                    vendor_id = v_list[0]['id']
+            if vendor_id:
+                vendor = await db.get_document('vendors', vendor_id)
+                if vendor:
+                    await db.update_document('vendors', vendor_id, {
+                        'kyc_status': 'verified',
+                        'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+                        'kyc_reviewed_by': token_data.get("user_id"),
+--
+            if not vendor_id:
+                v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+                if v_list:
+                    vendor_id = v_list[0]['id']
+            if vendor_id:
+                vendor = await db.get_document('vendors', vendor_id)
+                if vendor:
+                    await db.update_document('vendors', vendor_id, {
+                        'kyc_status': 'rejected',
+                        'kyc_rejection_reason': rejection_reason,
+                        'kyc_reviewed_by': token_data.get("user_id"),
+--
+        if existing_rep:
+            logger.info(f"Duplicate comment report detected in legacy reports for comment {content_id} by user {user_id}")
+            return {"message": "Report submitted", "report_id": existing_rep[0]['id'], "duplicate": True}
+
+        # Resolve reported user ID and post ID from comment securely
+        comment = await db.get_document('post_comments', content_id)
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        reported_user_id = comment.get('user_id')
+        post_id = comment.get('post_id')
+--
+
+    posts_by_id = {}
+    comments_by_id = {}
+    if missing_post_ids:
+        try:
+            fetched_posts = await db.get_documents_batch('posts', list(missing_post_ids))
+            posts_by_id = {p['id']: p for p in fetched_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for reports: %s", e)
+    if missing_comment_ids:
+        try:
+            fetched_comments = await db.get_documents_batch('post_comments', list(missing_comment_ids))
+            comments_by_id = {c['id']: c for c in fetched_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for reports: %s", e)
+
+    for r in reports:
+--
+
+    mod_posts_by_id = {}
+    mod_comments_by_id = {}
+    if mod_post_ids:
+        try:
+            fetched_mod_posts = await db.get_documents_batch('posts', list(mod_post_ids))
+            mod_posts_by_id = {p['id']: p for p in fetched_mod_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for moderation reports: %s", e)
+    if mod_comment_ids:
+        try:
+            fetched_mod_comments = await db.get_documents_batch('post_comments', list(mod_comment_ids))
+            mod_comments_by_id = {c['id']: c for c in fetched_mod_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for moderation reports: %s", e)
+
+    standardized_mod = []
+--
+    if user_ids:
+        user_ids_list = list(user_ids)
+        for i in range(0, len(user_ids_list), 100):
+            chunk = user_ids_list[i:i+100]
+            try:
+                users_docs = await db.get_documents_batch('users', chunk)
+                for u in users_docs:
+                    if u.get('id'):
+                        user_map[str(u['id'])] = {
+                            'name': u.get('name') or 'N/A',
+                            'sl_id': u.get('sl_id') or 'N/A',
+--
+async def review_report(report_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Review report with approve/deny actions (admin only)."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    collection_name = 'reports'
+    report = await db.get_document('reports', report_id)
+    if not report:
+        report = await db.get_document('moderation_reports', report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail='Report not found')
+        collection_name = 'moderation_reports'
+
+    action = str(data.get('action') or '').strip().lower()
+--
+        content_type = report.get('content_type') or report.get('contentType')
+        content_id = report.get('content_id') or report.get('contentId')
+
+        if content_id:
+            if content_type == 'post':
+                post = await db.get_document('posts', content_id)
+                if post:
+                    delete_result = await _delete_post_with_dependencies(db, content_id)
+                    moderation_result['post_deleted'] = True
+                    moderation_result['media_deleted'] = delete_result.get('media_deleted', False)
+                    moderation_result['comments_deleted'] = delete_result.get('comments_deleted', 0)
+
+            elif content_type == 'comment':
+                comment = await db.get_document('post_comments', content_id)
+                if comment:
+                    await db.delete_document('post_comments', content_id)
+                    moderation_result['comment_deleted'] = True
+
+            elif content_type == 'community':
+--
+                    except Exception:
+                        pass
+
+                if not moderation_result['message_deleted']:
+                    try:
+                        dm_msg = await db.get_document('direct_messages', content_id)
+                        if dm_msg:
+                            await db.update_document('direct_messages', content_id, {"deleted": True, "content": "[Content removed by moderator]"})
+                            moderation_result['message_deleted'] = True
+                    except Exception:
+                        pass
+
+            elif content_type == 'user':
+                target_user = await db.get_document('users', content_id)
+                if target_user:
+                    update_data = {
+                        'is_blocked': True,
+                        'blocked_until': 'forever',
+                        'status': 'blocked'
+--
+
+@api_router.post("/admin/users/{user_id}/ban")
+async def admin_ban_user(user_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Ban/suspend a user from the application (admin only)."""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    duration_hours = data.get('duration_hours')
+    if duration_hours:
+--
+
+@api_router.post("/admin/users/{user_id}/unban")
+async def admin_unban_user(user_id: str, token_data: dict = Depends(verify_token)):
+    """Remove a ban/suspension from a user (admin only)."""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = {
+        'is_blocked': False,
+--
+
+@api_router.post("/admin/users/{user_id}/block-sos")
+async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Block user from creating or responding to SOS alerts"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": True})
+    return {"message": "User SOS privileges suspended successfully", "user_id": user_id, "is_sos_blocked": True}
+
+@api_router.post("/admin/users/{user_id}/unblock-sos")
+async def admin_unblock_sos(user_id: str, token_data: dict = Depends(verify_token)):
+    """Restore user's SOS privileges"""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.update_document('users', user_id, {"is_sos_blocked": False})
+    return {"message": "User SOS privileges restored successfully", "user_id": user_id, "is_sos_blocked": False}
+
+--
+
+        # Process in chunks of 100 to avoid limits
+        chunk_size = 100
+        for i in range(0, len(doc_ids), chunk_size):
+            chunk_ids = doc_ids[i:i + chunk_size]
+            existing_docs = await db.get_documents_batch('user_follows', chunk_ids)
+            # db.get_documents_batch injects the document ID into the data dict as 'id'
+            existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
+
+            for doc_id in chunk_ids:
+                if doc_id in existing_ids:
+--
+    """Mark user as attending an event and notify the creator."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Try events collection first, then community posts
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        # Soft-fail: event may be ephemeral/local — still return success
+        return {"message": "Attendance recorded", "attendee_count": 1}
+
+--
+
+    # Notify creator
+    creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
+    if creator_id and creator_id != user_id:
+        try:
+            attender_user = await db.get_document('users', user_id)
+            attender_name = (attender_user or {}).get('name', 'Someone')
+            event_title = event.get('title', 'your event')
+
+            notif_title = "🎉 Someone is attending your event!"
+            notif_body = f"{attender_name} confirmed they will attend '{event_title}'."
+--
+async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
+    """Cancel user's attendance for an event."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        return {"message": "Attendance cancelled", "attendee_count": 0}
+
+    attendees = list(event.get('attendees', []) or [])
+--
+    chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+
+    try:
+        from datetime import datetime, timezone
+        db = await get_db()
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
+        if chat_data:
+            db_messages = chat_data.get("messages", [])
+            profile = chat_data.get("profile", profile)
+            history_summaries = chat_data.get("history_summaries", [])
+            last_updated_str = chat_data.get("updated_at")
+--
+    """Fetch stored Krishna chat history from Firestore."""
+    try:
+        db = await get_db()
+        user_id = token_data["user_id"]
+        chat_doc_id = _get_chat_doc_id(user_id, chat_id)
+        chat_data = await db.get_document('krishna_chats', chat_doc_id)
+        if chat_data:
+            return {'messages': chat_data.get('messages', [])}
+        return {"messages": []}
+    except Exception as e:
+        logger.error(f"Internal error: {e}", exc_info=True)
+--
+    token_data: dict = Depends(verify_token),
+    _: bool = Depends(astrology_rate_limit),
+):
+    """Get General Kundli and Vedic Astrology data using user's or custom birth details."""
+    db = await get_db()
+    user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    logger.info("get_nakshatra_report inputs - dob: %s, tob: %s, lat: %s, lon: %s, tz: %s", dob, tob, lat, lon, tz)
+
+--
+    question = str(body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question is required")
+
+    db = await get_db()
+    user = await db.get_document('users', token_data['user_id'])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    request_payload = body.get("astrology")
+    grounded_payload = request_payload
+--
+@api_router.post("/help-requests")
+async def create_help_request(data: HelpRequestCreate, token_data: dict = Depends(verify_token)):
+    """Create a new help request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = (await db.get_document('users', user_id)) or {}
+
+    # Check if user already has an active request
+    existing = await db.find_one('help_requests', [
+        ('creator_id', '==', user_id),
+        ('status', '==', 'active')
+--
+async def fulfill_help_request(request_id: str, token_data: dict = Depends(verify_token)):
+    """Mark a help request as fulfilled (creator only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('help_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Help request not found")
+
+    if request.get('creator_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the creator can mark as fulfilled")
+--
+async def verify_help_request(request_id: str, token_data: dict = Depends(verify_token)):
+    """Verify a help request (community member)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('help_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Help request not found")
+
+    if request.get('creator_id') == user_id:
+        raise HTTPException(status_code=400, detail="Cannot verify your own request")
+--
+async def delete_help_request(request_id: str, token_data: dict = Depends(verify_token)):
+    """Delete a help request (creator only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('help_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Help request not found")
+
+    if request.get('creator_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the creator can delete the request")
+--
+@api_router.post("/vendors")
+async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_token)):
+    """Register a new vendor"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    normalized_categories = list(set([str(category).strip().title() for category in (data.categories or []) if str(category).strip()]))
+    owner_name = (data.owner_name or (user or {}).get('name') or 'Vendor Owner').strip()
+    full_address = (data.full_address or '').strip()
+    phone_number = (data.phone_number or (user or {}).get('phone') or '').strip()
+--
+
+@api_router.get("/vendors/{vendor_id}")
+async def get_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
+    """Get vendor details"""
+    db = await get_db()
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    user_id = token_data.get("user_id")
+    is_owner = vendor.get('owner_id') == user_id
+
+    is_admin = False
+    if user_id:
+        user_doc = await db.get_document('users', user_id)
+        if user_doc and user_doc.get('is_admin'):
+            is_admin = True
+
+    if not is_owner and not is_admin:
+        kyc = (vendor.get('kyc_status') or '').lower()
+        owner_verified = False
+        owner_id = vendor.get('owner_id')
+        if owner_id:
+            owner_doc = await db.get_document('users', owner_id)
+            if owner_doc and (owner_doc.get('kyc_status') or '').lower() in ('verified', 'approved'):
+                owner_verified = True
+
+        if not owner_verified and kyc not in ('verified', 'approved') and owner_id:
+            raise HTTPException(status_code=403, detail="This business is awaiting KYC verification and is not live yet.")
+--
+async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = Depends(verify_token)):
+    """Update vendor details (owner only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
+--
+async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict = Depends(verify_token)):
+    """Set the storage bucket userId mapping for a vendor folder."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can configure storage owner")
+--
+async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
+    """Update approved vendor's public business profile info (menu + delivery toggle + hours + offers + social + notes)."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
+
+    user = await db.get_document('users', user_id)
+    user_verified = bool(user and (user.get('kyc_status') == 'verified'))
+    vendor_verified = vendor.get('kyc_status') == 'verified'
+
+    if not (vendor_verified or user_verified):
+        raise HTTPException(status_code=403, detail="Business profile updates are allowed only for approved vendors")
+--
+    from firebase_admin import storage as firebase_storage
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can upload business images")
+--
+    from firebase_admin import storage as firebase_storage
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can upload KYC files")
+--
+        raise HTTPException(status_code=501, detail="Google Cloud Vision client library is not installed")
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can extract text")
+--
+    }
+
+async def _ensure_vendor_owner(vendor_id: str, token_data: dict):
+    db = await get_db()
+    user_id = token_data["user_id"]
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can perform this action")
+    return db, vendor
+--
+async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: dict = Depends(verify_token)):
+    """Add a photo to vendor gallery"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can add photos")
+--
+async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict = Depends(verify_token)):
+    """Delete a vendor (owner only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if vendor.get('owner_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the owner can delete the vendor")
+
+    # We query the otp_verifications to ensure the otp for this number and purpose was generated and verify it
+    # We do a basic validation for older implementation fallback if not found in our new system
+    user = await db.get_document('users', user_id)
+    phone = vendor.get('phone_number') or (user and user.get('phone_number'))
+    if not phone:
+        raise HTTPException(status_code=400, detail="A registered mobile number is required to delete your business.")
+    if not otp:
+        raise HTTPException(status_code=400, detail="OTP is required for deletion.")
+--
+            owner_ids_to_fetch.add(r.get('owner_id'))
+
+    users_map = {}
+    if owner_ids_to_fetch:
+        try:
+            user_docs = await db.get_documents_batch('users', list(owner_ids_to_fetch))
+            users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+        except Exception as err:
+            logger.warning(f"Failed to batch resolve owner phones: {err}")
+
+    for r in records:
+--
+            if owner_id:
+                try:
+                    user_doc = users_map.get(owner_id)
+                    # Fallback to individual fetch if batch failed or missing
+                    if not user_doc:
+                        user_doc = await db.get_document('users', owner_id)
+
+                    if user_doc:
+                        phone = user_doc.get('kyc_verified_phone') or user_doc.get('phone') or user_doc.get('phone_number')
+                        if phone:
+                            r['phone_number'] = phone
+--
+@api_router.post("/admin/vendors/{vendor_id}/approve")
+async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Admin: approve vendor KYC."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    await db.update_document('vendors', vendor_id, {
+        'kyc_status': 'verified',
+--
+@api_router.post("/admin/vendors/{vendor_id}/reject")
+async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Admin: reject vendor KYC."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    reason = data.get('reason') or 'Denied by admin'
+
+--
+@api_router.delete("/admin/vendors/{vendor_id}")
+async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a vendor and reset owner's KYC status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    review_doc = await db.get_document('vendor_admin_reviews', vendor_id)
+
+    owner_id = None
+    if vendor:
+        owner_id = vendor.get('owner_id')
+    elif review_doc:
+--
+            recent_requests.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+            if str(recent_requests[0].get('created_at', '')) >= recent_threshold:
+                return recent_requests[0]
+    except Exception as dup_err:
+        logger.warning(f"Error checking duplicate community requests: {dup_err}")
+    user = (await db.get_document('users', user_id)) or {}
+
+    # Get user location info for visibility matching
+    location_area = user.get('home_location', {}) or user.get('location', {})
+    if not isinstance(location_area, dict):
+        location_area = {}
+--
+    comms_by_id = {}
+    if not resolved_community_id:
+        user_community_ids = user.get('communities', []) or []
+
+        # Batch-fetch all user communities in a single call to avoid N+1 sequential DB queries
+        fetched_comms = await db.get_documents_batch('communities', user_community_ids) if user_community_ids else []
+        comms_by_id = {c['id']: c for c in fetched_comms if c and 'id' in c}
+
+        city_comm_id = None
+        for comm_id in user_community_ids:
+            comm = comms_by_id.get(comm_id)
+--
+    request_id = await db.create_document('community_requests', request_data)
+    request_data['id'] = request_id
+
+    # Send notifications to community members
+    try:
+        community = await db.get_document('communities', resolved_community_id)
+        if community:
+            comm_name = community.get('name', 'Community')
+            member_ids = community.get('members', [])
+            target_ids = [uid for uid in member_ids if uid != user_id]
+            if target_ids:
+--
+        if cached_requests is not None:
+            logger.info(f"Cache HIT for community requests: {cache_key}")
+            return cached_requests
+
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user:
+        return []
+
+    filters = [('status', '==', status)]
+
+--
+async def resolve_community_request(request_id: str, token_data: dict = Depends(verify_token)):
+    """Mark a community request as resolved (creator only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('community_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if request.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the creator can resolve this request")
+--
+async def toggle_request_interest(request_id: str, token_data: dict = Depends(verify_token)):
+    """Toggle a user's interest/attendance on a Lost&Found or Temple Updates request"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('community_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    interested_by = list(request.get('interested_by', []) or [])
+    if user_id in interested_by:
+--
+    if action == "added":
+        try:
+            creator_id = request.get('user_id')
+            if creator_id and creator_id != user_id:
+                # Fetch finder's name
+                finder_user = await db.get_document('users', user_id)
+                finder_name = (finder_user or {}).get('name', 'Someone')
+
+                request_type = request.get('request_type', '')
+                item_title = request.get('title', 'your request')
+
+--
+async def delete_community_request(request_id: str, token_data: dict = Depends(verify_token)):
+    """Delete a community request (creator only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    request = await db.get_document('community_requests', request_id)
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if request.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the creator can delete this request")
+--
+    db: FirestoreDB,
+    user_id: str,
+    max_users: int = 100
+):
+    """Fallback: Get users from same community as the SOS creator"""
+    user = await db.get_document('users', user_id)
+    if not user:
+        return []
+
+    user_communities = user.get('communities', []) or user.get('default_communities', [])
+    if not user_communities:
+--
+    community_members = set()
+
+    # ⚡ Bolt Optimization: Batch fetch up to 3 communities to prevent N+1 queries
+    comm_ids_to_fetch = user_communities[:3]
+    if comm_ids_to_fetch:
+        fetched_comms = await db.get_documents_batch('communities', comm_ids_to_fetch)
+        for comm in fetched_comms:
+            if comm:
+                members = comm.get('members', [])
+                for member_id in members:
+                    if member_id != user_id:
+--
+    db = await get_db()
+    batch_size = 50
+    step = 1
+    while step < 4:
+        await asyncio.sleep(10)
+        alert = await db.get_document('sos_alerts', sos_id)
+        if not alert or alert.get('status') != 'active':
+            logger.info(f"Stopping SOS escalation for {sos_id}: alert inactive or missing")
+            return
+        if len(alert.get('responders', [])) >= 1:
+            logger.info(f"Stopping SOS escalation for {sos_id}: responders present")
+--
+        await db.update_document('sos_alerts', sos_id, {
+            'notified_user_ids': notified_user_ids,
+            'escalation_step': step + 1
+        })
+
+        sos_alert = await db.get_document('sos_alerts', sos_id)
+        if not sos_alert:
+            return
+        title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"
+        body = f"{sos_alert.get('user_name')} needs help at {sos_alert.get('micro_location', 'nearby')}"
+
+--
+@api_router.post("/sos")
+async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_token)):
+    """Create an SOS emergency alert"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS creation privileges have been suspended due to reported misuse.")
+
+    # Check if user already has an active SOS
+    existing = await db.find_one('sos_alerts', [
+--
+async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
+    """Report an SOS alert as misuse"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+
+    # Save the misuse report to database
+    report_data = {
+--
+async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
+    """Resolve or cancel an SOS alert (creator only)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+
+    if alert.get('user_id') != user_id:
+        raise HTTPException(status_code=403, detail="Only the creator can resolve this alert")
+--
+                except Exception as e:
+                    logger.error(f"Failed to batch create SOS resolved notifications: {e}")
+
+            # Batch fetch and update users for reputation
+            try:
+                responder_users = await db.get_documents_batch('users', responder_ids)
+                user_updates = []
+                for user_doc in responder_users:
+                    if user_doc and 'id' in user_doc:
+                        user_updates.append((user_doc['id'], {
+                            'reputation': user_doc.get('reputation', 0) + 1
+--
+@api_router.post("/sos/{sos_id}/respond")
+async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
+    """Respond to an SOS alert (coming/called)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if user and user.get('is_sos_blocked', False):
+        raise HTTPException(status_code=403, detail="Your SOS privileges have been suspended.")
+
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+
+    if alert.get('status') != 'active':
+        raise HTTPException(status_code=400, detail="SOS alert is no longer active")
+--
+    }
+
+    await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
+
+    # Get updated responder count
+    updated_alert = await db.get_document('sos_alerts', sos_id)
+    responder_count = len((updated_alert or {}).get('responders', []) or [])
+
+    # Send notification to SOS creator with count
+    creator_user_id = (updated_alert or {}).get('user_id')
+    if creator_user_id:
+--
+    token_data: dict = Depends(verify_token)
+):
+    """Update a responder status for an SOS (on_the_way / reached)"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if status not in ['on_the_way', 'reached']:
+        raise HTTPException(status_code=400, detail="Status must be 'on_the_way' or 'reached'")
+
+    alert = await db.get_document('sos_alerts', sos_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="SOS alert not found")
+    if alert.get('status') != 'active':
+        raise HTTPException(status_code=400, detail="SOS alert is no longer active")
+
+--
+@api_router.get("/spiritual/horoscope")
+async def get_user_horoscope(token_data: dict = Depends(verify_token)):
+    """Get daily horoscope for authenticated user based on their birth details"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    user_rashi = user.get('rashi')
+    if not user_rashi:
+        return {
+            "message": "Please set your astrology profile to get personalized horoscope",
+--
+@api_router.get("/user/astrology-profile")
+async def get_astrology_profile(token_data: dict = Depends(verify_token)):
+    """Get user's astrology profile"""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+
+    return {
+        "date_of_birth": user.get('date_of_birth'),
+        "time_of_birth": user.get('time_of_birth'),
+        "place_of_birth": user.get('place_of_birth'),
+--
+    except Exception as e:
+        logger.error("Error pulling chats in sync: %s", e)
+
+    # 4. Pull communities & community messages
+    try:
+        user_doc = await db.get_document('users', user_id)
+        if user_doc and 'communities' in user_doc:
+            community_ids = user_doc.get('communities', []) or []
+            comm_docs = await db.get_documents_batch('communities', community_ids)
+            comm_map = {c['id']: c for c in comm_docs if c}
+
+            for cid in community_ids:
+                comm_doc = comm_map.get(cid)
+                if comm_doc:
+--
+            subgroup_chat_ids = []
+            for cid in community_ids:
+                for subgroup in ['city', 'state', 'national']:
+                    subgroup_chat_ids.append(f"community_{cid}_{subgroup}")
+
+            subgroup_chats = await db.get_documents_batch('chats', subgroup_chat_ids)
+            subgroup_chat_map = {sc['id']: sc for sc in subgroup_chats if sc}
+
+            community_message_tasks = []
+            for chat_id in subgroup_chat_ids:
+                sc_doc = subgroup_chat_map.get(chat_id)
+--
+            for pid in feed_deleted:
+                if pid:
+                    post_ids_to_fetch.add(pid)
+
+            if post_ids_to_fetch:
+                existing_posts = await db.get_documents_batch('posts', list(post_ids_to_fetch))
+                existing_posts_map = {p['id']: p for p in existing_posts if p and 'id' in p}
+
+                updates = []
+                for post_data in feed_updated:
+                    post_id = post_data.get('id')
+--
+
+    # ⚡ Bolt Optimization: Batch fetch & update user document for sync fields
+    user_sync_keys = ['library_progress', 'passport_journeys', 'passport_badges', 'passport_certificates']
+    if any(k in changes for k in user_sync_keys):
+        try:
+            user_doc = await db.get_document('users', user_id)
+            if user_doc:
+                user_updates = {}
+
+                if 'library_progress' in changes:
+                    lib_changes = changes['library_progress']
+--
+        asyncio.create_task(sio.emit('new_dm', response_msg, room=chat_id))
+
+        # 2. Process DB updates in background so socket isn't blocked waiting
+        async def _save_dm_background():
+            try:
+                chat = await db.get_document('chats', chat_id)
+                if chat:
+                    await db.update_document('chats', chat_id, {
+                        'last_message': content[:100],
+                        'updated_at': now
+                    })
+--
+        raise HTTPException(
+            status_code=429,
+            detail=f"Please wait {remaining} seconds before sending another invite."
+        )
+
+    inviter = await db.get_document('users', user_id)
+    inviter_name = (inviter or {}).get('name', 'A devotee')
+
+    # Collect all unique FCM tokens from users collection
+    try:
+        all_users = await db.query_documents('users', limit=500)
+--
+    # If yes, we toggle all of them OFF (delete).
+    # If no, we toggle all of them ON (create).
+
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
+    reminder_ids = [f"{user_id}:{mantra_type}:{session.lower()}" for session in sessions]
+    existing_docs = await db.get_documents_batch("jaap_reminders", reminder_ids)
+
+    any_active = any(doc and doc.get("active", False) for doc in existing_docs)
+
+    if any_active:
+        # Toggle off: delete all
+--
+                        continue
+
+                    # 1. Batch fetch deterministic notification IDs
+                    existing_notifs_map = {}
+                    try:
+                        existing_notifs = await db.get_documents_batch("notifications", notif_ids)
+                        existing_notifs_map = {n['id']: n for n in existing_notifs if n and 'id' in n}
+                    except Exception as err:
+                        logger.warning(f"Error batch fetching deterministic reminders: {err}")
+
+                    # 2. Setup tasks for fallback checking
+--
+                            # Fetch user streak stats for personalized Sadhana Sankalpa notification
+                            user_streak = 0
+                            is_today_completed = False
+                            today_count = 0
+                            try:
+                                stats_doc = await db.get_document("user_jaap_stats", uid)
+                                if stats_doc:
+                                    user_streak = int(stats_doc.get("current_streak", 0))
+                                    if stats_doc.get("last_jaap_date") == date_str:
+                                        is_today_completed = bool(stats_doc.get("is_today_completed", False))
+                                        today_count = int(stats_doc.get("today_count", 0))
+                                else:
+                                    # Fallback to users doc
+                                    u_doc = await db.get_document("users", uid)
+                                    if u_doc:
+                                        user_streak = int(u_doc.get("sadhana_streak", 0))
+                                        if u_doc.get("last_jaap_date") == date_str:
+                                            is_today_completed = bool(u_doc.get("sadhana_today_completed", False))
+                                            today_count = int(u_doc.get("sadhana_today_count", 0))
+--
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="Image data is required")
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    id_type = data.get('id_type')
+    id_number = data.get('id_number')
+--
+@api_router.delete("/admin/kyc/{user_id}")
+async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a user's KYC verification request and reset their status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Reset owner's KYC
+    await db.update_document('users', user_id, {
+--
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor = await db.get_document('vendors', vendor_id)
+            if vendor:
+                await db.update_document('vendors', vendor_id, {
+                    'kyc_status': None,
+                    'kyc_reviewed_by': None,
+                    'kyc_reviewed_at': None,

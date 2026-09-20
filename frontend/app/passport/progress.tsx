@@ -4,6 +4,7 @@ import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrol
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { usePassportStore } from '../../src/store/passportStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -27,6 +28,7 @@ function PassportProgressScreen({
   const addJaap = usePassportStore((state) => state.addJaap);
   const completeBook = usePassportStore((state) => state.completeBook);
   const awardBadge = usePassportStore((state) => state.awardBadge);
+  const language = useLanguageStore((state) => state.language);
 
   const [jaapInput, setJaapInput] = useState('108');
   const [bookName, setBookName] = useState('');
@@ -89,47 +91,53 @@ function PassportProgressScreen({
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Passport Progress</Text>
+          <Text style={styles.headerTitle}>
+            {language === 'hi' ? 'पासपोर्ट प्रगति' : 'Passport Progress'}
+          </Text>
         </View>
 
         <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.subtitle}>Update jaap, awards and reading achievements instantly.</Text>
+          <Text style={styles.subtitle}>
+            {language === 'hi'
+              ? 'जाप, सम्मान और अध्ययन उपलब्धियों को तुरंत अपडेट करें।'
+              : 'Update jaap, awards and reading achievements instantly.'}
+          </Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{totalJaap}</Text>
-              <Text style={styles.statLabel}>Total Jaap</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'कुल जाप' : 'Total Jaap'}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{booksCompleted}</Text>
-              <Text style={styles.statLabel}>Books</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'ग्रंथ' : 'Books'}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{badges.length}</Text>
-              <Text style={styles.statLabel}>Badges</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'बैज' : 'Badges'}</Text>
             </View>
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Complete Jaap</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'जाप पूर्ण करें' : 'Complete Jaap'}</Text>
             <TextInput
               style={styles.input}
               value={jaapInput}
               onChangeText={setJaapInput}
               keyboardType="number-pad"
-              placeholder="108"
+              placeholder={language === 'hi' ? 'मालाएं (उदा. 108)' : '108'}
               placeholderTextColor={COLORS.textSecondary}
             />
-            <Button title="Add Jaap" onPress={handleAddJaap} />
+            <Button title={language === 'hi' ? 'जाप जोड़ें' : 'Add Jaap'} onPress={handleAddJaap} />
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Complete Reading</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'अध्ययन पूर्ण करें' : 'Complete Reading'}</Text>
             <TextInput
               style={styles.input}
               value={bookName}
               onChangeText={setBookName}
-              placeholder="Book name"
+              placeholder={language === 'hi' ? 'ग्रंथ का नाम' : 'Book name'}
               placeholderTextColor={COLORS.textSecondary}
             />
             <TextInput
@@ -137,16 +145,20 @@ function PassportProgressScreen({
               value={completionDays}
               onChangeText={setCompletionDays}
               keyboardType="number-pad"
-              placeholder="Completion days"
+              placeholder={language === 'hi' ? 'दिनों की संख्या' : 'Completion days'}
               placeholderTextColor={COLORS.textSecondary}
             />
-            <Button title="Create Certificate" onPress={handleCompleteBook} />
+            <Button title={language === 'hi' ? 'प्रमाणपत्र बनाएं' : 'Create Certificate'} onPress={handleCompleteBook} />
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Badges</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'बैज' : 'Badges'}</Text>
             {badges.length === 0 ? (
-              <Text style={styles.emptyText}>No badges yet. Complete your first journey, jaap milestone, or book.</Text>
+              <Text style={styles.emptyText}>
+                {language === 'hi'
+                  ? 'अभी कोई बैज नहीं है। अपनी पहली यात्रा, जाप पड़ाव या ग्रंथ पूरा करें 🙏'
+                  : 'No badges yet. Complete your first journey, jaap milestone, or book.'}
+              </Text>
             ) : (
               badges.map((badge) => (
                 <View key={badge.id} style={styles.badgeRow}>
@@ -158,9 +170,13 @@ function PassportProgressScreen({
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Certificates</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'प्रमाणपत्र' : 'Certificates'}</Text>
             {certificates.length === 0 ? (
-              <Text style={styles.emptyText}>No certificates yet. Complete a reading to generate one.</Text>
+              <Text style={styles.emptyText}>
+                {language === 'hi'
+                  ? 'अभी कोई प्रमाणपत्र नहीं है। एक अध्ययन पूरा करके प्रमाणपत्र प्राप्त करें ✨'
+                  : 'No certificates yet. Complete a reading to generate one.'}
+              </Text>
             ) : (
               certificates.map((certificate: any) => (
                 <TouchableOpacity 

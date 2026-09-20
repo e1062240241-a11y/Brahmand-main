@@ -1,0 +1,90 @@
+
+        if not cached:
+            db = await TempleService.get_db()
+            temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+            if not temple:
+                temple = await db.get_document("temples", temple_id)
+            if not temple:
+                raise ValueError("Temple not found")
+
+            cached = serialize_doc(temple) or {}
+            cached["followers"] = temple.get("followers", [])
+--
+        """Follow a temple atomically"""
+        db = await TempleService.get_db()
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        doc_id = temple["id"] if temple else temple_id
+        if not temple:
+            temple = await db.get_document("temples", doc_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        followers = temple.get("followers", [])
+        if user_id not in followers:
+--
+        """Unfollow a temple atomically"""
+        db = await TempleService.get_db()
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        doc_id = temple["id"] if temple else temple_id
+        if not temple:
+            temple = await db.get_document("temples", doc_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        followers = temple.get("followers", [])
+        if user_id in followers:
+--
+        """Create a temple post (admin only)"""
+        db = await TempleService.get_db()
+
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        if not temple:
+            temple = await db.get_document("temples", temple_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        if user_id not in temple.get("admins", []):
+            raise ValueError("Only temple admins can post")
+
+        user = await db.get_document("users", user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        post_id = str(uuid4())
+        new_post = {
+--
+        """Get temple posts from dedicated collection with fallback to legacy embedded posts"""
+        db = await TempleService.get_db()
+
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        if not temple:
+            temple = await db.get_document("temples", temple_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        # Query standalone temple_posts collection
+        try:
+--
+    ) -> Dict[str, Any]:
+        """React to a temple post with atomic update on temple_posts document"""
+        db = await TempleService.get_db()
+
+        # 1. Try updating standalone post in temple_posts collection
+        post = await db.get_document("temple_posts", post_id)
+        if post:
+            reactions = post.get("reactions", [])
+            existing_reaction = next((r for r in reactions if r.get("user_id") == user_id and r.get("reaction") == reaction), None)
+            if not existing_reaction:
+                new_reaction = {"user_id": user_id, "reaction": reaction}
+--
+            return {"message": "Reaction added"}
+
+        # 2. Fallback for legacy embedded posts on temple document
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        if not temple:
+            temple = await db.get_document("temples", temple_id)
+        if not temple:
+            raise ValueError("Temple not found")
+
+        posts = temple.get("posts", [])
+        updated = False

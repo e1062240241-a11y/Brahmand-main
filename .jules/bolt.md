@@ -72,3 +72,6 @@
 ## 2024-10-26 - Async Batch Member Removal
 **Learning:** Synchronous read-modify-write loops over Firestore documents cause blocking N+1 latency.
 **Action:** Abstracted removal into a single async database method and executed them concurrently using asyncio.gather.
+## 2024-05-14 - Batch Fetch Fallback Reminder Data
+**Learning:** In the `check_and_send_jaap_reminders` task, iterating over fallback reminders and querying `user_jaap_stats` and `users` synchronously inside the loop creates an N+1 query problem, slowing down the background task.
+**Action:** Extract all unique user IDs from the batch array before the loop, fetch the required stats and user documents concurrently using `asyncio.gather` and `db.get_documents_batch`, and create dictionaries for O(1) in-loop lookups.
