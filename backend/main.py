@@ -10433,12 +10433,36 @@ async def admin_unban_user(user_id: str, token_data: dict = Depends(verify_token
     return {"message": "User unbanned successfully", "user_id": user_id}
 
 @api_router.get("/admin/sos-misuse-reports")
-async def get_admin_sos_misuse_reports(token_data: dict = Depends(verify_token)):
-    """Get all SOS misuse reports for admin review"""
+async def get_admin_sos_misuse_reports(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """Get SOS misuse reports for admin review with offset-based pagination and DB bounds"""
     db, _ = await _ensure_admin_user(token_data)
-    reports = await db.query_documents('sos_misuse_reports')
-    reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    return reports
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        # Architectural fix: Limit the candidate document fetch at DB query level with created_at DESC
+        # ordering to (offset + safe_limit) instead of fetching ALL historical SOS misuse reports.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        reports = await db.query_documents(
+            'sos_misuse_reports',
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore ordered query failed in /admin/sos-misuse-reports, using unindexed fallback: %s",
+            exc,
+        )
+        reports = await db.query_documents('sos_misuse_reports')
+        reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
+
+    return reports[safe_offset : safe_offset + safe_limit]
 
 @api_router.post("/admin/users/{user_id}/block-sos")
 async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)):
