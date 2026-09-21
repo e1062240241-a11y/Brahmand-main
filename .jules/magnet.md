@@ -66,3 +66,7 @@
 ## 2026-09-19 - Passport Progress Screen Language-Aware Polish & Empty States
 **Learning:** Hardcoded English text on spiritual progress tracking screens (like Passport Progress) disconnects Hindi users from their milestones. Conditionally rendering Devanagari Hindi headers ("पासपोर्ट प्रगति"), section labels ("जाप पूर्ण करें", "अध्ययन पूर्ण करें"), input prompts ("मालाएं (उदा. 108)"), and warm empty state prompts ("अभी कोई बैज नहीं है... 🙏") deepens personal connection and encourages daily habit tracking.
 **Action:** Updated `frontend/app/passport/progress.tsx` with `useLanguageStore` to conditionally display Devanagari Hindi copy across stats, headers, forms, and empty states when `language === 'hi'`.
+
+## 2026-09-20 - Katha Filter Empty State Language-Aware Polish
+**Learning:** Cold or unlocalized filter empty states in media and discourse features (like Katha) create abrupt drops in engagement when users apply category filters that return no results. Conditionally rendering warm Devanagari Hindi copy (`"इस फ़िल्टर में कोई कथा एपिसोड नहीं मिला ✨"`) when `language === 'hi'` maintains a warm, respectful tone throughout spiritual audio exploration.
+**Action:** Updated `frontend/app/library/katha.tsx` to conditionally render Devanagari Hindi copy for the episode filter empty state when `language === 'hi'`.
