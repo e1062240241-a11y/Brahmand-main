@@ -7673,16 +7673,44 @@ async def add_community_message_comment(
 @api_router.get("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
 async def get_community_message_comments(
     community_id: str, subgroup_type: str, message_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', message_id)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        # Architectural fix: Limit candidate document fetch at DB level with created_at DESC
+        # ordering to (safe_offset + safe_limit) instead of streaming ALL historical comments.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', message_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(
+                "Firestore composite index missing for post_comments post_id + created_at, falling back to unindexed query: %s",
+                query_err
+            )
+            comments = await db.query_documents(
+                'post_comments',
+                filters=[('post_id', '==', message_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    comments = comments[safe_offset : safe_offset + safe_limit]
     
     # Dynamically decorate with current sender verification status
     if comments:
