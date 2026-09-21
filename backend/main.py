@@ -1974,14 +1974,46 @@ async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depend
     return {"id": doc_id, **data}
 
 @api_router.get("/user/saved-kundlis")
-async def get_saved_kundlis(token_data: dict = Depends(verify_token)):
+async def get_saved_kundlis(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get user's saved Kundli profiles with offset pagination and bounded DB reads.
+    Default limit is 50, max 100.
+    """
     db = await get_db()
-    results = await db.query_documents("saved_kundlis", filters=[("user_id", "==", token_data["user_id"])])
+    user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        results = sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
+        results = await db.query_documents(
+            "saved_kundlis",
+            filters=[("user_id", "==", user_id)],
+            order_by="created_at",
+            order_direction="DESCENDING",
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for saved_kundlis user_id + created_at, falling back to un-ordered query: {query_err}")
+            results = await db.query_documents(
+                "saved_kundlis",
+                filters=[("user_id", "==", user_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
+    try:
+        results = sorted(results, key=lambda x: str(x.get("created_at") or ""), reverse=True)
     except Exception:
         pass
-    return results
+
+    return results[safe_offset:safe_offset + safe_limit]
 
 @api_router.delete("/user/saved-kundlis/{profile_id}")
 async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
