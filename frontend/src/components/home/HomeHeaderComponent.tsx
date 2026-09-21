@@ -958,9 +958,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                 : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap offered${(hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession) > 0 ? ` — just ${hanumanStatus.totalRepsInSession - hanumanStatus.roundOfSession} more` : ''}`)
                                                             : (hanumanStatus.nextSessionStart
                                                                 ? (t('language') === 'hi'
-                                                                    ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
-                                                                    : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
-                                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                                                    // 🧡 Engagement: Reframed transactional time announcement ("जाप 6:00 बजे शुरू होगा") to devotional commitment framing ("अगला जाप 6:00 बजे — संकल्प लें 🚩")
+                                                                    // Lever: Reframing + Sanskara/Sankalpa (Culture over Utility)
+                                                                    // Why: "संकल्प" (Sacred Vow) invites user to form a daily spiritual intention rather than treating the app like a passive broadcast schedule.
+                                                                    // UI: Text-only change, zero visual components or layout added.
+                                                                    ? `अगला जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                                    : `Next jaap at ${formatTime(hanumanStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                                : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
                                                     </Text>
                                                 </View>
                                             </View>
