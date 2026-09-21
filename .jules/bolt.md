@@ -75,3 +75,7 @@
 ## 2024-05-14 - Batch Fetch Fallback Reminder Data
 **Learning:** In the `check_and_send_jaap_reminders` task, iterating over fallback reminders and querying `user_jaap_stats` and `users` synchronously inside the loop creates an N+1 query problem, slowing down the background task.
 **Action:** Extract all unique user IDs from the batch array before the loop, fetch the required stats and user documents concurrently using `asyncio.gather` and `db.get_documents_batch`, and create dictionaries for O(1) in-loop lookups.
+
+## 2024-10-27 - Remove Redundant Chunking Around Batch Methods
+**Learning:** Backend batch fetching methods like `db.get_documents_batch` often handle payload chunking and concurrent task execution internally (e.g., slicing into 100-item chunks and gathering them via `asyncio.gather`). Wrapping these calls in an explicit sequential `for` loop (e.g., `for chunk in chunks: await db.get_documents_batch(chunk)`) completely defeats the internal concurrency mechanism, turning a parallel batched operation into a blocking sequential one.
+**Action:** Never manually chunk array payloads when passing them to utility methods designed for batch operations (like `get_documents_batch` or `batch_delete_documents`). Pass the full un-chunked array directly so the utility can process the chunks concurrently.
