@@ -9448,6 +9448,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     db = await get_db()
     user_id = token_data["user_id"]
+    user_doc = (await db.get_document('users', user_id)) or {}
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -9468,7 +9469,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
 
     if id_type == 'aadhaar':
-        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         has_id_photo = bool(data.get('id_photo'))
@@ -9494,7 +9494,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     full_name = (data.get('full_name') or '').strip()
     date_of_birth = (data.get('date_of_birth') or data.get('dob') or '').strip()
 
-    user_doc = await db.get_document('users', user_id)
     if not phone_number and user_doc:
         phone_number = (
             user_doc.get('kyc_verified_phone')
@@ -9540,7 +9539,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
-    user_doc = await db.get_document('users', user_id)
     is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
         vendor_id = user_doc.get('vendor_id')
