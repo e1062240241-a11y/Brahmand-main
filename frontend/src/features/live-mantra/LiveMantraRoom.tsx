@@ -37,7 +37,6 @@ export const LiveMantraRoom = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [roomMuted, setRoomMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
 
   const bgPlayer = useAudioPlayer(BG_MUSIC);
