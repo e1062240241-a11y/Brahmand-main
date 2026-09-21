@@ -15,7 +15,9 @@ export interface OmSpinnerProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const OmSpinner: React.FC<OmSpinnerProps> = ({
+// Memoized to prevent re-renders when parent lists/views update un-related state.
+// Lazy Animated.Value initialization prevents unnecessary object allocations on every render pass.
+export const OmSpinner: React.FC<OmSpinnerProps> = React.memo(({
   refreshing = true,
   size = 36,
   color = '#FF6B00',
@@ -33,8 +35,17 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
       : 36;
   const activeRingColor = ringColor || color || '#FF7A00';
 
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnimRef = useRef<Animated.Value | null>(null);
+  if (!rotateAnimRef.current) {
+    rotateAnimRef.current = new Animated.Value(0);
+  }
+  const rotateAnim = rotateAnimRef.current;
+
+  const pulseAnimRef = useRef<Animated.Value | null>(null);
+  if (!pulseAnimRef.current) {
+    pulseAnimRef.current = new Animated.Value(1);
+  }
+  const pulseAnim = pulseAnimRef.current;
 
   // If pullProgress is provided and not actively refreshing
   const isPulling = !refreshing && typeof pullProgress === 'number' && pullProgress > 0;
@@ -172,7 +183,7 @@ export const OmSpinner: React.FC<OmSpinnerProps> = ({
       </Animated.View>
     </Animated.View>
   );
-};
+});
 
 // ---------------------------------------------------------------------------
 // OmRefreshControl: Suppresses native OS spinners on both iOS and Android
