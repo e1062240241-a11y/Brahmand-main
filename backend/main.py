@@ -15261,7 +15261,7 @@ async def get_daily_horoscope_api(
         raise HTTPException(status_code=502, detail="Horoscope provider error")
 
 @api_router.get("/spiritual/horoscope/{rashi}")
-async def get_horoscope(rashi: str):
+async def get_spiritual_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:
