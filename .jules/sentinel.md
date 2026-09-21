@@ -10,3 +10,8 @@
 **Vulnerability:** Standard string comparisons (`!=` and `==`) were used to verify user-submitted OTPs against stored OTPs in `firebase_auth_service.py` and `nettyfish_auth_routes.py`. These operators leak information about the match position via comparison execution time, creating a timing attack vulnerability.
 **Learning:** Even simple numerical codes (like 4-6 digit OTPs) must be verified securely to prevent sophisticated timing attacks that might deduce the OTP faster than brute force.
 **Prevention:** Always use `secrets.compare_digest` for security-sensitive token/string comparisons. Remember to encode strings to UTF-8 bytes (`str.encode('utf-8')`) before passing them to `compare_digest` to prevent `TypeError` when inputs might contain non-ASCII characters.
+
+## 2024-05-27 - Replace Vulnerable OTP Comparisons with Secure Timing Attack Defenses
+**Vulnerability:** OTP validation was implemented using standard string equality (`!=`) in `backend/main.py`, exposing the endpoints to timing attacks where attackers could measure validation time to guess characters.
+**Learning:** Even internal backend verifications for OTPs (account deletion, blood requests, vendor deletion) need constant-time string comparisons. If not done correctly with `.encode('utf-8')`, `secrets.compare_digest` can crash (`TypeError: compare_digest() takes ascii-only strings`) when inputs have non-ASCII characters or are `None`.
+**Prevention:** Always use `secrets.compare_digest` with correctly formatted UTF-8 encoded byte strings when validating sensitive authentication codes, tokens, or OTPs.
