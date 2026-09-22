@@ -17,7 +17,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { followUser, getUserConnections, getUserProfile, unfollowUser } from '../src/services/api';
-import { useTranslation } from '../src/utils/i18n';
+import { useLanguageStore, useTranslation } from '../src/utils/i18n';
 import { ConnectionUser } from '../src/types';
 
 type ConnectionTab = 'followers' | 'following';
@@ -29,6 +29,8 @@ export default function FollowConnectionsScreen() {
   const targetUserId = typeof params.userId === 'string' && params.userId.trim().length ? params.userId : undefined;
   const { user } = useAuthStore();
   const { t } = useTranslation();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi' || user?.language === 'hi';
 
   const [activeTab, setActiveTab] = useState<ConnectionTab>(initialTab);
   const [loading, setLoading] = useState(true);
@@ -399,18 +401,42 @@ export default function FollowConnectionsScreen() {
                   </View>
                   <Text style={styles.emptyTitle}>
                     {searchText.trim()
-                      ? t('noFound')
+                      ? (isHindi ? 'कोई परिणाम नहीं मिला' : t('noFound'))
                       : activeTab === 'followers'
-                      ? t('noFollowersYet')
-                      : t('noFollowingYet')}
+                      ? (isHindi ? 'अभी कोई फ़ॉलोअर नहीं है ✨' : t('noFollowersYet'))
+                      : (isHindi ? 'अभी कोई फ़ॉलोइंग नहीं है 🙏' : t('noFollowingYet'))}
                   </Text>
                   <Text style={styles.emptySubtitle}>
                     {searchText.trim()
-                      ? t('noFound')
+                      ? (isHindi ? 'किसी अन्य नाम या SL ID से खोज का प्रयास करें।' : t('noFound'))
                       : activeTab === 'followers'
-                      ? t('whenPeopleFollow')
-                      : t('discoverPeople')}
+                      ? (isHindi ? 'जब अन्य साधक आपको फ़ॉलो करेंगे, वे यहाँ दिखाई देंगे।' : t('whenPeopleFollow'))
+                      : (isHindi ? 'सनातन समुदाय के अन्य साधकों को खोजें और उनसे जुड़ें।' : t('discoverPeople'))}
                   </Text>
+                  {!searchText.trim() && (
+                    <TouchableOpacity
+                      style={styles.emptyCtaButton}
+                      onPress={() => router.push(activeTab === 'following' ? '/(tabs)/circles' : '/(tabs)/jaap')}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        activeTab === 'following'
+                          ? (isHindi ? 'समुदाय में जुड़ें' : 'Explore Communities')
+                          : (isHindi ? 'जाप साधना शुरू करें' : 'Start Jaap')
+                      }
+                    >
+                      <Ionicons
+                        name={activeTab === 'following' ? 'people-outline' : 'heart-outline'}
+                        size={18}
+                        color="#FFFFFF"
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={styles.emptyCtaText}>
+                        {activeTab === 'following'
+                          ? (isHindi ? 'समुदाय में जुड़ें →' : 'Explore Communities →')
+                          : (isHindi ? 'जाप साधना शुरू करें →' : 'Start Jaap →')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               }
             />
@@ -624,6 +650,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 40,
+  },
+  emptyCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F25C05',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 20,
+    shadowColor: '#F25C05',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  emptyCtaText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   emptyIconWrap: {
     width: 80,

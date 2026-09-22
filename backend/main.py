@@ -5519,6 +5519,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
                 communities_to_join.append(f"{state_name} Group")
             
         joined_comm_ids = []
+        community_tasks = []
         for community_name in communities_to_join:
             comm_type = "country" if community_name == "Bharat Group" else "state"
             comm_loc = {"country": "Bharat"}
@@ -5531,12 +5532,19 @@ async def action_personality_verification(request_id: str, action: str = Body(..
             comm = {"id": community['id'], "name": community_name}
 
             if comm:
-                await db.add_member_to_community(comm['id'], target_user_id)
-                await db.array_union_update('users', target_user_id, 'communities', [comm['id']])
-                await db.array_union_update('users', target_user_id, 'default_communities', [comm['id']])
                 joined_comm_ids.append(comm['id'])
-                await cache_manager.invalidate_community(comm['id'])
+                community_tasks.append(db.add_member_to_community(comm['id'], target_user_id))
+                community_tasks.append(cache_manager.invalidate_community(comm['id']))
                 
+        if community_tasks:
+            await asyncio.gather(*community_tasks)
+
+        if joined_comm_ids:
+            await asyncio.gather(
+                db.array_union_update('users', target_user_id, 'communities', joined_comm_ids),
+                db.array_union_update('users', target_user_id, 'default_communities', joined_comm_ids)
+            )
+
         # Invalidate user communities cache
         await cache_manager.invalidate_user_communities(target_user_id)
         
@@ -5674,41 +5682,6 @@ async def get_profile_completion(token_data: dict = Depends(verify_token)):
                 "place_of_birth_longitude",
             ]
         )
-    }
-
-@api_router.get("/user/horoscope")
-async def get_horoscope(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not all(
-        user.get(f)
-        for f in [
-            "date_of_birth",
-            "place_of_birth",
-            "time_of_birth",
-            "place_of_birth_latitude",
-            "place_of_birth_longitude",
-        ]
-    ):
-        raise HTTPException(status_code=400, detail="Complete birth details to view horoscope")
-
-    dob = user.get("date_of_birth", "2000-01-01")
-    month = int(dob.split("-")[1]) if dob else 1
-    zodiac_signs = ["Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"]
-    zodiac_sign = zodiac_signs[(month - 1) % 12]
-
-    horoscope = await _generate_horoscope_with_groq(zodiac_sign)
-    day_of_year = datetime.utcnow().timetuple().tm_yday
-    return {
-        "zodiac_sign": zodiac_sign,
-        "daily_horoscope": horoscope.get("prediction", ""),
-        "lucky_color": horoscope.get("lucky_color", ["Orange", "White", "Yellow", "Red", "Green"][day_of_year % 5]),
-        "lucky_number": horoscope.get("lucky_number", (day_of_year % 9) + 1),
-        "provider": "gemini",
     }
 
 @api_router.post("/user/fcm-token")
@@ -7673,16 +7646,44 @@ async def add_community_message_comment(
 @api_router.get("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
 async def get_community_message_comments(
     community_id: str, subgroup_type: str, message_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', message_id)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        # Architectural fix: Limit candidate document fetch at DB level with created_at DESC
+        # ordering to (safe_offset + safe_limit) instead of streaming ALL historical comments.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', message_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(
+                "Firestore composite index missing for post_comments post_id + created_at, falling back to unindexed query: %s",
+                query_err
+            )
+            comments = await db.query_documents(
+                'post_comments',
+                filters=[('post_id', '==', message_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    comments = comments[safe_offset : safe_offset + safe_limit]
     
     # Dynamically decorate with current sender verification status
     if comments:
@@ -10265,6 +10266,10 @@ async def get_reports(
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:
                 if u.get('id'):
+        try:
+            users_docs = await db.get_documents_batch('users', user_ids_list)
+            for u in users_docs:
+                if u and u.get('id'):
                     user_map[str(u['id'])] = {
                         'name': u.get('name') or 'N/A',
                         'sl_id': u.get('sl_id') or 'N/A',
@@ -10581,6 +10586,7 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
         # db.get_documents_batch injects the document ID into the data dict as 'id'
         existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
 
+        tasks = []
         for doc_id in doc_ids:
             if doc_id in existing_ids:
                 skipped += 1
@@ -10591,6 +10597,16 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                     'followee_uid': f_uid,
                 })
                 created += 1
+                tasks.append(db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                }))
+                created += 1
+
+        if tasks:
+            # Chunk the write operations to avoid overwhelming the database
+            for i in range(0, len(tasks), 500):
+                await asyncio.gather(*tasks[i:i+500])
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
@@ -15311,7 +15327,7 @@ async def get_daily_horoscope_api(
         raise HTTPException(status_code=502, detail="Horoscope provider error")
 
 @api_router.get("/spiritual/horoscope/{rashi}")
-async def get_horoscope(rashi: str):
+async def get_spiritual_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:

@@ -46,6 +46,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
 - `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 - `/admin/sos-misuse-reports` — full collection scan of all SOS misuse reports — FIXED
+- `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -117,3 +118,11 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-18 - Offset-based pagination & bounded candidate queries for GET /user/saved-kundlis
 **Learning:** `GET /user/saved-kundlis` fetched all saved Kundli profiles across a user's entire history in memory using `db.query_documents("saved_kundlis", filters=[("user_id", "==", user_id)])` without limit or offset bounds ($O(N_{\text{user\_kundlis}})$ reads). As power users save multiple profiles, this endpoint causes increased memory allocation and read latency.
 **Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_saved_kundlis` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback logic.
+
+## 2026-09-19 - DB-level bounded candidate query & offset pagination for community message comments
+**Learning:** `GET /messages/community/{community_id}/{subgroup_type}/{message_id}/comments` fetched all historical comments for a community chat message without query limits or ordering parameters. On viral community messages at 1 lakh+ scale, this resulted in $O(N_{\text{comments}})$ reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_community_message_comments` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index exception fallback handling.
+
+## 2026-09-20 - DB-level bounded candidate query & offset pagination for GET /jaap/certificates
+**Learning:** `GET /jaap/certificates` fetched all earned certificates for a user without limit parameters or DB-level ordering. As users complete daily and weekly Jaap milestones, certificate records grow continuously, causing $O(N_{\text{user\_certs}})$ database reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) query parameters to `get_certificates` in `backend/routes/jaap_routes.py`, applied DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, added index exception fallback handling, and sliced returned certificates accordingly.
