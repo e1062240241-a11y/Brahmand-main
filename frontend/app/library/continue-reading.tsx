@@ -53,8 +53,22 @@ export default function ContinueReadingPage() {
     return { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_6.webp' };
   };
 
+  // 🧡 Engagement: Localized scripture titles to native Devanagari Hindi copy when active language is Hindi
+  // Lever: Reframing + Mother Tongue Connection (मातृभाषा) + Devotion (भक्ति)
+  // Why: Displaying sacred scripture titles in native Devanagari ('श्रीमद्भगवद्गीता', 'श्रीरामचरितमानस', etc.) evokes deep emotional reverence compared to transliterated English names.
+  // UI: Text-only change, zero structural or visual component modifications.
   const getBookTitle = (bookId: string) => {
-    const titles: Record<string, string> = {
+    const titlesHi: Record<string, string> = {
+      'bhagvad-geeta': 'श्रीमद्भगवद्गीता',
+      'ramcharitmanas': 'श्रीरामचरितमानस',
+      'atharvaved': 'अथर्ववेद',
+      'rigveda': 'ऋग्वेद',
+      'upanishads': 'उपनिषद्',
+      'mahabharata': 'महाभारत',
+      'yajurveda': 'यजुर्वेद',
+      'ramayan': 'वाल्मीकि रामायण',
+    };
+    const titlesEn: Record<string, string> = {
       'bhagvad-geeta': 'Bhagavad Gita',
       'ramcharitmanas': 'Ramcharitmanas',
       'atharvaved': 'Atharvaveda',
@@ -64,7 +78,7 @@ export default function ContinueReadingPage() {
       'yajurveda': 'Yajurveda',
       'ramayan': 'Ramayan',
     };
-    return titles[bookId] || bookId;
+    return (isHindi ? titlesHi[bookId] : titlesEn[bookId]) || bookId;
   };
 
   return (
