@@ -92,6 +92,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
               handlers.setShowSortDropdown(() => false);
             }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Filter festivals"
           >
             <Text style={styles.filterText} numberOfLines={1}>
               {selectedFestival || 'All Festivals'}
@@ -119,6 +121,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
                           handlers.setSelectedFestival(opt.value);
                           handlers.setShowFilterDropdown(() => false);
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select festival ${opt.label}`}
                       >
                         <Text
                           style={[styles.inlineDropdownText, isSelected && styles.inlineDropdownTextActive]}
@@ -171,6 +175,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
               handlers.setShowFilterDropdown(() => false);
             }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Sort events"
           >
             <Text style={styles.filterText}>
               {festivalSort === 'latest' ? 'Latest First' : 'Oldest First'}
@@ -193,6 +199,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
                       handlers.setFestivalSort(opt.value as any);
                       handlers.setShowSortDropdown(() => false);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sort by ${opt.label}`}
                   >
                     <Text style={[styles.inlineDropdownText, isSelected && styles.inlineDropdownTextActive]}>
                       {opt.label}
@@ -230,6 +238,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
             handlers.setPostCategory('Festivals');
             handlers.setShowCreateModal(true);
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Create Festival Post"
         >
           <Text style={styles.createFestBtnText}>Create Festival Post</Text>
         </TouchableOpacity>
@@ -390,6 +400,8 @@ export const CommunityListItem: React.FC<CommunityListItemProps> = React.memo(({
           style={localStyles.lockedButton}
           onPress={handlers.onNavigateKyc}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Verify Profile to Unlock"
         >
           <Ionicons name="shield-checkmark" size={16} color="#FFF" />
           <Text style={localStyles.lockedButtonText}>
@@ -517,3 +529,4 @@ const localStyles = StyleSheet.create({
     fontFamily: FONTS.bold,
   },
 });
+CommunityListItem.displayName = 'CommunityListItem';
