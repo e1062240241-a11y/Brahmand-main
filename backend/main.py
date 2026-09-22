@@ -10261,6 +10261,11 @@ async def get_reports(
     user_map = {}
     if user_ids:
         user_ids_list = list(user_ids)
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
+        try:
+            users_docs = await db.get_documents_batch('users', user_ids_list)
+            for u in users_docs:
+                if u.get('id'):
         try:
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:
@@ -10576,6 +10581,7 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
         doc_ids = list(doc_map.keys())
 
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
         existing_docs = await db.get_documents_batch('user_follows', doc_ids)
         # db.get_documents_batch injects the document ID into the data dict as 'id'
         existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
@@ -10586,6 +10592,11 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 skipped += 1
             else:
                 f_uid = doc_map[doc_id]
+                await db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                })
+                created += 1
                 tasks.append(db.set_document('user_follows', doc_id, {
                     'follower_uid': uid,
                     'followee_uid': f_uid,
