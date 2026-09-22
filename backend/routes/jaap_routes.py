@@ -1,7 +1,7 @@
 import logging
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from middleware.security import verify_token
 from config.database import get_db
 
@@ -229,23 +229,52 @@ async def record_jaap(
     }
 
 @router.get("/certificates")
-async def get_certificates(token_data: dict = Depends(verify_token)):
+async def get_certificates(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
     """
-    Get all earned certificates for the current user.
+    Get earned certificates for the current user with DB-level query bounds & pagination.
+    Returns 50 certificates per page by default.
     """
     user_id = token_data["user_id"]
     db = await get_db()
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     certs = []
     try:
-        certs = await db.query_documents('jaap_certificates', filters=[('user_id', '==', user_id)])
+        try:
+            certs = await db.query_documents(
+                'jaap_certificates',
+                filters=[('user_id', '==', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(f"Firestore index missing for jaap_certificates user_id + created_at, falling back to un-ordered query: {query_err}")
+                certs = await db.query_documents(
+                    'jaap_certificates',
+                    filters=[('user_id', '==', user_id)],
+                    limit=fetch_limit * 2
+                )
+            else:
+                raise query_err
     except Exception as e:
         logger.error(f"Error fetching user certificates: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch certificates")
 
+    # Slice offset window from candidate results
+    paginated_certs = certs[safe_offset:safe_offset + safe_limit] if certs else []
+
     return {
         "status": "success",
-        "certificates": certs
+        "certificates": paginated_certs
     }
 
 @router.get("/stats")

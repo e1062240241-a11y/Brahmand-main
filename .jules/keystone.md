@@ -122,3 +122,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-19 - DB-level bounded candidate query & offset pagination for community message comments
 **Learning:** `GET /messages/community/{community_id}/{subgroup_type}/{message_id}/comments` fetched all historical comments for a community chat message without query limits or ordering parameters. On viral community messages at 1 lakh+ scale, this resulted in $O(N_{\text{comments}})$ reads and memory allocation per request.
 **Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_community_message_comments` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index exception fallback handling.
+
+## 2026-09-20 - DB-level bounded candidate query & offset pagination for GET /jaap/certificates
+**Learning:** `GET /jaap/certificates` fetched all earned certificates for a user without limit parameters or DB-level ordering. As users complete daily and weekly Jaap milestones, certificate records grow continuously, causing $O(N_{\text{user\_certs}})$ database reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) query parameters to `get_certificates` in `backend/routes/jaap_routes.py`, applied DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, added index exception fallback handling, and sliced returned certificates accordingly.
