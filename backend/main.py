@@ -10260,18 +10260,17 @@ async def get_reports(
     user_map = {}
     if user_ids:
         user_ids_list = list(user_ids)
-        for i in range(0, len(user_ids_list), 100):
-            chunk = user_ids_list[i:i+100]
-            try:
-                users_docs = await db.get_documents_batch('users', chunk)
-                for u in users_docs:
-                    if u.get('id'):
-                        user_map[str(u['id'])] = {
-                            'name': u.get('name') or 'N/A',
-                            'sl_id': u.get('sl_id') or 'N/A',
-                        }
-            except Exception as e:
-                logger.warning("Failed to batch fetch users in get_reports: %s", e)
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
+        try:
+            users_docs = await db.get_documents_batch('users', user_ids_list)
+            for u in users_docs:
+                if u.get('id'):
+                    user_map[str(u['id'])] = {
+                        'name': u.get('name') or 'N/A',
+                        'sl_id': u.get('sl_id') or 'N/A',
+                    }
+        except Exception as e:
+            logger.warning("Failed to batch fetch users in get_reports: %s", e)
 
     # Attach names/sl_ids to sliced_reports
     for r in sliced_reports:
@@ -10577,24 +10576,21 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
         doc_ids = list(doc_map.keys())
 
-        # Process in chunks of 100 to avoid limits
-        chunk_size = 100
-        for i in range(0, len(doc_ids), chunk_size):
-            chunk_ids = doc_ids[i:i + chunk_size]
-            existing_docs = await db.get_documents_batch('user_follows', chunk_ids)
-            # db.get_documents_batch injects the document ID into the data dict as 'id'
-            existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
+        existing_docs = await db.get_documents_batch('user_follows', doc_ids)
+        # db.get_documents_batch injects the document ID into the data dict as 'id'
+        existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
 
-            for doc_id in chunk_ids:
-                if doc_id in existing_ids:
-                    skipped += 1
-                else:
-                    f_uid = doc_map[doc_id]
-                    await db.set_document('user_follows', doc_id, {
-                        'follower_uid': uid,
-                        'followee_uid': f_uid,
-                    })
-                    created += 1
+        for doc_id in doc_ids:
+            if doc_id in existing_ids:
+                skipped += 1
+            else:
+                f_uid = doc_map[doc_id]
+                await db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                })
+                created += 1
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
