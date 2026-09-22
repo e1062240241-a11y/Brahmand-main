@@ -70,3 +70,7 @@
 ## 2026-09-20 - Katha Filter Empty State Language-Aware Polish
 **Learning:** Cold or unlocalized filter empty states in media and discourse features (like Katha) create abrupt drops in engagement when users apply category filters that return no results. Conditionally rendering warm Devanagari Hindi copy (`"इस फ़िल्टर में कोई कथा एपिसोड नहीं मिला ✨"`) when `language === 'hi'` maintains a warm, respectful tone throughout spiritual audio exploration.
 **Action:** Updated `frontend/app/library/katha.tsx` to conditionally render Devanagari Hindi copy for the episode filter empty state when `language === 'hi'`.
+
+## 2026-09-21 - Follow Connections Empty State Language Polish & Community Discovery CTA
+**Learning:** Empty follower and following lists without guidance or CTAs miss an opportunity to guide users toward community participation and spiritual practice. Localizing empty prompts into warm Devanagari Hindi ("अभी कोई फ़ॉलोअर नहीं है ✨", "सनातन समुदाय के अन्य साधकों को खोजें...") and offering contextual CTAs linking directly to Circles (`/(tabs)/circles`) and Jaap (`/(tabs)/jaap`) transforms idle list states into active habit-building drivers.
+**Action:** Updated `frontend/app/follow-connections.tsx` `ListEmptyComponent` to conditionally render Devanagari Hindi text and actionable CTA buttons based on `useLanguageStore`.
