@@ -1974,14 +1974,46 @@ async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depend
     return {"id": doc_id, **data}
 
 @api_router.get("/user/saved-kundlis")
-async def get_saved_kundlis(token_data: dict = Depends(verify_token)):
+async def get_saved_kundlis(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get user's saved Kundli profiles with offset pagination and bounded DB reads.
+    Default limit is 50, max 100.
+    """
     db = await get_db()
-    results = await db.query_documents("saved_kundlis", filters=[("user_id", "==", token_data["user_id"])])
+    user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        results = sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
+        results = await db.query_documents(
+            "saved_kundlis",
+            filters=[("user_id", "==", user_id)],
+            order_by="created_at",
+            order_direction="DESCENDING",
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for saved_kundlis user_id + created_at, falling back to un-ordered query: {query_err}")
+            results = await db.query_documents(
+                "saved_kundlis",
+                filters=[("user_id", "==", user_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
+    try:
+        results = sorted(results, key=lambda x: str(x.get("created_at") or ""), reverse=True)
     except Exception:
         pass
-    return results
+
+    return results[safe_offset:safe_offset + safe_limit]
 
 @api_router.delete("/user/saved-kundlis/{profile_id}")
 async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
@@ -2043,7 +2075,18 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     if attempts >= 5:
         raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-    if record.get("otp") != otp:
+    import secrets
+    stored_otp_raw = record.get("otp")
+    if stored_otp_raw is None:
+        def _increment_attempts():
+            doc.reference.update({"attempts": attempts + 1})
+        await db._run_sync(_increment_attempts)
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+    stored_otp_val = str(stored_otp_raw).encode("utf-8")
+    provided_otp_val = str(otp).encode("utf-8")
+
+    if not secrets.compare_digest(stored_otp_val, provided_otp_val):
         def _increment_attempts():
             doc.reference.update({"attempts": attempts + 1})
         await db._run_sync(_increment_attempts)
@@ -9416,6 +9459,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     db = await get_db()
     user_id = token_data["user_id"]
+    user_doc = (await db.get_document('users', user_id)) or {}
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -9436,7 +9480,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
 
     if id_type == 'aadhaar':
-        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         has_id_photo = bool(data.get('id_photo'))
@@ -9462,7 +9505,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     full_name = (data.get('full_name') or '').strip()
     date_of_birth = (data.get('date_of_birth') or data.get('dob') or '').strip()
 
-    user_doc = await db.get_document('users', user_id)
     if not phone_number and user_doc:
         phone_number = (
             user_doc.get('kyc_verified_phone')
@@ -9508,7 +9550,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
-    user_doc = await db.get_document('users', user_id)
     is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
         vendor_id = user_doc.get('vendor_id')
@@ -11511,7 +11552,11 @@ async def verify_blood_request_otp(request: OTPVerify, _: bool = Depends(auth_ra
     stored_otp = record.get("otp")
     logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: input={otp}, stored={stored_otp}, attempt={attempts}")
     
-    if not stored_otp or stored_otp != otp:
+    import secrets
+    stored_otp_bytes = str(stored_otp).encode("utf-8") if stored_otp else b""
+    provided_otp_bytes = str(otp).encode("utf-8")
+
+    if not stored_otp or not secrets.compare_digest(stored_otp_bytes, provided_otp_bytes):
         if attempts >= 5:
             raise HTTPException(
                 status_code=400,
@@ -13074,7 +13119,16 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         if docs:
             doc = docs[0]
             record = doc.to_dict()
-            if record.get("otp") != otp:
+
+            import secrets
+            stored_otp_raw = record.get("otp")
+            if stored_otp_raw is None:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            stored_otp_val = str(stored_otp_raw).encode("utf-8")
+            provided_otp_val = str(otp).encode("utf-8")
+
+            if not secrets.compare_digest(stored_otp_val, provided_otp_val):
                 raise HTTPException(status_code=400, detail="Invalid OTP")
             # If valid, just delete the doc so it can't be reused
             def _delete_doc():
@@ -15261,7 +15315,7 @@ async def get_daily_horoscope_api(
         raise HTTPException(status_code=502, detail="Horoscope provider error")
 
 @api_router.get("/spiritual/horoscope/{rashi}")
-async def get_horoscope(rashi: str):
+async def get_spiritual_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:

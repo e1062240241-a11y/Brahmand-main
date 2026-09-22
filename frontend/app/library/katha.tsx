@@ -1043,7 +1043,11 @@ export default function KathaPage() {
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No episodes found in this filter.</Text>
+                <Text style={styles.emptyText}>
+                  {language === 'hi'
+                    ? 'इस फ़िल्टर में कोई कथा एपिसोड नहीं मिला ✨'
+                    : 'No katha episodes found in this filter ✨'}
+                </Text>
               </View>
             )}
           </View>

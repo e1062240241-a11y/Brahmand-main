@@ -113,3 +113,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-17 - Offset-based pagination & DB query bounds for SOS misuse reports
 **Learning:** `GET /admin/sos-misuse-reports` previously called `db.query_documents('sos_misuse_reports')` without limits or pagination parameters, streaming every historical misuse report across the entire platform into memory before sorting in Python ($O(N_{\text{reports}})$ reads). At 1 lakh+ scale, this endpoint would cause high memory usage, database read spikes, and client request timeouts.
 **Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `GET /admin/sos-misuse-reports`, enforced DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback handling to slice results gracefully.
+
+## 2026-09-18 - Offset-based pagination & bounded candidate queries for GET /user/saved-kundlis
+**Learning:** `GET /user/saved-kundlis` fetched all saved Kundli profiles across a user's entire history in memory using `db.query_documents("saved_kundlis", filters=[("user_id", "==", user_id)])` without limit or offset bounds ($O(N_{\text{user\_kundlis}})$ reads). As power users save multiple profiles, this endpoint causes increased memory allocation and read latency.
+**Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_saved_kundlis` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback logic.
