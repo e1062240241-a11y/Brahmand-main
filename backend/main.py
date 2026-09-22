@@ -5519,6 +5519,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
                 communities_to_join.append(f"{state_name} Group")
             
         joined_comm_ids = []
+        community_tasks = []
         for community_name in communities_to_join:
             comm_type = "country" if community_name == "Bharat Group" else "state"
             comm_loc = {"country": "Bharat"}
@@ -5531,12 +5532,19 @@ async def action_personality_verification(request_id: str, action: str = Body(..
             comm = {"id": community['id'], "name": community_name}
 
             if comm:
-                await db.add_member_to_community(comm['id'], target_user_id)
-                await db.array_union_update('users', target_user_id, 'communities', [comm['id']])
-                await db.array_union_update('users', target_user_id, 'default_communities', [comm['id']])
                 joined_comm_ids.append(comm['id'])
-                await cache_manager.invalidate_community(comm['id'])
+                community_tasks.append(db.add_member_to_community(comm['id'], target_user_id))
+                community_tasks.append(cache_manager.invalidate_community(comm['id']))
                 
+        if community_tasks:
+            await asyncio.gather(*community_tasks)
+
+        if joined_comm_ids:
+            await asyncio.gather(
+                db.array_union_update('users', target_user_id, 'communities', joined_comm_ids),
+                db.array_union_update('users', target_user_id, 'default_communities', joined_comm_ids)
+            )
+
         # Invalidate user communities cache
         await cache_manager.invalidate_user_communities(target_user_id)
         
