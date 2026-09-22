@@ -5684,41 +5684,6 @@ async def get_profile_completion(token_data: dict = Depends(verify_token)):
         )
     }
 
-@api_router.get("/user/horoscope")
-async def get_horoscope(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not all(
-        user.get(f)
-        for f in [
-            "date_of_birth",
-            "place_of_birth",
-            "time_of_birth",
-            "place_of_birth_latitude",
-            "place_of_birth_longitude",
-        ]
-    ):
-        raise HTTPException(status_code=400, detail="Complete birth details to view horoscope")
-
-    dob = user.get("date_of_birth", "2000-01-01")
-    month = int(dob.split("-")[1]) if dob else 1
-    zodiac_signs = ["Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"]
-    zodiac_sign = zodiac_signs[(month - 1) % 12]
-
-    horoscope = await _generate_horoscope_with_groq(zodiac_sign)
-    day_of_year = datetime.utcnow().timetuple().tm_yday
-    return {
-        "zodiac_sign": zodiac_sign,
-        "daily_horoscope": horoscope.get("prediction", ""),
-        "lucky_color": horoscope.get("lucky_color", ["Orange", "White", "Yellow", "Red", "Green"][day_of_year % 5]),
-        "lucky_number": horoscope.get("lucky_number", (day_of_year % 9) + 1),
-        "provider": "gemini",
-    }
-
 @api_router.post("/user/fcm-token")
 async def save_fcm_token(request: dict, token_data: dict = Depends(verify_token)):
     """
