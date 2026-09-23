@@ -7966,19 +7966,42 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     }
 
 @api_router.get("/dm/conversations")
-async def get_dm_conversations(token_data: dict = Depends(verify_token)):
-    """Get all private chat conversations for the current user"""
+async def get_dm_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get private chat conversations for the current user with offset-based pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    # Query all private chats where user is a member
-    user_chats = await db.query_documents(
-        'chats', 
-        filters=[
-            ('chat_type', '==', 'private'),
-            ('members', 'array_contains', user_id)
-        ]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    # Query private chats with DB-level limit bounds and index fallback
+    try:
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            order_by='updated_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(
+            f"Firestore query failed in get_dm_conversations, falling back to un-ordered query: {query_err}"
+        )
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            limit=fetch_limit
+        )
     
     result = []
     
@@ -8070,7 +8093,7 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
 
     result.sort(key=sort_key, reverse=True)
     
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 @api_router.get("/dm/{chat_id}/metadata")
 async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -10262,10 +10285,6 @@ async def get_reports(
     if user_ids:
         user_ids_list = list(user_ids)
         # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
-        try:
-            users_docs = await db.get_documents_batch('users', user_ids_list)
-            for u in users_docs:
-                if u.get('id'):
         try:
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:
