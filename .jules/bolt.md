@@ -89,3 +89,6 @@
 ## 2024-05-14 - Optimize Community Joining Loop in `approve_verification`
 **Learning:** In the FastAPI backend, admin endpoints containing loops over data structures (like joining multiple communities during KYC approval) can unintentionally trigger N+1 latency by making sequential Firestore reads/writes and multiple network calls for the same user document using `db.array_union_update`.
 **Action:** Extract and batch array updates into a single operation using a list of IDs. Use `asyncio.gather` for independent actions (such as adding the user to the community collection or cache invalidations) to perform them concurrently, significantly reducing network overhead and wait times.
+## 2024-05-19 - Redundant Fetch Construction
+**Learning:** In FastAPI endpoints, checking for and removing sequential `db.get_document` calls that fetch the exact same document multiple times is a common N+1 reduction opportunity. Rather than re-fetching the document after a `db.update_document` or `db.increment_field` purely to return its updated fields in the API response, we can construct the updated representation in-memory by doing `updated_doc = original_doc.copy(); updated_doc.update(modifications)`.
+**Action:** Always scan for redundant fetches directly following an update, and eliminate the DB call by building the updated state object locally whenever possible.
