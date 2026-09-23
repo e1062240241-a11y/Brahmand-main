@@ -32,6 +32,7 @@ import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
 import { useOptionalTabBar } from '../contexts/TabBarContext';
+import { useAuthStore } from '../store/authStore';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 const QUICK_EMOJIS = ['✨', '🙏', '🕉️', '🌸', '🚩', '📿'];
@@ -109,6 +110,10 @@ const PostFeedCardComponent = ({
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const currentUser = useAuthStore((state) => state.user);
+  const isMyPost = Boolean(currentUser?.id && post?.user_id && String(currentUser.id) === String(post.user_id));
+  const postAuthorName = (isMyPost && currentUser?.name) ? currentUser.name : (post?.username || 'User');
+  const postAuthorPhoto = (isMyPost && currentUser?.photo !== undefined) ? currentUser.photo : post?.user_photo;
   const isFocusedNav = useIsFocused();
   const isFocused = isFocusedProp ?? isFocusedNav;
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
@@ -610,12 +615,12 @@ const PostFeedCardComponent = ({
             onPress={() => onUserPress?.(post)}
             activeOpacity={0.8}
             accessibilityRole="button"
-            accessibilityLabel={`View profile of ${post?.username || 'User'}`}
+            accessibilityLabel={`View profile of ${postAuthorName}`}
           >
-            <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
+            <Avatar name={postAuthorName} photo={postAuthorPhoto} size={34} />
             <View style={styles.userMeta}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+                <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{postAuthorName}</Text>
                 {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
               </View>
               <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
@@ -986,7 +991,7 @@ const PostFeedCardComponent = ({
       {isEditing ? (
         <View style={styles.editCaptionContainer}>
           <View style={styles.editCaptionRow}>
-            <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={30} />
+            <Avatar name={postAuthorName} photo={postAuthorPhoto} size={30} />
             <View style={{ flex: 1, marginLeft: 8 }}>
               <TextInput
                 value={editedCaption}
@@ -1048,7 +1053,7 @@ const PostFeedCardComponent = ({
             >
               <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
-                  {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
+                  {postAuthorName} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
                 </Text>
                 {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                   seg.isHashtag ? (

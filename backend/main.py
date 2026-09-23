@@ -2083,6 +2083,8 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
 
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user(token_data["user_id"])
         from datetime import datetime, timezone
         update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
         user_doc.update(update_data)
@@ -4291,6 +4293,15 @@ async def get_my_posts(
                 logger.error(f"SECURITY VIOLATION: Post {post.get('id')} belongs to user {post.get('user_id')} but was returned in feed of user {target_user_id}!")
                 raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
             validated_posts.append(post)
+
+        if target_user:
+            author_name = target_user.get('name')
+            author_photo = target_user.get('photo')
+            for post in validated_posts:
+                if author_name:
+                    post['username'] = author_name
+                if author_photo is not None:
+                    post['user_photo'] = author_photo
 
         # Slice for offset/limit pagination
         paginated_posts = validated_posts[offset : offset + safe_limit]
