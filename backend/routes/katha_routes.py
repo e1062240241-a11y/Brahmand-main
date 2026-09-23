@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import asyncio
+import secrets
 import shutil
 import subprocess
 from datetime import datetime, timezone, timedelta
@@ -68,7 +69,7 @@ async def _verify_admin_auth(
 ) -> bool:
     """Verify admin using existing ADMIN_PANEL credentials token or secret key."""
     key = x_admin_key or x_admin_key_alt
-    if key and key == ADMIN_SECRET_KEY:
+    if key and ADMIN_SECRET_KEY and secrets.compare_digest(key, ADMIN_SECRET_KEY):
         return True
     if token_data:
         user_id = token_data.get("user_id")
