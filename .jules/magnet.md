@@ -74,3 +74,7 @@
 ## 2026-09-21 - Follow Connections Empty State Language Polish & Community Discovery CTA
 **Learning:** Empty follower and following lists without guidance or CTAs miss an opportunity to guide users toward community participation and spiritual practice. Localizing empty prompts into warm Devanagari Hindi ("अभी कोई फ़ॉलोअर नहीं है ✨", "सनातन समुदाय के अन्य साधकों को खोजें...") and offering contextual CTAs linking directly to Circles (`/(tabs)/circles`) and Jaap (`/(tabs)/jaap`) transforms idle list states into active habit-building drivers.
 **Action:** Updated `frontend/app/follow-connections.tsx` `ListEmptyComponent` to conditionally render Devanagari Hindi text and actionable CTA buttons based on `useLanguageStore`.
+
+## 2026-09-22 - New DM Direct Messaging Screen Language-Aware Polish
+**Learning:** Hardcoded English text in message creation screens (`NewDMScreen`) creates an abrupt context switch for Hindi users when initiating private conversations. Conditionally rendering Devanagari Hindi text across header titles ("नया संवाद"), search inputs ("लोगों व समूहों को खोजें..."), quick action buttons ("नया समूह", "नया संपर्क"), section headers ("अक्सर संपर्क किए गए", "सुझाए गए"), empty user states ("कोई उपयोगकर्ता नहीं मिला ✨"), and message compose fields ("संदेश", "संदेश भेजें") creates a warm, welcoming environment for direct communication.
+**Action:** Updated `frontend/app/dm/new.tsx` to conditionally render Devanagari Hindi copy when `user?.language === 'hi'`.
