@@ -6556,39 +6556,80 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     return communities
 
 @api_router.get("/communities/my-creation-requests")
-async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
-    """Get community creation requests initiated by the current user."""
+async def get_my_creation_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get community creation requests initiated by the current user with DB query bounds and offset pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        requests = await db.query_documents(
-            'community_creation_requests',
-            filters=[('owner_id', '==', user_id)]
-        )
-        
+        try:
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            logger.warning(f"Fallback query for my creation requests due to index/order error: {query_err}")
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                limit=fetch_limit
+            )
+            def _get_req_ts(r):
+                c_at = r.get('created_at')
+                if hasattr(c_at, 'timestamp'):
+                    return c_at.timestamp()
+                if isinstance(c_at, str):
+                    try:
+                        return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                    except Exception:
+                        return 0
+                return 0
+            requests.sort(key=_get_req_ts, reverse=True)
+
+        paged_requests = requests[safe_offset : safe_offset + safe_limit]
+
+        # Consolidate all invited user IDs across all paged requests to batch-fetch in ONE query (eliminates N+1)
+        all_invited_ids = set()
+        for req in paged_requests:
+            admin_ids = req.get('admin_ids', [])
+            member_ids = req.get('member_ids', [])
+            all_invited_ids.update(admin_ids)
+            all_invited_ids.update(member_ids)
+
+        user_map = {}
+        if all_invited_ids:
+            users_data = await db.get_documents_batch('users', list(all_invited_ids))
+            user_map = {u['id']: u for u in users_data if u and u.get('id')}
+
         result = []
-        for req in requests:
+        for req in paged_requests:
             req_id = req.get('id')
             if not req_id:
                 continue
-                
+
             admin_ids = req.get('admin_ids', [])
             member_ids = req.get('member_ids', [])
             responses = req.get('responses', {})
-            
-            invited_ids = list(set(admin_ids + member_ids))
-            users_data = []
-            if invited_ids:
-                users_data = await db.get_documents_batch('users', invited_ids)
-            
+
             admins_list = []
             members_list = []
-            
-            for u in users_data:
+
+            invited_ids = list(set(admin_ids + member_ids))
+            for uid in invited_ids:
+                u = user_map.get(uid)
                 if not u:
                     continue
-                uid = u.get('id')
                 status = responses.get(uid, 'pending')
                 invitee_info = {
                     'id': uid,
@@ -6596,12 +6637,12 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                     'photo': u.get('photo'),
                     'status': status
                 }
-                
+
                 if uid in admin_ids:
                     admins_list.append(invitee_info)
                 elif uid in member_ids:
                     members_list.append(invitee_info)
-            
+
             formatted_req = {
                 'id': req_id,
                 'name': req.get('name', ''),
@@ -6614,8 +6655,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                 'community_id': req.get('community_id')
             }
             result.append(formatted_req)
-            
-        result.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")

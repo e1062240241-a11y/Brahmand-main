@@ -527,12 +527,45 @@ class FirebaseCommunityService:
         } for c in communities]
     
     @staticmethod
-    async def get_my_creation_requests(user_id: str) -> List[Dict[str, Any]]:
-        """Get community creation requests created by the user"""
+    async def get_my_creation_requests(
+        user_id: str,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Get community creation requests created by the user with query bounds and offset pagination"""
         db = await FirebaseCommunityService.get_db()
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        fetch_limit = safe_offset + safe_limit
         try:
-            requests = await db.query_documents('community_creation_requests', [('owner_id', '==', user_id)])
-            return requests
+            try:
+                requests = await db.query_documents(
+                    'community_creation_requests',
+                    filters=[('owner_id', '==', user_id)],
+                    order_by='created_at',
+                    order_direction='DESCENDING',
+                    limit=fetch_limit
+                )
+            except Exception as query_err:
+                logger.warning(f"Fallback query for my creation requests due to index/order error: {query_err}")
+                requests = await db.query_documents(
+                    'community_creation_requests',
+                    filters=[('owner_id', '==', user_id)],
+                    limit=fetch_limit
+                )
+                def _get_req_ts(r):
+                    c_at = r.get('created_at')
+                    if hasattr(c_at, 'timestamp'):
+                        return c_at.timestamp()
+                    if isinstance(c_at, str):
+                        try:
+                            return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                        except Exception:
+                            return 0
+                    return 0
+                requests.sort(key=_get_req_ts, reverse=True)
+
+            return requests[safe_offset : safe_offset + safe_limit]
         except Exception as e:
             logger.error(f"Error fetching community creation requests for user {user_id}: {e}")
             return []

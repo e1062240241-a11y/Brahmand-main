@@ -62,6 +62,7 @@ UNBOUNDED GROWTH:
 - `temple.posts` array — embedded posts and reactions grow unbounded in temple doc — FIXED
 
 N+1 QUERY PATTERNS:
+- `/communities/my-creation-requests` — executed batch user fetches in a loop per creation request — FIXED
 
 MISSING RATE LIMITS:
 - `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, `/spiritual/panchang` — expensive third-party API calls (AstrologyAPI.com / Groq LLM) callable without rate limits — FIXED
@@ -130,3 +131,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-21 - Offset-based pagination & DB query bounds for GET /dm/conversations
 **Learning:** `GET /dm/conversations` previously fetched all private chat documents where the requesting user was a member without limit bounds ($O(N_{\text{user\_chats}})$ reads). On accounts with active chat histories, this caused high memory usage, database read spikes, and network latency on conversation listings.
 **Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_dm_conversations` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `updated_at` DESC ordering and index exception fallback logic, and sliced response payloads accordingly.
+
+## 2026-09-22 - DB query bounds, offset pagination, & consolidated user batch lookups for GET /communities/my-creation-requests
+**Learning:** `GET /communities/my-creation-requests` fetched all historical community creation requests for a user without query limits or ordering. Furthermore, inside the request loop, it called `db.get_documents_batch('users', invited_ids)` for each creation request individually ($O(N_{\text{requests}})$ network calls). Consolidating all invited user UIDs across paged creation requests into a single set before the loop reduces user lookups to $O(1)$ batch query.
+**Action:** Added `limit` (default 20, max 100) and `offset` (default 0) parameters to `GET /communities/my-creation-requests` in `backend/main.py`, `backend/routes/community_routes.py`, and `backend/services/firebase_community_service.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and consolidated invited user lookups into a single batch query prior to request processing.
