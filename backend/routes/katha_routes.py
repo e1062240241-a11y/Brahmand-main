@@ -3,6 +3,7 @@ import secrets
 import json
 import logging
 import asyncio
+import secrets
 import shutil
 import subprocess
 import secrets
@@ -70,6 +71,8 @@ async def _verify_admin_auth(
 ) -> bool:
     """Verify admin using existing ADMIN_PANEL credentials token or secret key."""
     key = x_admin_key or x_admin_key_alt
+    if key and ADMIN_SECRET_KEY and secrets.compare_digest(key, ADMIN_SECRET_KEY):
+        return True
     if key and ADMIN_SECRET_KEY:
         key_bytes = key.encode('utf-8')
         secret_bytes = ADMIN_SECRET_KEY.encode('utf-8')
