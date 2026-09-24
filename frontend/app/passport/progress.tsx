@@ -40,23 +40,35 @@ function PassportProgressScreen({
     }, [loadPassport])
   );
 
+  // 🧡 Engagement: Reframed alert messages from transactional updates ("Jaap saved") to devotional offering & Swadhyaya confirmation
+  // Lever: Devotion + Reframing
+  // Why: Reframing task feedback into spiritual dedication creates deeper emotional resonance.
   const handleAddJaap = async () => {
     const count = parseInt(jaapInput, 10);
     if (!count || count <= 0) {
-      Alert.alert('Invalid count', 'Please enter a valid number of malas.');
+      Alert.alert(
+        language === 'hi' ? 'अमान्य संख्या' : 'Invalid count',
+        language === 'hi' ? 'कृपया मालाओं की सही संख्या दर्ज करें।' : 'Please enter a valid number of malas.'
+      );
       return;
     }
     await addJaap(count);
     if (count >= 108) {
       await awardBadge('First Jaap Milestone', 'Completed a full mala cycle');
     }
-    Alert.alert('Jaap saved', 'Your jaap progress has been updated.');
+    Alert.alert(
+      language === 'hi' ? 'जाप समर्पित 🙏' : 'Jaap Dedicated 🙏',
+      language === 'hi' ? 'आपकी जाप साधना सफलतापूर्वक अर्पण की गई।' : 'Your jaap devotion has been recorded.'
+    );
     setJaapInput('108');
   };
 
   const handleCompleteBook = async () => {
     if (!bookName.trim()) {
-      Alert.alert('Missing book', 'Please enter the book name.');
+      Alert.alert(
+        language === 'hi' ? 'ग्रंथ का नाम आवश्यक' : 'Missing book',
+        language === 'hi' ? 'कृपया स्वाध्याय किए गए ग्रंथ का नाम लिखें।' : 'Please enter the book name.'
+      );
       return;
     }
     const days = parseInt(completionDays, 10) || 0;
@@ -66,7 +78,10 @@ function PassportProgressScreen({
     if (booksCompleted === 0) {
       await awardBadge('First Book Completion', `Completed ${trimmedBookName}`);
     }
-    Alert.alert('Certificate created', `${trimmedBookName} has been marked complete.`);
+    Alert.alert(
+      language === 'hi' ? 'स्वाध्याय पूर्ण ✨' : 'Swadhyaya Complete ✨',
+      language === 'hi' ? `${trimmedBookName} का स्वाध्याय संकल्प पूर्ण हुआ!` : `${trimmedBookName} reading marked complete!`
+    );
     setBookName('');
     setCompletionDays('30');
   };
@@ -97,29 +112,32 @@ function PassportProgressScreen({
         </View>
 
         <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* 🧡 Engagement: Reframed administrative labels ("Update achievements", "Total Jaap", "Add Jaap") into devotional Sanskara & Swadhyaya framing */}
+          {/* Lever: Reframing + Devotion + Sanskara */}
+          {/* Why: "साधना जाप" and "जाप समर्पित करें 🙏" evoke sacred habit (संस्कार) rather than raw form inputs. */}
           <Text style={styles.subtitle}>
             {language === 'hi'
-              ? 'जाप, सम्मान और अध्ययन उपलब्धियों को तुरंत अपडेट करें।'
-              : 'Update jaap, awards and reading achievements instantly.'}
+              ? 'अपनी जाप साधना, स्वाध्याय संकल्प और दिव्य आशीर्वाद अपडेट करें ✨'
+              : 'Record your jaap devotion, scripture readings, and sacred blessings ✨'}
           </Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{totalJaap}</Text>
-              <Text style={styles.statLabel}>{language === 'hi' ? 'कुल जाप' : 'Total Jaap'}</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'साधना जाप' : 'Total Jaap'}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{booksCompleted}</Text>
-              <Text style={styles.statLabel}>{language === 'hi' ? 'ग्रंथ' : 'Books'}</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'स्वाध्याय ग्रंथ' : 'Scriptures'}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statNumber}>{badges.length}</Text>
-              <Text style={styles.statLabel}>{language === 'hi' ? 'बैज' : 'Badges'}</Text>
+              <Text style={styles.statLabel}>{language === 'hi' ? 'आशीर्वाद बैज' : 'Badges'}</Text>
             </View>
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>{language === 'hi' ? 'जाप पूर्ण करें' : 'Complete Jaap'}</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'जाप साधना अर्पण' : 'Offer Jaap Devotion'}</Text>
             <TextInput
               style={styles.input}
               value={jaapInput}
@@ -128,16 +146,16 @@ function PassportProgressScreen({
               placeholder={language === 'hi' ? 'मालाएं (उदा. 108)' : '108'}
               placeholderTextColor={COLORS.textSecondary}
             />
-            <Button title={language === 'hi' ? 'जाप जोड़ें' : 'Add Jaap'} onPress={handleAddJaap} />
+            <Button title={language === 'hi' ? 'जाप समर्पित करें 🙏' : 'Offer Jaap 🙏'} onPress={handleAddJaap} />
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>{language === 'hi' ? 'अध्ययन पूर्ण करें' : 'Complete Reading'}</Text>
+            <Text style={styles.sectionTitle}>{language === 'hi' ? 'स्वाध्याय संकल्प पूर्ण करें' : 'Complete Scripture Reading'}</Text>
             <TextInput
               style={styles.input}
               value={bookName}
               onChangeText={setBookName}
-              placeholder={language === 'hi' ? 'ग्रंथ का नाम' : 'Book name'}
+              placeholder={language === 'hi' ? 'ग्रंथ का नाम (उदा. श्रीमद्भगवद्गीता)' : 'Book name (e.g. Bhagavad Gita)'}
               placeholderTextColor={COLORS.textSecondary}
             />
             <TextInput
@@ -148,7 +166,7 @@ function PassportProgressScreen({
               placeholder={language === 'hi' ? 'दिनों की संख्या' : 'Completion days'}
               placeholderTextColor={COLORS.textSecondary}
             />
-            <Button title={language === 'hi' ? 'प्रमाणपत्र बनाएं' : 'Create Certificate'} onPress={handleCompleteBook} />
+            <Button title={language === 'hi' ? 'प्रमाणपत्र प्राप्त करें ✨' : 'Receive Certificate ✨'} onPress={handleCompleteBook} />
           </View>
 
           <View style={styles.sectionCard}>
