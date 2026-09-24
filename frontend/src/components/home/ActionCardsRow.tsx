@@ -260,6 +260,8 @@ const AartiCard = React.memo(function AartiCard({
                             <TouchableOpacity
                                 onPress={onNotify}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${t('notify')} ${t('me')} for ${aarti.name}`}
                             >
                                 <Ionicons name="notifications-outline" size={14} color="#444" />
                             </TouchableOpacity>
