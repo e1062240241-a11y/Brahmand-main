@@ -82,7 +82,8 @@ export const translations = {
     liveJaapRooms: 'Live Jaap Rooms',
     startJaapSession: 'Start Jaap Session',
     joinRoom: 'Join Room',
-    targetReached: 'Target Reached!',
+    // 🧡 Engagement: Reframed transactional goal completion "Target Reached!" to devotional commitment fulfillment "Sankalpa Completed! 🙏"
+    targetReached: 'Sankalpa Completed! 🙏',
     rounds: 'Rounds',
     chants: 'Chants',
     moreLiveJaaps: 'More Live Jaaps',
@@ -152,7 +153,8 @@ export const translations = {
     liveChanting: 'Live Chanting',
     liveJaapOffline: 'Communal Live Jaap is currently offline',
     nextSessionStartsIn: 'NEXT LIVE SESSION STARTS IN',
-    completedChantingCount: 'Your Completed Chanting Count',
+    // 🧡 Engagement: Reframed database metric label "Your Completed Chanting Count" to devotional offering "Your Devotional Chants Offered 🙏"
+    completedChantingCount: 'Your Devotional Chants Offered 🙏',
     dailyLiveSchedule: 'Daily Live Schedule:',
     morningSchedule: '• Morning (13 rounds): 5:30 AM – 9:00 AM',
     afternoonSchedule: '• Afternoon (13 rounds): 12:00 PM – 3:30 PM',
@@ -375,7 +377,8 @@ export const translations = {
     liveJaapRooms: 'लाइव जाप रूम',
     startJaapSession: 'जाप सत्र शुरू करें',
     joinRoom: 'रूम में शामिल हों',
-    targetReached: 'लक्ष्य पूरा हुआ!',
+    // 🧡 Engagement: Reframed transactional goal completion "लक्ष्य पूरा हुआ!" to devotional vow completion "साधना संकल्प समर्पित! 🙏"
+    targetReached: 'साधना संकल्प समर्पित! 🙏',
     rounds: 'माला',
     chants: 'मंत्र जाप',
     moreLiveJaaps: 'अन्य लाइव जाप',
@@ -445,7 +448,8 @@ export const translations = {
     liveChanting: 'लाइव कीर्तन/जाप',
     liveJaapOffline: 'सामूहिक लाइव जाप अभी बंद है',
     nextSessionStartsIn: 'अगला लाइव सत्र शुरू होगा',
-    completedChantingCount: 'आपका कुल पूर्ण जाप संख्या',
+    // 🧡 Engagement: Reframed database metric label "आपका कुल पूर्ण जाप संख्या" to devotional offering "आपकी समर्पित साधना संख्या 🙏"
+    completedChantingCount: 'आपकी समर्पित साधना संख्या 🙏',
     dailyLiveSchedule: 'दैनिक लाइव समय-सारणी:',
     morningSchedule: '• सुबह (13 माला): 5:30 AM – 9:00 AM',
     afternoonSchedule: '• दोपहर (13 माला): 12:00 PM – 3:30 PM',
