@@ -238,36 +238,47 @@ class FirebaseNotificationService:
         
         success_count = 0
         failed_tokens = []
+
+        async def _send_chunk(client, chunk):
+            chunk_success = 0
+            chunk_failed = []
+            try:
+                response = await client.post(
+                    url,
+                    json=chunk,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "Accept-Encoding": "gzip, deflate"
+                    },
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    res_data = response.json()
+                    for idx, item in enumerate(res_data.get('data', [])):
+                        if item.get('status') == 'ok':
+                            chunk_success += 1
+                        else:
+                            error_msg = item.get('message', '')
+                            logger.warning(f"Expo push error for token: {error_msg}")
+                            details = item.get('details', {}) or {}
+                            error_code = details.get('error', '')
+                            if error_code == 'DeviceNotRegistered' or 'not a registered push token' in error_msg:
+                                if idx < len(chunk):
+                                    chunk_failed.append(chunk[idx]['to'])
+                else:
+                    logger.error(f"Expo Push API error {response.status_code}: {response.text}")
+            except Exception as e:
+                logger.error(f"Failed to send Expo push chunk: {e}")
+            return chunk_success, chunk_failed
+
         async with httpx.AsyncClient() as client:
-            for chunk in chunks:
-                try:
-                    response = await client.post(
-                        url,
-                        json=chunk,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Accept": "application/json",
-                            "Accept-Encoding": "gzip, deflate"
-                        },
-                        timeout=10.0
-                    )
-                    if response.status_code == 200:
-                        res_data = response.json()
-                        for idx, item in enumerate(res_data.get('data', [])):
-                            if item.get('status') == 'ok':
-                                success_count += 1
-                            else:
-                                error_msg = item.get('message', '')
-                                logger.warning(f"Expo push error for token: {error_msg}")
-                                details = item.get('details', {}) or {}
-                                error_code = details.get('error', '')
-                                if error_code == 'DeviceNotRegistered' or 'not a registered push token' in error_msg:
-                                    if idx < len(chunk):
-                                        failed_tokens.append(chunk[idx]['to'])
-                    else:
-                        logger.error(f"Expo Push API error {response.status_code}: {response.text}")
-                except Exception as e:
-                    logger.error(f"Failed to send Expo push chunk: {e}")
+            import asyncio
+            results = await asyncio.gather(*[_send_chunk(client, chunk) for chunk in chunks])
+            for chunk_success, chunk_failed in results:
+                success_count += chunk_success
+                failed_tokens.extend(chunk_failed)
+
         return success_count, failed_tokens
 
     @staticmethod
@@ -565,7 +576,9 @@ class FirebaseNotificationService:
                         # FCM allows max 500 tokens per multicast
                         chunks = [all_fcm_tokens[i:i+500] for i in range(0, len(all_fcm_tokens), 500)]
                         
-                        for i, chunk in enumerate(chunks):
+                        import asyncio
+
+                        async def _send_fcm_chunk(i, chunk):
                             android_config = None
                             apns_config = None
                             
@@ -648,15 +661,21 @@ class FirebaseNotificationService:
                                 message_kwargs['apns'] = apns_config
                             
                             message = fcm.MulticastMessage(**message_kwargs)
-                            response = fcm.send_each_for_multicast(message)
-                            total_success += response.success_count
-                            total_failure += response.failure_count
+                            # FCM SDK is synchronous, so we run it in a thread to prevent blocking the event loop
+                            response = await asyncio.to_thread(fcm.send_each_for_multicast, message)
                             
                             if response.failure_count > 0:
                                 logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
                                 for idx, resp in enumerate(response.responses):
                                     if not resp.success:
                                         logger.warning(f"  Token index {idx} error: {resp.exception}")
+
+                            return response.success_count, response.failure_count
+
+                        fcm_results = await asyncio.gather(*[_send_fcm_chunk(i, chunk) for i, chunk in enumerate(chunks)])
+                        for chunk_success, chunk_failure in fcm_results:
+                            total_success += chunk_success
+                            total_failure += chunk_failure
                                     
                     except Exception as e:
                         logger.error(f"Multicast FCM error: {e}")
