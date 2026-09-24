@@ -53,3 +53,39 @@
 ## 2025-02-23 - Avoid new Set() combined with filter for array uniqueness extraction
 **Learning:** Creating intermediate filtered arrays to extract truthy values, passing them to `new Set()` to achieve uniqueness, and finally re-spreading them into an array (e.g., `[...new Set(arr.filter(Boolean))]`) introduces an enormous amount of overhead and memory allocation for simple extraction tasks.
 **Action:** Use a simple `for` loop to manually extract unique and truthy array items if the list doesn't benefit from set theory operations or exceeds nominal lengths.
+## 2025-02-15 - Concurrent Document Mutations
+**Learning:** In backend FastAPI Firestore implementations, batching sequential `db.array_remove_update` or similar document mutations on the *same* document using `asyncio.gather` can lead to destructive race conditions and data loss due to concurrent updates on the identical record. Additionally, using `return_exceptions=True` in concurrent gathers blindly swallows runtime errors, bypassing `try...except` safety blocks.
+**Action:** When optimizing database sequences, keep mutations on identical documents sequential to guarantee consistency. Reserve `asyncio.gather` specifically for concurrent fetch operations (like pulling multiple distinct user documents) where read isolation is safe and N+1 latency can be aggressively eliminated.
+## 2026-09-18 - Phased asyncio.gather for mutual cross-references
+**Learning:** Grouping mutual relation removals (e.g., removing A from B's followers and B from A's following) into phases with `asyncio.gather` allows concurrent execution of independent updates on distinct documents, completely eliminating sequential latency while maintaining safety against same-document race conditions.
+**Action:** When removing cross-references, structure them in phased `asyncio.gather` blocks, ensuring each phase mutates distinctly unique documents (e.g., Phase 1 mutates User A's followers and User B's following).
+
+## 2025-02-23 - Batch fetching distinct lists of entities
+**Learning:** In community or group profile endpoints, sequential fetches (e.g. fetching the owner `await db.get_document()`, then fetching admins `await db.get_documents_batch()`, then fetching members `await db.get_documents_batch()`) introduce entirely avoidable network latency.
+**Action:** When a route handler requires hydrating different classifications or arrays of user objects, extract all unique IDs upfront and execute a single consolidated `await db.get_documents_batch()`, then map the hydrated objects to their respective classifications in-memory.
+## 2025-02-23 - Avoid sequential identical database queries
+**Learning:** In long endpoint handlers (like `update_user_verification`), duplicated code blocks from merges or refactors can introduce completely redundant sequential database fetches (`db.get_document` for the exact same document ID), causing unnecessary network roundtrips and latency.
+**Action:** When removing duplicate blocks, always ensure you preserve any critical variable assignments (like `loc = user.get(...)`) from the removed section in the remaining section to prevent `NameError` regressions, and add a comment indicating the optimization.
+## 2024-10-10 - Eliminate redundant database queries in FastAPI backend
+**Learning:** Sequential `db.get_document` calls fetching the exact same document ID (e.g. for `vendors`) were occurring multiple times within single endpoint executions (like `get_kyc_status`). This causes unnecessary database round-trips and adds N+1 latency in otherwise linear pathways.
+**Action:** Lift the document fetch into a broader variable scope (`vendor = None`, then fetch) early in the route, and reuse that variable for all subsequent checks later in the same function instead of executing a new fetch query.
+## 2024-10-26 - Async Batch Member Removal
+**Learning:** Synchronous read-modify-write loops over Firestore documents cause blocking N+1 latency.
+**Action:** Abstracted removal into a single async database method and executed them concurrently using asyncio.gather.
+## 2024-05-14 - Batch Fetch Fallback Reminder Data
+**Learning:** In the `check_and_send_jaap_reminders` task, iterating over fallback reminders and querying `user_jaap_stats` and `users` synchronously inside the loop creates an N+1 query problem, slowing down the background task.
+**Action:** Extract all unique user IDs from the batch array before the loop, fetch the required stats and user documents concurrently using `asyncio.gather` and `db.get_documents_batch`, and create dictionaries for O(1) in-loop lookups.
+
+## 2024-10-27 - Remove Redundant Chunking Around Batch Methods
+**Learning:** Backend batch fetching methods like `db.get_documents_batch` often handle payload chunking and concurrent task execution internally (e.g., slicing into 100-item chunks and gathering them via `asyncio.gather`). Wrapping these calls in an explicit sequential `for` loop (e.g., `for chunk in chunks: await db.get_documents_batch(chunk)`) completely defeats the internal concurrency mechanism, turning a parallel batched operation into a blocking sequential one.
+**Action:** Never manually chunk array payloads when passing them to utility methods designed for batch operations (like `get_documents_batch` or `batch_delete_documents`). Pass the full un-chunked array directly so the utility can process the chunks concurrently.
+## 2024-05-14 - Redundant Database Fetches in Sequential API Handlers
+**Learning:** In the FastAPI backend, identical `db.get_document` calls often occur sequentially within the same route handler logic due to fragmented checks across different condition blocks (e.g., in `submit_kyc`, checking for Aadhaar OTP, then extracting phone number, then applying vendor logic).
+**Action:** Consolidate these fetches to happen once near the top of the function. Ensure to fallback the fetched object to `{}` to prevent `NoneType` attribute errors when accessing dictionary fields. When a `db.update_document` occurs in the middle, re-fetching is only necessary if the newly modified fields are required downstream.
+
+## 2024-05-23 - Batch Fetch Manual Chunking Penalty
+**Learning:** In the FastAPI backend, wrapping `db.get_documents_batch` inside manual chunking loops (e.g., `for i in range(0, len(ids), 100)`) defeats the purpose of the batch fetch method, forcing sequential blocking network requests and degrading performance. The `db.get_documents_batch` implementation internally handles array chunking and concurrent execution (`asyncio.gather`) natively.
+**Action:** Always pass the full list of IDs directly into `await db.get_documents_batch` without manually chunking the input list.
+## 2024-05-14 - Optimize Community Joining Loop in `approve_verification`
+**Learning:** In the FastAPI backend, admin endpoints containing loops over data structures (like joining multiple communities during KYC approval) can unintentionally trigger N+1 latency by making sequential Firestore reads/writes and multiple network calls for the same user document using `db.array_union_update`.
+**Action:** Extract and batch array updates into a single operation using a list of IDs. Use `asyncio.gather` for independent actions (such as adding the user to the community collection or cache invalidations) to perform them concurrently, significantly reducing network overhead and wait times.

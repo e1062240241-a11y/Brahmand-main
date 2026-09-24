@@ -757,7 +757,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               </View>
               <Text style={styles.headerTitle}>Register Your Business</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close registration modal"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -882,6 +887,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                           <TouchableOpacity 
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             onPress={() => setCategories(categories.filter(c => c !== cat))}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove category ${cat}`}
                           >
                             <Ionicons name="close-circle" size={16} color={COLORS.primary} />
                           </TouchableOpacity>
@@ -1053,7 +1060,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 {selectedPhotos.map((photo, index) => (
                   <View key={index} style={styles.previewWrapper}>
                     <Image source={{ uri: photo.uri }} style={styles.previewImage} />
-                    <TouchableOpacity style={styles.removeBadge} onPress={() => removePhoto(index)}>
+                    <TouchableOpacity
+                      style={styles.removeBadge}
+                      onPress={() => removePhoto(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove photo"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
                       <Ionicons name="close" size={12} color="#FFF" />
                     </TouchableOpacity>
                   </View>
@@ -1113,7 +1126,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
         <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
+              <TouchableOpacity
+                onPress={() => setMapPickerVisible(false)}
+                style={{ marginRight: SPACING.md }}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
                 <Ionicons name="arrow-back" size={24} color={COLORS.text} />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Select Location</Text>
@@ -1225,6 +1244,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   setCustomCategoryQuery('');
                   setShowCategorySelector(false);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <Ionicons name="chevron-back" size={24} color="#231917" />
               </TouchableOpacity>
@@ -1256,7 +1278,13 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   }}
                 />
                 {customCategoryQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setCustomCategoryQuery('')} style={{ marginRight: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => setCustomCategoryQuery('')}
+                    style={{ marginRight: 4 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search query"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
                     <Ionicons name="close-circle" size={18} color="#85736E" />
                   </TouchableOpacity>
                 )}
@@ -1315,7 +1343,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     gap: 4,
                   }}>
                     <Text style={{ fontSize: 13, color: '#FF8D57', fontWeight: '600' }}>{cat}</Text>
-                    <TouchableOpacity onPress={() => setSelectedTempCategories(selectedTempCategories.filter(c => c !== cat))}>
+                    <TouchableOpacity
+                      onPress={() => setSelectedTempCategories(selectedTempCategories.filter(c => c !== cat))}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove temporary category ${cat}`}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
                       <Ionicons name="close-circle" size={16} color="#FF8D57" />
                     </TouchableOpacity>
                   </View>

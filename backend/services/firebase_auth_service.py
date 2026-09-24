@@ -2,7 +2,7 @@
 import os
 import re
 import logging
-import random
+import secrets
 import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -140,7 +140,7 @@ class FirebaseAuthService:
         else:
             try:
                 from services.nattyfish_service import NattyFishService
-                otp = f"{random.randint(100000, 999999)}"
+                otp = f"{secrets.randbelow(900000) + 100000}"
                 expires_at = datetime.utcnow() + timedelta(minutes=FirebaseAuthService.OTP_EXPIRY_MINUTES)
                 
                 otp_data = {
@@ -192,7 +192,17 @@ class FirebaseAuthService:
                 'attempts': otp_record.get('attempts', 0) + 1
             })
 
-        if otp_record["otp"] != otp and not (use_mock and otp == FirebaseAuthService.MOCK_OTP):
+        # Ensure we don't fall back to empty string if missing, as it could allow bypass
+        stored_otp_val = otp_record.get("otp")
+        if stored_otp_val is None:
+            raise ValueError("Invalid OTP")
+
+        stored_otp_bytes = str(stored_otp_val).encode('utf-8')
+        provided_otp_bytes = str(otp).encode('utf-8')
+        is_valid_otp = secrets.compare_digest(stored_otp_bytes, provided_otp_bytes)
+        is_mock_match = use_mock and secrets.compare_digest(provided_otp_bytes, str(FirebaseAuthService.MOCK_OTP).encode('utf-8'))
+
+        if not is_valid_otp and not is_mock_match:
             raise ValueError("Invalid OTP")
         
         expires_at = otp_record["expires_at"]

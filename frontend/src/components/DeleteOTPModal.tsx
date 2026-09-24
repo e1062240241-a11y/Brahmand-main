@@ -121,7 +121,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
                 <Text style={styles.title}>
                   {title || (t('language') === 'hi' ? 'हटाने की पुष्टि करें' : 'Confirm Deletion')}
                 </Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close modal">
+                <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close modal" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
                   <Ionicons name="close" size={24} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>

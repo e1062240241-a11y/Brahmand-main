@@ -25,6 +25,7 @@ import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { socketService } from '../../src/services/socket';
 import { Avatar } from '../../src/components/Avatar';
 
@@ -183,6 +184,8 @@ export default function ActiveRequestsList() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
   
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -712,13 +715,21 @@ export default function ActiveRequestsList() {
         ) : (
           <View style={styles.centerContainer}>
             <MaterialCommunityIcons name="clipboard-alert-outline" size={60} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>No Requests Found</Text>
-            <Text style={styles.emptySubtitle}>Try searching for something else or check other categories.</Text>
+            <Text style={styles.emptyTitle}>
+              {isHindi ? 'कोई सहायता अनुरोध उपलब्ध नहीं है ✨' : 'No Requests Found'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {isHindi
+                ? 'अन्य श्रेणी या खोज शब्द आज़माएं, अथवा सहायता का पहला अनुरोध पोस्ट करें 🙏'
+                : 'Try searching for something else or check other categories.'}
+            </Text>
             <TouchableOpacity 
               style={styles.createFirstBtn}
               onPress={() => router.push('/community-request')}
             >
-              <Text style={styles.createFirstBtnText}>Create New Request</Text>
+              <Text style={styles.createFirstBtnText}>
+                {isHindi ? 'सहायता अनुरोध पोस्ट करें 🙏' : 'Create New Request'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}

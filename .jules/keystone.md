@@ -43,6 +43,10 @@ ENDPOINTS NEEDING PAGINATION:
 - `/events` — hardcoded limit without offset pagination — FIXED
 - `/events/nearby` — hardcoded limit without offset pagination — FIXED
 - `/users` — unpaginated large user fetch — FIXED
+- `/vendors` — unpaginated fetch of all vendor docs — FIXED
+- `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
+- `/admin/sos-misuse-reports` — full collection scan of all SOS misuse reports — FIXED
+- `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -90,3 +94,35 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-12 - Scope duplicate post upload check to user_id with limit bounds
 **Learning:** Querying global `posts` by `created_at >= threshold` without filtering by `user_id` or setting a query limit in `_create_post_document` causes Firestore to read and transfer every post uploaded platform-wide across all users in the past 180 seconds. At 1 lakh+ users, this results in $O(N_{\text{global\_recent}})$ reads per upload. Bounding the check to `user_id == target_user_id` with `order_by='created_at'`, `order_direction='DESCENDING'`, and `limit=5` reduces read operations to $O(1)$ per upload while preserving duplicate upload detection.
 **Action:** Refactored duplicate upload check in `_create_post_document` in `backend/main.py` to query only the uploading user's recent posts capped at 5 with composite index exception fallback.
+
+## 2026-09-13 - Targeted Field Masking for User Document Fetch in Discover Communities
+**Learning:** In `FirebaseCommunityService.discover_communities`, querying `db.get_document('users', user_id)` to check user membership fetched the full user document including massive array fields (like 100k+ `followers` and `following` UIDs). At 1 lakh+ users, this causes unnecessary network payload and memory spikes on community listing calls.
+**Action:** Replaced `db.get_document` with `db.get_document_fields('users', user_id, ['communities'])` to retrieve only the `communities` array via Firestore field masking, and updated member count calculation to prioritize stored `member_count` field over `len(members)`.
+
+## 2026-09-14 - DB-level Bounded Candidate Sourcing & Offset Pagination for Vendor Discovery
+**Learning:** The `/vendors` endpoint queried `vendors` with fixed limits (defaulting to 50) without `offset` parameters or `created_at` ordering at the database query level. As vendor listings grow at 1 lakh+ scale, clients cannot page past the top candidates, and fetching without DB-level limit bounds risks over-fetching and memory spikes.
+**Action:** Added optional `offset: int = 0` query parameter, capped `safe_limit` (max 100), computed dynamic candidate fetch limit (`fetch_limit = safe_offset + safe_limit * 3 + 20`), ordered candidate queries by `created_at` DESC with composite index fallback, and sliced filtered vendor results using `[safe_offset : safe_offset + safe_limit]`.
+
+## 2026-09-15 - DB-level `array_contains` Indexing & Querying for Hashtag Posts
+**Learning:** `GET /posts/hashtag` fetched 500 recent global posts into memory before filtering by caption in Python. At 1 lakh+ users, this caused $O(N_{\text{global\_recent}})$ reads per query while missing hashtag posts beyond the top 500 global window. Storing a normalized `hashtags` array on post creation and using Firestore `filters=[('hashtags', 'array_contains', normalized_hashtag)]` ordered by `created_at` DESC bounds database reads to $O(\text{limit})$, preventing global scans.
+**Action:** Updated `_create_post_document` in `backend/main.py` to extract and store `hashtags` arrays from captions, and refactored `get_posts_by_hashtag` to query `hashtags` directly at the DB layer with composite index exception fallback.
+
+## 2026-09-16 - Offset-based pagination & chunked vendor lookups for admin KYC pending requests
+**Learning:** `GET /admin/kyc/pending` previously executed `db.query_documents('vendors')` without filters or limits, fetching all vendor documents across the platform into memory ($O(N_{\text{vendors}})$ reads). Combined with unpaginated user queries for candidate KYC statuses, this endpoint risked memory exhaustion and slow response times as user and vendor numbers grew.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) parameters to `GET /admin/kyc/pending`, applied `limit=fetch_limit` to user document queries, and replaced the global `vendors` scan with chunked queries (`filters=[('owner_id', 'in', chunk)]`) targeted specifically to candidate user UIDs.
+
+## 2026-09-17 - Offset-based pagination & DB query bounds for SOS misuse reports
+**Learning:** `GET /admin/sos-misuse-reports` previously called `db.query_documents('sos_misuse_reports')` without limits or pagination parameters, streaming every historical misuse report across the entire platform into memory before sorting in Python ($O(N_{\text{reports}})$ reads). At 1 lakh+ scale, this endpoint would cause high memory usage, database read spikes, and client request timeouts.
+**Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `GET /admin/sos-misuse-reports`, enforced DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback handling to slice results gracefully.
+
+## 2026-09-18 - Offset-based pagination & bounded candidate queries for GET /user/saved-kundlis
+**Learning:** `GET /user/saved-kundlis` fetched all saved Kundli profiles across a user's entire history in memory using `db.query_documents("saved_kundlis", filters=[("user_id", "==", user_id)])` without limit or offset bounds ($O(N_{\text{user\_kundlis}})$ reads). As power users save multiple profiles, this endpoint causes increased memory allocation and read latency.
+**Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_saved_kundlis` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index fallback logic.
+
+## 2026-09-19 - DB-level bounded candidate query & offset pagination for community message comments
+**Learning:** `GET /messages/community/{community_id}/{subgroup_type}/{message_id}/comments` fetched all historical comments for a community chat message without query limits or ordering parameters. On viral community messages at 1 lakh+ scale, this resulted in $O(N_{\text{comments}})$ reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_community_message_comments` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index exception fallback handling.
+
+## 2026-09-20 - DB-level bounded candidate query & offset pagination for GET /jaap/certificates
+**Learning:** `GET /jaap/certificates` fetched all earned certificates for a user without limit parameters or DB-level ordering. As users complete daily and weekly Jaap milestones, certificate records grow continuously, causing $O(N_{\text{user\_certs}})$ database reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) query parameters to `get_certificates` in `backend/routes/jaap_routes.py`, applied DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, added index exception fallback handling, and sliced returned certificates accordingly.

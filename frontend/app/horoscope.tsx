@@ -73,6 +73,7 @@ const getLuckyColorConfig = (colorName: string) => {
 export default function HoroscopeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const isHindi = user?.language === 'hi';
   
   // Set default state
   const [viewMode, setViewMode] = useState<'grid' | 'details'>('grid');
@@ -136,7 +137,7 @@ export default function HoroscopeScreen() {
 
   if (loading) {
     return (
-      <BrandedLoading message="Consulting the heavens..." />
+      <BrandedLoading message={isHindi ? 'ग्रह-नक्षत्रों की गणना की जा रही है...' : 'Consulting the heavens...'} />
     );
   }
 
@@ -212,7 +213,7 @@ export default function HoroscopeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}>
-            <Text style={styles.gridTitle}>What's your Rashi</Text>
+            <Text style={styles.gridTitle}>{isHindi ? 'आपकी राशि क्या है' : "What's your Rashi"}</Text>
             
             <View style={styles.grid}>
               {ZODIAC_SIGNS.map((zodiac) => {
@@ -224,7 +225,7 @@ export default function HoroscopeScreen() {
                     activeOpacity={0.75}
                   >
                     <ExpoImage source={zodiac.image} style={{ width: 100, height: 100, marginBottom: 10 }} contentFit="contain" />
-                    <Text style={styles.gridName}>{zodiac.name}</Text>
+                    <Text style={styles.gridName}>{isHindi ? zodiac.hindi : zodiac.name}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -250,7 +251,7 @@ export default function HoroscopeScreen() {
           <TouchableOpacity onPress={() => setViewMode('grid')} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={28} color="#291715" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Jyotish</Text>
+          <Text style={styles.headerTitle}>{isHindi ? 'ज्योतिष' : 'Jyotish'}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -258,9 +259,9 @@ export default function HoroscopeScreen() {
           {/* Sign Hero */}
           <View style={styles.heroSection}>
             <View style={styles.heroLeft}>
-              <Text style={styles.signNameText}>{selectedZodiac.name}</Text>
+              <Text style={styles.signNameText}>{isHindi ? selectedZodiac.hindi : selectedZodiac.name}</Text>
               <Text style={styles.signDateText}>
-                Today {formatDateIST(new Date())}
+                {isHindi ? `आज ${formatDateIST(new Date())}` : `Today ${formatDateIST(new Date())}`}
               </Text>
             </View>
             <View style={styles.heroImageWrapper}>
@@ -269,13 +270,13 @@ export default function HoroscopeScreen() {
           </View>
 
           {loading ? (
-            <BrandedLoading message="Consulting the heavens..." />
+            <BrandedLoading message={isHindi ? 'ग्रह-नक्षत्रों की गणना की जा रही है...' : 'Consulting the heavens...'} />
           ) : error ? (
             <View style={styles.errorContainer}>
               <Ionicons name="alert-circle-outline" size={48} color="#FFF" />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity style={styles.retryButton} onPress={() => fetchHoroscope(selectedZodiac.id)}>
-                <Text style={styles.retryText}>Retry</Text>
+                <Text style={styles.retryText}>{isHindi ? 'पुनः प्रयास करें' : 'Retry'}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -284,9 +285,9 @@ export default function HoroscopeScreen() {
               <View style={styles.metricsContainer}>
                 {/* Left: Horizontal bars */}
                 <View style={styles.leftMetrics}>
-                  <MetricBar label="Finance" value={scores.finance} />
-                  <MetricBar label="Love" value={scores.love} />
-                  <MetricBar label="Health" value={scores.health} />
+                  <MetricBar label={isHindi ? 'वित्त' : 'Finance'} value={scores.finance} />
+                  <MetricBar label={isHindi ? 'प्रेम' : 'Love'} value={scores.love} />
+                  <MetricBar label={isHindi ? 'स्वास्थ्य' : 'Health'} value={scores.health} />
                 </View>
 
                 {/* Center: Overall vertical bar */}
@@ -301,7 +302,7 @@ export default function HoroscopeScreen() {
                       <Text style={styles.verticalBarText}>{scores.overall ?? 66}%</Text>
                     </LinearGradient>
                   </View>
-                  <Text style={styles.metricLabel}>Overall</Text>
+                  <Text style={styles.metricLabel}>{isHindi ? 'कुल प्रभाव' : 'Overall'}</Text>
                 </View>
 
                 {/* Right: Lucky */}
@@ -310,7 +311,7 @@ export default function HoroscopeScreen() {
                     <View style={styles.luckyNumberBox}>
                       <Text style={styles.luckyValue}>{lucky.number}</Text>
                     </View>
-                    <Text style={styles.luckyLabel}>Lucky{'\n'}Number</Text>
+                    <Text style={styles.luckyLabel}>{isHindi ? 'शुभ\nअंक' : 'Lucky\nNumber'}</Text>
                   </View>
                   
                   <View style={styles.luckyItem}>
@@ -320,7 +321,7 @@ export default function HoroscopeScreen() {
                     >
                       <Text style={[styles.luckyValue, { color: luckyColorConfig.textColor, fontSize: 16 }]}>{lucky.color}</Text>
                     </LinearGradient>
-                    <Text style={styles.luckyLabel}>Lucky{'\n'}Colour</Text>
+                    <Text style={styles.luckyLabel}>{isHindi ? 'शुभ\nरंग' : 'Lucky\nColour'}</Text>
                   </View>
                 </View>
               </View>
@@ -332,45 +333,52 @@ export default function HoroscopeScreen() {
                     <Ionicons name="sparkles" size={20} color="#FF8C00" />
                   </View>
                   <View style={{ marginLeft: 10 }}>
-                    <Text style={styles.aiCardTitle}>Ask AI about your horoscope</Text>
-                    <Text style={styles.aiCardSubtitle}>Get insights tailored to your situation</Text>
+                    <Text style={styles.aiCardTitle}>{isHindi ? 'एआई से राशिफल परामर्श लें' : 'Ask AI about your horoscope'}</Text>
+                    <Text style={styles.aiCardSubtitle}>{isHindi ? 'अपनी स्थिति के अनुसार उपाय जानें' : 'Get insights tailored to your situation'}</Text>
                   </View>
                 </View>
                 <View style={styles.aiTagsRow}>
                   <View style={styles.aiTag}>
                     <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/love.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
-                    <Text style={styles.aiTagText}>Love</Text>
+                    <Text style={styles.aiTagText}>{isHindi ? 'प्रेम' : 'Love'}</Text>
                   </View>
                   <View style={styles.aiTag}>
                     <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/career.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
-                    <Text style={styles.aiTagText}>Career</Text>
+                    <Text style={styles.aiTagText}>{isHindi ? 'करियर' : 'Career'}</Text>
                   </View>
                   <View style={styles.aiTag}>
                     <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/health_new.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
-                    <Text style={styles.aiTagText}>Health</Text>
+                    <Text style={styles.aiTagText}>{isHindi ? 'स्वास्थ्य' : 'Health'}</Text>
                   </View>
                   <View style={styles.aiTag}>
                     <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/auspicious.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
-                    <Text style={styles.aiTagText}>Auspicious Timing</Text>
+                    <Text style={styles.aiTagText}>{isHindi ? 'शुभ मुहूर्त' : 'Auspicious Timing'}</Text>
                   </View>
                   <View style={styles.aiTag}>
                     <ExpoImage source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/jyotish/spiritual.webp' }} style={{ width: 12, height: 12, tintColor: '#FF8C00' }} contentFit="contain" />
-                    <Text style={styles.aiTagText}>Spiritual Guidance</Text>
+                    <Text style={styles.aiTagText}>{isHindi ? 'आध्यात्मिक मार्गदर्शन' : 'Spiritual Guidance'}</Text>
                   </View>
                 </View>
                 <TouchableOpacity style={styles.aiButton} onPress={() => router.push('/ai-jyotish')}>
-                  <Text style={styles.aiButtonText}>Ask Now</Text>
+                  <Text style={styles.aiButtonText}>{isHindi ? 'अभी पूछें' : 'Ask Now'}</Text>
                   <Ionicons name="chevron-forward" size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
 
               {/* Cosmic Analysis Section */}
               <View style={styles.cosmicAnalysisContainer}>
-                <Text style={styles.cosmicAnalysisTitle}>Cosmic Analysis</Text>
+                <Text style={styles.cosmicAnalysisTitle}>{isHindi ? 'ग्रह विश्लेषण' : 'Cosmic Analysis'}</Text>
                 
                 <View style={styles.cosmicAnalysisTabsContainer}>
                   {PREDICTION_SECTIONS.map((section) => {
                     const isActive = activeCategory === section.label;
+                    const getTabLabel = (label: string) => {
+                      if (!isHindi) return label;
+                      if (label === 'LOVE') return 'प्रेम';
+                      if (label === 'FINANCE') return 'वित्त';
+                      if (label === 'HEALTH') return 'स्वास्थ्य';
+                      return 'समग्र';
+                    };
                     return (
                       <TouchableOpacity 
                         key={section.label}
@@ -402,7 +410,7 @@ export default function HoroscopeScreen() {
                           styles.cosmicTabLabel,
                           { color: isActive ? '#994700' : '#A67C52' }
                         ]}>
-                          {section.label}
+                          {getTabLabel(section.label)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -441,12 +449,22 @@ export default function HoroscopeScreen() {
                   <View style={styles.modalIconContainer}>
                     <Image source={section.icon} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
                   </View>
-                  <Text style={styles.modalTitle}>{section.label}</Text>
+                  <Text style={styles.modalTitle}>
+                    {isHindi
+                      ? section.label === 'LOVE'
+                        ? 'प्रेम'
+                        : section.label === 'FINANCE'
+                        ? 'वित्त'
+                        : section.label === 'HEALTH'
+                        ? 'स्वास्थ्य'
+                        : 'समग्र'
+                      : section.label}
+                  </Text>
                   <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
                     <Text style={styles.modalDescription}>{predictionText}</Text>
                   </ScrollView>
                   <TouchableOpacity style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
-                    <Text style={styles.modalCloseText}>Close</Text>
+                    <Text style={styles.modalCloseText}>{isHindi ? 'बंद करें' : 'Close'}</Text>
                   </TouchableOpacity>
                 </>
               );

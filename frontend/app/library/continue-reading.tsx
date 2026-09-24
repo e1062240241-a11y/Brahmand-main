@@ -53,8 +53,22 @@ export default function ContinueReadingPage() {
     return { uri: 'https://brahmandfeed23.b-cdn.net/assets/featured_book_6.webp' };
   };
 
+  // 🧡 Engagement: Localized scripture titles to native Devanagari Hindi copy when active language is Hindi
+  // Lever: Reframing + Mother Tongue Connection (मातृभाषा) + Devotion (भक्ति)
+  // Why: Displaying sacred scripture titles in native Devanagari ('श्रीमद्भगवद्गीता', 'श्रीरामचरितमानस', etc.) evokes deep emotional reverence compared to transliterated English names.
+  // UI: Text-only change, zero structural or visual component modifications.
   const getBookTitle = (bookId: string) => {
-    const titles: Record<string, string> = {
+    const titlesHi: Record<string, string> = {
+      'bhagvad-geeta': 'श्रीमद्भगवद्गीता',
+      'ramcharitmanas': 'श्रीरामचरितमानस',
+      'atharvaved': 'अथर्ववेद',
+      'rigveda': 'ऋग्वेद',
+      'upanishads': 'उपनिषद्',
+      'mahabharata': 'महाभारत',
+      'yajurveda': 'यजुर्वेद',
+      'ramayan': 'वाल्मीकि रामायण',
+    };
+    const titlesEn: Record<string, string> = {
       'bhagvad-geeta': 'Bhagavad Gita',
       'ramcharitmanas': 'Ramcharitmanas',
       'atharvaved': 'Atharvaveda',
@@ -64,7 +78,7 @@ export default function ContinueReadingPage() {
       'yajurveda': 'Yajurveda',
       'ramayan': 'Ramayan',
     };
-    return titles[bookId] || bookId;
+    return (isHindi ? titlesHi[bookId] : titlesEn[bookId]) || bookId;
   };
 
   return (
@@ -86,26 +100,26 @@ export default function ContinueReadingPage() {
         {activeBooks.length === 0 ? (
           <View style={s.emptyState}>
             <Ionicons name="book-outline" size={64} color={CLAY} style={{ marginBottom: 16 }} />
-            {/* 🧡 Engagement: Reframed transactional reading copy ("No books in progress") to devotional Swadhyaya framing ("स्वाध्याय की मधुर प्रतीक्षा ✨") */}
+            {/* 🧡 Engagement: Reframed transactional reading copy ("No books in progress") to devotional Swadhyaya framing ("स्वाध्याय संकल्प की मधुर प्रतीक्षा ✨") */}
             {/* Lever: Reframing (Emotional Copy) + Culture/Sanskara (Swadhyaya) */}
             {/* Why: Swadhyaya (self-study of sacred scriptures) is a core Sanatan spiritual ritual. Framing reading as Swadhyaya deepens connection and forms habit/sanskara. */}
             {/* UI: Text-only change, zero structural modifications. */}
             <Text style={s.emptyStateTitle}>
-              {isHindi ? 'स्वाध्याय की मधुर प्रतीक्षा ✨' : 'Your Sacred Reading Awaits ✨'}
+              {isHindi ? 'स्वाध्याय संकल्प की मधुर प्रतीक्षा ✨' : 'Your Sacred Swadhyaya Awaits ✨'}
             </Text>
             <Text style={s.emptyStateSub}>
               {isHindi
-                ? 'श्रीमद्भगवद्गीता व पवित्र ग्रंथों के चिंतन से अपनी आत्मा को प्रकाशित करें 🙏'
-                : 'Illuminate your inner journey with Srimad Bhagavad Gita and sacred wisdom 🙏'}
+                ? 'पवित्र ग्रंथों के चिंतन व स्वाध्याय से अपने जीवन को आलोकित करें 🙏'
+                : 'Illuminate your inner journey with Srimad Bhagavad Gita and sacred scriptures 🙏'}
             </Text>
             <TouchableOpacity
               style={s.startReadingBtn}
               onPress={() => router.push('/library' as any)}
               accessibilityRole="button"
-              accessibilityLabel={isHindi ? 'ज्ञान सागर में प्रवेश करें' : 'Enter the Ocean of Wisdom'}
+              accessibilityLabel={isHindi ? 'स्वाध्याय आरंभ करें' : 'Begin Sacred Reading'}
             >
               <Text style={s.startReadingTxt}>
-                {isHindi ? 'ज्ञान सागर में प्रवेश करें 📖' : 'Enter the Ocean of Wisdom 📖'}
+                {isHindi ? 'स्वाध्याय आरंभ करें 📖' : 'Begin Sacred Reading 📖'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -128,16 +142,16 @@ export default function ContinueReadingPage() {
                   </View>
                 </View>
 
-                {/* 🧡 Engagement: Reframed CTA from transactional "Continue Reading" to devotional "स्वाध्याय आगे बढ़ाएं" */}
+                {/* 🧡 Engagement: Reframed CTA from transactional "Continue Reading" to devotional "स्वाध्याय निरन्तर रखें" */}
                 {/* Lever: Reframing + Habit/Sanskara */}
                 {/* UI: Text-only change, zero layout/visual additions. */}
                 <TouchableOpacity
                   style={s.continueBtn}
                   onPress={() => handleContinue(book.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={isHindi ? 'स्वाध्याय आगे बढ़ाएं' : 'Continue Sacred Reading'}
+                  accessibilityLabel={isHindi ? 'स्वाध्याय निरन्तर रखें' : 'Continue Sacred Swadhyaya'}
                 >
-                  <Text style={s.continueBtnTxt}>{isHindi ? 'स्वाध्याय आगे बढ़ाएं 📖' : 'Continue Sacred Reading 📖'}</Text>
+                  <Text style={s.continueBtnTxt}>{isHindi ? 'स्वाध्याय निरन्तर रखें 📖' : 'Continue Sacred Swadhyaya 📖'}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFF" />
                 </TouchableOpacity>
               </View>

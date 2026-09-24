@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from middleware.rate_limiter import auth_rate_limit
 from datetime import datetime, timedelta
-import random
+import secrets
 import os
 import logging
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def generate_otp() -> str:
     """Generate a random 4-digit OTP."""
-    return str(random.randint(1000, 9999))
+    return str(secrets.randbelow(9000) + 1000)
 
 @router.post("/auth/nettyfish/send")
 async def send_nettyfish_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
@@ -110,7 +110,15 @@ async def verify_nettyfish_otp(request: OTPVerify, _: bool = Depends(auth_rate_l
     if attempts >= 5:
         raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-    if record.get("otp") != user_otp:
+    # Use secure comparison to prevent timing attacks
+    stored_otp_val = record.get("otp")
+    if stored_otp_val is None:
+        doc.reference.update({"attempts": attempts + 1})
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+    stored_otp = str(stored_otp_val).encode('utf-8')
+    provided_otp = str(user_otp).encode('utf-8')
+    if not secrets.compare_digest(stored_otp, provided_otp):
         doc.reference.update({"attempts": attempts + 1})
         raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
 

@@ -108,13 +108,18 @@ export default function JaapCompleted() {
             </Text>
 
             {/* Button */}
+            {/* 🧡 Engagement: Reframed transactional button text ("जाप पृष्ठ पर लौटें" / "BACK TO JAAP")
+                to continuous devotional habit ("साधना जारी रखें 🙏" / "CONTINUE SADHANA").
+                Lever: Reframing + Sanskara (Ritual/Habit over Transaction)
+                Why: "साधना जारी रखें" frames returning to the app/jaap screen as an ongoing spiritual practice rather than ending a isolated task.
+                UI: Text-only change, no structural or visual changes. */}
             <TouchableOpacity
               style={styles.button}
               activeOpacity={0.85}
               onPress={handlePressContinue}
             >
               <Text style={styles.buttonText}>
-                {isHindi ? 'जाप पृष्ठ पर लौटें' : 'BACK TO JAAP'}
+                {isHindi ? 'साधना जारी रखें 🙏' : 'CONTINUE SADHANA'}
               </Text>
             </TouchableOpacity>
           </View>

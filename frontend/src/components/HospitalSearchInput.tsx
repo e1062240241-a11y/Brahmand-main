@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../constants/theme';
+import { FONTS } from '../constants/theme';
 import { searchHospitals, reverseGeocode } from '../services/api';
 import { ensureForegroundPermission, getCurrentPosition } from '../services/location';
 
@@ -21,7 +21,17 @@ export interface HospitalSuggestion {
   address: string;
   area: string;
   city: string;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+export interface RawHospitalItem {
+  name?: string;
+  display_name?: string;
+  address?: string;
+  formatted_address?: string;
+  area?: string;
+  city?: string;
+  [key: string]: unknown;
 }
 
 export interface HospitalSearchInputProps {
@@ -38,6 +48,7 @@ export interface HospitalSearchInputProps {
   dropdownStyle?: ViewStyle;
 }
 
+// Varnish fix: Replaced `any` types with explicit `RawHospitalItem` interfaces and moved inline styles to StyleSheet.
 export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
   value,
   onSelect,
@@ -97,10 +108,10 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       if (controller.signal.aborted) return;
       const rows = response?.data?.results || response?.data || [];
       if (Array.isArray(rows) && rows.length > 0) {
-        const normalized: HospitalSuggestion[] = rows
-          .filter((item: any) => item && (item.name || item.display_name))
-          .map((item: any) => ({
-            name: item.name || item.display_name,
+        const normalized: HospitalSuggestion[] = (rows as RawHospitalItem[])
+          .filter((item): item is RawHospitalItem => Boolean(item && (item.name || item.display_name)))
+          .map((item) => ({
+            name: item.name || item.display_name || '',
             address: item.address || item.formatted_address || item.name || '',
             area: item.area || '',
             city: item.city || '',
@@ -109,8 +120,8 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       } else {
         setSuggestions([]);
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError' || controller.signal.aborted) {
+    } catch (err: unknown) {
+      if (err instanceof Error && (err.name === 'AbortError' || controller.signal.aborted)) {
         return;
       }
       console.warn('Hospital search failed:', err);
@@ -226,6 +237,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
               disabled={loading}
               accessibilityRole="button"
               accessibilityLabel="Detect current location"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="location-sharp" size={18} color="#E53935" />
             </TouchableOpacity>
@@ -250,6 +262,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
               style={styles.rightIcon}
               accessibilityRole="button"
               accessibilityLabel="Clear search input"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="close-circle" size={18} color="#BBB" />
             </TouchableOpacity>
@@ -269,7 +282,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
               <ScrollView
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled={true}
-                style={{ maxHeight: 200 }}
+                style={styles.suggestionScroll}
               >
                 {suggestions.map((item, index) => (
                   <TouchableOpacity
@@ -279,7 +292,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                     accessibilityRole="button"
                     accessibilityLabel={`Select hospital: ${item.name}`}
                   >
-                    <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
+                    <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={styles.navigateIcon} />
                     <View style={styles.suggestionTextCol}>
                       <Text style={styles.suggestionTitle} numberOfLines={1}>
                         {item.name}
@@ -313,7 +326,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                   accessibilityRole="button"
                   accessibilityLabel={`Use custom search query: ${hospitalQuery.trim()}`}
                 >
-                  <Ionicons name="add-circle-outline" size={18} color="#E53935" style={{ marginRight: 8 }} />
+                  <Ionicons name="add-circle-outline" size={18} color="#E53935" style={styles.addIcon} />
                   <Text style={styles.suggestionTitle} numberOfLines={1}>
                     Use "{hospitalQuery.trim()}" as typed
                   </Text>
@@ -391,6 +404,9 @@ const styles = StyleSheet.create({
     top: 58,
     shadowOffset: { width: 0, height: 6 },
   },
+  suggestionScroll: {
+    maxHeight: 200,
+  },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -398,6 +414,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F7',
+  },
+  navigateIcon: {
+    marginRight: 10,
+  },
+  addIcon: {
+    marginRight: 8,
   },
   suggestionTextCol: {
     flex: 1,

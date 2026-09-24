@@ -223,7 +223,9 @@ function LibraryPage() {
             >
               <Ionicons name="chevron-back" size={28} color={DARK} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Brahmand Library</Text>
+            <Text style={styles.headerTitle}>
+              {language === 'hi' ? 'ब्रह्मांड पुस्तकालय' : 'Brahmand Library'}
+            </Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -246,7 +248,11 @@ function LibraryPage() {
               value={query}
               onChangeText={setQuery}
               onSelectionChange={handleSelectionChange}
-              placeholder="Search by book name, author or topic."
+              placeholder={
+                language === 'hi'
+                  ? 'पुस्तक, लेखक या विषय खोजें...'
+                  : 'Search by book name, author or topic.'
+              }
               placeholderTextColor="#A09090"
               style={styles.searchInput}
             />
@@ -274,7 +280,9 @@ function LibraryPage() {
               />
             </View>
             <Text style={styles.quoteText}>
-              {'"A library is not just a collection of\nbooks, but a journey towards a better you."'}
+              {language === 'hi'
+                ? '"पुस्तकालय केवल पुस्तकों का संग्रह नहीं,\nयह स्वयं को श्रेष्ठ बनाने की यात्रा है।"'
+                : '"A library is not just a collection of\nbooks, but a journey towards a better you."'}
             </Text>
 
             {/* Diya circular avatar */}
@@ -360,7 +368,9 @@ function LibraryPage() {
               </Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/library/featured' as any)}>
-              <Text style={styles.viewAll}>View All ›</Text>
+              <Text style={styles.viewAll}>
+                {language === 'hi' ? 'सभी देखें ›' : 'View All ›'}
+              </Text>
             </TouchableOpacity>
           </View>
 

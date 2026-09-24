@@ -901,6 +901,40 @@ class FirestoreDB:
         await self._run_sync(_add)
         await self._cache.delete(f"communities:{community_id}")
     
+    async def remove_member_from_community(self, community_id: str, user_id: str):
+        """Remove a member from community and invalidate cache"""
+        if self.use_mock:
+            coll = self._mock_collections.setdefault('communities', {})
+            if community_id in coll:
+                doc = coll[community_id]
+                members = doc.get('members', [])
+                if user_id in members:
+                    members.remove(user_id)
+                    doc['members'] = members
+                    doc['member_count'] = len(members)
+            await self._cache.delete(f"communities:{community_id}")
+            return
+
+        def _remove():
+            doc_ref = self.client.collection('communities').document(community_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                members = data.get('members', [])
+                if user_id in members:
+                    members.remove(user_id)
+                    doc_ref.update({
+                        'members': members,
+                        'member_count': len(members)
+                    })
+
+        try:
+            await self._run_sync(_remove)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to remove user from old community {community_id}: {e}")
+        await self._cache.delete(f"communities:{community_id}")
+
     async def array_union_update(self, collection: str, doc_id: str, field: str, values: list):
         """Update a document field with ArrayUnion and invalidate cache"""
         if self.use_mock:

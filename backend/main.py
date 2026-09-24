@@ -37,7 +37,6 @@ import base64
 import math
 import requests
 import aiohttp
-import jwt
 from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -110,7 +109,7 @@ from routes.temple_routes import router as temple_router
 from routes.event_routes import router as event_router
 # from routes.circle_routes import router as circle_router
 from routes.nettyfish_auth_routes import router as nettyfish_auth_router
-from routes.search_routes import router as search_router
+
 from routes.katha_routes import router as katha_router
 from routes.home_routes import router as home_router
 from routes.engagement_routes import router as engagement_router
@@ -173,13 +172,11 @@ HOSPITAL_SEARCH_FALLBACK = [
     "CMC Ludhiana",
 ]
 
-
 # Panchang midnight prefetch has been removed: the 24h TTL cache already keeps
 # each date+coords warm for the whole day, so a scheduled prefetch for a single
 # hard-coded coordinate (previously Atlantic Ocean coords) added no value and
 # only burned an API call. If per-city prefetch is needed later, re-introduce a
 # top-cities loop here instead of a single default coordinate.
-
 
 # Lifespan
 @asynccontextmanager
@@ -284,7 +281,6 @@ async def lifespan(app: FastAPI):
         await getattr(firebase_manager, 'close')()
     logger.info("Cleanup complete")
 
-
 # Create app
 app = FastAPI(
     title=settings.APP_NAME,
@@ -331,7 +327,6 @@ sio = socketio.AsyncServer(
 )
 socket_app = socketio.ASGIApp(sio, app)
 
-
 # =================== HELPER FUNCTIONS ===================
 
 _shared_client_session: Optional[aiohttp.ClientSession] = None
@@ -343,19 +338,16 @@ def get_shared_client_session() -> aiohttp.ClientSession:
         _shared_client_session = aiohttp.ClientSession(connector=connector)
     return _shared_client_session
 
-
 async def get_db() -> FirestoreDB:
     """Get Firestore database wrapper"""
     client = await get_firestore()
     return FirestoreDB(client)
-
 
 def _build_firebase_public_url(bucket_name: str, object_path: str, token: str) -> str:
     return (
         f"https://firebasestorage.googleapis.com/v0/b/{bucket_name}/o/"
         f"{quote(object_path, safe='')}?alt=media&token={token}"
     )
-
 
 def _get_post_storage_bucket():
     from firebase_admin import storage as firebase_storage
@@ -366,7 +358,6 @@ def _get_post_storage_bucket():
         or 'sanatan-lok.firebasestorage.app'
     )
     return firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
-
 
 def _get_extension_from_content_type(content_type: str) -> str:
     extension_map = {
@@ -400,7 +391,6 @@ def _get_extension_from_content_type(content_type: str) -> str:
             extension = 'bin'
     return extension
 
-
 async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
     extension = _get_extension_from_content_type(content_type)
 
@@ -415,7 +405,6 @@ async def _upload_post_media_to_storage(user_id: str, file_bytes: bytes, content
 
     media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
     return media_url, object_path
-
 
 def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_type: str) -> tuple[str, str]:
     extension = _get_extension_from_content_type(content_type)
@@ -434,7 +423,6 @@ def _upload_post_media_file_to_storage(user_id: str, file_path: str, content_typ
     media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
     return media_url, object_path
 
-
 def _get_public_base_url(base_url: str) -> str:
     base_url = base_url.rstrip('/')
     public_url = os.getenv("PUBLIC_BACKEND_URL")
@@ -444,7 +432,6 @@ def _get_public_base_url(base_url: str) -> str:
         if base_url.startswith("http://"):
             base_url = base_url.replace("http://", "https://", 1)
     return base_url
-
 
 async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_type: str, base_url: str) -> tuple[str, str]:
     extension = _get_extension_from_content_type(content_type)
@@ -481,7 +468,6 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
         clean_base = _get_public_base_url(base_url)
         media_url = f"{clean_base}/api/bunny-media/{object_path}"
     return media_url, object_path
-
 
 async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content_type: str, base_url: str) -> tuple[str, str]:
     """Stream a file to Bunny.net without loading it fully into RAM."""
@@ -520,7 +506,6 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
         media_url = f"{clean_base}/api/bunny-media/{object_path}"
     return media_url, object_path
 
-
 def _generate_image_thumbnail(image_bytes: bytes, width: int = 400) -> bytes:
     """Generate a feed-optimized thumbnail for images using PIL/Pillow."""
     try:
@@ -557,7 +542,6 @@ def _generate_image_thumbnail(image_bytes: bytes, width: int = 400) -> bytes:
         # Return original if thumbnail generation fails
         return image_bytes
 
-
 async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     """Download a file from Bunny.net storage to a local file path."""
     bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
@@ -584,7 +568,6 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
                 size += len(chunk)
         return size
 
-
 async def _delete_file_from_bunny(object_path: str):
     """Delete a file from Bunny.net storage."""
     bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
@@ -607,7 +590,6 @@ async def _delete_file_from_bunny(object_path: str):
         else:
             logger.info(f"Successfully deleted {object_path} from Bunny.net")
 
-
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
     extension = _get_extension_from_content_type(content_type)
 
@@ -623,7 +605,6 @@ async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content
     media_url = _build_firebase_public_url(bucket.name, object_path, download_token)
     return media_url, object_path
 
-
 async def _delete_post_media_from_storage(object_path: str) -> bool:
     if not object_path:
         return False
@@ -638,9 +619,6 @@ async def _delete_post_media_from_storage(object_path: str) -> bool:
     except Exception as err:
         logger.warning(f"Failed deleting post media '{object_path}' from storage: {err}")
         return False
-
-
-
 
 async def _create_post_document(
     db: FirestoreDB,
@@ -687,6 +665,11 @@ async def _create_post_document(
     if not isinstance(user_loc, dict):
         user_loc = {}
 
+    # Extract hashtags from caption for DB-level indexing and search
+    import re as _re
+    _clean_caption = (caption or '').strip()
+    _extracted_hashtags = list(set(_re.findall(r'#(\w+)', _clean_caption.lower())))
+
     post_doc = {
         'user_id': user_id,
         'username': user.get('name') or user.get('sl_id') or 'User',
@@ -695,7 +678,8 @@ async def _create_post_document(
         'media_path': object_path,
         'media_type': media_type,
         'content_type': content_type,
-        'caption': (caption or '').strip(),
+        'caption': _clean_caption,
+        'hashtags': _extracted_hashtags,
         'source': source,
         'filter_name': filter_name,
         'visibility': 'public',
@@ -814,7 +798,6 @@ async def _create_post_document(
         
     return post_doc
 
-
 KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3', 'OsMLOIVGUbV8hVDU0dpr', 'P28LHYDrR9WBsJoleKW0'}
 
 def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]] = None) -> list[dict]:
@@ -867,7 +850,6 @@ def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]
             seen_signatures.add(sig)
             deduped.append(post)
     return deduped
-
 
 def _extract_mention_handles(text: str) -> list[str]:
     if not text:
@@ -1005,7 +987,6 @@ async def _notify_mentioned_users(
 
     return notified_user_ids
 
-
 async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
     post = await db.get_document('posts', post_id)
     if not post:
@@ -1053,7 +1034,6 @@ async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
         'comments_deleted': len(comments),
     }
 
-
 async def _is_admin_user(db: FirestoreDB, user_id: str) -> bool:
     """Check whether user has admin privileges."""
     if user_id == 'admin':
@@ -1074,7 +1054,6 @@ async def _is_admin_user(db: FirestoreDB, user_id: str) -> bool:
 
     return False
 
-
 async def _ensure_admin_user(token_data: dict):
     db = await get_db()
     user_id = token_data["user_id"]
@@ -1082,7 +1061,6 @@ async def _ensure_admin_user(token_data: dict):
     if not is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     return db, user_id
-
 
 def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
@@ -1116,7 +1094,6 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.now(timezone.utc).isoformat() + 'Z'),
     }
 
-
 async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict | None = None):
     """Upsert vendor review snapshot used by future admin panel."""
     if not vendor:
@@ -1140,7 +1117,6 @@ async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: d
     snapshot = _build_vendor_admin_snapshot(vendor)
     await db.set_document('vendor_admin_reviews', vendor_id, snapshot)
 
-
 def _get_configured_firebase_test_numbers() -> List[str]:
     """Read configured Firebase testing numbers from env."""
     raw_values = ['1234567890']
@@ -1154,15 +1130,12 @@ def _get_configured_firebase_test_numbers() -> List[str]:
 
     return [value.strip() for value in raw_values if value and value.strip()]
 
-
 def _normalize_phone(phone: str) -> str:
     phone = (phone or '').strip()
     return ''.join(ch for ch in phone if ch.isdigit() or ch == '+')
 
-
 def _digits_only(phone: str) -> str:
     return ''.join(ch for ch in (phone or '') if ch.isdigit())
-
 
 def _is_configured_firebase_test_phone(phone: str) -> bool:
     """Check if a phone matches configured Firebase testing numbers."""
@@ -1188,14 +1161,11 @@ def _is_configured_firebase_test_phone(phone: str) -> bool:
 
     return False
 
-
 async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, phone: str) -> bool:
     """Auto-approve vendor KYC for configured Firebase test numbers."""
     return False
 
-
 # =================== MIDDLEWARE ===================
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -1206,14 +1176,12 @@ app.add_middleware(
     expose_headers=['*'],
 )
 
-
 def _is_origin_allowed(origin: str) -> bool:
     if not origin or origin == "*":
         return True
     if allowed_origins and ("*" in allowed_origins or origin in allowed_origins):
         return True
     return False
-
 
 def _apply_cors_headers(response: Response, origin: str, request: Optional[Request] = None) -> Response:
     if not _is_origin_allowed(origin):
@@ -1233,7 +1201,6 @@ def _apply_cors_headers(response: Response, origin: str, request: Optional[Reque
     )
     response.headers["Vary"] = "Origin"
     return response
-
 
 class ProcessTimeAndCORSMiddleware:
     def __init__(self, app):
@@ -1305,12 +1272,10 @@ class ProcessTimeAndCORSMiddleware:
 
         await self.app(scope, receive, send_wrapper)
 
-
 app.add_middleware(ProcessTimeAndCORSMiddleware)
 
 # Enable GZip compression for all responses (60-70% size reduction)
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
-
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -1325,7 +1290,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     if _is_origin_allowed(origin):
         return _apply_cors_headers(response, origin, request)
     return response
-
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -1343,11 +1307,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         return _apply_cors_headers(response, origin, request)
     return response
 
-
 # =================== API ROUTER ===================
 
 api_router = APIRouter(prefix="/api")
-
 
 # =================== CORE ENDPOINTS ===================
 
@@ -1370,7 +1332,6 @@ async def root():
         ]
     }
 
-
 @api_router.get("/health")
 async def health_check():
     firestore_status = "connected" if is_firebase_enabled() else "unavailable"
@@ -1389,13 +1350,11 @@ async def health_check():
         "firebase_project": FIREBASE_WEB_CONFIG["projectId"]
     }
 
-
 # Content Moderation Endpoints
 class ContentCheckRequest(BaseModel):
     text: str
     use_hybrid: bool = True
     ml_threshold: float = 0.5
-
 
 class ContentCheckResponse(BaseModel):
     offensive: bool
@@ -1404,13 +1363,11 @@ class ContentCheckResponse(BaseModel):
     confidence: float = 0.0
     censored_text: Optional[str] = None
 
-
 class AnonymousLoginRequest(BaseModel):
     phone: str
     name: str = Field(..., min_length=2, max_length=100)
     photo: Optional[str] = None
     language: str = "English"
-
 
 @api_router.post("/moderation/check", response_model=ContentCheckResponse)
 async def check_content_moderation(request: ContentCheckRequest):
@@ -1434,7 +1391,6 @@ async def check_content_moderation(request: ContentCheckRequest):
         confidence=result.get('confidence', 0.0)
     )
 
-
 @api_router.post("/moderation/censor", response_model=ContentCheckResponse)
 async def censor_content_moderation(request: ContentCheckRequest):
     """
@@ -1454,7 +1410,6 @@ async def censor_content_moderation(request: ContentCheckRequest):
         censored_text=result.get('censored_text')
     )
 
-
 api_router.include_router(bhagavad_gita_router)
 api_router.include_router(ramcharitmanas_router)
 api_router.include_router(atharvaved_router)
@@ -1472,12 +1427,10 @@ api_router.include_router(temple_router)
 api_router.include_router(event_router)
 # api_router.include_router(circle_router)
 api_router.include_router(nettyfish_auth_router)
-api_router.include_router(search_router)
+
 api_router.include_router(katha_router)
 api_router.include_router(home_router)
 api_router.include_router(engagement_router, prefix="/engagement", tags=["engagement"])
-
-
 
 @api_router.get("/jaap/active-count")
 async def get_jaap_active_count(rooms: str):
@@ -1503,16 +1456,13 @@ async def get_jaap_active_count(rooms: str):
             counts[room] = 0
     return counts
 
-
 @api_router.get("/firebase-config")
 async def get_firebase_config():
     """Get Firebase web config for frontend SDK"""
     return FIREBASE_WEB_CONFIG
 
-
 def _split_ice_urls(value: str) -> list[str]:
     return [url.strip() for url in (value or '').split(',') if url.strip()]
-
 
 def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], Optional[int]]:
     turn_urls = _split_ice_urls(settings.TURN_URLS)
@@ -1536,38 +1486,6 @@ def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], 
 
     return None, None, None
 
-
-def _sanitize_livekit_room(value: str) -> str:
-    normalized = re.sub(r'[^a-zA-Z0-9_-]+', '-', value or 'jaap-live').strip('-')
-    return normalized[:96] or 'jaap-live'
-
-
-def _build_livekit_token(user_id: str, sl_id: str, room: str) -> tuple[str, int]:
-    ttl_seconds = max(settings.LIVEKIT_TOKEN_TTL_SECONDS, 300)
-    now = datetime.now(timezone.utc)
-    expires_at = int((now + timedelta(seconds=ttl_seconds)).timestamp())
-    identity = _sanitize_livekit_room(f"{user_id}-{uuid4().hex[:8]}")
-    participant_name = sl_id or user_id
-
-    payload = {
-        'iss': settings.LIVEKIT_API_KEY,
-        'sub': identity,
-        'name': participant_name,
-        'nbf': int(now.timestamp()),
-        'exp': expires_at,
-        'video': {
-            'roomJoin': True,
-            'room': room,
-            'canPublish': True,
-            'canSubscribe': True,
-            'canPublishData': True,
-        },
-    }
-
-    token = jwt.encode(payload, settings.LIVEKIT_API_SECRET, algorithm='HS256')
-    return token, expires_at
-
-
 @api_router.get("/realtime/ice-servers")
 async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
     """Return STUN/TURN config for realtime audio rooms."""
@@ -1587,31 +1505,6 @@ async def get_realtime_ice_servers(token_data: dict = Depends(verify_token)):
         'turnEnabled': bool(turn_urls and username and credential),
         'expiresAt': expires_at,
     }
-
-
-@api_router.get("/realtime/sfu-token")
-async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
-    """Return an SFU room token when LiveKit is configured."""
-    livekit_ready = bool(settings.LIVEKIT_URL and settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET)
-    if not livekit_ready:
-        return {
-            'enabled': False,
-            'reason': 'livekit_not_configured',
-        }
-
-    user_id = token_data.get('user_id', 'anonymous') or 'anonymous'
-    sl_id = token_data.get('sl_id') or user_id
-    livekit_room = _sanitize_livekit_room(f"{settings.LIVEKIT_ROOM_PREFIX}-{room}")
-    token, expires_at = _build_livekit_token(user_id, sl_id, livekit_room)
-
-    return {
-        'enabled': True,
-        'url': settings.LIVEKIT_URL,
-        'token': token,
-        'room': livekit_room,
-        'expiresAt': expires_at,
-    }
-
 
 @api_router.get("/realtime/agora-token")
 async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
@@ -1663,7 +1556,6 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
         'uid': uid,
         'expiresAt': privilege_expiration_time,
     }
-
 
 # =================== AUTH ENDPOINTS ===================
 
@@ -1728,10 +1620,6 @@ async def reset_database(confirm: str = "", token_data: dict = Depends(verify_to
     except Exception as e:
         logger.error(f"Database reset error: {e}")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
-
-
-
-
 
 @api_router.post("/auth/verify-firebase-token")
 async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit)):
@@ -1805,19 +1693,6 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         logger.error(f"Firebase token verification error: {e}")
         raise HTTPException(status_code=500, detail="Token verification failed")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 @api_router.post("/auth/login-anonymous")
 async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth_rate_limit)):
     """Login using a predefined anonymous number without OTP."""
@@ -1833,7 +1708,6 @@ async def login_anonymous(request: AnonymousLoginRequest, _: bool = Depends(auth
     except Exception as e:
         logger.exception(f"/auth/login-anonymous failed for phone={request.phone}: {e}")
         raise HTTPException(status_code=500, detail="Anonymous login failed")
-
 
 @api_router.post("/auth/logout")
 async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_token)):
@@ -1857,13 +1731,11 @@ async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_
 
     return {"message": "Logout successful"}
 
-
 @api_router.get("/admin/anonymous-users")
 async def get_admin_anonymous_users(token_data: dict = Depends(verify_token)):
     db, _ = await _ensure_admin_user(token_data)
     anonymous_users = await db.query_documents('users', [('anonymous_account', '==', True)])
     return {"users": anonymous_users}
-
 
 @api_router.post("/admin/anonymous-users/{user_id}/disable")
 async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(verify_token)):
@@ -1875,7 +1747,6 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
         return {"message": "Anonymous user already disabled"}
     await FirebaseAuthService.disable_anonymous_user(user_id)
     return {"message": "Anonymous user disabled"}
-
 
 @api_router.post("/admin/auth/login")
 async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_limit)):
@@ -1893,7 +1764,15 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")
 
-    if username.lower() != expected_username.lower() or password != expected_password:
+    import secrets
+
+    # encode to bytes to handle non-ascii characters without crashing compare_digest
+    user_bytes = username.lower().encode('utf-8')
+    exp_user_bytes = expected_username.lower().encode('utf-8')
+    pass_bytes = password.encode('utf-8')
+    exp_pass_bytes = expected_password.encode('utf-8')
+
+    if not secrets.compare_digest(user_bytes, exp_user_bytes) or not secrets.compare_digest(pass_bytes, exp_pass_bytes):
         logger.warning(f"Admin login attempt failed for username: '{username}' (expected: '{expected_username}')")
         raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
@@ -1907,7 +1786,6 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
             "role": "admin",
         },
     }
-
 
 @api_router.post("/auth/register")
 async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit)):
@@ -2001,7 +1879,6 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
     logger.info(f"New user registered: {sl_id}")
     return {"message": "Registration successful", "token": token, "user": user}
 
-
 # =================== USER ENDPOINTS ===================
 
 @api_router.get("/user/profile")
@@ -2018,7 +1895,6 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     user['following_count'] = len(user['following'])
     
     return user
-
 
 @api_router.put("/user/profile")
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
@@ -2071,7 +1947,6 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
 
     return user_doc
 
-
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -2091,7 +1966,6 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
 
     return user_doc
 
-
 @api_router.post("/user/saved-kundlis")
 async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -2101,17 +1975,47 @@ async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depend
     doc_id = await db.create_document("saved_kundlis", data)
     return {"id": doc_id, **data}
 
-
 @api_router.get("/user/saved-kundlis")
-async def get_saved_kundlis(token_data: dict = Depends(verify_token)):
+async def get_saved_kundlis(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get user's saved Kundli profiles with offset pagination and bounded DB reads.
+    Default limit is 50, max 100.
+    """
     db = await get_db()
-    results = await db.query_documents("saved_kundlis", filters=[("user_id", "==", token_data["user_id"])])
+    user_id = token_data["user_id"]
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        results = sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
+        results = await db.query_documents(
+            "saved_kundlis",
+            filters=[("user_id", "==", user_id)],
+            order_by="created_at",
+            order_direction="DESCENDING",
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for saved_kundlis user_id + created_at, falling back to un-ordered query: {query_err}")
+            results = await db.query_documents(
+                "saved_kundlis",
+                filters=[("user_id", "==", user_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
+    try:
+        results = sorted(results, key=lambda x: str(x.get("created_at") or ""), reverse=True)
     except Exception:
         pass
-    return results
 
+    return results[safe_offset:safe_offset + safe_limit]
 
 @api_router.delete("/user/saved-kundlis/{profile_id}")
 async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
@@ -2123,7 +2027,6 @@ async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify
         raise HTTPException(status_code=403, detail="Not authorized to delete this profile")
     await db.delete_document("saved_kundlis", profile_id)
     return {"status": "success", "message": "Saved profile deleted successfully"}
-
 
 @api_router.delete("/user/profile")
 async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends(verify_token)):
@@ -2174,7 +2077,18 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     if attempts >= 5:
         raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-    if record.get("otp") != otp:
+    import secrets
+    stored_otp_raw = record.get("otp")
+    if stored_otp_raw is None:
+        def _increment_attempts():
+            doc.reference.update({"attempts": attempts + 1})
+        await db._run_sync(_increment_attempts)
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+    stored_otp_val = str(stored_otp_raw).encode("utf-8")
+    provided_otp_val = str(otp).encode("utf-8")
+
+    if not secrets.compare_digest(stored_otp_val, provided_otp_val):
         def _increment_attempts():
             doc.reference.update({"attempts": attempts + 1})
         await db._run_sync(_increment_attempts)
@@ -2220,7 +2134,6 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     
     logger.info(f"User account deleted: {user_id}")
     return {"message": "Account deleted successfully"}
-
 
 @api_router.post("/user/location")
 async def setup_location(location: LocationSetup, token_data: dict = Depends(verify_token)):
@@ -2275,8 +2188,8 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         community_ids.append(country_community['id'])
     
     # Add user to communities
-    for cid in community_ids:
-        await db.add_member_to_community(cid, user_id)
+    if community_ids:
+        await asyncio.gather(*(db.add_member_to_community(cid, user_id) for cid in community_ids))
     
     # Update user with location and communities
     existing_defaults = (user.get('default_communities', []) if user else []) or []
@@ -2289,13 +2202,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     
     # Invalidate cache
     await cache_manager.invalidate_user(user_id)
-    for cid in community_ids:
-        await cache_manager.invalidate_community(cid)
-        await cache_manager.invalidate_user_communities(user_id)
+    if community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
+    await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
-
 
 @api_router.post("/user/current-location")
 async def update_current_location(location: dict, token_data: dict = Depends(verify_token)):
@@ -2322,11 +2234,9 @@ async def update_current_location(location: dict, token_data: dict = Depends(ver
 
     return {"message": "Current location updated", "current_location": current_location}
 
-
 @app.post("/user/current-location")
 async def update_current_location_root(location: dict, token_data: dict = Depends(verify_token)):
     return await update_current_location(location, token_data)
-
 
 @api_router.post("/user/dual-location")
 async def setup_dual_location(locations: DualLocationSetup, token_data: dict = Depends(verify_token)):
@@ -2360,24 +2270,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
                     non_location_community_ids.append(cid)
                 
     # Remove user from the old location-based communities in the communities collection
-    for cid in old_location_community_ids:
-        try:
-            comm_ref = db.client.collection('communities').document(cid)
-            def _remove_member():
-                doc = comm_ref.get()
-                if doc.exists:
-                    data = doc.to_dict()
-                    members = data.get('members', [])
-                    if user_id in members:
-                        members.remove(user_id)
-                        comm_ref.update({
-                            'members': members,
-                            'member_count': len(members)
-                        })
-            await db._run_sync(_remove_member)
-            await db._cache.delete(f"communities:{cid}")
-        except Exception as e:
-            logger.error(f"Failed to remove user from old community {cid}: {e}")
+    if old_location_community_ids:
+        await asyncio.gather(*(db.remove_member_from_community(cid, user_id) for cid in old_location_community_ids), return_exceptions=True)
             
     update_data = {}
     default_community_ids = []  # Track the 5 default communities (cannot leave)
@@ -2494,8 +2388,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
             unique_community_ids.append(cid)
     
     # Add user to all communities
-    for cid in unique_community_ids:
-        await db.add_member_to_community(cid, user_id)
+    if unique_community_ids:
+        await asyncio.gather(*(db.add_member_to_community(cid, user_id) for cid in unique_community_ids))
     
     # Update user with locations and default communities
     update_data['default_communities'] = unique_community_ids  # Store IDs of default communities (cannot leave)
@@ -2505,13 +2399,12 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Invalidate cache
     await cache_manager.invalidate_user(user_id)
-    for cid in unique_community_ids:
-        await cache_manager.invalidate_community(cid)
+    if unique_community_ids:
+        await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
     return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
-
 
 @api_router.get("/user/search/{sl_id}")
 async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
@@ -2520,7 +2413,6 @@ async def search_user(sl_id: str, token_data: dict = Depends(verify_token)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"sl_id": user["sl_id"], "name": user["name"], "photo": user.get("photo"), "badges": user.get("badges", [])}
-
 
 @api_router.get("/users")
 async def list_users(
@@ -2565,7 +2457,6 @@ async def list_users(
 
     return result[safe_offset:safe_offset + safe_limit]
 
-
 @api_router.post("/users/batch")
 async def get_users_batch(
     payload: Dict[str, List[str]] = Body(...),
@@ -2592,7 +2483,6 @@ async def get_users_batch(
                 "verification_level": user.get('verification_level', 'state')
             })
     return result
-
 
 @api_router.get('/users/{user_id}')
 async def get_user_by_id(
@@ -2683,7 +2573,6 @@ async def get_user_by_id(
         safe_user['following'] = following_list
 
     return safe_user
-
 
 @api_router.get('/users/{user_id}/connections')
 async def get_user_connections(
@@ -2837,7 +2726,6 @@ async def get_user_connections(
         'total_count': total_count
     }
 
-
 async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
     """Returns a set of all user IDs that are blocked by user_id OR have blocked user_id."""
     cache_key = f"blocked_users:{user_id}"
@@ -2867,7 +2755,6 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
     except Exception as e:
         logger.error("Error retrieving blocked users list: %s", e)
     return set(blocked_ids)
-
 
 async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type: str, is_android: bool = False) -> set:
     """Returns a set of content IDs of a specific type reported by the user to filter them out."""
@@ -2910,7 +2797,6 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
         logger.error("Error retrieving reported content: %s", e)
     return set(reported_ids)
 
-
 def _filter_post_blocked_content(post: dict, blocked_user_ids: set) -> dict:
     """Filter out top comments created by blocked users from a post object."""
     if 'top_comments' in post and isinstance(post['top_comments'], list):
@@ -2919,7 +2805,6 @@ def _filter_post_blocked_content(post: dict, blocked_user_ids: set) -> dict:
             if c.get('user_id') not in blocked_user_ids
         ]
     return post
-
 
 @api_router.post('/users/{user_id}/block')
 async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
@@ -2945,24 +2830,35 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
     
     # Also unfollow each other if they follow each other!
     try:
-        # Remove current user from target's followers
-        await db.array_remove_update('users', user_id, 'followers', [current_user_id])
-        # Remove target user from current's following
-        await db.array_remove_update('users', current_user_id, 'following', [user_id])
+        # ⚡ Bolt Optimization: Use phased asyncio.gather to concurrently remove cross-references
+        # on distinct documents, avoiding same-document race conditions while reducing sequential latency.
+        # Phase 1: Mutate target user's followers and current user's following
+        # ⚡ Bolt Optimization: Concurrently remove follow relationships safely in phases
+        # Phase 1: Modify target user's followers and current user's following
+        await asyncio.gather(
+            db.array_remove_update('users', user_id, 'followers', [current_user_id]),
+            db.array_remove_update('users', current_user_id, 'following', [user_id])
+        )
         
-        # Remove target user from current's followers
-        await db.array_remove_update('users', current_user_id, 'followers', [user_id])
-        # Remove current user from target's following
-        await db.array_remove_update('users', user_id, 'following', [current_user_id])
+        # Phase 2: Mutate current user's followers and target user's following
+        # Phase 2: Modify current user's followers and target user's following
+        await asyncio.gather(
+            db.array_remove_update('users', current_user_id, 'followers', [user_id]),
+            db.array_remove_update('users', user_id, 'following', [current_user_id])
+        )
         
+        # ⚡ Bolt Optimization: Concurrently fetch documents for count updates
+        u1, u2 = await asyncio.gather(
+            db.get_document('users', current_user_id),
+            db.get_document('users', user_id)
+        )
+
         # Update counts
-        u1 = await db.get_document('users', current_user_id)
         if u1:
             await db.update_document('users', current_user_id, {
                 'followers_count': len(u1.get('followers', []) or []),
                 'following_count': len(u1.get('following', []) or [])
             })
-        u2 = await db.get_document('users', user_id)
         if u2:
             await db.update_document('users', user_id, {
                 'followers_count': len(u2.get('followers', []) or []),
@@ -2982,7 +2878,6 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
 
     return {'message': 'User blocked successfully', 'user_id': user_id}
 
-
 @api_router.post('/users/{user_id}/unblock')
 async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -2996,7 +2891,6 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     )
 
     return {'message': 'User unblocked successfully', 'user_id': user_id}
-
 
 @api_router.get('/user/blocked')
 async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
@@ -3036,7 +2930,6 @@ async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
         logger.error(f"Error fetching blocked users: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch blocked users")
 
-
 @api_router.get('/users/{user_id}/is_blocked')
 async def check_user_blocked_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3052,7 +2945,6 @@ async def check_user_blocked_endpoint(user_id: str, token_data: dict = Depends(v
     
     is_blocked = (block_doc is not None) or (block_doc_reverse is not None)
     return {'is_blocked': is_blocked}
-
 
 @api_router.post('/users/{user_id}/follow')
 async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
@@ -3180,8 +3072,6 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
 
     return {'message': 'Unfollowed user', 'user_id': user_id}
 
-
-
 @api_router.post('/users/{target_user_id}/block')
 async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3203,7 +3093,6 @@ async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_
 
     return {'message': 'User blocked successfully', 'blocked_user_id': target_user_id}
 
-
 @api_router.post('/users/{target_user_id}/unblock')
 async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -3218,7 +3107,6 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
     )
 
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
-
 
 DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
 
@@ -3278,7 +3166,6 @@ async def share_profile_preview(user_id: str):
 </html>"""
     return HTMLResponse(content=html_content)
 
-
 @api_router.get("/share/post/{post_id}", response_class=HTMLResponse)
 async def share_post_preview(post_id: str):
     """Generate dynamic HTML Open Graph preview card for shared post links."""
@@ -3332,7 +3219,6 @@ async def share_post_preview(post_id: str):
 </html>"""
     return HTMLResponse(content=html_content)
 
-
 @api_router.get("/download", response_class=HTMLResponse)
 @api_router.get("/share/download", response_class=HTMLResponse)
 async def download_app_redirect(request: Request):
@@ -3340,6 +3226,7 @@ async def download_app_redirect(request: Request):
     query_str = request.url.query or ""
     play_store_base = "https://play.google.com/store/apps/details?id=com.brahmand.app"
     play_store_url = f"{play_store_base}&referrer={quote(query_str)}" if query_str else play_store_base
+    app_store_url = "https://apps.apple.com/in/app/brahmand-app/id6765467224"
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -3458,9 +3345,13 @@ async def download_app_redirect(request: Request):
     (function() {{
       var userAgent = navigator.userAgent || navigator.vendor || window.opera;
       var isAndroid = /android/i.test(userAgent);
+      var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
       var playStoreUrl = "{play_store_url}";
+      var appStoreUrl = "{app_store_url}";
       if (isAndroid) {{
         window.location.replace(playStoreUrl);
+      }} else if (isIOS) {{
+        window.location.replace(appStoreUrl);
       }}
     }})();
   </script>
@@ -3480,7 +3371,7 @@ async def download_app_redirect(request: Request):
     </div>
 
     <a id="downloadBtn" href="{play_store_url}" class="btn">
-      DOWNLOAD ON GOOGLE PLAY ➔
+      DOWNLOAD APP ➔
     </a>
 
     <div class="badges">
@@ -3489,10 +3380,18 @@ async def download_app_redirect(request: Request):
       <span>✓ Safe & Verified</span>
     </div>
   </div>
+  <script>
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    var isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+    var btn = document.getElementById('downloadBtn');
+    if (btn && isIOS) {{
+      btn.href = "{app_store_url}";
+      btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+    }}
+  </script>
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
-
 
 @api_router.get('/posts/{post_id}/views')
 @api_router.post('/posts/{post_id}/view')
@@ -3524,7 +3423,6 @@ async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
 
     # Best-effort count for the response; the stored value is now accurate.
     return {'message': 'View recorded', 'views_count': current_views + 1}
-
 
 @api_router.get("/bunny-media/{filepath:path}")
 async def get_bunny_media(filepath: str):
@@ -3569,7 +3467,6 @@ async def get_bunny_media(filepath: str):
         }
     )
 
-
 # =================== SOCIAL POSTS ===================
 
 @api_router.get('/posts/bunny-upload-credentials')
@@ -3587,7 +3484,6 @@ async def get_bunny_upload_credentials(token_data: dict = Depends(verify_token))
             "AccessKey": bunny_access_key
         }
     }
-
 
 @api_router.post('/posts/upload')
 async def upload_post(
@@ -3928,7 +3824,6 @@ async def _upload_post_impl(
 
     return post_doc
 
-
 @api_router.post('/media/upload')
 async def upload_chat_media(
     file: UploadFile = File(...),
@@ -4005,7 +3900,6 @@ async def _upload_chat_media_impl(
         'path': object_path,
     }
 
-
 @api_router.post('/posts/upload-from-storage')
 async def upload_post_from_storage(
     request: Request,
@@ -4072,7 +3966,6 @@ async def _upload_post_from_storage_impl(
 
     if not storage_path.startswith('raw-post-videos/'):
         raise HTTPException(status_code=400, detail='Invalid storage path')
-
 
     has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
 
@@ -4321,7 +4214,6 @@ async def get_my_posts(
     except Exception as e:
         logger.error(f"Error fetching user's own posts: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 @api_router.get('/posts/feed')
 async def get_posts_feed(
@@ -4768,7 +4660,6 @@ async def get_posts_feed(
         'has_more': len(unseen_pool) > safe_limit or (len(normalized) == safe_limit),
     }
 
-
 @api_router.post('/posts/{post_id}/watch')
 async def record_watch_event(
     post_id: str,
@@ -4835,7 +4726,6 @@ async def record_watch_event(
 
     return {'ok': True}
 
-
 @api_router.get('/users/me/feed-preferences')
 async def get_feed_preferences(token_data: dict = Depends(verify_token)):
     """Get the current user's category interest scores."""
@@ -4847,7 +4737,6 @@ async def get_feed_preferences(token_data: dict = Depends(verify_token)):
     except Exception:
         return {'category_scores': {}}
 
-
 @api_router.get('/posts/hashtag')
 async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     if not hashtag or not hashtag.strip():
@@ -4857,28 +4746,50 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     user_id = token_data['user_id']
     safe_limit = max(1, min(limit, 100))
     safe_offset = max(0, offset)
-    
+    normalized_hashtag = hashtag.strip().lower().lstrip('#')
+
+    fetch_limit = safe_offset + safe_limit + 10
     try:
-        fetch_count = min(500, max(200, safe_offset + safe_limit + 20))
+        # Architectural fix: Perform targeted DB-level query filtering by hashtags array
+        # with created_at DESC ordering instead of fetching 500 un-filtered recent global posts.
+        # This reduces Firestore read operations from O(N_global_recent) to O(limit_hashtag_posts).
         posts = await db.query_documents(
-            'posts', 
-            limit=fetch_count, 
-            order_by='created_at', 
-            order_direction='DESCENDING'
+            'posts',
+            filters=[('hashtags', 'array_contains', normalized_hashtag)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
         )
-    except Exception as e:
-        logger.error("Firestore query error in get_posts_by_hashtag: %s", e)
-        posts = []
-        
-    normalized_hashtag = hashtag.strip().lower()
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for posts hashtags + created_at, falling back to un-ordered hashtags query: {query_err}")
+            try:
+                posts = await db.query_documents(
+                    'posts',
+                    filters=[('hashtags', 'array_contains', normalized_hashtag)],
+                    limit=fetch_limit
+                )
+            except Exception as unorder_err:
+                logger.warning(f"Fallback un-ordered hashtags query failed, using legacy global recent scan: {unorder_err}")
+                posts = await db.query_documents(
+                    'posts',
+                    limit=min(500, max(100, safe_offset + safe_limit + 20)),
+                    order_by='created_at',
+                    order_direction='DESCENDING'
+                )
+        else:
+            logger.error("Firestore query error in get_posts_by_hashtag: %s", query_err)
+            posts = []
 
     def _matches_hashtag(post: dict) -> bool:
+        doc_hashtags = post.get('hashtags')
+        if isinstance(doc_hashtags, list) and normalized_hashtag in doc_hashtags:
+            return True
         caption = (post.get('caption') or '').lower()
         if not caption:
             return False
         if f'#{normalized_hashtag}' in caption:
             return True
-        # also allow search without the leading hash
         return any(
             token.strip('.,!?:;"\'()[]{}') == normalized_hashtag
             for token in caption.split()
@@ -4919,7 +4830,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     normalized = []
     for post in paged_posts:
-        pid = post.get('id')
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4940,7 +4850,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         'offset': safe_offset,
         'has_more': has_more,
     }
-
 
 @api_router.get('/posts/{post_id}')
 async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token)):
@@ -4972,7 +4881,6 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['liked_by_me'] = user_id in liked_by
 
     return post
-
 
 @api_router.post('/posts/{post_id}/repost')
 async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
@@ -5021,7 +4929,6 @@ async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
         'message': 'Post reposted',
         'post': repost_doc,
     }
-
 
 @api_router.post('/posts/{post_id}/like')
 async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token)):
@@ -5108,7 +5015,6 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
         'post': updated_post,
     }
 
-
 @api_router.put('/posts/{post_id}')
 async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data: dict = Depends(verify_token)):
     """Update post details (currently only caption supported)"""
@@ -5140,7 +5046,6 @@ async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data
         "post": updated_post
     }
 
-
 @api_router.delete('/posts/{post_id}')
 async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5161,7 +5066,6 @@ async def delete_post(post_id: str, token_data: dict = Depends(verify_token)):
         'media_deleted': result['media_deleted'],
         'comments_deleted': result['comments_deleted'],
     }
-
 
 async def _send_comment_notifications_background(
     post_id: str,
@@ -5269,7 +5173,6 @@ async def _send_comment_notifications_background(
     except Exception as e:
         logger.exception("Failed to send comment activity notifications in background: %s", e)
 
-
 @api_router.post('/posts/{post_id}/comments')
 async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5367,7 +5270,6 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
         'post': updated_post,
     }
 
-
 @api_router.get('/posts/{post_id}/comments')
 async def get_post_comments(post_id: str, request: Request, limit: int = 200, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5429,7 +5331,6 @@ async def get_post_comments(post_id: str, request: Request, limit: int = 200, of
 
     return comments
 
-
 @api_router.delete('/posts/{post_id}/comments/{comment_id}')
 async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5469,10 +5370,6 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
         'comments_count': comments_count,
         'post': updated_post,
     }
-
-
-
-
 
 @api_router.post('/posts/{post_id}/report')
 async def report_post(post_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
@@ -5532,7 +5429,6 @@ async def report_post(post_id: str, data: dict = Body(default={}), token_data: d
         'report_id': report_id,
     }
 
-
 @api_router.get("/user/verification-status")
 async def get_verification_status(token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5544,7 +5440,6 @@ async def get_verification_status(token_data: dict = Depends(verify_token)):
         "member_type": "Verified Member" if user.get("is_verified") else "Basic Member",
         "can_post_in_community": user.get("is_verified", False)
     }
-
 
 @api_router.post("/user/request-verification")
 async def request_verification(data: dict, token_data: dict = Depends(verify_token)):
@@ -5575,7 +5470,6 @@ async def verify_admin(token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return token_data
 
-
 @api_router.get("/admin/personality-verifications")
 async def list_personality_verifications(status: str = "pending", token_data: dict = Depends(verify_admin)):
     """List all personality verification requests by status"""
@@ -5584,7 +5478,6 @@ async def list_personality_verifications(status: str = "pending", token_data: di
         'personality_verifications', 
         [('status', '==', status)]
     )
-
 
 @api_router.post("/admin/personality-verifications/{request_id}/action")
 async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):
@@ -5619,13 +5512,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
         await db.update_user(target_user_id, user_updates)
         await db.array_union_update('users', target_user_id, 'badges', [f'Verified {level_display} Personality'])
         
-        # Grant Community Access
-        user = await db.get_document('users', target_user_id)
-        if not user:
-             return {"status": "error", "message": "User document not found"}
-             
-        loc = user.get('location') or user.get('home_location')
-        
+        # ⚡ Bolt Optimization: Removed redundant sequential db.get_document fetch
         # Grant Community Access
         user = await db.get_document('users', target_user_id)
         if not user:
@@ -5643,6 +5530,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
                 communities_to_join.append(f"{state_name} Group")
             
         joined_comm_ids = []
+        community_tasks = []
         for community_name in communities_to_join:
             comm_type = "country" if community_name == "Bharat Group" else "state"
             comm_loc = {"country": "Bharat"}
@@ -5655,12 +5543,19 @@ async def action_personality_verification(request_id: str, action: str = Body(..
             comm = {"id": community['id'], "name": community_name}
 
             if comm:
-                await db.add_member_to_community(comm['id'], target_user_id)
-                await db.array_union_update('users', target_user_id, 'communities', [comm['id']])
-                await db.array_union_update('users', target_user_id, 'default_communities', [comm['id']])
                 joined_comm_ids.append(comm['id'])
-                await cache_manager.invalidate_community(comm['id'])
+                community_tasks.append(db.add_member_to_community(comm['id'], target_user_id))
+                community_tasks.append(cache_manager.invalidate_community(comm['id']))
                 
+        if community_tasks:
+            await asyncio.gather(*community_tasks)
+
+        if joined_comm_ids:
+            await asyncio.gather(
+                db.array_union_update('users', target_user_id, 'communities', joined_comm_ids),
+                db.array_union_update('users', target_user_id, 'default_communities', joined_comm_ids)
+            )
+
         # Invalidate user communities cache
         await cache_manager.invalidate_user_communities(target_user_id)
         
@@ -5710,7 +5605,6 @@ async def action_personality_verification(request_id: str, action: str = Body(..
     
     else:
         raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'.")
-
 
 @api_router.post("/user/personality-verification")
 async def submit_personality_verification(data: dict, token_data: dict = Depends(verify_token)):
@@ -5771,7 +5665,6 @@ async def submit_personality_verification(data: dict, token_data: dict = Depends
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.get("/user/profile-completion")
 async def get_profile_completion(token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -5802,43 +5695,6 @@ async def get_profile_completion(token_data: dict = Depends(verify_token)):
         )
     }
 
-
-@api_router.get("/user/horoscope")
-async def get_horoscope(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if not all(
-        user.get(f)
-        for f in [
-            "date_of_birth",
-            "place_of_birth",
-            "time_of_birth",
-            "place_of_birth_latitude",
-            "place_of_birth_longitude",
-        ]
-    ):
-        raise HTTPException(status_code=400, detail="Complete birth details to view horoscope")
-
-    dob = user.get("date_of_birth", "2000-01-01")
-    month = int(dob.split("-")[1]) if dob else 1
-    zodiac_signs = ["Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"]
-    zodiac_sign = zodiac_signs[(month - 1) % 12]
-
-    horoscope = await _generate_horoscope_with_groq(zodiac_sign)
-    day_of_year = datetime.utcnow().timetuple().tm_yday
-    return {
-        "zodiac_sign": zodiac_sign,
-        "daily_horoscope": horoscope.get("prediction", ""),
-        "lucky_color": horoscope.get("lucky_color", ["Orange", "White", "Yellow", "Red", "Green"][day_of_year % 5]),
-        "lucky_number": horoscope.get("lucky_number", (day_of_year % 9) + 1),
-        "provider": "gemini",
-    }
-
-
 @api_router.post("/user/fcm-token")
 async def save_fcm_token(request: dict, token_data: dict = Depends(verify_token)):
     """
@@ -5859,7 +5715,6 @@ async def save_fcm_token(request: dict, token_data: dict = Depends(verify_token)
         return {"message": "FCM token saved successfully"}
     else:
         raise HTTPException(status_code=500, detail="Failed to save FCM token")
-
 
 # =================== GEOCODE ===================
 
@@ -5977,7 +5832,6 @@ async def reverse_geocode(request: dict, _: bool = Depends(geocode_rate_limit)):
         "display_name": f"Location at {lat}, {lon}"
     }
 
-
 POPULAR_INDIAN_LOCATIONS = [
     "Mumbai, Maharashtra", "Delhi, NCR", "Bengaluru, Karnataka", "Hyderabad, Telangana",
     "Ahmedabad, Gujarat", "Chennai, Tamil Nadu", "Kolkata, West Bengal", "Surat, Gujarat",
@@ -6046,7 +5900,6 @@ POPULAR_INDIAN_LOCATIONS = [
     "Tirupati, Andhra Pradesh", "Shirdi, Maharashtra", "Kanchipuram, Tamil Nadu", "Bodh Gaya, Bihar"
 ]
 
-
 async def _geocode_address(full_address: str) -> tuple[float | None, float | None]:
     """Geocode a physical business address to (latitude, longitude) coordinates."""
     if not full_address or not str(full_address).strip():
@@ -6092,7 +5945,6 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
         logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
 
     return None, None
-
 
 INDIAN_CITIES_FALLBACK = [
     {"name": "Ahmedabad", "state": "Gujarat", "display_name": "Ahmedabad, Gujarat, Bharat"},
@@ -6354,7 +6206,6 @@ async def forward_geocode(request: dict, _: bool = Depends(geocode_rate_limit)):
 
     return []
 
-
 TRAVEL_TRANSPORT_CACHE = {}
 
 @api_router.post("/temple/transport/resolve")
@@ -6603,7 +6454,6 @@ async def search_hospitals(request: dict):
             ]
         }
 
-
 # =================== COMMUNITIES ===================
 
 @api_router.get("/communities")
@@ -6618,7 +6468,7 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     Then any additional joined communities
     """
     db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
+    user = await db.get_document_fields('users', token_data["user_id"], ['id', 'default_communities', 'communities'])
     if not user:
         return []
     
@@ -6771,7 +6621,6 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
         return []
-
 
 class CommunityRequestResponse(BaseModel):
     status: str
@@ -7122,7 +6971,6 @@ async def respond_to_community_request(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.post("/communities/join")
 async def join_community_by_code(
     data: dict,
@@ -7140,8 +6988,6 @@ async def join_community_by_code(
         logger.error(f"Error joining community: {e}")
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
-
-
 
 @api_router.post("/communities/requests/{request_id}/resend-invite")
 async def resend_community_invite(
@@ -7229,7 +7075,6 @@ async def resend_community_invite(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.post("/communities/{community_id}/join")
 async def join_community_direct(
     community_id: str,
@@ -7247,10 +7092,11 @@ async def join_community_direct(
         members = comm.get('members', [])
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
-        # Add user to community members
-        await db.array_union_update('communities', community_id, 'members', [user_id])
-        # Add community to user's communities
-        await db.array_union_update('users', user_id, 'communities', [community_id])
+        # Add user to community members and add community to user's communities
+        await asyncio.gather(
+            db.array_union_update('communities', community_id, 'members', [user_id]),
+            db.array_union_update('users', user_id, 'communities', [community_id])
+        )
         # Invalidate user community cache so next discover call returns is_member=true
         from utils.cache import cache_manager
         await cache_manager.invalidate_user_communities(user_id)
@@ -7262,15 +7108,10 @@ async def join_community_direct(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.get("/communities/discover")
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
     return await FirebaseCommunityService.discover_communities(token_data["user_id"])
-
-
-
-
 
 @api_router.get("/communities/{community_id}")
 async def get_community(community_id: str, token_data: dict = Depends(verify_token)):
@@ -7293,10 +7134,28 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     # Build complete members_details array for frontend
     members_details = []
     
-    # 1. Fetch owner
     owner_id = comm.get('owner_id')
+    admin_ids = comm.get('admin_ids', [])
+    member_ids = comm.get('members', comm.get('member_ids', []))
+
+    # ⚡ Bolt Optimization: Batch fetch all community participants (owner, admins, members)
+    # concurrently instead of sequential db.get_document/db.get_documents_batch calls to reduce latency.
+    all_member_ids = set()
     if owner_id:
-        owner = await db.get_document('users', owner_id)
+        all_member_ids.add(owner_id)
+    if admin_ids:
+        all_member_ids.update(admin_ids)
+    if member_ids:
+        all_member_ids.update(member_ids)
+
+    user_map = {}
+    if all_member_ids:
+        all_users = await db.get_documents_batch('users', list(all_member_ids))
+        user_map = {u['id']: u for u in all_users if u and 'id' in u}
+
+    # 1. Process owner
+    if owner_id:
+        owner = user_map.get(owner_id)
         if owner:
             comm['owner_name'] = owner.get('name', 'Community Owner')
             members_details.append({
@@ -7306,14 +7165,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                 'role': 'Owner'
             })
             
-    # 2. Fetch admins
-    admin_ids = comm.get('admin_ids', [])
+    # 2. Process admins
     if admin_ids:
-        admins = await db.get_documents_batch('users', admin_ids)
-        admin_map = {a['id']: a for a in admins if a and 'id' in a}
         comm['admin_names'] = []
         for aid in admin_ids:
-            admin_doc = admin_map.get(aid)
+            admin_doc = user_map.get(aid)
             if admin_doc:
                 comm['admin_names'].append(admin_doc.get('name', 'Admin'))
                 members_details.append({
@@ -7323,14 +7179,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
                     'role': 'Admin'
                 })
                 
-    # 3. Fetch regular members (support both 'members' and 'member_ids' fields)
-    member_ids = comm.get('members', comm.get('member_ids', []))
+    # 3. Process regular members
     if member_ids:
-        members = await db.get_documents_batch('users', member_ids)
-        member_map = {m['id']: m for m in members if m and 'id' in m}
         comm['member_names'] = []
         for mid in member_ids:
-            member_doc = member_map.get(mid)
+            member_doc = user_map.get(mid)
             if member_doc:
                 # Avoid duplicates if owner or admin is also in members
                 if any(m['id'] == mid for m in members_details):
@@ -7351,13 +7204,11 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     
     return comm
 
-
 @api_router.post("/communities/{community_id}/agree-rules")
 async def agree_rules(community_id: str, data: dict, token_data: dict = Depends(verify_token)):
     db = await get_db()
     await db.array_union_update('users', token_data["user_id"], 'agreed_rules', [f"{community_id}_{data.get('subgroup_type')}"])
     return {"message": "Rules agreed"}
-
 
 @api_router.get("/communities/{community_id}/stats")
 async def get_community_stats(community_id: str, token_data: dict = Depends(verify_token)):
@@ -7369,7 +7220,6 @@ async def get_community_stats(community_id: str, token_data: dict = Depends(veri
         "member_count": len(comm.get('members', [])) if comm else 0,
         "new_messages": 0
     }
-
 
 # =================== MESSAGING (Chats with Messages subcollection) ===================
 
@@ -7579,15 +7429,14 @@ async def send_community_message(
     
     return response_data
 
-
 @api_router.get("/messages/community/{community_id}/{subgroup_type}")
 async def get_community_messages(community_id: str, subgroup_type: str, limit: int = 25, before_timestamp: Optional[str] = None, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
     
-    # Resolve fallback community IDs
+    # ⚡ Bolt Optimization: Concurrently fetch user and community documents if no fallback resolution is needed
     if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+        user = await db.get_document('users', user_id)
         target_type = 'city'
         if community_id == 'maharashtra-fallback':
             target_type = 'state'
@@ -7618,8 +7467,12 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
                             break
             except Exception as ex:
                 logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py get: {ex}")
-
-    community = await db.get_document('communities', community_id)
+        community = await db.get_document('communities', community_id)
+    else:
+        user, community = await asyncio.gather(
+            db.get_document('users', user_id),
+            db.get_document('communities', community_id)
+        )
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
@@ -7671,7 +7524,6 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
             msg['is_verified'] = False
 
     return messages
-
 
 @api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/like")
 async def toggle_community_message_like(
@@ -7763,7 +7615,6 @@ async def toggle_community_message_like(
         'likes_count': len(liked_by)
     }
 
-
 @api_router.post("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
 async def add_community_message_comment(
     community_id: str, subgroup_type: str, message_id: str,
@@ -7803,20 +7654,47 @@ async def add_community_message_comment(
         'data': [comment_doc] # Return wrapped in data to match expectations
     }
 
-
 @api_router.get("/messages/community/{community_id}/{subgroup_type}/{message_id}/comments")
 async def get_community_message_comments(
     community_id: str, subgroup_type: str, message_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
-    comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', message_id)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        # Architectural fix: Limit candidate document fetch at DB level with created_at DESC
+        # ordering to (safe_offset + safe_limit) instead of streaming ALL historical comments.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', message_id)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(
+                "Firestore composite index missing for post_comments post_id + created_at, falling back to unindexed query: %s",
+                query_err
+            )
+            comments = await db.query_documents(
+                'post_comments',
+                filters=[('post_id', '==', message_id)],
+                limit=fetch_limit * 2
+            )
+        else:
+            raise query_err
+
     def _sort_key(c):
         return c.get('created_at', '')
     comments.sort(key=_sort_key, reverse=True)
+    comments = comments[safe_offset : safe_offset + safe_limit]
     
     # Dynamically decorate with current sender verification status
     if comments:
@@ -7834,7 +7712,6 @@ async def get_community_message_comments(
         'status': 'success',
         'data': comments
     }
-
 
 @api_router.delete("/comments/{comment_id}")
 async def delete_comment(comment_id: str, token_data: dict = Depends(verify_token)):
@@ -7869,7 +7746,6 @@ async def delete_comment(comment_id: str, token_data: dict = Depends(verify_toke
             pass
 
     return {'status': 'success', 'message': 'Comment deleted'}
-
 
 @api_router.delete("/messages/community/{community_id}/{subgroup_type}/{message_id}")
 async def delete_community_message(
@@ -7908,7 +7784,6 @@ async def delete_community_message(
         pass
         
     return {'status': 'success', 'message': 'Message deleted'}
-
 
 @api_router.post("/dm")
 async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verify_token)):
@@ -8101,7 +7976,6 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
         }
     }
 
-
 @api_router.get("/dm/conversations")
 async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     """Get all private chat conversations for the current user"""
@@ -8209,7 +8083,6 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     
     return result
 
-
 @api_router.get("/dm/{chat_id}/metadata")
 async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
     """Get metadata for a single private chat conversation (strongly consistent by ID)"""
@@ -8257,7 +8130,6 @@ async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)
         "request_retry_after": chat.get('request_retry_after'),
     }
 
-
 @api_router.get("/dm/{chat_id}")
 async def get_dm_messages(chat_id: str, request: Request, limit: int = 50, token_data: dict = Depends(verify_token)):
     """Get messages from a private chat"""
@@ -8296,7 +8168,6 @@ async def get_dm_messages(chat_id: str, request: Request, limit: int = 50, token
     if "python" in user_agent or "aiohttp" in user_agent:
         return {"messages": messages}
     return messages
-
 
 @api_router.post("/dm/{chat_id}/request/approve")
 async def approve_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -8343,7 +8214,6 @@ async def approve_dm_request(chat_id: str, token_data: dict = Depends(verify_tok
     }, room=chat_id)
 
     return {'message': 'Message request approved'}
-
 
 @api_router.post("/dm/{chat_id}/request/deny")
 async def deny_dm_request(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -8395,7 +8265,6 @@ async def deny_dm_request(chat_id: str, token_data: dict = Depends(verify_token)
         'retry_after': retry_after.isoformat(),
     }
 
-
 @api_router.delete("/dm/{chat_id}/messages")
 async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_token)):
     """Clear all messages in a private chat"""
@@ -8426,7 +8295,6 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
     })
 
     return {"message": f"Cleared {deleted} messages"}
-
 
 @api_router.post("/dm/{chat_id}/read")
 async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -8478,7 +8346,6 @@ async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_tok
 
     return {"message": f"Marked {len(updates_to_apply)} messages as read"}
 
-
 @api_router.get("/user/privacy-settings")
 async def get_privacy_settings(token_data: dict = Depends(verify_token)):
     """Get user's privacy settings"""
@@ -8497,7 +8364,6 @@ async def get_privacy_settings(token_data: dict = Depends(verify_token)):
     
     return user.get('privacy_settings', default_settings)
 
-
 @api_router.put("/user/privacy-settings")
 async def update_privacy_settings(settings: dict, token_data: dict = Depends(verify_token)):
     """Update user's privacy settings"""
@@ -8512,7 +8378,6 @@ async def update_privacy_settings(settings: dict, token_data: dict = Depends(ver
     
     return {"message": "Privacy settings updated", "settings": filtered_settings}
 
-
 # =================== CIRCLES ===================
 
 def _circle_admin_ids(circle: dict) -> List[str]:
@@ -8521,7 +8386,6 @@ def _circle_admin_ids(circle: dict) -> List[str]:
         return [admin_id for admin_id in admin_ids if admin_id]
     legacy_admin_id = circle.get('admin_id')
     return [legacy_admin_id] if legacy_admin_id else []
-
 
 def _is_circle_admin(circle: dict, user_id: str) -> bool:
     return user_id in _circle_admin_ids(circle)
@@ -8590,7 +8454,6 @@ async def get_circles(token_data: dict = Depends(verify_token)):
 
     return circles
 
-
 @api_router.post("/circles")
 async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_token)):
     """Create a new circle (private group chat)"""
@@ -8650,10 +8513,11 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                     added_member_ids.append(member_id)
 
     circle_id = await db.create_document('circles', circle_data)
-    await db.array_union_update('users', user_id, 'circles', [circle_id])
 
+    tasks = [db.array_union_update('users', user_id, 'circles', [circle_id])]
     for member_id in added_member_ids:
-        await db.array_union_update('users', member_id, 'circles', [circle_id])
+        tasks.append(db.array_union_update('users', member_id, 'circles', [circle_id]))
+    await asyncio.gather(*tasks)
     
     # Send push notification to added members
     if added_member_ids:
@@ -8685,7 +8549,6 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
         "is_admin": True,
         "created_at": datetime.utcnow().isoformat() + 'Z'
     }
-
 
 @api_router.get("/circles/{circle_id}")
 async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
@@ -8730,7 +8593,6 @@ async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
         "is_admin": _is_circle_admin(circle, user_id),
         "created_at": circle.get('created_at')
     }
-
 
 @api_router.put("/circles/{circle_id}")
 async def update_circle(circle_id: str, data: CircleUpdate, token_data: dict = Depends(verify_token)):
@@ -8824,7 +8686,6 @@ async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)
         logger.info(f"User {user_id} requested to join circle {circle_id}")
         return {"message": f"Join request sent to {circle['name']}", "circle": circle['name'], "status": "pending"}
 
-
 @api_router.get("/circles/{circle_id}/requests")
 async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_token)):
     """Get pending join requests for a circle (admin only)"""
@@ -8844,7 +8705,6 @@ async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_
     ])
     
     return requests
-
 
 @api_router.post("/circles/{circle_id}/approve/{request_user_id}")
 async def approve_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
@@ -8891,7 +8751,6 @@ async def approve_circle_request(circle_id: str, request_user_id: str, token_dat
     
     return {"message": f"User {request.get('user_name', request_user_id)} approved"}
 
-
 @api_router.post("/circles/{circle_id}/transfer-admin/{member_id}")
 async def transfer_circle_admin(circle_id: str, member_id: str, token_data: dict = Depends(verify_token)):
     """Add a co-admin to the circle while keeping existing admins."""
@@ -8924,7 +8783,6 @@ async def transfer_circle_admin(circle_id: str, member_id: str, token_data: dict
     logger.info(f"Admin rights for circle {circle_id} granted by {user_id} to {member_id}")
     return {"message": "Admin added successfully"}
 
-
 @api_router.post("/circles/{circle_id}/reject/{request_user_id}")
 async def reject_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
     """Reject a join request (admin only)"""
@@ -8953,7 +8811,6 @@ async def reject_circle_request(circle_id: str, request_user_id: str, token_data
     
     logger.info(f"User {request_user_id} rejected from circle {circle_id}")
     return {"message": "Request rejected"}
-
 
 @api_router.post("/circles/{circle_id}/invite")
 async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict = Depends(verify_token)):
@@ -9002,7 +8859,6 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
     )
     
     return {"message": f"Invited {target_user['name']} to circle"}
-
 
 @api_router.post("/circles/{circle_id}/leave")
 async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token)):
@@ -9053,7 +8909,6 @@ async def leave_circle(circle_id: str, token_data: dict = Depends(verify_token))
     logger.info(f"User {user_id} left circle {circle_id}")
     return {"message": "Left circle successfully"}
 
-
 @api_router.delete("/circles/{circle_id}")
 async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)):
     """Delete a circle (admin only)"""
@@ -9068,18 +8923,18 @@ async def delete_circle(circle_id: str, token_data: dict = Depends(verify_token)
         raise HTTPException(status_code=403, detail="Only admin can delete circle")
     
     # Remove circle from all members' circle lists
+    tasks = []
     for member_id in circle.get('members', []):
-        try:
-            await db.array_remove_update('users', member_id, 'circles', [circle_id])
-        except:
-            pass
+        tasks.append(db.array_remove_update('users', member_id, 'circles', [circle_id]))
+
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     
     # Delete circle
     await db.delete_document('circles', circle_id)
     
     logger.info(f"Circle {circle_id} deleted by admin {user_id}")
     return {"message": "Circle deleted successfully"}
-
 
 @api_router.post("/circles/{circle_id}/remove-member/{member_id}")
 async def remove_circle_member(circle_id: str, member_id: str, token_data: dict = Depends(verify_token)):
@@ -9119,7 +8974,6 @@ async def remove_circle_member(circle_id: str, member_id: str, token_data: dict 
     
     logger.info(f"User {member_id} removed from circle {circle_id}")
     return {"message": "Member removed successfully"}
-
 
 # =================== CIRCLE MESSAGING ===================
 
@@ -9207,7 +9061,6 @@ async def send_circle_message(
     
     return response_data
 
-
 @api_router.get("/messages/circle/{circle_id}")
 async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict = Depends(verify_token)):
     """Get messages from a circle chat"""
@@ -9224,7 +9077,6 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
     chat_id = f"circle_{circle_id}"
     return await db.get_chat_messages(chat_id, limit)
 
-
 # =================== TEMPLES ===================
 
 @api_router.get("/temples")
@@ -9236,7 +9088,6 @@ async def get_temples(
     from services.temple_service import TempleService
     user_id = token_data.get("user_id")
     return await TempleService.get_temples(user_id, limit=limit, offset=offset)
-
 
 @api_router.get("/temples/nearby")
 async def get_nearby_temples(
@@ -9251,7 +9102,6 @@ async def get_nearby_temples(
         return await TempleService.get_nearby_temples(lat=lat, lng=lng, user_id=user_id)
     return await TempleService.get_temples(user_id)
 
-
 @api_router.get("/temples/{temple_id}")
 async def get_temple(temple_id: str, token_data: dict = Depends(verify_token)):
     """Get temple details"""
@@ -9261,7 +9111,6 @@ async def get_temple(temple_id: str, token_data: dict = Depends(verify_token)):
         return await TempleService.get_temple(temple_id, user_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Temple not found")
-
 
 @api_router.post("/temples")
 async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
@@ -9305,7 +9154,6 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
     logger.info(f"Temple created: {data.get('name')} by {user['name']}")
     return temple_data
 
-
 @api_router.post("/temples/{temple_id}/follow")
 async def follow_temple(temple_id: str, token_data: dict = Depends(verify_token)):
     from services.temple_service import TempleService
@@ -9313,7 +9161,6 @@ async def follow_temple(temple_id: str, token_data: dict = Depends(verify_token)
         return await TempleService.follow_temple(temple_id, token_data["user_id"])
     except ValueError:
         raise HTTPException(status_code=404, detail="Temple not found")
-
 
 @api_router.post("/temples/{temple_id}/unfollow")
 async def unfollow_temple(temple_id: str, token_data: dict = Depends(verify_token)):
@@ -9323,14 +9170,12 @@ async def unfollow_temple(temple_id: str, token_data: dict = Depends(verify_toke
     except ValueError:
         raise HTTPException(status_code=404, detail="Temple not found")
 
-
 @api_router.get("/temples/{temple_id}/posts")
 async def get_temple_posts(temple_id: str, token_data: dict = Depends(verify_token)):
     """Get temple announcement posts"""
     db = await get_db()
     chat_id = f"temple_{temple_id}"
     return await db.get_chat_messages(chat_id, 50)
-
 
 @api_router.post("/temples/{temple_id}/posts")
 async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depends(verify_token)):
@@ -9375,9 +9220,7 @@ async def create_temple_post(temple_id: str, data: dict, token_data: dict = Depe
     logger.info(f"Temple announcement created: {data.get('title')} at {temple.get('name')}")
     return post_data
 
-
 # =================== KYC SYSTEM ===================
-
 
 def try_face_match() -> dict:
     """Fallback face match logic for environments without opencv/mediapipe support."""
@@ -9385,7 +9228,6 @@ def try_face_match() -> dict:
     # heavy cv2/mediapipe dependencies. The frontend already validates live face
     # presence by darkening the circle and enables capture only when a face is inside.
     return {"status": "manual_review", "distance": None, "reason": "backend_match_disabled"}
-
 
 @api_router.get("/kyc/status")
 async def get_kyc_status(token_data: dict = Depends(verify_token)):
@@ -9406,6 +9248,7 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
         if v_list:
             vendor_id = v_list[0]['id']
             
+    vendor = None
     if vendor_id:
         vendor = await db.get_document('vendors', vendor_id)
         if vendor:
@@ -9418,10 +9261,8 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
                 await db.update_document('vendors', vendor_id, {'kyc_status': 'verified'})
 
     kyc_phone = user.get('kyc_verified_phone') or user.get('phone') or user.get('phone_number')
-    if not kyc_phone and vendor_id:
-        vendor = await db.get_document('vendors', vendor_id)
-        if vendor:
-            kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
+    if not kyc_phone and vendor_id and vendor:
+        kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
 
     return {
         "kyc_status": kyc_status,  # pending/verified/rejected
@@ -9433,7 +9274,6 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
         "kyc_phone_verified_at": user.get('kyc_phone_verified_at'),
         "kyc_verified_phone": kyc_phone,
     }
-
 
 @api_router.post("/kyc/aadhaar/otp")
 async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
@@ -9522,7 +9362,6 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
         "sandbox_response": resp_data,
     }
 
-
 @api_router.post("/kyc/aadhaar/otp/verify")
 async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
     """Verify Aadhaar OTP via Sandbox for user-level KYC."""
@@ -9584,7 +9423,6 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
         "sandbox_response": resp_data,
     }
 
-
 async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: str = "kyc") -> Optional[str]:
     if not base64_str:
         return None
@@ -9616,7 +9454,6 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
         logger.error(f"Failed to upload KYC base64 to storage for user {user_id}: {e}")
         return None
 
-
 @api_router.post("/kyc/submit")
 async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -9634,6 +9471,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     db = await get_db()
     user_id = token_data["user_id"]
+    user_doc = (await db.get_document('users', user_id)) or {}
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -9654,7 +9492,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
 
     if id_type == 'aadhaar':
-        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         has_id_photo = bool(data.get('id_photo'))
@@ -9680,7 +9517,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     full_name = (data.get('full_name') or '').strip()
     date_of_birth = (data.get('date_of_birth') or data.get('dob') or '').strip()
 
-    user_doc = await db.get_document('users', user_id)
     if not phone_number and user_doc:
         phone_number = (
             user_doc.get('kyc_verified_phone')
@@ -9726,7 +9562,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
-    user_doc = await db.get_document('users', user_id)
     is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
         vendor_id = user_doc.get('vendor_id')
@@ -9785,7 +9620,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         "match_distance": kyc_data.get('kyc_match_distance'),
         "match_reason": kyc_data.get('kyc_match_reason')
     }
-
 
 @api_router.post("/admin/kyc/verify/{user_id}")
 async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify_token)):
@@ -9990,11 +9824,20 @@ async def sync_legacy_kyc_data_in_db():
         logger.error(f"[Legacy KYC Sync Error] {e}")
         return 0
 
-
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
-    """Get all users with pending or verified KYC (admin only)"""
+async def get_pending_kyc(
+    status: Optional[str] = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get all users with pending or verified KYC with pagination (admin only)"""
+    """Get all users with pending or verified KYC (admin only) with offset pagination and chunked vendor lookups"""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     target_statuses = ['pending', 'manual_review']
     if status == 'verified':
@@ -10004,22 +9847,66 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
     elif status == 'all':
         target_statuses = ['pending', 'manual_review', 'verified', 'rejected']
 
+    # Architectural fix: Bounded candidate fetch at DB level prevents streaming all user documents into memory.
+    fetch_limit = safe_offset + safe_limit * 2 + 10
     try:
-        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)])
+        # Architectural fix: Limit the candidate user document fetch at DB level
+        # to prevent scanning the entire users collection at scale
+        pending = await db.query_documents(
+            'users',
+            filters=[('kyc_status', 'in', target_statuses)],
+            limit=fetch_limit
+        )
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
-        all_users = await db.query_documents('users')
+        all_users = await db.query_documents('users', limit=fetch_limit * 2)
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)], limit=fetch_limit)
+    except Exception as query_error:
+        logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
+        all_users = await db.query_documents('users', limit=fetch_limit)
         pending = [
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
 
-    # Fetch vendor map for missing field fill
-    vendors = await db.query_documents('vendors')
-    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
+    # Architectural fix: Targeted chunked vendor lookups for candidate users
+    # instead of downloading all vendor documents platform-wide (O(N_vendors) -> O(limit))
+    pending_user_ids = [u.get('id') for u in (pending or []) if u.get('id')]
+    vendor_by_owner = {}
+    # Paginate candidate users for the requested offset and limit
+    paginated_pending = (pending or [])[safe_offset : safe_offset + safe_limit]
+
+    # Architectural fix: Targeted chunked vendor lookups for only the candidate UIDs on this page
+    # instead of scanning and downloading the entire 'vendors' collection (O(N_all_vendors) -> O(page_size)).
+    candidate_user_ids = [u.get('id') for u in paginated_pending if u.get('id')]
+    vendor_by_owner = {}
+    if candidate_user_ids:
+        chunk_size = 10
+        for i in range(0, len(candidate_user_ids), chunk_size):
+            chunk = candidate_user_ids[i:i + chunk_size]
+            try:
+                v_chunk = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_chunk or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor chunk for owner_ids {chunk}: {v_err}")
     
+    if pending_user_ids:
+        for i in range(0, len(pending_user_ids), 30):
+            chunk = pending_user_ids[i:i + 30]
+            try:
+                v_docs = await db.query_documents('vendors', filters=[('owner_id', 'in', chunk)])
+                for v in (v_docs or []):
+                    owner_id = v.get('owner_id')
+                    if owner_id:
+                        vendor_by_owner[owner_id] = v
+            except Exception as v_err:
+                logger.warning(f"Failed to fetch vendor batch for KYC pending: {v_err}")
+
     result = []
-    for u in (pending or []):
+    for u in paginated_pending:
         u_id = u.get('id')
         v = vendor_by_owner.get(u_id) or {}
         
@@ -10043,8 +9930,7 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
             'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
         })
 
-    return result
-
+    return result[safe_offset:safe_offset + safe_limit]
 
 @api_router.post("/admin/kyc/sync-legacy")
 async def trigger_legacy_kyc_sync(token_data: dict = Depends(verify_token)):
@@ -10052,7 +9938,6 @@ async def trigger_legacy_kyc_sync(token_data: dict = Depends(verify_token)):
     db, _ = await _ensure_admin_user(token_data)
     count = await sync_legacy_kyc_data_in_db()
     return {"message": "Legacy KYC data synchronized successfully", "synced_count": count}
-
 
 # =================== REPORT SYSTEM ===================
 
@@ -10167,7 +10052,6 @@ async def report_content(data: dict, token_data: dict = Depends(verify_token)):
     logger.info(f"Report submitted: {content_type} - {category} by {user_id}")
     return {"message": "Report submitted", "report_id": report_id}
 
-
 def _clean_datetime(dt):
     from datetime import timezone
     if not dt:
@@ -10188,7 +10072,6 @@ def _clean_datetime(dt):
         return parsed
     except Exception:
         return datetime.min
-
 
 @api_router.get("/admin/reports")
 async def get_reports(
@@ -10389,18 +10272,21 @@ async def get_reports(
     user_map = {}
     if user_ids:
         user_ids_list = list(user_ids)
-        for i in range(0, len(user_ids_list), 100):
-            chunk = user_ids_list[i:i+100]
-            try:
-                users_docs = await db.get_documents_batch('users', chunk)
-                for u in users_docs:
-                    if u.get('id'):
-                        user_map[str(u['id'])] = {
-                            'name': u.get('name') or 'N/A',
-                            'sl_id': u.get('sl_id') or 'N/A',
-                        }
-            except Exception as e:
-                logger.warning("Failed to batch fetch users in get_reports: %s", e)
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
+        try:
+            users_docs = await db.get_documents_batch('users', user_ids_list)
+            for u in users_docs:
+                if u.get('id'):
+        try:
+            users_docs = await db.get_documents_batch('users', user_ids_list)
+            for u in users_docs:
+                if u and u.get('id'):
+                    user_map[str(u['id'])] = {
+                        'name': u.get('name') or 'N/A',
+                        'sl_id': u.get('sl_id') or 'N/A',
+                    }
+        except Exception as e:
+            logger.warning("Failed to batch fetch users in get_reports: %s", e)
 
     # Attach names/sl_ids to sliced_reports
     for r in sliced_reports:
@@ -10422,7 +10308,6 @@ async def get_reports(
             r['reported_user_username'] = 'N/A'
 
     return sliced_reports
-
 
 @api_router.post('/admin/reports/{report_id}/review')
 async def review_report(report_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
@@ -10558,14 +10443,12 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
         'moderation_result': moderation_result,
     }
 
-
 @api_router.post('/admin/reports/{report_id}/resolve')
 async def resolve_report(report_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
     """Backward-compatible alias: resolved->approve, dismissed->deny."""
     raw_action = str(data.get('action') or '').strip().lower()
     mapped_action = 'approve' if raw_action == 'resolved' else ('deny' if raw_action == 'dismissed' else raw_action)
     return await review_report(report_id, {**data, 'action': mapped_action}, token_data)
-
 
 @api_router.post("/admin/users/{user_id}/ban")
 async def admin_ban_user(user_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
@@ -10589,7 +10472,6 @@ async def admin_ban_user(user_id: str, data: dict = Body(default={}), token_data
     await db.update_document('users', user_id, update_data)
     return {"message": "User banned successfully", "user_id": user_id, "blocked_until": blocked_until}
 
-
 @api_router.post("/admin/users/{user_id}/unban")
 async def admin_unban_user(user_id: str, token_data: dict = Depends(verify_token)):
     """Remove a ban/suspension from a user (admin only)."""
@@ -10606,15 +10488,37 @@ async def admin_unban_user(user_id: str, token_data: dict = Depends(verify_token
     await db.update_document('users', user_id, update_data)
     return {"message": "User unbanned successfully", "user_id": user_id}
 
-
 @api_router.get("/admin/sos-misuse-reports")
-async def get_admin_sos_misuse_reports(token_data: dict = Depends(verify_token)):
-    """Get all SOS misuse reports for admin review"""
+async def get_admin_sos_misuse_reports(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """Get SOS misuse reports for admin review with offset-based pagination and DB bounds"""
     db, _ = await _ensure_admin_user(token_data)
-    reports = await db.query_documents('sos_misuse_reports')
-    reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    return reports
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
+    try:
+        # Architectural fix: Limit the candidate document fetch at DB query level with created_at DESC
+        # ordering to (offset + safe_limit) instead of fetching ALL historical SOS misuse reports.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        reports = await db.query_documents(
+            'sos_misuse_reports',
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore ordered query failed in /admin/sos-misuse-reports, using unindexed fallback: %s",
+            exc,
+        )
+        reports = await db.query_documents('sos_misuse_reports')
+        reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
+
+    return reports[safe_offset : safe_offset + safe_limit]
 
 @api_router.post("/admin/users/{user_id}/block-sos")
 async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)):
@@ -10626,7 +10530,6 @@ async def admin_block_sos(user_id: str, token_data: dict = Depends(verify_token)
     await db.update_document('users', user_id, {"is_sos_blocked": True})
     return {"message": "User SOS privileges suspended successfully", "user_id": user_id, "is_sos_blocked": True}
 
-
 @api_router.post("/admin/users/{user_id}/unblock-sos")
 async def admin_unblock_sos(user_id: str, token_data: dict = Depends(verify_token)):
     """Restore user's SOS privileges"""
@@ -10636,7 +10539,6 @@ async def admin_unblock_sos(user_id: str, token_data: dict = Depends(verify_toke
         raise HTTPException(status_code=404, detail="User not found")
     await db.update_document('users', user_id, {"is_sos_blocked": False})
     return {"message": "User SOS privileges restored successfully", "user_id": user_id, "is_sos_blocked": False}
-
 
 # =================== SAMPLE DATA INITIALIZATION ===================
 
@@ -10660,7 +10562,6 @@ async def init_sample_temples(token_data: dict = Depends(verify_token)):
     
     logger.info(f"Initialized {created}/23 temples with full data")
     return {"message": f"Created {created} temples with full data", "total": 23}
-
 
 @api_router.post("/admin/backfill-follow-edges")
 async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
@@ -10691,28 +10592,35 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
         doc_ids = list(doc_map.keys())
 
-        # Process in chunks of 100 to avoid limits
-        chunk_size = 100
-        for i in range(0, len(doc_ids), chunk_size):
-            chunk_ids = doc_ids[i:i + chunk_size]
-            existing_docs = await db.get_documents_batch('user_follows', chunk_ids)
-            # db.get_documents_batch injects the document ID into the data dict as 'id'
-            existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
+        existing_docs = await db.get_documents_batch('user_follows', doc_ids)
+        # db.get_documents_batch injects the document ID into the data dict as 'id'
+        existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
 
-            for doc_id in chunk_ids:
-                if doc_id in existing_ids:
-                    skipped += 1
-                else:
-                    f_uid = doc_map[doc_id]
-                    await db.set_document('user_follows', doc_id, {
-                        'follower_uid': uid,
-                        'followee_uid': f_uid,
-                    })
-                    created += 1
+        tasks = []
+        for doc_id in doc_ids:
+            if doc_id in existing_ids:
+                skipped += 1
+            else:
+                f_uid = doc_map[doc_id]
+                await db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                })
+                created += 1
+                tasks.append(db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                }))
+                created += 1
+
+        if tasks:
+            # Chunk the write operations to avoid overwhelming the database
+            for i in range(0, len(tasks), 500):
+                await asyncio.gather(*tasks[i:i+500])
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
-
 
 # =================== EVENTS ===================
 
@@ -10725,7 +10633,6 @@ async def get_events(limit: int = 20, offset: int = 0, token_data: dict = Depend
     docs = await db.query_documents('events', limit=fetch_limit)
     return docs[safe_offset:safe_offset + safe_limit]
 
-
 @api_router.get("/events/nearby")
 async def get_nearby_events(limit: int = 20, offset: int = 0, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -10734,7 +10641,6 @@ async def get_nearby_events(limit: int = 20, offset: int = 0, token_data: dict =
     fetch_limit = safe_offset + safe_limit
     docs = await db.query_documents('events', limit=fetch_limit)
     return docs[safe_offset:safe_offset + safe_limit]
-
 
 @api_router.post("/events/{event_id}/attend")
 async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
@@ -10795,7 +10701,6 @@ async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
 
     return {"message": "Attendance confirmed", "attendee_count": len(attendees)}
 
-
 @api_router.post("/events/{event_id}/cancel-attendance")
 async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
     """Cancel user's attendance for an event."""
@@ -10817,9 +10722,6 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
         await db.increment_field(collection, event_id, 'attendee_count', -1)
 
     return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
-
-
-
 
 # =================== NOTIFICATIONS ===================
 
@@ -10855,13 +10757,11 @@ async def get_notifications(
             "next_cursor": None
         }
 
-
 @api_router.get("/notifications/unread-count")
 async def get_unread_count(token_data: dict = Depends(verify_token)):
     db = await get_db()
     count = await db.count_documents('notifications', filters=[('user_id', '==', token_data["user_id"]), ('is_read', '==', False)])
     return {"unread_count": count}
-
 
 @api_router.post("/notifications/mark-all-read")
 async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
@@ -10874,12 +10774,10 @@ async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
         await db.batch_update_documents('notifications', updates)
     return {"message": "All notifications marked as read"}
 
-
 @api_router.post("/notifications/{notification_id}/mark-read")
 async def mark_notification_read(notification_id: str, token_data: dict = Depends(verify_token)):
     await FirebaseNotificationService.mark_as_read(token_data["user_id"], notification_id)
     return {"message": "Notification marked as read"}
-
 
 @api_router.post("/notifications/test-send")
 async def test_send_notification(
@@ -10905,7 +10803,6 @@ async def test_send_notification(
         )
     return {"status": "success", "result": res}
 
-
 @api_router.post("/notifications/library-reminder")
 async def send_library_reminder_notification(
     data: dict,
@@ -10923,12 +10820,6 @@ async def send_library_reminder_notification(
         force=force
     )
     return {"status": "success", "result": result}
-
-
-
-
-
-
 
 def sanitize_krishna_response(response_text: str) -> str:
     """
@@ -10952,13 +10843,11 @@ def sanitize_krishna_response(response_text: str) -> str:
     
     return response_text.strip()
 
-
 def _get_chat_doc_id(user_id: str, chat_id: str = "slot_1") -> str:
     slot = (chat_id or "slot_1").strip().lower()
     if slot in ("slot_1", "default", ""):
         return user_id  # Preserves existing legacy chat history
     return f"{user_id}_{slot}"
-
 
 @api_router.post("/ai/chat")
 async def ai_chat(
@@ -11016,11 +10905,15 @@ Jai Shri Krishna! 🙏
 
 Note: Write only the shloka reference string (e.g., (Gita 2.47)) in the reference lines. Do not write the Sanskrit text or translation of the shloka in the reference placeholder, as the system will automatically insert them.
 
+# 🧡 Engagement: Reframed My Krishna fallback response template for intimate guru-disciple bonding.
+# Lever: First-Person Voice / My Krishna Bonding + Reframing
+# Why: Reframing generic custom remedies into intimate, direct Krishna guidance ("Suno, main tumhare saath hoon...") deepens emotional connection and trust.
+# UI: Copy-only change in LLM system prompt instructions.
 CASE 2: When no exact Gita shloka is available/relevant:
 Your response MUST follow this EXACT short structure:
-Hey mere bhakta! [1 line personal empathy]
+Hey mere bhakta! [1 line personal empathy - e.g. "Suno, main tumhare saath hoon, tum akele nahi ho."]
 
-[2-3 line custom remedy/wisdom based on Bhagavad Gita principles. Short and specific to this user's problem.]
+[2-3 line custom wisdom speaking as Krishna Himself, guiding Arjun with Gita principles. Short, compassionate, and specific to this user's situation.]
 
 [1-2 practical action steps — short and direct]
 
@@ -11087,8 +10980,6 @@ IDENTITY RULES:
             last_updated_str = chat_data.get("updated_at")
     except Exception as fs_err:
         logger.warning(f"Failed to fetch profile/history from Firestore: {fs_err}")
-
-
 
     try:
         # Session Boundary Check & Chat Summarization
@@ -11306,7 +11197,6 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.get("/ai/chat/history")
 async def get_chat_history(
     chat_id: str = "slot_1",
@@ -11325,7 +11215,6 @@ async def get_chat_history(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.delete("/ai/chat/history")
 async def delete_chat_history(
     chat_id: str = "slot_1",
@@ -11342,7 +11231,6 @@ async def delete_chat_history(
         logger.error(f"Internal error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] = None, lon: Optional[float] = None) -> tuple[float, float]:
     """Helper to resolve latitude and longitude from input parameters, user profile, or default coordinates."""
     resolved_lat = lat
@@ -11358,7 +11246,6 @@ def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] 
         resolved_lat, resolved_lng = 28.6139, 77.2090
 
     return float(resolved_lat), float(resolved_lng)
-
 
 @api_router.get("/panchang/today")
 async def get_panchang(
@@ -11410,7 +11297,6 @@ async def get_panchang(
         logger.error("Panchang fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail="Panchang provider error")
 
-
 @api_router.get("/astrology/nakshatra")
 async def get_nakshatra_report(
     dob: Optional[str] = None,
@@ -11458,7 +11344,6 @@ async def get_nakshatra_report(
         logger.error("AstrologyAPI Kundli fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail="AstrologyAPI provider error")
 
-
 @api_router.get("/astrology/city-search")
 async def search_birth_city(
     q: str,
@@ -11475,7 +11360,6 @@ async def search_birth_city(
     except Exception as exc:
         logger.error("AstrologyAPI city search failed: %s", exc)
         raise HTTPException(status_code=502, detail="AstrologyAPI geo-search error")
-
 
 @api_router.get("/astrology/ask")
 async def ask_astrology_question(
@@ -11517,11 +11401,10 @@ async def ask_astrology_question(
         logger.error("Groq astrology ask failed: %s", exc)
         raise HTTPException(status_code=502, detail="Astrology AI error")
 
-
 # =================== BLOOD REQUEST OTP ===================
 
 @api_router.post("/blood-request/send-otp")
-async def send_blood_request_otp(request: OTPRequest):
+async def send_blood_request_otp(request: OTPRequest, _: bool = Depends(auth_rate_limit)):
     """
     Send OTP for Blood Request creation.
     Enforces 30 seconds resend cooldown and rate limits.
@@ -11595,8 +11478,8 @@ async def send_blood_request_otp(request: OTPRequest):
         otp_requests_count = 1
 
     # Generate OTP securely (4 digits)
-    import random
-    otp_code = f"{random.randint(1000, 9999)}"
+    import secrets
+    otp_code = f"{secrets.randbelow(9000) + 1000}"
     logger.info(f"[Blood Request OTP] Generated OTP {otp_code} for mobile {mobile}")
 
     # Call NattyFish to send SMS
@@ -11632,9 +11515,8 @@ async def send_blood_request_otp(request: OTPRequest):
     
     return {"status": "success", "message": "OTP sent successfully"}
 
-
 @api_router.post("/blood-request/verify-otp")
-async def verify_blood_request_otp(request: OTPVerify):
+async def verify_blood_request_otp(request: OTPVerify, _: bool = Depends(auth_rate_limit)):
     """
     Verify OTP for Blood Request creation.
     Enforces maximum 5 attempts and 5 minutes expiry.
@@ -11693,7 +11575,11 @@ async def verify_blood_request_otp(request: OTPVerify):
     stored_otp = record.get("otp")
     logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: input={otp}, stored={stored_otp}, attempt={attempts}")
     
-    if not stored_otp or stored_otp != otp:
+    import secrets
+    stored_otp_bytes = str(stored_otp).encode("utf-8") if stored_otp else b""
+    provided_otp_bytes = str(otp).encode("utf-8")
+
+    if not stored_otp or not secrets.compare_digest(stored_otp_bytes, provided_otp_bytes):
         if attempts >= 5:
             raise HTTPException(
                 status_code=400,
@@ -11713,7 +11599,6 @@ async def verify_blood_request_otp(request: OTPVerify):
     await db.update_document("blood_request_otp_verifications", mobile, update_data)
     
     return {"status": "success", "message": "OTP verified successfully"}
-
 
 # =================== HELP REQUESTS ===================
 
@@ -11824,8 +11709,6 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     logger.info(f"Help request created by {user_id}: {data.type.value} - {data.title}")
     return request_data
 
-
-
 @api_router.get("/help-requests")
 async def get_help_requests(
     type: Optional[str] = None,
@@ -11872,7 +11755,6 @@ async def get_help_requests(
 
     return requests[safe_offset:safe_offset + safe_limit]
 
-
 @api_router.get("/help-requests/my")
 async def get_my_help_requests(
     limit: int = 20,
@@ -11905,7 +11787,6 @@ async def get_my_help_requests(
 
     return requests[offset:offset + safe_limit]
 
-
 @api_router.get("/help-requests/active")
 async def get_active_help_request(token_data: dict = Depends(verify_token)):
     """Get current user's active help request"""
@@ -11918,7 +11799,6 @@ async def get_active_help_request(token_data: dict = Depends(verify_token)):
     ])
     
     return request
-
 
 @api_router.post("/help-requests/{request_id}/fulfill")
 async def fulfill_help_request(request_id: str, token_data: dict = Depends(verify_token)):
@@ -11937,7 +11817,6 @@ async def fulfill_help_request(request_id: str, token_data: dict = Depends(verif
     logger.info(f"Help request {request_id} marked as fulfilled by {user_id}")
     
     return {"message": "Help request marked as fulfilled"}
-
 
 @api_router.post("/help-requests/{request_id}/verify")
 async def verify_help_request(request_id: str, token_data: dict = Depends(verify_token)):
@@ -11962,7 +11841,6 @@ async def verify_help_request(request_id: str, token_data: dict = Depends(verify
     
     return {"message": "Help request verified"}
 
-
 @api_router.delete("/help-requests/{request_id}")
 async def delete_help_request(request_id: str, token_data: dict = Depends(verify_token)):
     """Delete a help request (creator only)"""
@@ -11980,7 +11858,6 @@ async def delete_help_request(request_id: str, token_data: dict = Depends(verify
     logger.info(f"Help request {request_id} deleted by {user_id}")
     
     return {"message": "Help request deleted"}
-
 
 # =================== VENDORS ===================
 
@@ -12092,7 +11969,6 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
 
-
 @api_router.get("/vendors")
 async def get_vendors(
     category: Optional[str] = None,
@@ -12104,12 +11980,30 @@ async def get_vendors(
     state: Optional[str] = None,
     country: Optional[str] = None,
     limit: int = 50,
+    offset: int = 0,
     token_data: Optional[dict] = Depends(optional_verify_token)
 ):
-    """Get vendors with optional filters and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
+    """Get vendors with optional filters, offset-based pagination, and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
     db = await get_db()
 
-    vendors = await db.query_documents('vendors', limit=limit)
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    # Architectural fix: Limit candidate fetch from Firestore to prevent unbounded scans at scale while providing paginated bounds
+    fetch_limit = safe_offset + safe_limit * 3 + 20
+
+    try:
+        vendors = await db.query_documents(
+            'vendors',
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for vendors created_at, falling back to un-ordered query: {query_err}")
+            vendors = await db.query_documents('vendors', limit=fetch_limit)
+        else:
+            raise query_err
 
     vendor_ids = [v['id'] for v in vendors if v.get('id')]
     owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
@@ -12356,8 +12250,7 @@ async def get_vendors(
 
         vendors.sort(key=_compute_ranking)
 
-    return vendors
-
+    return vendors[safe_offset : safe_offset + safe_limit]
 
 @api_router.get("/vendors/my")
 async def get_my_vendor(token_data: dict = Depends(verify_token)):
@@ -12379,7 +12272,6 @@ async def get_my_vendor(token_data: dict = Depends(verify_token)):
         
     return vendor
 
-
 @api_router.post("/vendors/admin/migrate-coordinates")
 async def trigger_vendor_coordinate_migration(tolerance_km: float = 0.5):
     """Admin endpoint to audit and migrate vendor coordinates from full_address."""
@@ -12387,14 +12279,12 @@ async def trigger_vendor_coordinate_migration(tolerance_km: float = 0.5):
     summary = await run_vendor_coordinate_migration(tolerance_km=tolerance_km)
     return summary
 
-
 @api_router.get("/vendors/categories")
 async def get_vendor_categories():
     """Get all available vendor categories"""
     db = await get_db()
     categories = await db.query_documents('vendor_categories', order_by='count', order_direction='DESCENDING')
     return [cat.get('name') for cat in categories]
-
 
 @api_router.get("/vendors/{vendor_id}")
 async def get_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
@@ -12426,7 +12316,6 @@ async def get_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
             raise HTTPException(status_code=403, detail="This business is awaiting KYC verification and is not live yet.")
             
     return vendor
-
 
 @api_router.put("/vendors/{vendor_id}")
 async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = Depends(verify_token)):
@@ -12482,7 +12371,6 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
 
-
 @api_router.post("/vendors/{vendor_id}/storage-owner")
 async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict = Depends(verify_token)):
     """Set the storage bucket userId mapping for a vendor folder."""
@@ -12504,7 +12392,6 @@ async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict 
     await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
-
 
 @api_router.put("/vendors/{vendor_id}/business/profile")
 async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
@@ -12595,7 +12482,6 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
         "vendor": vendor,
     }
 
-
 @api_router.post("/vendors/{vendor_id}/business/images/upload")
 async def upload_vendor_business_image(
     vendor_id: str,
@@ -12672,7 +12558,6 @@ async def upload_vendor_business_image(
         "images": images,
     }
 
-
 @api_router.post("/vendors/{vendor_id}/kyc/upload")
 async def upload_vendor_kyc_file(
     vendor_id: str,
@@ -12736,7 +12621,6 @@ async def upload_vendor_kyc_file(
         "signed_url": signed_url,
         "signed_url_expires_at": signed_url_expires_at
     }
-
 
 @api_router.post("/vendors/{vendor_id}/kyc/vision-extract")
 async def extract_kyc_text_from_image(
@@ -12876,7 +12760,6 @@ async def extract_kyc_text_from_image(
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 @api_router.post("/kyc/vision-extract")
 async def extract_user_kyc_text_from_image(
     file: Optional[UploadFile] = File(None),
@@ -13006,7 +12889,6 @@ async def extract_user_kyc_text_from_image(
         logger.exception("An internal server error occurred")
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
-
 async def _get_sandbox_headers() -> dict:
     sandbox_api_key = os.getenv("SANDBOX_API_KEY")
     sandbox_auth = os.getenv("SANDBOX_AUTHORIZATION") or os.getenv("SANDBOX_ACCESS_TOKEN")
@@ -13063,7 +12945,6 @@ async def _get_sandbox_headers() -> dict:
         "Content-Type": "application/json",
     }
 
-
 async def _ensure_vendor_owner(vendor_id: str, token_data: dict):
     db = await get_db()
     user_id = token_data["user_id"]
@@ -13073,7 +12954,6 @@ async def _ensure_vendor_owner(vendor_id: str, token_data: dict):
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can perform this action")
     return db, vendor
-
 
 @api_router.post("/vendors/{vendor_id}/kyc/aadhaar/otp")
 async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
@@ -13152,7 +13032,6 @@ async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), to
         "sandbox_response": resp_data,
     }
 
-
 @api_router.post("/vendors/{vendor_id}/kyc/aadhaar/otp/verify")
 async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), token_data: dict = Depends(verify_token)):
     """Verify Aadhaar OTP through Sandbox API for vendor KYC."""
@@ -13215,7 +13094,6 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
         "sandbox_response": resp_data,
     }
 
-
 @api_router.post("/vendors/{vendor_id}/photos")
 async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: dict = Depends(verify_token)):
     """Add a photo to vendor gallery"""
@@ -13232,7 +13110,6 @@ async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: d
     await db.array_union_update('vendors', vendor_id, 'photos', [photo])
     await cache_manager.delete(f"vendor:user:{user_id}")
     return {"message": "Photo added successfully"}
-
 
 @api_router.delete("/vendors/{vendor_id}")
 async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict = Depends(verify_token)):
@@ -13265,7 +13142,16 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         if docs:
             doc = docs[0]
             record = doc.to_dict()
-            if record.get("otp") != otp:
+
+            import secrets
+            stored_otp_raw = record.get("otp")
+            if stored_otp_raw is None:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+
+            stored_otp_val = str(stored_otp_raw).encode("utf-8")
+            provided_otp_val = str(otp).encode("utf-8")
+
+            if not secrets.compare_digest(stored_otp_val, provided_otp_val):
                 raise HTTPException(status_code=400, detail="Invalid OTP")
             # If valid, just delete the doc so it can't be reused
             def _delete_doc():
@@ -13309,7 +13195,6 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
-
 
 @api_router.get("/admin/vendors/review-queue")
 async def get_vendor_review_queue(
@@ -13406,7 +13291,6 @@ async def get_vendor_review_queue(
 
     return records
 
-
 @api_router.post("/admin/vendors/{vendor_id}/approve")
 async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
     """Admin: approve vendor KYC."""
@@ -13448,7 +13332,6 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         'vendor_id': vendor_id,
         'kyc_status': 'verified',
     }
-
 
 @api_router.post("/admin/vendors/{vendor_id}/reject")
 async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
@@ -13492,7 +13375,6 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
         'kyc_status': 'rejected',
         'reason': reason,
     }
-
 
 @api_router.delete("/admin/vendors/{vendor_id}")
 async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
@@ -13757,7 +13639,6 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
 
     return request_data
 
-
 @api_router.get("/community-requests")
 async def get_community_requests(
     type: Optional[str] = None,
@@ -13937,7 +13818,6 @@ async def get_community_requests(
     
     return paginated_requests
 
-
 @api_router.get("/community-requests/my")
 async def get_my_community_requests(
     limit: int = 20,
@@ -13970,7 +13850,6 @@ async def get_my_community_requests(
 
     return requests[offset:offset + safe_limit]
 
-
 @api_router.post("/community-requests/{request_id}/resolve")
 async def resolve_community_request(request_id: str, token_data: dict = Depends(verify_token)):
     """Mark a community request as resolved (creator only)"""
@@ -13994,7 +13873,6 @@ async def resolve_community_request(request_id: str, token_data: dict = Depends(
     logger.info(f"Community request {request_id} resolved by {user_id}")
     
     return {"message": "Request resolved successfully"}
-
 
 @api_router.post("/community-requests/{request_id}/interest")
 async def toggle_request_interest(request_id: str, token_data: dict = Depends(verify_token)):
@@ -14078,7 +13956,6 @@ async def toggle_request_interest(request_id: str, token_data: dict = Depends(ve
 
     return {"interested_count": len(interested_by), "action": action, "user_interested": action == "added"}
 
-
 @api_router.delete("/community-requests/{request_id}")
 async def delete_community_request(request_id: str, token_data: dict = Depends(verify_token)):
     """Delete a community request (creator only)"""
@@ -14103,9 +13980,7 @@ async def delete_community_request(request_id: str, token_data: dict = Depends(v
     
     return {"message": "Request deleted successfully"}
 
-
 # =================== SOS EMERGENCY SYSTEM ===================
-
 
 def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371  # Earth radius in km
@@ -14113,7 +13988,6 @@ def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> f
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
     return R * 2 * math.asin(math.sqrt(a))
-
 
 async def _get_nearest_users(
     db: FirestoreDB,
@@ -14176,7 +14050,6 @@ async def _get_nearest_users(
     logger.info(f"_get_nearby_users: found {len(candidates)} users within {max_distance_km}km active in last 10 mins")
     return [uid for _, uid in candidates[:max_users]]
 
-
 async def _get_community_users(
     db: FirestoreDB,
     user_id: str,
@@ -14211,7 +14084,6 @@ async def _get_community_users(
     logger.info(f"_get_community_users: found {len(community_members)} community members")
     return list(community_members)[:max_users]
 
-
 async def _send_sos_notifications(user_ids: list, title: str, body: str, data: dict):
     if not user_ids:
         logger.warning("_send_sos_notifications: no user_ids provided")
@@ -14223,7 +14095,6 @@ async def _send_sos_notifications(user_ids: list, title: str, body: str, data: d
     except Exception as e:
         logger.error(f"Failed to send SOS notifications: {e}")
         return {"sent": 0}
-
 
 async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
     db = await get_db()
@@ -14281,7 +14152,6 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
         await task_queue.enqueue(_save_bulk_notifications, db, next_batch, title, body, 'sos', notification_data)
         step += 1
 
-
 async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, notification_type: str, data: dict):
     if not user_ids:
         return
@@ -14319,7 +14189,6 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
 
     # Process all socket emissions in parallel
     await asyncio.gather(*[_emit_socket(doc['user_id'], doc) for doc in notification_docs])
-
 
 @api_router.post("/sos")
 async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_token)):
@@ -14496,7 +14365,6 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     logger.info(f"SOS alert created by {user_id} at {area}, {city}")
     return sos_data
 
-
 @api_router.post("/sos/{sos_id}/report-misuse")
 async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
     """Report an SOS alert as misuse"""
@@ -14521,7 +14389,6 @@ async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), to
     report_id = await db.create_document('sos_misuse_reports', report_data)
     logger.info(f"SOS misuse report {report_id} created by user {user_id} for SOS {sos_id}")
     return {"message": "SOS misuse reported successfully", "report_id": report_id}
-
 
 @api_router.get("/sos/nearby")
 async def get_nearby_sos_alerts(
@@ -14567,7 +14434,6 @@ async def get_nearby_sos_alerts(
     
     return alerts
 
-
 @api_router.get("/sos/my")
 async def get_my_sos_alert(token_data: dict = Depends(verify_token)):
     """Get current user's active SOS alert"""
@@ -14580,7 +14446,6 @@ async def get_my_sos_alert(token_data: dict = Depends(verify_token)):
     ])
     
     return alert
-
 
 @api_router.post("/sos/{sos_id}/resolve")
 async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
@@ -14666,7 +14531,6 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
     
     logger.info(f"SOS alert {sos_id} marked as {status} by {user_id}")
     return {"message": f"SOS alert {status}"}
-
 
 @api_router.post("/sos/{sos_id}/respond")
 async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), token_data: dict = Depends(verify_token)):
@@ -14760,7 +14624,6 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     logger.info(f"User {user_id} responded to SOS {sos_id}: {response} (total responders: {responder_count})")
     return {"message": f"Response recorded: {response}"}
 
-
 @api_router.post("/sos/{sos_id}/responder/status")
 async def update_sos_responder_status(
     sos_id: str,
@@ -14831,7 +14694,6 @@ async def update_sos_responder_status(
 
     return {"message": "Responder status updated"}
 
-
 @api_router.post("/speech/transcribe")
 async def transcribe_audio(
     audio_base64: str = Body(..., embed=True),
@@ -14863,7 +14725,6 @@ async def transcribe_audio(
     except Exception as e:
         logger.error(f"Speech transcription error: {e}")
         raise HTTPException(status_code=500, detail="Speech transcription failed")
-
 
 # =================== SPIRITUAL ENGINE ===================
 
@@ -14900,7 +14761,6 @@ def load_festival_json():
     except Exception as e:
         logger.error(f"Failed to load festival JSON: {e}")
         return []
-
 
 FESTIVAL_YEAR_DATES = {
     2026: {
@@ -15033,7 +14893,6 @@ FESTIVAL_YEAR_DATES = {
     }
 }
 
-
 def _parse_festival_date(festival: dict, year: int) -> Optional[datetime]:
     if not festival:
         return None
@@ -15086,7 +14945,6 @@ def _parse_festival_date(festival: dict, year: int) -> Optional[datetime]:
 
     return None
 
-
 # Rashis (Zodiac Signs) for horoscope
 RASHIS = {
     "Mesh": {"english": "Aries", "element": "Fire", "ruling_planet": "Mars"},
@@ -15118,7 +14976,6 @@ HOROSCOPE_TEMPLATES = {
     "Kumbh": ["Innovation leads the way.", "Friendships bring unexpected benefits.", "Think outside the box."],
     "Meen": ["Spiritual growth is emphasized.", "Compassion guides your actions.", "Creative inspiration flows."],
 }
-
 
 def calculate_panchang(date: datetime, lat: float = 28.6139, lng: float = 77.2090):
     """Calculate Panchang for given date and location"""
@@ -15210,7 +15067,6 @@ def calculate_panchang(date: datetime, lat: float = 28.6139, lng: float = 77.209
         "paksha": paksha
     }
 
-
 def get_daily_horoscope_mock(rashi: str, date: datetime):
     """Get daily horoscope for a rashi"""
     import random
@@ -15237,7 +15093,6 @@ def get_daily_horoscope_mock(rashi: str, date: datetime):
         "ruling_planet": RASHIS.get(rashi, {}).get("ruling_planet", "Unknown")
     }
 
-
 @api_router.get("/spiritual/panchang")
 async def get_detailed_panchang(
     lat: float = 28.6139,
@@ -15257,13 +15112,11 @@ async def get_detailed_panchang(
     panchang = calculate_panchang(date, lat, lng)
     return panchang
 
-
 @api_router.get("/spiritual/festivals")
 async def get_upcoming_festivals(limit: int = 5):
     """Get upcoming festivals"""
     all_festivals = await get_all_festivals()
     return all_festivals[:limit]
-
 
 @api_router.get('/spiritual/festival/next')
 async def get_next_festival():
@@ -15272,7 +15125,6 @@ async def get_next_festival():
     if not all_festivals:
         raise HTTPException(status_code=404, detail="No festival data available")
     return all_festivals[0]
-
 
 @api_router.get('/spiritual/festivals/all')
 async def get_all_festivals():
@@ -15297,7 +15149,6 @@ async def get_all_festivals():
 
     sorted_items = sorted(response_items, key=lambda item: item["days_until"])
     return sorted_items
-
 
 RASHI_TO_ENGLISH = {
     "Mesh": "aries", "Vrishabh": "taurus", "Mithun": "gemini", "Kark": "cancer",
@@ -15468,7 +15319,6 @@ async def _generate_horoscope_with_groq(zodiac_name: str) -> dict:
             
         return fallback_data
 
-
 @api_router.get("/horoscope/daily/{zodiac_name}")
 async def get_daily_horoscope_api(
     zodiac_name: str,
@@ -15487,9 +15337,8 @@ async def get_daily_horoscope_api(
         logger.error("Horoscope fetch failed: %s", exc)
         raise HTTPException(status_code=502, detail="Horoscope provider error")
 
-
 @api_router.get("/spiritual/horoscope/{rashi}")
-async def get_horoscope(rashi: str):
+async def get_spiritual_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:
@@ -15507,7 +15356,6 @@ async def get_horoscope(rashi: str):
     except Exception:
         # Fallback to internal generator if API fails
         return get_daily_horoscope_mock(rashi, datetime.utcnow())
-
 
 @api_router.get("/spiritual/horoscope")
 async def get_user_horoscope(token_data: dict = Depends(verify_token)):
@@ -15537,12 +15385,10 @@ async def get_user_horoscope(token_data: dict = Depends(verify_token)):
         mock["has_profile"] = True
         return mock
 
-
 @api_router.get("/spiritual/rashis")
 async def get_all_rashis():
     """Get all rashis (zodiac signs)"""
     return RASHIS
-
 
 @api_router.put("/user/astrology-profile")
 async def update_astrology_profile(data: AstrologyProfile, token_data: dict = Depends(verify_token)):
@@ -15592,7 +15438,6 @@ async def update_astrology_profile(data: AstrologyProfile, token_data: dict = De
     logger.info(f"User {user_id} updated astrology profile")
     return {"message": "Astrology profile updated", **update_data}
 
-
 @api_router.get("/user/astrology-profile")
 async def get_astrology_profile(token_data: dict = Depends(verify_token)):
     """Get user's astrology profile"""
@@ -15609,7 +15454,6 @@ async def get_astrology_profile(token_data: dict = Depends(verify_token)):
         "rashi": user.get('rashi'),
         "rashi_english": RASHIS.get(user.get('rashi'), {}).get("english") if user.get('rashi') else None
     }
-
 
 # =================== WATERMELONDB SYNC APIS ===================
 
@@ -15992,7 +15836,6 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     timestamp = int(datetime.utcnow().timestamp() * 1000)
     return {"changes": changes, "timestamp": timestamp}
 
-
 @api_router.post('/sync/push')
 async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -16194,7 +16037,6 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
 
     return Response(status_code=200)
 
-
 # =================== HOME BFF ===================
 
 @api_router.get('/home/init')
@@ -16253,18 +16095,15 @@ async def home_init(request: Request, seen_ids: str = '', token_data: dict = Dep
         "next_festival": festival if not isinstance(festival, Exception) else None
     }
 
-
 # Include router
 # app.include_router(api_router)
 # app.include_router(e2ee_router, prefix="/api") moved to bottom to ensure all routes are included
-
 
 # =================== SOCKET.IO ===================
 
 ROOM_PEERS: dict[str, set[str]] = {}
 ROOM_PARTICIPANTS: dict[str, dict[str, str]] = {}
 SID_TO_PEER: dict[str, tuple[str, str]] = {}
-
 
 async def _remove_socket_from_voice_room(sid: str):
     peer_context = SID_TO_PEER.pop(sid, None)
@@ -16305,7 +16144,6 @@ async def connect(sid, environ, auth):
         except Exception as e:
             logger.warning(f"Failed to authenticate socket {sid} during connect: {e}")
     return True
-
 
 @sio.event
 async def disconnect(sid):
@@ -16358,7 +16196,6 @@ async def join_room(sid, data):
         'peers': [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id] if peer_id else []
     }
 
-
 @sio.event
 async def leave_room(sid, data):
     room = data.get('room')
@@ -16369,7 +16206,6 @@ async def leave_room(sid, data):
         if peer_id:
             await _remove_socket_from_voice_room(sid)
         return {"status": "left", "room": room}
-
 
 async def _emit_to_voice_peer(event_name: str, sid: str, data: dict):
     room = data.get('room')
@@ -16398,7 +16234,6 @@ async def _emit_to_voice_peer(event_name: str, sid: str, data: dict):
     await sio.emit(event_name, payload, to=target_sid)
     return {'status': 'sent'}
 
-
 @sio.event
 async def join(sid, data):
     """Alias for join_room to support DeepSeek implementation."""
@@ -16408,11 +16243,9 @@ async def join(sid, data):
 async def webrtc_offer(sid, data):
     return await _emit_to_voice_peer('webrtc_offer', sid, data)
 
-
 @sio.event
 async def webrtc_answer(sid, data):
     return await _emit_to_voice_peer('webrtc_answer', sid, data)
-
 
 @sio.event
 async def webrtc_ice_candidate(sid, data):
@@ -16429,7 +16262,6 @@ async def webrtc_ice(sid, data):
         data['toPeerId'] = data['to']
         
     return await _emit_to_voice_peer('webrtc_ice', sid, data)
-
 
 @sio.event
 async def voice_chunk(sid, data):
@@ -16463,7 +16295,6 @@ async def audio_chunk(sid, data):
     
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
-
 @sio.event
 async def jaap_reaction(sid, data):
     """Broadcast live reaction emoji to all active participants in a Jaap room."""
@@ -16478,7 +16309,6 @@ async def jaap_reaction(sid, data):
         'timestamp': data.get('timestamp')
     }
     await sio.emit('jaap_reaction', payload, to=room)
-
 
 @sio.on('send_dm')
 async def handle_send_dm_socket(sid, data):
@@ -16594,7 +16424,6 @@ async def handle_send_dm_socket(sid, data):
 _jaap_invite_cooldowns: dict = {}
 JAAP_INVITE_COOLDOWN_SECONDS = 300  # 5 minutes per user per mantra
 
-
 @api_router.post("/jaap/invite")
 async def send_jaap_invite(
     request: Request,
@@ -16666,7 +16495,6 @@ async def send_jaap_invite(
     logger.info(f"Jaap invite sent by {user_id} for mantra={mantra_type} to {len(target_ids)} users")
     return {"message": "Invite sent!", "sent": len(target_ids)}
 
-
 @api_router.post("/jaap/reminder")
 async def register_jaap_reminder(
     request: Request,
@@ -16723,7 +16551,6 @@ async def register_jaap_reminder(
         await asyncio.gather(*create_tasks)
         return {"message": f"Reminders set for all sessions of {mantra_type} jaap!", "active": True}
 
-
 @api_router.get("/jaap/reminders")
 async def get_jaap_reminders(
     token_data: dict = Depends(verify_token)
@@ -16742,7 +16569,6 @@ async def get_jaap_reminders(
         ]
     )
     return {"reminders": reminders}
-
 
 @api_router.get("/jaap/reminder-stats")
 async def get_jaap_reminder_stats(
@@ -16786,8 +16612,6 @@ async def get_jaap_reminder_stats(
         "total_registered_users": total_count,
         "is_interested": is_user_interested
     }
-
-
 
 async def _jaap_reminder_worker():
     """
@@ -16935,6 +16759,24 @@ async def _jaap_reminder_worker():
                             chunk_results = await asyncio.gather(*fallback_tasks[i:i + chunk_size], return_exceptions=True)
                             results.extend(chunk_results)
 
+                        # ⚡ Bolt Optimization: Batch fetch user stats and user docs upfront to avoid N+1 queries in the loop
+                        unique_uids = list({r['uid'] for r in fallback_reminders if r.get('uid')})
+                        user_jaap_stats_map = {}
+                        users_map = {}
+                        if unique_uids:
+                            try:
+                                stats_docs, users_docs = await asyncio.gather(
+                                    db.get_documents_batch("user_jaap_stats", unique_uids),
+                                    db.get_documents_batch("users", unique_uids),
+                                    return_exceptions=True
+                                )
+                                if not isinstance(stats_docs, Exception):
+                                    user_jaap_stats_map = {doc['id']: doc for doc in stats_docs if doc and 'id' in doc}
+                                if not isinstance(users_docs, Exception):
+                                    users_map = {doc['id']: doc for doc in users_docs if doc and 'id' in doc}
+                            except Exception as err:
+                                logger.warning(f"Error batch fetching user stats: {err}")
+
                         for r, result in zip(fallback_reminders, results):
                             uid = r['uid']
                             mantra_type = r['mantra_type']
@@ -16972,7 +16814,7 @@ async def _jaap_reminder_worker():
                             is_today_completed = False
                             today_count = 0
                             try:
-                                stats_doc = await db.get_document("user_jaap_stats", uid)
+                                stats_doc = user_jaap_stats_map.get(uid)
                                 if stats_doc:
                                     user_streak = int(stats_doc.get("current_streak", 0))
                                     if stats_doc.get("last_jaap_date") == date_str:
@@ -16980,7 +16822,7 @@ async def _jaap_reminder_worker():
                                         today_count = int(stats_doc.get("today_count", 0))
                                 else:
                                     # Fallback to users doc
-                                    u_doc = await db.get_document("users", uid)
+                                    u_doc = users_map.get(uid)
                                     if u_doc:
                                         user_streak = int(u_doc.get("sadhana_streak", 0))
                                         if u_doc.get("last_jaap_date") == date_str:
@@ -17034,7 +16876,6 @@ async def _jaap_reminder_worker():
             logger.error(f"Error in jaap reminder worker: {e}")
             await asyncio.sleep(30) # Cool down on error
 
-
 @api_router.post("/kyc/validate-image")
 async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -17064,7 +16905,6 @@ async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token
         expected_name=expected_name
     )
     return validation
-
 
 @api_router.delete("/admin/kyc/{user_id}")
 async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
@@ -17157,7 +16997,6 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
     logger.info(f"KYC deleted/reset for user {user_id}")
     return {"message": "User KYC deleted and reset successfully"}
 
-
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
@@ -17165,12 +17004,7 @@ app.get("/download", response_class=HTMLResponse)(download_app_redirect)
 app.get("/share/download", response_class=HTMLResponse)(download_app_redirect)
 app.mount("/socket.io", socket_app)
 
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:socket_app", host="0.0.0.0", port=8000, reload=True)
-
-
-
-
 

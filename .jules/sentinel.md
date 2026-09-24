@@ -1,36 +1,17 @@
-## 2025-03-09 - Socket.IO CORS Configuration Nuance
-**Vulnerability:** Explicit wildcard CORS configuration for socketio was broken when trying to remove an overly permissive fallback `(allowed_origins if allowed_origins else '*')`.
-**Learning:** `python-socketio` requires the explicit string `'*'` to function as a wildcard matcher for CORS. Passing `['*']` as a list fails because it performs an exact string match against the origin header.
-**Prevention:** When configuring `cors_allowed_origins` for `socketio.AsyncServer`, always preserve the explicit `'*'` wildcard string if `CORS_ORIGINS=*` is configured, rather than relying solely on the parsed `allowed_origins` list which might incorrectly represent it as `['*']`.
-## 2025-03-09 - CWE-209 Information Exposure via Explicit return payloads
-**Vulnerability:** The application was exposing explicit exception strings directly to the client inside JSON payload responses (e.g., `return {'error': str(e)}`) in socket handlers and API services.
-**Learning:** While unhandled Python exceptions (e.g., `RuntimeError`) are automatically sanitized into generic 500 errors by FastAPI, explicitly returning `str(e)` in a standard JSON response completely bypasses the framework's security perimeter and creates a CWE-209 vulnerability.
-**Prevention:** Never pass raw Python exception strings (e.g., `str(e)`) directly to the client in explicitly returned JSON payloads or `HTTPException` detail parameters. Replace dynamic error handling with safe, static fallback messages.
-## 2025-03-09 - CWE-209 Information Exposure via 3rd-Party API Responses
-**Vulnerability:** The backend was directly reflecting upstream API error responses (`response.text`) to the client when making external HTTP requests (e.g. to the Astrology API).
-**Learning:** Exposing raw 3rd-party response bodies in client-facing error payloads (e.g. `return {"error": f"Status {response.status_code}: {response.text}"}`) leaks external infrastructure details, potential API keys included in error messages, and upstream vulnerability signatures.
-**Prevention:** When handling errors from external APIs, log the raw `response.text` server-side for debugging, but always return a generic, static fallback message (e.g. `"An internal server error occurred while fetching data"`) to the client.
-## 2024-05-24 - Missing Rate Limits on Authentication Endpoints
-**Vulnerability:** The authentication endpoints for generating and verifying OTPs (`/auth/nettyfish/send` and `/auth/nettyfish/verify`) were missing rate limiting logic.
-**Learning:** These endpoints were introduced or refactored in a separate file (`backend/routes/nettyfish_auth_routes.py`) and did not inherit the `auth_rate_limit` dependency applied to the primary `auth_routes.py`, leaving them open to SMS spamming and OTP brute-forcing.
-**Prevention:** Ensure that all newly introduced authentication and OTP-related endpoints consistently implement the `Depends(auth_rate_limit)` dependency from `middleware.rate_limiter`.
-## 2025-03-09 - CWE-209 Information Exposure via Logs from 3rd-Party API Responses
-**Vulnerability:** The backend was logging raw upstream API error responses (`response.text`) in their entirety when making external HTTP requests (e.g. to the NettyFish SMS gateway).
-**Learning:** Logging raw 3rd-party response bodies in their entirety exposes the application to log injection attacks, limits exposure of potentially sensitive data (like user phone numbers or tokens echoed back in unexpected error responses), and protects against disk exhaustion from abnormally large or malformed HTML payloads.
-**Prevention:** When logging 3rd-party API responses (e.g., `response.text`), always truncate the logged body (e.g., `response.text[:200]`) to protect the logging infrastructure and prevent information exposure.
-## 2025-03-09 - Fix Path Traversal in Video Uploads
-**Vulnerability:** Path Traversal via unsanitized `UploadFile.filename` in FastAPI routes (`backend/routes/katha_routes.py` and `backend/routes/video_upload_routes.py`).
-**Learning:** `UploadFile.filename` is user-provided and can contain directory traversal sequences (like `../../../`) or Windows-style paths (`..\..\..\`). Directly using it to build output paths or determine file extensions can allow an attacker to write files outside intended directories.
-**Prevention:** Always sanitize `file.filename` using `os.path.basename(file.filename.replace('\\', '/'))` before using it in any backend logic.
-## 2025-03-09 - Missing Rate Limit on Admin Login
-**Vulnerability:** The `/admin/auth/login` endpoint was lacking rate limiting middleware (`Depends(auth_rate_limit)`), leaving the admin panel exposed to brute-force credential attacks.
-**Learning:** While other standard authentication endpoints (like OTP and login) might be protected, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
-**Prevention:** Ensure that all endpoints associated with authentication, session generation, or token issuance uniformly implement the `Depends(auth_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
-## 2025-03-09 - Missing Rate Limit on Admin Upload Endpoint
-**Vulnerability:** The `/admin/upload` endpoint in `backend/routes/katha_routes.py` was missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large file uploads.
-**Learning:** While other standard file upload endpoints (like `/videos/upload`) might be protected with `Depends(upload_rate_limit)`, isolated admin interfaces or newly added routes often slip through the cracks without strict dependency inheritance.
-**Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of whether they are user-facing or internal/admin routes.
-## 2025-03-09 - Missing Rate Limit on File Upload Endpoints
-**Vulnerability:** The vendor and KYC file upload endpoints in `backend/main.py` (`/vendors/{vendor_id}/business/images/upload`, `/vendors/{vendor_id}/kyc/upload`, `/vendors/{vendor_id}/kyc/vision-extract`, and `/kyc/vision-extract`) were missing the `upload_rate_limit` dependency, exposing the system to DoS/exhaustion attacks via large or repeated file uploads.
-**Learning:** While other standard file upload endpoints (like `/videos/upload` or `/posts/upload`) were protected with `Depends(upload_rate_limit)`, these specific vendor and KYC endpoints missed the dependency.
-**Prevention:** Ensure that all endpoints associated with file uploads consistently implement the `Depends(upload_rate_limit)` middleware, regardless of their location in the router.
+## 2026-09-17 - Fix timing attack vulnerability in admin login
+**Vulnerability:** The admin login endpoint (`/admin/auth/login`) in `backend/main.py` was using standard equality operators (`!=`) to compare passwords, which exposed the endpoint to timing attacks that could allow an attacker to guess the static admin password character by character.
+**Learning:** Using standard string comparison operators (`==`, `!=`) for passwords and sensitive secrets inherently introduces timing variations depending on where the match fails. Additionally, `secrets.compare_digest` in Python requires ASCII-only strings, which causes the application to crash with a `500 Internal Server Error` if non-ASCII strings (like emojis) are sent.
+**Prevention:** Always use `secrets.compare_digest` (or `hmac.compare_digest`) for secret comparisons and ensure the input strings are explicitly encoded to bytes (e.g., `string.encode('utf-8')`) before comparison to safely handle any non-ASCII user inputs.
+## 2024-05-27 - Replace pseudo-random generators with cryptographically secure ones for unique IDs
+**Vulnerability:** Weak PRNG used for generating potentially sensitive IDs (`SL_ID`, `Circle Code`, `Temple ID`) using Python's standard `random` module.
+**Learning:** `random` module is predictable and should not be used for generating sensitive data. It is easy to assume `random` is sufficient for application IDs, but predictability can lead to enumeration attacks or ID collisions.
+**Prevention:** Always use the `secrets` module (`secrets.choice`, `secrets.randbelow`) for generating IDs, tokens, or any values requiring unpredictability.
+## 2024-05-18 - Prevent Timing Attacks in OTP Verification
+**Vulnerability:** Standard string comparisons (`!=` and `==`) were used to verify user-submitted OTPs against stored OTPs in `firebase_auth_service.py` and `nettyfish_auth_routes.py`. These operators leak information about the match position via comparison execution time, creating a timing attack vulnerability.
+**Learning:** Even simple numerical codes (like 4-6 digit OTPs) must be verified securely to prevent sophisticated timing attacks that might deduce the OTP faster than brute force.
+**Prevention:** Always use `secrets.compare_digest` for security-sensitive token/string comparisons. Remember to encode strings to UTF-8 bytes (`str.encode('utf-8')`) before passing them to `compare_digest` to prevent `TypeError` when inputs might contain non-ASCII characters.
+
+## 2024-05-27 - Replace Vulnerable OTP Comparisons with Secure Timing Attack Defenses
+**Vulnerability:** OTP validation was implemented using standard string equality (`!=`) in `backend/main.py`, exposing the endpoints to timing attacks where attackers could measure validation time to guess characters.
+**Learning:** Even internal backend verifications for OTPs (account deletion, blood requests, vendor deletion) need constant-time string comparisons. If not done correctly with `.encode('utf-8')`, `secrets.compare_digest` can crash (`TypeError: compare_digest() takes ascii-only strings`) when inputs have non-ASCII characters or are `None`.
+**Prevention:** Always use `secrets.compare_digest` with correctly formatted UTF-8 encoded byte strings when validating sensitive authentication codes, tokens, or OTPs.

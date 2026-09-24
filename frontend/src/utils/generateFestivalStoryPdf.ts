@@ -96,6 +96,12 @@ export function getTrackedBrahmandUrl(
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   const slug = cleanName || 'festival';
+
+  // Ultra-compact URL for QR matrix: Keeps QR modules big and instantly scannable from far away
+  if (placement === 'pdf_qr_scan') {
+    return `https://brahmand.app/download?f=${slug}&s=qr`;
+  }
+
   const params = [
     `source=${slug}_pdf`,
     'utm_source=pdf_katha',
@@ -204,93 +210,6 @@ function drawJustifiedLine(
   }
 }
 
-// Draw authentic, scannable vector QR code matrix with vintage gold styling & embedded Brahmand logo
-function drawQrCodeMatrix(
-  page: any,
-  text: string,
-  startX: number,
-  startY: number,
-  size: number,
-  darkColor: any,
-  lightColor: any,
-  logoImage?: any
-) {
-  try {
-    const qrcodeGen = require('qrcode-generator');
-    // Error correction Level 'M' (15%) or 'Q' (25%) allows center icon without scan disruption
-    const qr = qrcodeGen(0, 'M');
-    qr.addData(text);
-    qr.make();
-    const modules = qr.getModuleCount();
-    const modSize = size / modules;
-
-    page.drawRectangle({
-      x: startX,
-      y: startY,
-      width: size,
-      height: size,
-      color: lightColor,
-    });
-
-    // Center cutout boundary if embedding central logo
-    const logoFrac = logoImage ? 0.24 : 0;
-    const centerStart = logoImage ? Math.floor(modules * (0.5 - logoFrac / 2)) : -1;
-    const centerEnd = logoImage ? Math.ceil(modules * (0.5 + logoFrac / 2)) : -1;
-
-    for (let r = 0; r < modules; r++) {
-      for (let c = 0; c < modules; c++) {
-        // Leave center badge area clear for logo
-        if (logoImage && r >= centerStart && r < centerEnd && c >= centerStart && c < centerEnd) {
-          continue;
-        }
-
-        if (qr.isDark(r, c)) {
-          page.drawRectangle({
-            x: startX + c * modSize,
-            y: startY + (modules - 1 - r) * modSize,
-            width: modSize,
-            height: modSize,
-            color: darkColor,
-          });
-        }
-      }
-    }
-
-    // Embed small central Brahmand vector logo inside QR code
-    if (logoImage) {
-      const centerBoxSize = (centerEnd - centerStart) * modSize;
-      const centerBoxX = startX + centerStart * modSize;
-      const centerBoxY = startY + (modules - centerEnd) * modSize;
-
-      page.drawRectangle({
-        x: centerBoxX,
-        y: centerBoxY,
-        width: centerBoxSize,
-        height: centerBoxSize,
-        color: lightColor,
-        borderColor: rgb(0.784, 0.663, 0.494), // #C8A97E vintage gold
-        borderWidth: 0.6,
-      });
-
-      const iconPad = 1.8;
-      page.drawImage(logoImage, {
-        x: centerBoxX + iconPad,
-        y: centerBoxY + iconPad,
-        width: centerBoxSize - iconPad * 2,
-        height: centerBoxSize - iconPad * 2,
-      });
-    }
-  } catch (qrErr) {
-    console.warn('[PDF] Failed to generate vector QR via qrcode-generator, using fallback:', qrErr);
-    page.drawRectangle({
-      x: startX,
-      y: startY,
-      width: size,
-      height: size,
-      color: lightColor,
-    });
-  }
-}
 
 export interface StoryChapter {
   id: number;
@@ -329,8 +248,6 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
   const deepCharcoal = rgb(0.173, 0.173, 0.173); // #2C2C2C Deep Charcoal (NO pure black)
 
   const dateFromData = festival?.date || festival?.start_date;
-  const storyText = sectionValue || festival?.origin || festival?.story || festival?.summary || '';
-  const sentences = storyText.match(/[^.!?]+[.!?]+/g) || [storyText];
 
   if (lower.includes('diwali') || lower.includes('deepavali')) {
     return {
@@ -2037,22 +1954,23 @@ export async function renderDynamicFestivalPage2(
   });
 
   // RIGHT SIDE: 35% WIDTH SCANNABLE QR CODE WITH VINTAGE GOLD BORDER & EMBEDDED BRAHMAND ICON
-  const qrSize = 78;
+  const qrSize = 88;
   const qrBoxX = qrColX + (qrColW - qrSize) / 2;
-  const qrBoxY = cardY + 28;
+  const qrBoxY = cardY + 22;
+  const quietZone = 6;
 
-  // Background white box with vintage gold border (#C8A97E)
+  // Background white box with generous quiet zone and vintage gold border (#C8A97E)
   page2.drawRectangle({
-    x: qrBoxX - 4,
-    y: qrBoxY - 4,
-    width: qrSize + 8,
-    height: qrSize + 8,
+    x: qrBoxX - quietZone,
+    y: qrBoxY - quietZone,
+    width: qrSize + quietZone * 2,
+    height: qrSize + quietZone * 2,
     color: rgb(1, 1, 1),
     borderColor: colVintageGold,
     borderWidth: 1.0,
   });
 
-  // Dynamic referral URL for deep-linking & analytics tracking: https://brahmand.app/join?source={festival}_pdf
+  // Dynamic referral URL for deep-linking & analytics tracking: https://brahmand.app/download?f={festival}&s=qr
   const referralQrUrl = getTrackedBrahmandUrl(theme.name, 'pdf_qr_scan');
   drawQrCodeMatrix(
     page2,
@@ -2060,7 +1978,7 @@ export async function renderDynamicFestivalPage2(
     qrBoxX,
     qrBoxY,
     qrSize,
-    colInk,
+    rgb(0.04, 0.04, 0.04), // Pure deep ink for high optical contrast
     rgb(1, 1, 1),
     brahmandLogo // Embedded central vector icon
   );
@@ -2076,31 +1994,39 @@ export async function renderDynamicFestivalPage2(
     color: colMaroonHead,
   });
 
-  // Direct Clickable Link annotations over Google Play and App Store badges
+  // 1. Google Play Badge Link (Dedicated touch target)
   const playStoreUri = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
   addClickableLink(doc, page2, playStoreUri, [
-    leftColX - 4,
-    storeRowY - 6,
-    leftColX + playW + 4,
-    storeRowY + 18,
+    leftColX - 6,
+    storeRowY - 8,
+    leftColX + playW + 8,
+    storeRowY + 22,
   ]);
 
-  const appStoreUri = 'https://brahmand.app/download?platform=ios';
+  // 2. Apple App Store Badge Link (Dedicated touch target - zero overlap)
+  const appStoreUri = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
   const appleFullW = appleIconW + 5 + fontHelveticaBold.widthOfTextAtSize('App Store', 8.5);
   addClickableLink(doc, page2, appStoreUri, [
-    appleStartX - 4,
-    storeRowY - 6,
-    appleStartX + appleFullW + 4,
-    storeRowY + 18,
+    appleStartX - 6,
+    storeRowY - 8,
+    appleStartX + appleFullW + 8,
+    storeRowY + 22,
   ]);
 
-  // FULL CARD CONTAINER CLICKABLE OVERLAY (4. Technical Implementation Detail)
-  // Ensures any touch on the card (text, icon, QR) in WhatsApp or mobile viewers triggers the download
+  // 3. QR Code Touch Target (Dedicated right column target)
+  addClickableLink(doc, page2, referralQrUrl, [
+    qrBoxX - quietZone,
+    qrBoxY - quietZone - 16,
+    qrBoxX + qrSize + quietZone,
+    qrBoxY + qrSize + quietZone,
+  ]);
+
+  // 4. Upper Card Content Area (Text & features only - strictly ABOVE the store buttons)
   const cardClickUrl = getTrackedBrahmandUrl(theme.name, 'download_button');
   addClickableLink(doc, page2, cardClickUrl, [
     cardX,
-    cardY,
-    cardX + cardW,
+    storeRowY + 24,
+    splitLineX,
     cardY + cardH,
   ]);
 

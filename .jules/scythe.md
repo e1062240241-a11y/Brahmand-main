@@ -1,3 +1,9 @@
 ## 2026-09-11 - Dynamic References in React Native
 **Learning:** In React Native/Expo codebases, ESLint might flag properties destructured from a context or hook state as unused (e.g. `createPostState`), but completely deleting the destructured elements might cause unexpected dependency issues or type mismatch if you're not careful. More critically, ESLint struggles with `useState` and internal function usage inside `[id].tsx`.
 **Action:** When removing dead code from complex React Native files, strictly use AST parsing or string replacement, and always verify zero usages of a component (like `CosmicCharacterRing`) via global `grep` before deletion. Never rely solely on ESLint's `no-unused-vars` in this environment.
+## 2024-05-18 - [Unused Notification Methods]
+**Learning:** Found multiple unused push notification wrappers (`notify_scripture_reading_reminder`, `notify_festival_reminder`) and their associated string constants (`TYPE_EVENT`, `TYPE_SYSTEM`) that were never integrated into background workers or cron jobs.
+**Action:** Always verify if helper functions built for features that were never fully launched (like scheduled reminders) are actually dead code before removing them, as they have no callers.
+## 2024-05-20 - Removed orphaned /user/horoscope route and API wrapper
+**Learning:** Found a case where a FastAPI route (`get_horoscope`) was redefined later in the file. The original `GET /user/horoscope` route was completely unreferenced in the frontend except for a single dead `getHoroscope` API wrapper export. Additionally, generated command log files (like `lint_output.txt`) must be deleted before committing so they don't pollute the git history.
+**Action:** When finding a Redefinition linter error in FastAPI, carefully grep both the frontend and backend for usage. Delete the route and its frontend wrapper if completely unused. And ALWAYS remove temporary log files created during the exploration phase.

@@ -38,3 +38,39 @@
 ## 2026-09-12 - Language-Aware Festival Screen Greetings & Reminders
 **Learning:** Hardcoded English greetings and alert prompts in festival discovery screens isolate non-English users during major cultural moments. Localizing greetings ("नमस्ते मित्र 👋"), sub-messages ("आपका अगला पर्व आ गया है..."), card labels ("त्योहार"), loader text ("त्योहार लोड हो रहे हैं..."), and reminder toggle alerts in warm Devanagari Hindi deepens cultural belonging and retention.
 **Action:** Updated `frontend/app/festivals.tsx` to conditionally render Devanagari Hindi copy when `user?.language === 'hi'`.
+
+## 2026-09-13 - Language-Aware Horoscope Screen & Jyotish AI Tags
+**Learning:** Hardcoded English headers and category badges in astrology screens (like Jyotish/Horoscope) reduce engagement for Hindi users. Localizing section titles ("आपकी राशि क्या है", "ग्रह विश्लेषण"), AI consult prompts ("एआई से राशिफल परामर्श लें"), metrics labels ("वित्त", "प्रेम", "स्वास्थ्य", "कुल प्रभाव"), and modal action CTAs in warm Devanagari Hindi enhances user belonging and habit-building.
+**Action:** Updated `frontend/app/horoscope.tsx` to check `user?.language === 'hi'` and render localized Devanagari Hindi copy across headers, cards, badges, and modals.
+
+## 2026-09-14 - Language-Aware Library Search & Inspiration Polish
+**Learning:** Hardcoded English text in search inputs, headers, quote banners, and section CTAs in discovery screens (like Library) breaks context for non-English users. Conditionally rendering Devanagari Hindi text (`"पुस्तक, लेखक या विषय खोजें..."`, `"सभी देखें ›"`, etc.) based on `useLanguageStore` maintains warm cultural alignment without affecting layout or component interfaces.
+**Action:** Updated `frontend/app/library/index.tsx` header title, search placeholder, quote text, and section CTA to render localized Devanagari Hindi when `language === 'hi'`.
+
+## 2026-09-15 - Community Badges Language-Aware Polish & Passport CTA
+**Learning:** Cold developer notes (e.g. "created to avoid unmatched route issues") in secondary community screens alienate users and diminish app quality. Replacing developer text with warm, localized spiritual encouragement ("साधना में निरंतरता बनाए रखें...") and adding a cross-feature CTA button to Brahmand Passport (`/passport`) seamlessly turns an empty state into a retention-driving milestone screen.
+**Action:** Updated `frontend/app/badges.tsx` to conditionally render warm Devanagari Hindi copy (`"सामुदायिक सम्मान एवं बैज"`, `"यहाँ आपकी साधना..."`) and added a cross-feature CTA button linking directly to `/passport`.
+
+## 2026-09-16 - Active Community Requests List Language-Aware Empty State
+**Learning:** Hardcoded English empty state text in mutual aid and community help screens ("No Requests Found") feels impersonal and transactional to Hindi users. Conditionally displaying warm Devanagari Hindi copy ("कोई सहायता अनुरोध उपलब्ध नहीं है ✨", "सहायता अनुरोध पोस्ट करें 🙏") based on `useLanguageStore` encourages active community participation and mutual support.
+**Action:** Updated `frontend/app/community-request/list.tsx` to conditionally render polite Devanagari Hindi titles, subtitles, and CTA buttons when `language === 'hi'`.
+
+## 2026-09-17 - Language-Aware Blocked Accounts Empty State & Error Alerts
+**Learning:** Hardcoded English messages in security and account management screens (such as Blocked Accounts search empty state and error/success alerts) break trust and continuity for Hindi users. Conditionally rendering warm Devanagari Hindi copy ("कोई परिणाम नहीं मिला", "अवरुद्ध उपयोगकर्ताओं की सूची लोड करने में समर्थ।") ensures a seamless, respectful user experience across all settings screens.
+**Action:** Updated `frontend/app/settings/blocked.tsx` to check `t('language') === 'hi'` and render localized Devanagari Hindi text for search empty states, error alerts, and accessibility labels.
+
+## 2026-09-18 - Language-Aware Local Community Discovery Header & Empty States
+**Learning:** Hardcoded English section titles and empty state prompts in community discovery screens discourage Hindi-first users from forming or joining local groups. Conditionally rendering Devanagari Hindi copy ("सभी स्थानीय समुदाय", "कोई समुदाय नहीं मिला", "पहला समुदाय बनाएं 🙏") fosters a warm sense of belonging and encourages local community creation.
+**Action:** Updated `frontend/app/community/discover.tsx` to conditionally render Devanagari Hindi text across local community section headers, empty state titles, search query fallbacks, and creation CTA buttons when `user?.language === 'hi'`.
+
+## 2026-09-19 - Passport Progress Screen Language-Aware Polish & Empty States
+**Learning:** Hardcoded English text on spiritual progress tracking screens (like Passport Progress) disconnects Hindi users from their milestones. Conditionally rendering Devanagari Hindi headers ("पासपोर्ट प्रगति"), section labels ("जाप पूर्ण करें", "अध्ययन पूर्ण करें"), input prompts ("मालाएं (उदा. 108)"), and warm empty state prompts ("अभी कोई बैज नहीं है... 🙏") deepens personal connection and encourages daily habit tracking.
+**Action:** Updated `frontend/app/passport/progress.tsx` with `useLanguageStore` to conditionally display Devanagari Hindi copy across stats, headers, forms, and empty states when `language === 'hi'`.
+
+## 2026-09-20 - Katha Filter Empty State Language-Aware Polish
+**Learning:** Cold or unlocalized filter empty states in media and discourse features (like Katha) create abrupt drops in engagement when users apply category filters that return no results. Conditionally rendering warm Devanagari Hindi copy (`"इस फ़िल्टर में कोई कथा एपिसोड नहीं मिला ✨"`) when `language === 'hi'` maintains a warm, respectful tone throughout spiritual audio exploration.
+**Action:** Updated `frontend/app/library/katha.tsx` to conditionally render Devanagari Hindi copy for the episode filter empty state when `language === 'hi'`.
+
+## 2026-09-21 - Follow Connections Empty State Language Polish & Community Discovery CTA
+**Learning:** Empty follower and following lists without guidance or CTAs miss an opportunity to guide users toward community participation and spiritual practice. Localizing empty prompts into warm Devanagari Hindi ("अभी कोई फ़ॉलोअर नहीं है ✨", "सनातन समुदाय के अन्य साधकों को खोजें...") and offering contextual CTAs linking directly to Circles (`/(tabs)/circles`) and Jaap (`/(tabs)/jaap`) transforms idle list states into active habit-building drivers.
+**Action:** Updated `frontend/app/follow-connections.tsx` `ListEmptyComponent` to conditionally render Devanagari Hindi text and actionable CTA buttons based on `useLanguageStore`.

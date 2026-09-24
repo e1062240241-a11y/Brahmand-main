@@ -342,6 +342,10 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                 }
               }}
               style={styles.rightIcon}
+              accessibilityRole="button"
+              accessibilityLabel={showSuggestions && suggestions.length > 0 ? "Close suggestions" : "Open suggestions"}
+              accessibilityState={{ expanded: showSuggestions && suggestions.length > 0 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <Ionicons 
                 name={showSuggestions && suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} 

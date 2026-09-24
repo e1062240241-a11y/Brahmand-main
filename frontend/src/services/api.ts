@@ -1951,8 +1951,6 @@ export const deleteUserProfile = (otp?: string) =>
 
 export const getProfileCompletion = () => api.get("/user/profile-completion");
 
-export const getHoroscope = () => api.get("/user/horoscope");
-
 // Community Stats
 export const getCommunityStats = (communityId: string) =>
   api.get(`/communities/${communityId}/stats`);

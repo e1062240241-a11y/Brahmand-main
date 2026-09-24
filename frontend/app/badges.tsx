@@ -4,9 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { useLanguageStore } from '../src/utils/i18n';
 
+// 🧲 Magnet: Reframed cold community badges screen & developer notes into warm, localized engagement copy + Passport CTA
 export default function BadgesScreen() {
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
 
   const handleBack = useCallback(() => {
     router.back();
@@ -22,23 +26,43 @@ export default function BadgesScreen() {
     return () => subscription.remove();
   }, [handleBack]);
 
+  const handleOpenPassport = () => {
+    router.push('/passport');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Community Badges</Text>
+        <Text style={styles.title}>
+          {isHindi ? 'सामुदायिक सम्मान एवं बैज' : 'Community Badges'}
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.content}>
         <Text style={styles.message}>
-          This is your community badges section. Here we’ll show your earned badges and recognition.
+          {isHindi
+            ? 'यहाँ आपकी साधना, योगदान और सामुदायिक सेवा के लिए प्राप्त सम्मान एवं बैज प्रदर्शित होंगे। 🙏'
+            : 'Your earned community badges, recognitions, and spiritual journey milestones will be displayed here. 🙏'}
         </Text>
         <Text style={styles.note}>
-          This page was created to avoid unmatched route issues. Use back to return to the profile tab safely.
+          {isHindi
+            ? 'साधना में निरंतरता बनाए रखें और अपने अनुभव समुदाय के साथ साझा करें। ✨'
+            : 'Keep up your regular spiritual practice and share your journey with the community. ✨'}
         </Text>
+
+        <TouchableOpacity
+          style={styles.ctaButton}
+          activeOpacity={0.8}
+          onPress={handleOpenPassport}
+        >
+          <Text style={styles.ctaButtonText}>
+            {isHindi ? 'अपना पासपोर्ट देखें ➔' : 'View Your Passport ➔'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -79,5 +103,19 @@ const styles = StyleSheet.create({
   note: {
     color: COLORS.textSecondary,
     fontSize: 14,
+    marginBottom: SPACING.lg,
+  },
+  ctaButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
