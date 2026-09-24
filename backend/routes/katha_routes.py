@@ -77,7 +77,6 @@ async def _verify_admin_auth(
         key_bytes = key.encode('utf-8')
         secret_bytes = ADMIN_SECRET_KEY.encode('utf-8')
         if secrets.compare_digest(key_bytes, secret_bytes):
-        if secrets.compare_digest(key, ADMIN_SECRET_KEY):
             return True
     if token_data:
         user_id = token_data.get("user_id")
