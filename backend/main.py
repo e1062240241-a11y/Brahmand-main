@@ -10265,10 +10265,6 @@ async def get_reports(
         try:
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:
-                if u.get('id'):
-        try:
-            users_docs = await db.get_documents_batch('users', user_ids_list)
-            for u in users_docs:
                 if u and u.get('id'):
                     user_map[str(u['id'])] = {
                         'name': u.get('name') or 'N/A',
