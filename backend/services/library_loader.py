@@ -14,15 +14,6 @@ def _read_json_safe(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
     except Exception:
         raise HTTPException(status_code=500, detail=invalid_msg)
 
-def _read_json(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=not_found_msg)
-    try:
-        with path.open("r", encoding="utf-8") as file:
-            return json.load(file)
-    except Exception:
-        raise HTTPException(status_code=500, detail=invalid_msg)
-
 def _ensure_list(rows: Any, invalid_msg: str) -> list:
     if not isinstance(rows, list):
         raise HTTPException(status_code=500, detail=invalid_msg)
