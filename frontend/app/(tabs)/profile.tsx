@@ -95,6 +95,9 @@ export default function ProfileScreen() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
   const activeUserIdRef = useRef<string | undefined>(userId);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const lastLoadedUserIdRef = useRef<string | null>(null);
   const requestSequenceRef = useRef(0); // ponytail: track request sequence to avoid race conditions
   const isFetchingRef = useRef(false); // ponytail: track fetch state to prevent overlapping calls
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -178,6 +181,12 @@ export default function ProfileScreen() {
 
   const [profile, setProfile] = useState<any>(user || null);
   const [loading, setLoading] = useState(!user);
+
+  useEffect(() => {
+    if (user) {
+      setProfile((prev: any) => prev ? { ...prev, ...user } : user);
+    }
+  }, [user]);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -418,7 +427,7 @@ export default function ProfileScreen() {
         console.error('Error data:', error.response.data);
       }
       console.error('Error message:', error?.message);
-      setProfile(user || null);
+      setProfile(userRef.current || null);
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         console.log('[Profile] auth error, logging out');
         await logout();
@@ -831,7 +840,6 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const isDifferentUser = activeUserIdRef.current !== userId;
       const isPlaceholder = !userId ||
         userId.toLowerCase().trim() === 'undefined' ||
         userId.toLowerCase().trim() === 'null' ||
@@ -844,7 +852,15 @@ export default function ProfileScreen() {
         return;
       }
 
-      if (isDifferentUser || posts.length === 0) {
+      const currentUser = userRef.current;
+      if (currentUser) {
+        setProfile((prev: any) => prev ? { ...prev, ...currentUser } : currentUser);
+      }
+
+      const isDifferentUser = lastLoadedUserIdRef.current !== userId;
+
+      if (isDifferentUser) {
+        lastLoadedUserIdRef.current = userId;
         activeUserIdRef.current = userId;
 
         setPosts([]);
@@ -853,12 +869,15 @@ export default function ProfileScreen() {
         hasMoreRef.current = true;
         setOffset(0);
         setHasMore(true);
-        setProfile(user || null);
+        setProfile(currentUser || null);
 
-        fetchProfile(!user);
+        fetchProfile(!currentUser);
         loadPosts(true);
+      } else {
+        // Tab focus return: light refresh without wiping posts or triggering infinite re-render loop
+        fetchProfile(false);
       }
-    }, [userId, loadPosts, user, fetchProfile, posts.length])
+    }, [userId, loadPosts, fetchProfile])
   );
 
   // Listen for background video/post uploads and instantly prepend to profile feed & increment posts count

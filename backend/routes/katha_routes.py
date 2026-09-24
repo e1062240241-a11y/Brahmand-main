@@ -1,4 +1,5 @@
 import os
+import secrets
 import json
 import logging
 import asyncio
@@ -68,8 +69,9 @@ async def _verify_admin_auth(
 ) -> bool:
     """Verify admin using existing ADMIN_PANEL credentials token or secret key."""
     key = x_admin_key or x_admin_key_alt
-    if key and key == ADMIN_SECRET_KEY:
-        return True
+    if key and ADMIN_SECRET_KEY:
+        if secrets.compare_digest(key, ADMIN_SECRET_KEY):
+            return True
     if token_data:
         user_id = token_data.get("user_id")
         role = token_data.get("role")
