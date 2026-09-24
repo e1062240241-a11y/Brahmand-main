@@ -30,6 +30,7 @@ export default function NewDMScreen() {
   const selectedUserPhoto = toParamString(params.userPhoto as any);
   const initialShareText = toParamString(params.shareText as any);
 
+  const isHindi = user?.language === 'hi';
   const [message, setMessage] = useState(initialShareText || '');
   const [foundUser, setFoundUser] = useState<any>(null);
   const [sending, setSending] = useState(false);
@@ -233,7 +234,7 @@ export default function NewDMScreen() {
             >
               <Ionicons name="chevron-back" size={24} color="#111111" />
             </Pressable>
-            <Text style={styles.headerTitle}>New Chat</Text>
+            <Text style={styles.headerTitle}>{isHindi ? 'नया संवाद' : 'New Chat'}</Text>
           </View>
 
           <KeyboardAwareScrollView style={styles.content} keyboardShouldPersistTaps="handled">
@@ -250,7 +251,7 @@ export default function NewDMScreen() {
                     <TextInput
                       ref={searchInputRef}
                       style={styles.searchInput}
-                      placeholder="Find people, groups"
+                      placeholder={isHindi ? 'लोगों व समूहों को खोजें...' : 'Find people, groups'}
                       placeholderTextColor="#777"
                       value={userSearchQuery}
                       onChangeText={handleUserSearch}
@@ -275,7 +276,7 @@ export default function NewDMScreen() {
                     onPress={() => router.push('/circle/create')}
                   >
                     <MaterialCommunityIcons name="account-group-outline" size={24} color="#111" />
-                    <Text style={styles.actionText}>New Group</Text>
+                    <Text style={styles.actionText}>{isHindi ? 'नया समूह' : 'New Group'}</Text>
                   </Pressable>
 
                   <Pressable
@@ -284,7 +285,7 @@ export default function NewDMScreen() {
                     onPress={() => searchInputRef.current?.focus()}
                   >
                     <MaterialCommunityIcons name="account-outline" size={24} color="#111" />
-                    <Text style={styles.actionText}>New Contact</Text>
+                    <Text style={styles.actionText}>{isHindi ? 'नया संपर्क' : 'New Contact'}</Text>
                   </Pressable>
                 </View>
 
@@ -295,7 +296,7 @@ export default function NewDMScreen() {
                     {/* Frequently Contacted Section */}
                     {filteredFrequent.length > 0 && (
                       <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Frequently contacted</Text>
+                        <Text style={styles.sectionTitle}>{isHindi ? 'अक्सर संपर्क किए गए' : 'Frequently contacted'}</Text>
                         {filteredFrequent.map(renderUserItem)}
                       </View>
                     )}
@@ -303,13 +304,13 @@ export default function NewDMScreen() {
                     {/* Suggested Section */}
                     {filteredSuggested.length > 0 && (
                       <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Suggested</Text>
+                        <Text style={styles.sectionTitle}>{isHindi ? 'सुझाए गए' : 'Suggested'}</Text>
                         {filteredSuggested.map(renderUserItem)}
                       </View>
                     )}
 
                     {filteredFrequent.length === 0 && filteredSuggested.length === 0 && (
-                      <Text style={styles.emptyText}>No users found</Text>
+                      <Text style={styles.emptyText}>{isHindi ? 'कोई उपयोगकर्ता नहीं मिला ✨' : 'No users found'}</Text>
                     )}
                   </View>
                 )}
@@ -340,9 +341,9 @@ export default function NewDMScreen() {
                 {error ? <Text style={styles.error}>{error}</Text> : null}
 
                 <View style={styles.messageSection}>
-                  <Text style={styles.label}>Message</Text>
+                  <Text style={styles.label}>{isHindi ? 'संदेश' : 'Message'}</Text>
                   <TextInput
-                    placeholder="Type your message..."
+                    placeholder={isHindi ? 'अपना संदेश लिखें...' : 'Type your message...'}
                     placeholderTextColor="#777"
                     value={message}
                     onChangeText={setMessage}
@@ -352,7 +353,7 @@ export default function NewDMScreen() {
                     textAlignVertical="top"
                   />
                   <Button
-                    title="Send Message"
+                    title={isHindi ? 'संदेश भेजें' : 'Send Message'}
                     onPress={handleSend}
                     loading={sending}
                     disabled={!message.trim()}
