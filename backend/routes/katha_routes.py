@@ -1,9 +1,12 @@
 import os
+import secrets
 import json
 import logging
 import asyncio
+import secrets
 import shutil
 import subprocess
+import secrets
 from datetime import datetime, timezone, timedelta
 from tempfile import NamedTemporaryFile
 from typing import Optional, Dict, Any
@@ -68,8 +71,14 @@ async def _verify_admin_auth(
 ) -> bool:
     """Verify admin using existing ADMIN_PANEL credentials token or secret key."""
     key = x_admin_key or x_admin_key_alt
-    if key and key == ADMIN_SECRET_KEY:
+    if key and ADMIN_SECRET_KEY and secrets.compare_digest(key, ADMIN_SECRET_KEY):
         return True
+    if key and ADMIN_SECRET_KEY:
+        key_bytes = key.encode('utf-8')
+        secret_bytes = ADMIN_SECRET_KEY.encode('utf-8')
+        if secrets.compare_digest(key_bytes, secret_bytes):
+        if secrets.compare_digest(key, ADMIN_SECRET_KEY):
+            return True
     if token_data:
         user_id = token_data.get("user_id")
         role = token_data.get("role")

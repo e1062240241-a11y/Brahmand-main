@@ -872,13 +872,16 @@ export default function MyKrishnaChat() {
   const handleClearChat = () => {
     setMenuVisible(false);
     const slotLabel = activeChatId === 'slot_1' ? 'Chat 1' : 'Chat 2';
+    const isHindi = t('language') === 'hi';
     Alert.alert(
-      `Clear ${slotLabel} History`,
-      `Kya aap Krishna ke sath ${slotLabel} ki poori chat history delete karna chahte hain?`,
+      isHindi ? `${slotLabel} का इतिहास मिटाएं` : `Clear ${slotLabel} History`,
+      isHindi
+        ? `क्या आप श्रीकृष्ण के साथ ${slotLabel} की संपूर्ण बातचीत का इतिहास मिटाना चाहते हैं?`
+        : `Are you sure you want to delete all chat history for ${slotLabel} with My Krishn?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: isHindi ? 'रद्द करें' : 'Cancel', style: 'cancel' },
         {
-          text: 'Clear All',
+          text: isHindi ? 'इतिहास मिटाएं' : 'Clear All',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -889,7 +892,10 @@ export default function MyKrishnaChat() {
               setHistoryModalVisible(false);
             } catch (err) {
               console.error('Failed to clear chat:', err);
-              Alert.alert('Error', 'Chat history clear nahi ho payi. Dobara try karein.');
+              Alert.alert(
+                isHindi ? 'त्रुटि' : 'Error',
+                isHindi ? 'बातचीत का इतिहास मिटाया नहीं जा सका। पुनः प्रयास करें।' : 'Failed to clear chat history. Please try again.'
+              );
             } finally {
               setIsLoading(false);
             }
@@ -1320,7 +1326,7 @@ export default function MyKrishnaChat() {
                   <Ionicons name="search" size={16} color="#A88B79" style={{ marginRight: 8 }} />
                   <TextInput
                     style={styles.historySearchInput}
-                    placeholder="Search past questions..."
+                    placeholder={t('language') === 'hi' ? 'पुराने प्रश्न खोजें...' : 'Search past questions...'}
                     placeholderTextColor="#A88B79"
                     value={historySearchTerm}
                     onChangeText={setHistorySearchTerm}
@@ -1339,13 +1345,17 @@ export default function MyKrishnaChat() {
                   <Ionicons name="chatbubbles-outline" size={48} color="#D8C2B3" />
                   <Text style={styles.emptyHistoryTitle}>
                     {historyUserQueries.length === 0
-                      ? 'No Chat History Yet'
-                      : 'No Matching Conversations'}
+                      ? (t('language') === 'hi' ? 'अभी कोई संवाद इतिहास नहीं है 🙏' : 'No Chat History Yet')
+                      : (t('language') === 'hi' ? 'कोई संवाद नहीं मिला' : 'No Matching Conversations')}
                   </Text>
                   <Text style={styles.emptyHistorySubtitle}>
                     {historyUserQueries.length === 0
-                      ? 'Ask your questions to My Krishn to build your spiritual dialogue history.'
-                      : 'Try searching with different keywords.'}
+                      ? (t('language') === 'hi'
+                          ? 'श्रीकृष्ण से अपने मन की बात पूछकर अपने आध्यात्मिक संवादों को सहेजें ✨'
+                          : 'Ask your questions to My Krishn to build your spiritual dialogue history.')
+                      : (t('language') === 'hi'
+                          ? 'कृपया अन्य शब्दों के साथ पुनः खोजें।'
+                          : 'Try searching with different keywords.')}
                   </Text>
                 </View>
               ) : (
@@ -1388,7 +1398,9 @@ export default function MyKrishnaChat() {
                   onPress={handleClearChat}
                 >
                   <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                  <Text style={styles.sheetClearBtnText}>Clear All Conversations</Text>
+                  <Text style={styles.sheetClearBtnText}>
+                    {t('language') === 'hi' ? 'सभी संवाद मिटाएं' : 'Clear All Conversations'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>

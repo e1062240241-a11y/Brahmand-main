@@ -263,7 +263,7 @@ export default function EditProfileScreen() {
         }
       }
 
-      const response = await updateExtendedProfile({
+      const updatedFields: Record<string, any> = {
         name: name.trim() || undefined,
         language: language.trim() || undefined,
         kuldevi: kuldevi.trim() || undefined,
@@ -275,9 +275,15 @@ export default function EditProfileScreen() {
         place_of_birth_latitude: lat,
         place_of_birth_longitude: lng,
         gender: gender.trim() || undefined,
-      });
+      };
 
-      updateUser(response.data || {});
+      const response = await updateExtendedProfile(updatedFields);
+
+      const nextUser = {
+        ...(response.data || {}),
+        ...(name.trim() ? { name: name.trim() } : {}),
+      };
+      updateUser(nextUser);
       Alert.alert(
         t('language') === 'hi' ? 'प्रोफ़ाइल अपडेट हो गई' : 'Profile Updated',
         astrologyReady

@@ -1,3 +1,7 @@
+## 2025-02-27 - [Fix Admin Auth Timing Attack]
+**Vulnerability:** Admin authentication using a secret key was utilizing standard string comparison (`==`). This is vulnerable to timing attacks, where an attacker can determine the correct string character-by-character by measuring the time the comparison takes to fail.
+**Learning:** In Python, standard string equality checks return `False` as soon as a mismatch is found, creating a measurable time difference dependent on how many leading characters match.
+**Prevention:** Always use `secrets.compare_digest()` for comparing sensitive information like passwords, tokens, API keys, or secret keys, as it performs a constant-time comparison that resists timing attacks. Ensure the inputs are not `None` before comparison.
 ## 2026-09-17 - Fix timing attack vulnerability in admin login
 **Vulnerability:** The admin login endpoint (`/admin/auth/login`) in `backend/main.py` was using standard equality operators (`!=`) to compare passwords, which exposed the endpoint to timing attacks that could allow an attacker to guess the static admin password character by character.
 **Learning:** Using standard string comparison operators (`==`, `!=`) for passwords and sensitive secrets inherently introduces timing variations depending on where the match fails. Additionally, `secrets.compare_digest` in Python requires ASCII-only strings, which causes the application to crash with a `500 Internal Server Error` if non-ASCII strings (like emojis) are sent.
@@ -15,3 +19,11 @@
 **Vulnerability:** OTP validation was implemented using standard string equality (`!=`) in `backend/main.py`, exposing the endpoints to timing attacks where attackers could measure validation time to guess characters.
 **Learning:** Even internal backend verifications for OTPs (account deletion, blood requests, vendor deletion) need constant-time string comparisons. If not done correctly with `.encode('utf-8')`, `secrets.compare_digest` can crash (`TypeError: compare_digest() takes ascii-only strings`) when inputs have non-ASCII characters or are `None`.
 **Prevention:** Always use `secrets.compare_digest` with correctly formatted UTF-8 encoded byte strings when validating sensitive authentication codes, tokens, or OTPs.
+## 2025-02-18 - Fix timing attack vulnerability in admin secret comparison
+**Vulnerability:** The application was using a standard equality operator (`==`) to verify the `ADMIN_SECRET_KEY` during admin route authentication in `katha_routes.py`. This is vulnerable to timing attacks where an attacker can figure out the correct secret key character by character based on how long the comparison takes.
+**Learning:** Python's standard string comparison operations exit early upon encountering the first mismatched character. This early exit results in measurable time differences depending on how much of the guessed string matches the actual string. Secrets should always be compared using a constant-time comparison algorithm.
+**Prevention:** Always use `secrets.compare_digest()` for comparing security-sensitive tokens, passwords, or keys. Also remember to ensure `None` strings are not evaluated if `secrets.compare_digest` is used since they cause a type error, meaning proper fallback handling is needed.
+## 2024-05-24 - [Fix timing attack vulnerability in admin auth]
+**Vulnerability:** Timing attack vulnerability in `_verify_admin_auth` where `ADMIN_SECRET_KEY` was compared using standard equality `==`.
+**Learning:** Standard string equality (`==`) evaluates character-by-character and short-circuits on the first mismatch. This execution time difference can theoretically be used to brute force secrets character-by-character over many network requests.
+**Prevention:** Always use `secrets.compare_digest(str1, str2)` for comparing sensitive tokens, hashes, passwords, or keys in Python to ensure constant-time execution regardless of input.
