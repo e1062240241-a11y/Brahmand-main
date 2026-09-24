@@ -5000,10 +5000,10 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
         
     # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
     updated_post['likes_count'] = new_count
@@ -5037,9 +5037,12 @@ async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data
         return {"message": "No changes requested", "post": post}
         
     update_data['updated_at'] = datetime.utcnow()
-    
     await db.update_document('posts', post_id, update_data)
-    updated_post = await db.get_document('posts', post_id)
+
+    # ⚡ Bolt Optimization: Avoid redundant fetch
+    updated_post = post.copy()
+    updated_post['id'] = post_id
+    updated_post.update(update_data)
     
     return {
         "message": "Post updated successfully",
@@ -5239,12 +5242,9 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = prev_comments_count + 1
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        # Fallback if document not found in cache/db immediately
-        updated_post = post.copy()
-        updated_post['id'] = post_id
-
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5358,10 +5358,9 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
