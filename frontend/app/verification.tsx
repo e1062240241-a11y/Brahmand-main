@@ -112,6 +112,7 @@ export default function VerificationScreen() {
                 placeholder="Enter your full name"
                 value={fullName}
                 onChangeText={setFullName}
+                rules={{ required: true, minLength: 2, preventInjection: true }}
               />
 
               <Text style={styles.label}>ID Type</Text>
@@ -144,6 +145,11 @@ export default function VerificationScreen() {
                 placeholder="Enter your ID number"
                 value={idNumber}
                 onChangeText={setIdNumber}
+                rules={{
+                  required: true,
+                  aadhaar: idType === 'aadhaar',
+                  preventInjection: true
+                }}
               />
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
