@@ -415,6 +415,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch (e) {
         // ignore
       }
+
+      if (Platform.OS !== 'web' && updatedUser.id) {
+        try {
+          const { database } = require('../database');
+          const { Q } = require('@nozbe/watermelondb');
+          const usersCol = database?.collections?.get('users');
+          if (usersCol) {
+            database.write(async () => {
+              const records = await usersCol.query(Q.where('id', updatedUser.id)).fetch();
+              if (records.length > 0) {
+                await records[0].update((u: any) => {
+                  if (updatedUser.name !== undefined) u.name = updatedUser.name;
+                  if (updatedUser.photo !== undefined) u.photo = updatedUser.photo;
+                  if (updatedUser.bio !== undefined) u.bio = updatedUser.bio;
+                  if (updatedUser.sl_id !== undefined) u.slId = updatedUser.sl_id;
+                });
+              }
+            }).catch(() => {});
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   },
   

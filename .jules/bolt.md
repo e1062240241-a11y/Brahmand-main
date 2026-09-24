@@ -1,3 +1,6 @@
+## 2024-05-18 - Optimize Expo and FCM Push Notification Chunking
+**Learning:** In the `_send_expo_push_notifications` and `send_multicast` functions within `firebase_notification_service.py`, chunked notification payloads were previously sent sequentially in a `for chunk in chunks:` loop. This blocked execution, added unnecessary latency, and scaled linearly with the number of devices.
+**Action:** When sending batched HTTP requests or external API calls (e.g., Firebase FCM or Expo push notifications) in the FastAPI backend, avoid sequential `for` loops. For async clients, execute requests concurrently using `asyncio.gather`. For synchronous blocking SDK calls (e.g., `fcm.send_each_for_multicast`), use `asyncio.to_thread` wrapped in `asyncio.gather` to parallelize chunk processing without blocking the main event loop.
 ## 2025-02-23 - Concurrent database queries with asyncio.gather
 **Learning:** Sequential `await`s on independent database queries (like fetching dual relationships in Firestore) can easily lead to unnecessary latency bottlenecks in the FastAPI backend.
 **Action:** Always look for independent `await` statements (such as fetching user-to-target and target-to-user edges sequentially) and wrap them in `asyncio.gather` for concurrent execution, while maintaining correct exception handling or fallback if needed.
