@@ -1,3 +1,6 @@
+## 2024-05-18 - Optimize Expo and FCM Push Notification Chunking
+**Learning:** In the `_send_expo_push_notifications` and `send_multicast` functions within `firebase_notification_service.py`, chunked notification payloads were previously sent sequentially in a `for chunk in chunks:` loop. This blocked execution, added unnecessary latency, and scaled linearly with the number of devices.
+**Action:** When sending batched HTTP requests or external API calls (e.g., Firebase FCM or Expo push notifications) in the FastAPI backend, avoid sequential `for` loops. For async clients, execute requests concurrently using `asyncio.gather`. For synchronous blocking SDK calls (e.g., `fcm.send_each_for_multicast`), use `asyncio.to_thread` wrapped in `asyncio.gather` to parallelize chunk processing without blocking the main event loop.
 ## 2025-02-23 - Concurrent database queries with asyncio.gather
 **Learning:** Sequential `await`s on independent database queries (like fetching dual relationships in Firestore) can easily lead to unnecessary latency bottlenecks in the FastAPI backend.
 **Action:** Always look for independent `await` statements (such as fetching user-to-target and target-to-user edges sequentially) and wrap them in `asyncio.gather` for concurrent execution, while maintaining correct exception handling or fallback if needed.
@@ -89,3 +92,6 @@
 ## 2024-05-14 - Optimize Community Joining Loop in `approve_verification`
 **Learning:** In the FastAPI backend, admin endpoints containing loops over data structures (like joining multiple communities during KYC approval) can unintentionally trigger N+1 latency by making sequential Firestore reads/writes and multiple network calls for the same user document using `db.array_union_update`.
 **Action:** Extract and batch array updates into a single operation using a list of IDs. Use `asyncio.gather` for independent actions (such as adding the user to the community collection or cache invalidations) to perform them concurrently, significantly reducing network overhead and wait times.
+## 2024-05-19 - Redundant Fetch Construction
+**Learning:** In FastAPI endpoints, checking for and removing sequential `db.get_document` calls that fetch the exact same document multiple times is a common N+1 reduction opportunity. Rather than re-fetching the document after a `db.update_document` or `db.increment_field` purely to return its updated fields in the API response, we can construct the updated representation in-memory by doing `updated_doc = original_doc.copy(); updated_doc.update(modifications)`.
+**Action:** Always scan for redundant fetches directly following an update, and eliminate the DB call by building the updated state object locally whenever possible.

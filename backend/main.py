@@ -1958,6 +1958,8 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
 
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user(token_data["user_id"])
         from datetime import datetime, timezone
         update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
         user_doc.update(update_data)
@@ -4185,6 +4187,15 @@ async def get_my_posts(
                 raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
             validated_posts.append(post)
 
+        if target_user:
+            author_name = target_user.get('name')
+            author_photo = target_user.get('photo')
+            for post in validated_posts:
+                if author_name:
+                    post['username'] = author_name
+                if author_photo is not None:
+                    post['user_photo'] = author_photo
+
         # Slice for offset/limit pagination
         paginated_posts = validated_posts[offset : offset + safe_limit]
 
@@ -4989,10 +5000,10 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
         
     # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
     updated_post['likes_count'] = new_count
@@ -5026,9 +5037,12 @@ async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data
         return {"message": "No changes requested", "post": post}
         
     update_data['updated_at'] = datetime.utcnow()
-    
     await db.update_document('posts', post_id, update_data)
-    updated_post = await db.get_document('posts', post_id)
+
+    # ⚡ Bolt Optimization: Avoid redundant fetch
+    updated_post = post.copy()
+    updated_post['id'] = post_id
+    updated_post.update(update_data)
     
     return {
         "message": "Post updated successfully",
@@ -5228,12 +5242,9 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = prev_comments_count + 1
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        # Fallback if document not found in cache/db immediately
-        updated_post = post.copy()
-        updated_post['id'] = post_id
-
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5347,10 +5358,9 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -7966,19 +7976,42 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     }
 
 @api_router.get("/dm/conversations")
-async def get_dm_conversations(token_data: dict = Depends(verify_token)):
-    """Get all private chat conversations for the current user"""
+async def get_dm_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get private chat conversations for the current user with offset-based pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    # Query all private chats where user is a member
-    user_chats = await db.query_documents(
-        'chats', 
-        filters=[
-            ('chat_type', '==', 'private'),
-            ('members', 'array_contains', user_id)
-        ]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    # Query private chats with DB-level limit bounds and index fallback
+    try:
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            order_by='updated_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(
+            f"Firestore query failed in get_dm_conversations, falling back to un-ordered query: {query_err}"
+        )
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            limit=fetch_limit
+        )
     
     result = []
     
@@ -8070,7 +8103,7 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
 
     result.sort(key=sort_key, reverse=True)
     
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 @api_router.get("/dm/{chat_id}/metadata")
 async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -10262,10 +10295,6 @@ async def get_reports(
     if user_ids:
         user_ids_list = list(user_ids)
         # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
-        try:
-            users_docs = await db.get_documents_batch('users', user_ids_list)
-            for u in users_docs:
-                if u.get('id'):
         try:
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:

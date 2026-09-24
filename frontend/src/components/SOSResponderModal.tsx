@@ -17,15 +17,27 @@ import SOSMap from './SOSMap';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+export interface SOSData {
+  id?: string;
+  sos_id?: string;
+  user_name?: string;
+  emergency_type?: 'medical' | 'general' | string;
+  micro_location?: string;
+  latitude: number | string;
+  longitude: number | string;
+}
+
 interface SOSResponderModalProps {
   visible: boolean;
-  sosData: any;
+  sosData: SOSData | null | undefined;
   onClose: () => void;
   onRespond: (sosId: string) => Promise<void>;
   onReportMisuse?: (sosId: string, reason: string) => Promise<void>;
 }
 
-export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
+// Varnish fix: Replaced `sosData: any` with strict `SOSData` interface, extracted inline activity indicator style into StyleSheet,
+// and wrapped component in `React.memo` to eliminate unnecessary modal re-renders during parent state updates.
+export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
   visible,
   sosData,
   onClose,
@@ -131,7 +143,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               accessibilityState={{ disabled: reporting, busy: reporting }}
             >
               {reporting ? (
-                <ActivityIndicator color="#FF3B30" size="small" style={{ marginRight: 8 }} />
+                <ActivityIndicator color="#FF3B30" size="small" style={styles.activityIndicatorMargin} />
               ) : (
                 <Ionicons name="flag-outline" size={18} color="#FF3B30" />
               )}
@@ -174,9 +186,14 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
       </View>
     </Modal>
   );
-};
+});
+
+SOSResponderModal.displayName = 'SOSResponderModal';
 
 const styles = StyleSheet.create({
+  activityIndicatorMargin: {
+    marginRight: 8,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',

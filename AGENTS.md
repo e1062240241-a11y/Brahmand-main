@@ -13,6 +13,13 @@
 
 ## Completed fixes (this session)
 - katha refetch on tab focus, dedup initializeHome, notification polling, comment pagination (`/posts/{post_id}/comments` offset param), seen_ids cap (frontend 40/request + backend `MAX_SEEN_IDS=200`), fake email toggle, view_post race (atomic `increment_field`), `/users/{id}` full arrays → lean + edge-doc is_following + projected reads.
+- **Profile loop fix & sync (Today)**:
+  - `frontend/app/(tabs)/profile.tsx`: stabilized `useFocusEffect` callback dependencies by removing unstable `user` and `posts.length` triggers; used `lastLoadedUserIdRef` and `userRef` to eliminate the infinite network request / retry loop.
+  - `backend/main.py`: added cache invalidation (`cache_manager.invalidate_user`) on `update_extended_profile` and backfilled latest user author name/photo in `/posts/my`.
+  - `frontend/app/profile/edit.tsx`: preserved trimmed `name` in `updateUser` payload to avoid state discrepancies.
+  - `frontend/src/components/PostFeedCard.tsx`: prioritized current user profile data when rendering user's own posts.
+  - `frontend/src/store/authStore.ts`: synced updated profile attributes (`name`, `photo`, `bio`, `sl_id`) to WatermelonDB `users` collection.
+  - `frontend/app/profile/[id].tsx`: added reactive sync for self-profile view when auth user changes.
 
 ## Honest-assessment policy
 - Many raised "issues" are overstated or false (e.g. `/posts/my` already paginates, temple `estimatedItemSize` already present, `getTemples` is a bounded catalog synced to local DB). Verify claims against actual code before changing anything. Prefer minimal changes; flag over-engineering.
