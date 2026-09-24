@@ -13370,8 +13370,11 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
     """Admin: delete a vendor and reset owner's KYC status."""
     db, admin_user_id = await _ensure_admin_user(token_data)
 
-    vendor = await db.get_document('vendors', vendor_id)
-    review_doc = await db.get_document('vendor_admin_reviews', vendor_id)
+    # ⚡ Bolt Optimization: Fetch vendor and review_doc concurrently instead of sequentially
+    vendor, review_doc = await asyncio.gather(
+        db.get_document('vendors', vendor_id),
+        db.get_document('vendor_admin_reviews', vendor_id)
+    )
     
     owner_id = None
     if vendor:
