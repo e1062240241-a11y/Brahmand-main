@@ -47,7 +47,7 @@ export default function AboutSettingsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={isHindi ? 'वापस जाएं' : 'Go back'}>
             <Ionicons name="chevron-back" size={28} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{isHindi ? 'हमारे बारे में' : 'About Us'}</Text>

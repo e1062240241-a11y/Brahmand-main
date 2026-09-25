@@ -600,7 +600,7 @@ export default function ChangeLocationScreen() {
         {/* Header */}
         <View style={styles.header}>
           {hasValidLocation ? (
-            <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={t("language") === "hi" ? "वापस जाएं" : "Go back"}>
               <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           ) : (
@@ -707,7 +707,7 @@ export default function ChangeLocationScreen() {
         >
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setMapPickerVisible(false)}>
+              <TouchableOpacity onPress={() => setMapPickerVisible(false)} accessibilityRole="button" accessibilityLabel={t("language") === "hi" ? "बंद करें" : "Close"}>
                 <Ionicons name="close" size={26} color={COLORS.text} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>
@@ -743,7 +743,7 @@ export default function ChangeLocationScreen() {
                   onChangeText={handleSearchLocation}
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => handleSearchLocation("")}>
+                  <TouchableOpacity onPress={() => handleSearchLocation("")} accessibilityRole="button" accessibilityLabel={t("language") === "hi" ? "खोजें" : "Search"}>
                     <Ionicons
                       name="close-circle"
                       size={18}
