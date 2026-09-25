@@ -2193,11 +2193,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     
     # Update user with location and communities
     existing_defaults = (user.get('default_communities', []) if user else []) or []
-    await db.update_document('users', user_id, {
+    loc_update = {
         'location': loc,
         'home_location': loc,
         'default_communities': list(set(existing_defaults + community_ids))
-    })
+    }
+    await db.update_document('users', user_id, loc_update)
     await db.array_union_update('users', user_id, 'communities', community_ids)
     
     # Invalidate cache
@@ -2206,7 +2207,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Eliminated redundant sequential db.get_document fetch
+    user = user or {}
+    user.update(loc_update)
+    if 'communities' not in user:
+        user['communities'] = []
+    user['communities'] = list(set(user['communities'] + community_ids))
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
 
 @api_router.post("/user/current-location")
@@ -14187,7 +14193,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
             'escalation_step': step + 1
         })
 
-        sos_alert = await db.get_document('sos_alerts', sos_id)
+        # ⚡ Bolt Optimization: Reuse 'alert' document fetched at the top of the loop
+        sos_alert = alert
         if not sos_alert:
             return
         title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"
