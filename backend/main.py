@@ -7455,8 +7455,8 @@ async def send_community_message(
     
     # Send push notification to community members
     try:
-        comm = await db.get_document('communities', community_id)
-        comm_name = comm.get('name', 'Community') if comm else 'Community'
+        # ⚡ Bolt Optimization: Reuse existing community_doc instead of redundant db.get_document
+        comm_name = community_doc.get('name', 'Community') if community_doc else 'Community'
         await push_service.notify_community_message(
             community_id=community_id,
             community_name=comm_name,
