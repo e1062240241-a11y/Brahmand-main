@@ -779,11 +779,10 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontTimes, fontTimesBold, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
 
   // Warm Peach + Beige Foundation Palette
-  const colBeige = rgb(0.957, 0.906, 0.831);       // #F4E7D4
   const colPeachSoft = rgb(1.0, 0.910, 0.827);     // #FFE8D3
   const colPeachDeep = rgb(0.961, 0.710, 0.541);    // #F5B58A
   const colCream = rgb(0.984, 0.953, 0.902);       // #FBF3E6
@@ -792,7 +791,6 @@ export async function renderDynamicFestivalPage1(
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);    // #802E17 - deep readable terracotta
   const colCrimson = rgb(0.56, 0.11, 0.08);         // #8F1C14 - royal sacred crimson
   const colRose = rgb(0.851, 0.525, 0.525);         // #D98686
-  const colClay = rgb(0.55, 0.25, 0.16);           // #8C4029 - high contrast warm clay
   const colSage = rgb(0.541, 0.584, 0.451);         // #8A9573
   const colSageDeep = rgb(0.20, 0.28, 0.15);       // #334726 - deep forest sage for high readability
   const colAmber = rgb(0.878, 0.651, 0.298);        // #E0A64C
@@ -1421,13 +1419,10 @@ export async function renderDynamicFestivalPage2(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontRozha, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
-  const headingFont = fontRozha || brandFont;
-  const bodyFeatureFont = fontPoppins || fontHelveticaBold;
 
   // Warm Peach + Beige Foundation Palette
-  const colPeachSoft = rgb(1.0, 0.910, 0.827);     // #FFE8D3
   const colPeachDeep = rgb(0.961, 0.710, 0.541);    // #F5B58A
   const colCream = rgb(0.984, 0.953, 0.902);       // #FBF3E6
 

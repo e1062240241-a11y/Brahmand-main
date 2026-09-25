@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-def _read_json_safe(path: Path, not_found_msg: str, invalid_msg: str) -> Any:
+def _read_json_safe(path: Path, invalid_msg: str) -> Any:
     if not path.exists():
         return None
     try:
@@ -54,7 +54,6 @@ class ChapterFileBook:
         invalid_msg = f"Invalid {self.book_title} {self.chapter_label} format"
         payload = _read_json_safe(
             self.chapter_file(number),
-            not_found_msg=f"{self.book_title} {self.chapter_label} file not found",
             invalid_msg=invalid_msg,
         )
         if payload is None:
@@ -176,7 +175,6 @@ class SingleFileBook:
         for path in self.data_files:
             payload = _read_json_safe(
                 path,
-                not_found_msg=f"{self.book_title} data file not found",
                 invalid_msg=invalid_msg,
             )
             if payload:
