@@ -1,25 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native';
 import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
+import { validateInput, ValidationRules } from '../utils/validation';
 
-interface InputProps extends TextInputProps {
+export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
+  rules?: ValidationRules;
+  onErrorChange?: (error: string | null) => void;
 }
 
-export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) => {
-  const [internalValue, setInternalValue] = React.useState(props.defaultValue || '');
+export const Input: React.FC<InputProps> = ({ label, error: externalError, rules, onErrorChange, style, onBlur, ...props }) => {
+  const [internalValue, setInternalValue] = useState(props.defaultValue || '');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
 
   const displayValue = props.value !== undefined ? props.value : internalValue;
   const stringValue = typeof displayValue === 'string' ? displayValue : '';
   const currentLength = stringValue.length;
 
+  const activeError = externalError || (touched ? validationError : null);
+
+  const runValidation = (text: string) => {
+    if (rules || rules?.preventInjection !== false) {
+      const err = validateInput(text, rules || { preventInjection: true });
+      setValidationError(err);
+      if (onErrorChange) {
+        onErrorChange(err);
+      }
+    }
+  };
+
   const handleChangeText = (text: string) => {
+    setTouched(true);
     if (props.value === undefined) {
       setInternalValue(text);
     }
+    runValidation(text);
     if (props.onChangeText) {
       props.onChangeText(text);
+    }
+  };
+
+  const handleBlur = (e: any) => {
+    setTouched(true);
+    runValidation(stringValue);
+    if (onBlur) {
+      onBlur(e);
     }
   };
 
@@ -29,15 +56,16 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
       <TextInput
         style={[
           styles.input,
-          error && styles.inputError,
+          activeError ? styles.inputError : null,
           style,
         ]}
         placeholderTextColor={COLORS.textLight}
         accessibilityLabel={label}
-        aria-invalid={!!error}
-        aria-errormessage={error}
+        aria-invalid={!!activeError}
+        aria-errormessage={activeError || undefined}
         {...props}
         onChangeText={handleChangeText}
+        onBlur={handleBlur}
       />
       {props.maxLength && (
         <Text
@@ -48,7 +76,7 @@ export const Input: React.FC<InputProps> = ({ label, error, style, ...props }) =
           {currentLength}/{props.maxLength}
         </Text>
       )}
-      {error && <Text style={styles.error}>{error}</Text>}
+      {activeError ? <Text style={styles.error}>{activeError}</Text> : null}
     </View>
   );
 };

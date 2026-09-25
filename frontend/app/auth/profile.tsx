@@ -22,6 +22,7 @@ import { registerUser, setupLocation } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+import { validateInput, checkSecurityInjection } from '../../src/utils/validation';
 
 const INDIAN_CITIES = [
   'Agra', 'Ahmedabad', 'Aizawl', 'Ajmer', 'Akola', 'Aligarh', 'Allahabad', 'Alwar',
@@ -150,6 +151,9 @@ export default function ProfileScreen() {
   
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [surnameError, setSurnameError] = useState('');
+  const [cityError, setCityError] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [language, setLanguage] = useState(storeLanguage === 'hi' ? 'Hindi' : 'English');
   const [location, setLocation] = useState('');
@@ -458,33 +462,51 @@ export default function ProfileScreen() {
               {getTranslation('fullName')} <Text style={{ color: '#E53935' }}>*</Text>
             </Text>
             <View style={[styles.sideBySideContainer, { marginBottom: inputMarginBottom }]}>
-              <View style={[styles.halfInputContainer, { height: inputHeight }]}>
-                <TextInput
-                  style={styles.androidTextInput}
-                  placeholder={getTranslation('firstName')}
-                  placeholderTextColor="#C5B49F"
-                  value={firstName}
-                  onChangeText={(text) => {
-                    const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
-                    setFirstName(formattedText);
-                    setError('');
-                  }}
-                  autoCapitalize="words"
-                />
+              <View style={{ flex: 1 }}>
+                <View style={[styles.halfInputContainer, { height: inputHeight }]}>
+                  <TextInput
+                    style={styles.androidTextInput}
+                    placeholder={getTranslation('firstName')}
+                    placeholderTextColor="#C5B49F"
+                    value={firstName}
+                    onChangeText={(text) => {
+                      const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                      setFirstName(formattedText);
+                      const secErr = checkSecurityInjection(text);
+                      setFirstNameError(secErr || '');
+                      setError('');
+                    }}
+                    onBlur={() => {
+                      const err = validateInput(firstName, { required: true, preventInjection: true });
+                      setFirstNameError(err || '');
+                    }}
+                    autoCapitalize="words"
+                  />
+                </View>
+                {firstNameError ? <Text style={styles.fieldErrorText}>{firstNameError}</Text> : null}
               </View>
-              <View style={[styles.halfInputContainer, { height: inputHeight }]}>
-                <TextInput
-                  style={styles.androidTextInput}
-                  placeholder={getTranslation('surname')}
-                  placeholderTextColor="#C5B49F"
-                  value={surname}
-                  onChangeText={(text) => {
-                    const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
-                    setSurname(formattedText);
-                    setError('');
-                  }}
-                  autoCapitalize="words"
-                />
+              <View style={{ flex: 1 }}>
+                <View style={[styles.halfInputContainer, { height: inputHeight }]}>
+                  <TextInput
+                    style={styles.androidTextInput}
+                    placeholder={getTranslation('surname')}
+                    placeholderTextColor="#C5B49F"
+                    value={surname}
+                    onChangeText={(text) => {
+                      const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                      setSurname(formattedText);
+                      const secErr = checkSecurityInjection(text);
+                      setSurnameError(secErr || '');
+                      setError('');
+                    }}
+                    onBlur={() => {
+                      const err = validateInput(surname, { required: true, preventInjection: true });
+                      setSurnameError(err || '');
+                    }}
+                    autoCapitalize="words"
+                  />
+                </View>
+                {surnameError ? <Text style={styles.fieldErrorText}>{surnameError}</Text> : null}
               </View>
             </View>
 
@@ -502,16 +524,23 @@ export default function ProfileScreen() {
                     placeholderTextColor="#C5B49F"
                     value={city}
                     onFocus={() => setIsCityFocused(true)}
-                    onBlur={() => setIsCityFocused(false)}
+                    onBlur={() => {
+                      setIsCityFocused(false);
+                      const err = validateInput(city, { required: true, preventInjection: true });
+                      setCityError(err || '');
+                    }}
                     onChangeText={(text) => {
                       setCity(text);
                       setLocation(text);
                       handleSearchCity(text);
+                      const secErr = checkSecurityInjection(text);
+                      setCityError(secErr || '');
                     }}
                   />
                 </View>
                 <Ionicons name="chevron-down" size={20} color="#8B4F3B" />
               </View>
+              {cityError ? <Text style={styles.fieldErrorText}>{cityError}</Text> : null}
 
               {/* City Autocomplete Suggestions Dropdown */}
               {citySuggestions.length > 0 && (
@@ -885,6 +914,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  fieldErrorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 4,
   },
   continueButton: {
     width: '100%',

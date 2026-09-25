@@ -22,6 +22,7 @@ import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
+import { checkSecurityInjection } from '../utils/validation';
 
 
 const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
@@ -775,7 +776,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             {/* Business Name */}
             <Text style={styles.label}>Business Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, checkSecurityInjection(businessName) ? styles.inputError : null]}
               placeholder="Enter business name"
               placeholderTextColor={COLORS.textLight}
               value={businessName}
@@ -788,11 +789,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 setBusinessName(capitalized.slice(0, 50));
               }}
             />
+            {checkSecurityInjection(businessName) ? <Text style={styles.errorTextInline}>{checkSecurityInjection(businessName)}</Text> : null}
 
             {/* Owner Name */}
             <Text style={styles.label}>Owner Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, checkSecurityInjection(ownerName) ? styles.inputError : null]}
               placeholder="Enter owner name"
               placeholderTextColor={COLORS.textLight}
               value={ownerName}
@@ -805,6 +807,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 setOwnerName(capitalized.slice(0, 50));
               }}
             />
+            {checkSecurityInjection(ownerName) ? <Text style={styles.errorTextInline}>{checkSecurityInjection(ownerName)}</Text> : null}
 
             {/* Phone Number */}
             <Text style={styles.label}>Mobile Number *</Text>
@@ -1895,5 +1898,14 @@ const styles = StyleSheet.create({
   },
   selectorSearchIcon: {
     marginRight: 8,
+  },
+  inputError: {
+    borderColor: COLORS.error,
+  },
+  errorTextInline: {
+    color: COLORS.error,
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 4,
   },
 });
