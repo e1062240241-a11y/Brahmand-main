@@ -619,11 +619,11 @@ const PostFeedCardComponent = ({
           >
             <Avatar name={postAuthorName} photo={postAuthorPhoto} size={34} />
             <View style={styles.userMeta}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{postAuthorName}</Text>
-                {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+              <View style={styles.usernameRow}>
+                <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : styles.textWhite]}>{postAuthorName}</Text>
+                {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={styles.verifiedBadge} />}
               </View>
-              <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
+              <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : styles.timeTextDark]}>{postTimeText}</Text>
             </View>
           </TouchableOpacity>
 
@@ -632,7 +632,7 @@ const PostFeedCardComponent = ({
               <Pressable
                 style={({ pressed }) => [
                   styles.menuBtn,
-                  pressed && { backgroundColor: (theme === 'light' || isFirstReel) ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.15)' }
+                  pressed && ((theme === 'light' || isFirstReel) ? styles.menuBtnPressedLight : styles.menuBtnPressedDark)
                 ]}
                 android_ripple={{
                   color: (theme === 'light' || isFirstReel) ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.2)',
@@ -644,9 +644,9 @@ const PostFeedCardComponent = ({
                 accessibilityRole="button"
                 accessibilityLabel={t('openMenu')}
               >
-                <View style={{ justifyContent: 'center', alignItems: 'flex-end', width: 24, height: 18 }}>
-                  <View style={{ width: 22, height: 3, backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF', borderRadius: 1.5, marginBottom: 4 }} />
-                  <View style={{ width: 14, height: 3, backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF', borderRadius: 1.5 }} />
+                <View style={styles.menuIconContainer}>
+                  <View style={[styles.menuIconTopBar, { backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF' }]} />
+                  <View style={[styles.menuIconBottomBar, { backgroundColor: (theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF' }]} />
                 </View>
               </Pressable>
               {menuVisible && (
@@ -959,7 +959,7 @@ const PostFeedCardComponent = ({
             accessibilityRole="button"
             accessibilityLabel={t('share')}
           >
-            <Ionicons name="send-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} style={{ transform: [{ rotate: '-30deg' }, { translateY: -2 }] }} />
+            <Ionicons name="send-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} style={styles.sendIconStyle} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
@@ -1051,9 +1051,9 @@ const PostFeedCardComponent = ({
                 }
               }}
             >
-              <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-                <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
-                  {postAuthorName} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
+              <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : styles.textWhite]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
+                <Text style={[styles.authorNameText, theme === 'light' ? styles.authorNameLight : styles.textWhite]}>
+                  {postAuthorName} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={styles.verifiedBadgeCaption} />}
                 </Text>
                 {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                   seg.isHashtag ? (
@@ -1065,7 +1065,7 @@ const PostFeedCardComponent = ({
                       {seg.text}
                     </Text>
                   ) : (
-                    <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#FFFFFF', fontWeight: '900' }}>{seg.text}</Text>
+                    <Text key={idx} style={[styles.captionSegmentText, theme === 'light' ? styles.captionSegmentLight : styles.textWhite]}>{seg.text}</Text>
                   )
                 ) : collapsedCaption}
               </Text>
@@ -1340,6 +1340,62 @@ const styles = StyleSheet.create({
   viewCommentsText: {
     fontSize: 13,
     fontWeight: '900',
+  },
+  /* 🎨 Varnish: Static StyleSheet additions to replace inline objects in render */
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textWhite: {
+    color: '#FFF',
+  },
+  verifiedBadge: {
+    marginLeft: 4,
+  },
+  verifiedBadgeCaption: {
+    marginRight: 4,
+  },
+  timeTextDark: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  menuBtnPressedLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  menuBtnPressedDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  menuIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    width: 24,
+    height: 18,
+  },
+  menuIconTopBar: {
+    width: 22,
+    height: 3,
+    borderRadius: 1.5,
+    marginBottom: 4,
+  },
+  menuIconBottomBar: {
+    width: 14,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  sendIconStyle: {
+    transform: [{ rotate: '-30deg' }, { translateY: -2 }],
+  },
+  authorNameText: {
+    fontWeight: '900',
+  },
+  authorNameLight: {
+    color: '#000',
+  },
+  captionSegmentText: {
+    fontWeight: '900',
+  },
+  captionSegmentLight: {
+    color: '#222',
   },
 });
 
