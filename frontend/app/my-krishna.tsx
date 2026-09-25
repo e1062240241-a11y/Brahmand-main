@@ -12,7 +12,6 @@ import {
   Animated,
   Alert,
   Pressable,
-  ActivityIndicator,
   Keyboard,
   Dimensions,
   ScrollView,

@@ -7,3 +7,6 @@
 ## 2024-05-20 - Removed orphaned /user/horoscope route and API wrapper
 **Learning:** Found a case where a FastAPI route (`get_horoscope`) was redefined later in the file. The original `GET /user/horoscope` route was completely unreferenced in the frontend except for a single dead `getHoroscope` API wrapper export. Additionally, generated command log files (like `lint_output.txt`) must be deleted before committing so they don't pollute the git history.
 **Action:** When finding a Redefinition linter error in FastAPI, carefully grep both the frontend and backend for usage. Delete the route and its frontend wrapper if completely unused. And ALWAYS remove temporary log files created during the exploration phase.
+## 2024-05-21 - Unused React Native UI Component Imports
+**Learning:** Common UI components like `ActivityIndicator` are often imported automatically or copy-pasted across many files (e.g. `app/library/*.tsx`) but left completely unrendered. Simple regex `grep` for the word "ActivityIndicator" is insufficient to prove usage because it matches the import statement itself.
+**Action:** When verifying if a UI component is truly used, always `grep` for its JSX element tag form (e.g. `<ActivityIndicator`) to prove it is actually rendered in the file.

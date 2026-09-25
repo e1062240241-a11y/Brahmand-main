@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Pressable,
-  ActivityIndicator,
   ScrollView,
   Alert,
   Modal,
