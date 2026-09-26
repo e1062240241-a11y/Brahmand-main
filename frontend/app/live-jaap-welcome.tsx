@@ -346,6 +346,11 @@ export default function LiveJaapWelcomeScreen() {
           />
 
           {/* SADHANA SANKALPA LIVE STREAK & DIYA STATUS */}
+          {/* 🧡 Engagement: Reframed transactional streak status text into devotional Sanskara (संस्कार) and Zeigarnik proximity copy. */}
+          {/* Lever: Reframing + Devotion + Sanskara/Habit + Proximity to Completion */}
+          {/* Why: "साधना दीप प्रज्वलित — संकल्प समर्पित 🙏" frames daily chanting as an offering (समर्पण) and habit (संस्कार). */}
+          {/*      "बस X जाप और" highlights proximity to completing 108 chants, encouraging users to close the gap. */}
+          {/* UI: Text-only change, zero structural or visual component modifications. */}
           <View style={styles.streakLiveBadge}>
             <Text
               style={[
@@ -361,24 +366,24 @@ export default function LiveJaapWelcomeScreen() {
               <Text style={styles.streakBadgeTitle}>
                 {streakData.currentStreak > 0
                   ? (t('language') === 'hi'
-                      ? `${streakData.currentStreak} दिवसीय साधना संकल्प`
-                      : `${streakData.currentStreak} Day Sadhana Sankalpa`)
+                      ? `${streakData.currentStreak} दिवसीय साधना संकल्प 🚩`
+                      : `${streakData.currentStreak} Day Sadhana Sankalpa 🚩`)
                   : (t('language') === 'hi'
-                      ? 'साधना संकल्प (Day 1)'
-                      : 'Sadhana Sankalpa (Day 1)')}
+                      ? 'साधना संकल्प — प्रथम दिवस 🚩'
+                      : 'Sadhana Sankalpa — Day 1 🚩')}
               </Text>
               <Text style={styles.streakBadgeSubtitle}>
                 {streakData.isTodayCompleted
                   ? (t('language') === 'hi'
-                      ? '✨ आज का दीप प्रज्वलित है • संकल्प पूर्ण'
-                      : '✨ Today\'s Diya is Lit • Sankalpa Complete')
+                      ? '✨ आज का साधना दीप प्रज्वलित — संकल्प समर्पित 🙏'
+                      : '✨ Today\'s Sadhana Diya Lit • Sankalpa Offered 🙏')
                   : streakData.todayCount > 0
                   ? (t('language') === 'hi'
-                      ? `दीप प्रज्वलित है • ${Math.max(0, 108 - streakData.todayCount)} जाप शेष`
-                      : `Diya Lit • ${Math.max(0, 108 - streakData.todayCount)} chants left`)
+                      ? `साधना दीप प्रज्वलित • बस ${Math.max(0, 108 - streakData.todayCount)} जाप और`
+                      : `Diya Lit • Just ${Math.max(0, 108 - streakData.todayCount)} chants left`)
                   : (t('language') === 'hi'
-                      ? 'सत्र में जाप करके आज का दीप प्रज्वलित करें 🙏'
-                      : 'Chant in this session to light today\'s Diya 🙏')}
+                      ? 'जाप साधना से आज का दिव्य दीप प्रज्वलित करें 🪔'
+                      : 'Chant in this session to light today\'s sacred Diya 🪔')}
               </Text>
             </View>
           </View>
