@@ -5476,13 +5476,47 @@ async def verify_admin(token_data: dict = Depends(verify_token)):
     return token_data
 
 @api_router.get("/admin/personality-verifications")
-async def list_personality_verifications(status: str = "pending", token_data: dict = Depends(verify_admin)):
-    """List all personality verification requests by status"""
+async def list_personality_verifications(
+    status: str = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_admin)
+):
+    """
+    List all personality verification requests by status with offset-based pagination.
+    Architectural Fix: Bounds candidate document fetching at the DB level with DESC ordering
+    to fetch_limit = safe_offset + safe_limit instead of streaming all historical requests into memory.
+    Prevents O(N) Firestore document reads and memory spikes as verification requests scale.
+    """
     db = await get_db()
-    return await db.query_documents(
-        'personality_verifications', 
-        [('status', '==', status)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            order_by='submitted_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore ordered query failed in /admin/personality-verifications, falling back to un-ordered query: %s",
+            exc
+        )
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            limit=fetch_limit
+        )
+        verifications.sort(
+            key=lambda item: str(item.get('submitted_at') or item.get('created_at') or item.get('createdAt') or ''),
+            reverse=True
+        )
+
+    return verifications[safe_offset:safe_offset + safe_limit]
 
 @api_router.post("/admin/personality-verifications/{request_id}/action")
 async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):

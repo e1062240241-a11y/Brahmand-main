@@ -46,6 +46,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
 - `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 - `/admin/sos-misuse-reports` — full collection scan of all SOS misuse reports — FIXED
+- `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 
 RACE CONDITIONS:
@@ -135,3 +136,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-22 - DB query bounds, offset pagination, & consolidated user batch lookups for GET /communities/my-creation-requests
 **Learning:** `GET /communities/my-creation-requests` fetched all historical community creation requests for a user without query limits or ordering. Furthermore, inside the request loop, it called `db.get_documents_batch('users', invited_ids)` for each creation request individually ($O(N_{\text{requests}})$ network calls). Consolidating all invited user UIDs across paged creation requests into a single set before the loop reduces user lookups to $O(1)$ batch query.
 **Action:** Added `limit` (default 20, max 100) and `offset` (default 0) parameters to `GET /communities/my-creation-requests` in `backend/main.py`, `backend/routes/community_routes.py`, and `backend/services/firebase_community_service.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and consolidated invited user lookups into a single batch query prior to request processing.
+
+## 2026-09-23 - Offset-based pagination & DB query bounds for GET /admin/personality-verifications
+**Learning:** `GET /admin/personality-verifications` fetched all personality verification requests matching a status across the entire database history without limit or offset bounds ($O(N_{\text{verifications}})$ reads). At 1 lakh+ users, this caused high memory usage, database read spikes, and request timeouts in the admin dashboard.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `list_personality_verifications` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `submitted_at` DESC ordering and index exception fallback logic, and sliced response payloads accordingly.
