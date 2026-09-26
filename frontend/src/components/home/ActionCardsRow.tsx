@@ -1,12 +1,60 @@
 import { useVendorStore } from '../../store/vendorStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, AppState, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { HomeCardTextureBg } from './HomeCardTextureBg';
 import { styles } from './home.styles';
-import { ACTION_CARD_HEIGHT, ACTION_CARD_SNAP_INTERVAL, ACTION_CARD_WIDTH, ROTATING_AARTIS } from './homeConstants';
+import { ACTION_CARD_SNAP_INTERVAL, ROTATING_AARTIS } from './homeConstants';
+
+export interface ActionCommunityRequest {
+    id?: string;
+    type?: string;
+    blood_group?: string;
+    hospital_name?: string;
+    location?: string;
+    title?: string;
+    description?: string;
+    community_id?: string;
+}
+
+export interface ActionVendor {
+    id: string;
+    business_name?: string;
+    categories?: string[];
+    full_address?: string;
+    kyc_status?: string;
+}
+
+export interface ActionAarti {
+    id: string;
+    name: string;
+}
+
+interface BaseCardProps {
+    t: (key: string) => string;
+    onPress: () => void;
+    width: number;
+    height: number;
+}
+
+interface BloodRequestCardProps extends BaseCardProps {
+    request: ActionCommunityRequest | null;
+}
+
+interface RegisterBusinessCardProps extends BaseCardProps {
+    myVendor: ActionVendor | null;
+}
+
+interface VerifiedVendorCardProps extends BaseCardProps {
+    displayVendor: ActionVendor | null;
+}
+
+interface AartiCardProps extends BaseCardProps {
+    aarti: ActionAarti;
+    onNotify: () => void;
+}
 
 function BloodDropIcon() {
     return (
@@ -50,19 +98,120 @@ function ShopIcon() {
     );
 }
 
+/**
+ * 🎨 Varnish Optimizations:
+ * 1. Replaced `any` types on card props & data structures with strict TypeScript interfaces (`ActionCommunityRequest`, `ActionVendor`, `ActionAarti`).
+ * 2. Extracted heavy inline style objects across cards to `StyleSheet.create` to eliminate style object re-allocations on every render.
+ * 3. Wrapped navigation and notification event handlers in `useCallback` inside `ActionCardsRow` so `React.memo` on child card components prevents unnecessary re-renders when active index timer state changes.
+ */
+
+const cardStyles = StyleSheet.create({
+    cardWrapper: {
+        position: 'relative',
+        overflow: 'visible',
+        marginHorizontal: 3,
+    },
+    cardInner: {
+        width: '100%',
+        height: '100%',
+        marginHorizontal: 0,
+        padding: 0,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    cardContent: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 10,
+        paddingHorizontal: 6,
+    },
+    iconWrapper: {
+        marginBottom: 6,
+        marginTop: -4,
+    },
+    cardTitle: {
+        textAlign: 'center',
+        fontSize: 13,
+        color: '#000',
+        width: '100%',
+        lineHeight: 16,
+        fontFamily: 'Inter_700Bold',
+    },
+    cardSubtitle: {
+        textAlign: 'center',
+        fontSize: 11,
+        color: '#444',
+        width: '100%',
+        marginTop: 4,
+        lineHeight: 14,
+        fontFamily: 'Inter_500Medium',
+    },
+    badgeWrapper: {
+        position: 'absolute',
+        top: -10,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+    },
+    badgeContainer: {
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1.2,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        paddingHorizontal: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        elevation: 3,
+    },
+    badgeText: {
+        fontSize: 10,
+        textAlign: 'center',
+        fontFamily: 'Inter_600SemiBold',
+    },
+    actionBtn: {
+        width: '85%',
+        height: 28,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'center',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
+        marginBottom: 10,
+    },
+    actionBtnText: {
+        color: '#FFF',
+        fontSize: 12,
+        textAlign: 'center',
+        fontFamily: 'Inter_700Bold',
+    },
+    notifyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    notifyText: {
+        textAlign: 'center',
+        fontSize: 10,
+        color: '#444',
+        fontFamily: 'Inter_500Medium',
+        marginRight: 3,
+    },
+});
+
 const BloodRequestCard = React.memo(function BloodRequestCard({
     request,
     t,
     onPress,
     width,
     height,
-}: {
-    request: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: BloodRequestCardProps) {
     const requestTitle = request
         ? (request.type === 'blood' ? `${request.blood_group || 'Blood'} ${t('bloodRequired')}` : (request.title || 'Community Help'))
         : '';
@@ -70,45 +219,31 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
         ? (request.type === 'blood' ? `${request.hospital_name || t('emergency')}\n${request.location || t('nearby')}` : (request.description || request.location || 'Nearby'))
         : '';
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[cardStyles.cardWrapper, { width, height }]}>
+            <View style={[styles.actionCard, cardStyles.cardInner]}>
                 <HomeCardTextureBg texture="rose">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={cardStyles.cardContent}>
+                        <View style={cardStyles.iconWrapper}>
                             {request?.type === 'blood' ? (
                                 <BloodDropIcon />
                             ) : (
                                 <Ionicons name="people-outline" size={26} color="#FF0022" />
                             )}
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{request ? requestTitle : t('needBlood')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{request ? requestDetails : t('createUrgentRequest')}</Text>
+                        <Text style={cardStyles.cardTitle} numberOfLines={2}>{request ? requestTitle : t('needBlood')}</Text>
+                        <Text style={cardStyles.cardSubtitle} numberOfLines={2}>{request ? requestDetails : t('createUrgentRequest')}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF0022',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF0022',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[cardStyles.actionBtn, { backgroundColor: '#FF0022', shadowColor: '#FF0022' }]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                        <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+            <View style={cardStyles.badgeWrapper}>
+                <View style={[cardStyles.badgeContainer, { borderColor: '#FF0000' }]}>
+                    <Text style={[cardStyles.badgeText, { color: '#FF0000' }]} numberOfLines={1}>{t('yourCommunity')}</Text>
                 </View>
             </View>
         </View>
@@ -121,49 +256,29 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
     onPress,
     width,
     height,
-}: {
-    myVendor: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: RegisterBusinessCardProps) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[cardStyles.cardWrapper, { width, height }]}>
+            <View style={[styles.actionCard, cardStyles.cardInner]}>
                 <HomeCardTextureBg texture="peach">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={cardStyles.cardContent}>
+                        <View style={cardStyles.iconWrapper}>
                             <ShopIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
+                        <Text style={cardStyles.cardTitle} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                        <Text style={cardStyles.cardSubtitle} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF9500',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF9500',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[cardStyles.actionBtn, { backgroundColor: '#FF9500', shadowColor: '#FF9500' }]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
+                        <Text style={cardStyles.actionBtnText} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
+            <View style={cardStyles.badgeWrapper}>
+                <View style={[cardStyles.badgeContainer, { borderColor: '#FF9500' }]}>
+                    <Text style={[cardStyles.badgeText, { color: '#FF9500' }]} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
                 </View>
             </View>
         </View>
@@ -176,53 +291,33 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
     onPress,
     width,
     height,
-}: {
-    displayVendor: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    width: number;
-    height: number;
-}) {
+}: VerifiedVendorCardProps) {
     const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
     const categoryAndLoc = displayVendor
         ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
         : 'Flower Decor\nAndheri West';
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[cardStyles.cardWrapper, { width, height }]}>
+            <View style={[styles.actionCard, cardStyles.cardInner]}>
                 <HomeCardTextureBg texture="mint">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={cardStyles.cardContent}>
+                        <View style={cardStyles.iconWrapper}>
                             <LotusIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 11, color: '#444', width: '100%', marginTop: 4, lineHeight: 14, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                        <Text style={cardStyles.cardTitle} numberOfLines={2}>{businessName}</Text>
+                        <Text style={cardStyles.cardSubtitle} numberOfLines={2}>{categoryAndLoc}</Text>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#00C781',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#00C781',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[cardStyles.actionBtn, { backgroundColor: '#00C781', shadowColor: '#00C781' }]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                        <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#00C781', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('verifiedVendor')}</Text>
+            <View style={cardStyles.badgeWrapper}>
+                <View style={[cardStyles.badgeContainer, { borderColor: '#00C781' }]}>
+                    <Text style={[cardStyles.badgeText, { color: '#00C781' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
                 </View>
             </View>
         </View>
@@ -236,25 +331,18 @@ const AartiCard = React.memo(function AartiCard({
     onNotify,
     width,
     height,
-}: {
-    aarti: any;
-    t: (key: string) => string;
-    onPress: () => void;
-    onNotify: () => void;
-    width: number;
-    height: number;
-}) {
+}: AartiCardProps) {
     return (
-        <View style={{ width, height, position: 'relative', overflow: 'visible', marginHorizontal: 3 }}>
-            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, padding: 0, borderRadius: 16, overflow: 'hidden' }]}>
+        <View style={[cardStyles.cardWrapper, { width, height }]}>
+            <View style={[styles.actionCard, cardStyles.cardInner]}>
                 <HomeCardTextureBg texture="lavender">
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingHorizontal: 6 }}>
-                        <View style={{ marginBottom: 6, marginTop: -4 }}>
+                    <View style={cardStyles.cardContent}>
+                        <View style={cardStyles.iconWrapper}>
                             <TempleIcon />
                         </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: '100%', lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{aarti.name}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
-                            <Text style={{ textAlign: 'center', fontSize: 10, color: '#444', fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                        <Text style={cardStyles.cardTitle} numberOfLines={2}>{aarti.name}</Text>
+                        <View style={cardStyles.notifyRow}>
+                            <Text style={cardStyles.notifyText}>
                                 {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
@@ -268,30 +356,16 @@ const AartiCard = React.memo(function AartiCard({
                         </View>
                     </View>
                     <TouchableOpacity
-                        style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#8C36DB',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#8C36DB',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 10,
-                        }}
+                        style={[cardStyles.actionBtn, { backgroundColor: '#8C36DB', shadowColor: '#8C36DB' }]}
                         onPress={onPress}
                     >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                        <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('watch')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
             </View>
-            <View style={{ position: 'absolute', top: -10, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                <View style={{ height: 20, borderRadius: 10, borderWidth: 1.2, borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.95)', paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', elevation: 3 }}>
-                    <Text style={{ color: '#8C36DB', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('templeLabel')}</Text>
+            <View style={cardStyles.badgeWrapper}>
+                <View style={[cardStyles.badgeContainer, { borderColor: '#8C36DB' }]}>
+                    <Text style={[cardStyles.badgeText, { color: '#8C36DB' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                 </View>
             </View>
         </View>
@@ -303,7 +377,7 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
     safeCommunityRequests,
 }: {
     t: (key: string) => string;
-    safeCommunityRequests: any[];
+    safeCommunityRequests: ActionCommunityRequest[];
 }) {
     const router = useRouter();
     const isFocused = useIsFocused();
@@ -345,6 +419,52 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
     const aarti1 = ROTATING_AARTIS[activeAartiIndex % ROTATING_AARTIS.length];
     const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
 
+    const handleBloodRequestPress = useCallback(() => {
+        if (req) {
+            router.push({
+                pathname: '/community-request/list',
+                params: {
+                    requestId: req.id,
+                    community_id: req.community_id,
+                },
+            });
+        } else {
+            router.push('/community-request/list');
+        }
+    }, [router, req]);
+
+    const handleRegisterBusinessPress = useCallback(() => {
+        if (myVendor) {
+            router.push(`/vendor/${myVendor.id}`);
+        } else {
+            router.push('/(tabs)/vendor');
+        }
+    }, [router, myVendor]);
+
+    const handleVerifiedVendorPress = useCallback(() => {
+        if (displayVendor) {
+            router.push(`/vendor/${displayVendor.id}`);
+        } else {
+            router.push('/(tabs)/vendor');
+        }
+    }, [router, displayVendor]);
+
+    const handleAarti1Press = useCallback(() => {
+        router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
+    }, [router, aarti1.id]);
+
+    const handleAarti1Notify = useCallback(() => {
+        Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`);
+    }, [aarti1.name]);
+
+    const handleAarti2Press = useCallback(() => {
+        router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
+    }, [router, aarti2.id]);
+
+    const handleAarti2Notify = useCallback(() => {
+        Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`);
+    }, [aarti2.name]);
+
     return (
         <View style={styles.postBannerSection}>
             <ScrollView
@@ -362,65 +482,37 @@ export const ActionCardsRow = React.memo(function ActionCardsRow({
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (req) {
-                            router.push({
-                                pathname: '/community-request/list',
-                                params: {
-                                    requestId: req.id,
-                                    community_id: req.community_id
-                                }
-                            });
-                        } else {
-                            router.push('/community-request/list');
-                        }
-                    }}
+                    onPress={handleBloodRequestPress}
                 />
                 <RegisterBusinessCard
                     myVendor={myVendor}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (myVendor) {
-                            router.push(`/vendor/${myVendor.id}`);
-                        } else {
-                            router.push('/(tabs)/vendor');
-                        }
-                    }}
+                    onPress={handleRegisterBusinessPress}
                 />
                 <VerifiedVendorCard
                     displayVendor={displayVendor}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        if (displayVendor) {
-                            router.push(`/vendor/${displayVendor.id}`);
-                        } else {
-                            router.push('/(tabs)/vendor');
-                        }
-                    }}
+                    onPress={handleVerifiedVendorPress}
                 />
                 <AartiCard
                     aarti={aarti1}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
-                    }}
-                    onNotify={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                    onPress={handleAarti1Press}
+                    onNotify={handleAarti1Notify}
                 />
                 <AartiCard
                     aarti={aarti2}
                     t={t}
                     width={actionCardWidth}
                     height={actionCardHeight}
-                    onPress={() => {
-                        router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
-                    }}
-                    onNotify={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                    onPress={handleAarti2Press}
+                    onNotify={handleAarti2Notify}
                 />
             </ScrollView>
         </View>
