@@ -2409,7 +2409,10 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Merge updates in-memory instead of redundantly re-fetching the document
+    if user:
+        user.update(update_data)
+
     return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
 
 @api_router.get("/user/search/{sl_id}")
