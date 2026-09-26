@@ -21,7 +21,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getDailyHoroscope } from '../src/services/api';
-import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 
 import { useAuthStore } from '../src/store/authStore';

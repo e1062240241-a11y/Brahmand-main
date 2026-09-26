@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { FONTS } from '../../src/constants/theme';
 import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode } from '../../src/services/api';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
