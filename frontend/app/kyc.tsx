@@ -14,7 +14,6 @@ import {View,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { useVendorStore } from '../src/store/vendorStore';
 import { useAuthStore } from '../src/store/authStore';
 import { getKYCStatus, sendNettyfishOTP, verifyNettyfishOTP } from '../src/services/api';

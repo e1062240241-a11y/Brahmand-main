@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { getCommunityStats, getCommunity } from '../../../src/services/api';
 
 export default function CommunityRequestBloodSuccessPage() {

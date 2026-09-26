@@ -6,7 +6,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../src/components/Button';
 import { getAllUsers, getConversations, sendDirectMessage } from '../../src/services/api';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 import { useAuthStore } from '../../src/store/authStore';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';

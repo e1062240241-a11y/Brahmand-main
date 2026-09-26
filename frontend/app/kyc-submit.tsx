@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { generateUserAadhaarOtp, getKYCStatus, submitKYC, verifyUserAadhaarOtp, validateKYCImage } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
