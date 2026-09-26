@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   ImageBackground,
-  ActivityIndicator,
   Modal,
   Dimensions,
   RefreshControl,

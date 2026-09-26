@@ -8,7 +8,6 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
-  ActivityIndicator,
   Modal,
   Dimensions,
   BackHandler,

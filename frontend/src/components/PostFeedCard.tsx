@@ -13,7 +13,6 @@ import {
   Platform,
   ScrollView,
   useWindowDimensions,
-  ActivityIndicator,
   Animated,
   TextInput,
   AppState,

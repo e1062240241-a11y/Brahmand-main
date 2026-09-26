@@ -11,7 +11,6 @@ import {
   ImageBackground,
   Image,
   Modal,
-  ActivityIndicator,
   AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
