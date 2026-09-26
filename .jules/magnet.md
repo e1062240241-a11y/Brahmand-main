@@ -85,3 +85,7 @@
 ## 2026-09-23 - Ramcharitmanas Bookmarks Modal & Reading Instruction Polish
 **Learning:** Untranslated English modal headers ("Saved Bookmarks"), empty bookmark placeholders ("No bookmarks saved yet."), chapter sub-labels ("Chapter 1"), and start reading prompts ("Tap to start journey") in core scripture reading screens disrupt context for Hindi-first users. Conditionally rendering warm Devanagari Hindi copy (`"सहेजे गए पृष्ठ / चिह्न"`, `"अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨"`, `"काण्ड 1"`, `"स्वाध्याय आरंभ करने हेतु स्पर्श करें ✨"`) based on `useLanguageStore` maintains spiritual reverence and seamless mother-tongue immersion.
 **Action:** Updated `frontend/app/library/ramcharitmanas.tsx` to conditionally render Devanagari Hindi copy when `language === 'hi'`.
+
+## 2026-09-24 - Vendor Category Search & Empty State Language-Aware Polish
+**Learning:** Untranslated English search placeholders ("Search..."), call request buttons ("Request Call"), empty state messages ("Currently no ... in your area"), and fallback business/location names in vendor category discovery screens disrupt context for Hindi-first users seeking local services. Conditionally rendering polite Devanagari Hindi copy (`"खोजें..."`, `"संपर्क करें"`, `"आपके क्षेत्र में अभी कोई... उपलब्ध नहीं है ✨"`) based on `user?.language` ensures a seamless, mother-tongue service discovery experience.
+**Action:** Updated `frontend/app/vendor/category/[category].tsx` to conditionally render Devanagari Hindi copy and accessibility labels when `user?.language === 'hi'`.
