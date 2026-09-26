@@ -77,6 +77,44 @@ class TempleService:
         return serialize_doc(temple) or {}
     
     @staticmethod
+    async def _resolve_following_set(user_id: str, paginated_items: List[Dict[str, Any]]) -> set:
+        """Helper to resolve follow status for a list of temples via temple_follows collection with legacy fallback"""
+        if not user_id or not paginated_items:
+            return set()
+
+        db = await TempleService.get_db()
+        follow_ids = []
+        id_to_temple_keys = {}
+        for t in paginated_items:
+            t_id = t.get("temple_id") or t.get("id")
+            doc_id = t.get("id")
+            if t_id:
+                fid1 = f"{t_id}_{user_id}"
+                follow_ids.append(fid1)
+                id_to_temple_keys[fid1] = t_id
+            if doc_id and doc_id != t_id:
+                fid2 = f"{doc_id}_{user_id}"
+                follow_ids.append(fid2)
+                id_to_temple_keys[fid2] = t_id
+
+        following_set = set()
+
+        if follow_ids:
+            try:
+                follow_docs = await db.get_documents_batch("temple_follows", list(set(follow_ids)))
+                for fdoc in follow_docs:
+                    if fdoc and fdoc.get("active", True) is not False:
+                        if fdoc.get("temple_id"):
+                            following_set.add(fdoc.get("temple_id"))
+                        target_t_id = id_to_temple_keys.get(fdoc.get("id"))
+                        if target_t_id:
+                            following_set.add(target_t_id)
+            except Exception as e:
+                logger.warning("Error fetching temple_follows batch: %s", e)
+
+        return following_set
+
+    @staticmethod
     async def get_temples(
         user_id: Optional[str] = None,
         limit: int = 300,
@@ -92,8 +130,11 @@ class TempleService:
             cached = []
             for t in temples:
                 temple_data = serialize_doc(t) or {}
-                temple_data["followers"] = t.get("followers", [])
-                temple_data["follower_count"] = t.get("follower_count", len(t.get("followers", [])))
+                # Architectural fix: do not store full 'followers' arrays in cache objects
+                temple_data.pop("followers", None)
+                raw_followers = t.get("followers")
+                fallback_len = len(raw_followers) if isinstance(raw_followers, list) else 0
+                temple_data["follower_count"] = t.get("follower_count", fallback_len)
                 cached.append(temple_data)
             
             await cache_manager.set_temples(cached)
@@ -101,11 +142,21 @@ class TempleService:
         safe_limit = max(1, min(limit, 500))
         paginated_items = cached[offset:offset + safe_limit]
 
+        following_set = await TempleService._resolve_following_set(user_id, paginated_items) if user_id else set()
+
         result = []
         for t in paginated_items:
             temple_data = t.copy()
-            followers_list = temple_data.pop("followers", [])
-            temple_data["is_following"] = user_id in followers_list if user_id else False
+            temple_data.pop("followers", None)
+            t_id = temple_data.get("temple_id") or temple_data.get("id")
+            doc_id = temple_data.get("id")
+
+            is_following = False
+            if user_id:
+                if (t_id in following_set) or (doc_id in following_set):
+                    is_following = True
+
+            temple_data["is_following"] = is_following
             result.append(temple_data)
         
         return result
@@ -122,11 +173,22 @@ class TempleService:
             await TempleService.get_temples()
             cached = await cache_manager.get_temples() or []
         
+        paginated_items = cached[:20]
+        following_set = await TempleService._resolve_following_set(user_id, paginated_items) if user_id else set()
+
         result = []
-        for t in cached[:20]:
+        for t in paginated_items:
             temple_data = t.copy()
-            followers_list = temple_data.pop("followers", [])
-            temple_data["is_following"] = user_id in followers_list if user_id else False
+            temple_data.pop("followers", None)
+            t_id = temple_data.get("temple_id") or temple_data.get("id")
+            doc_id = temple_data.get("id")
+
+            is_following = False
+            if user_id:
+                if (t_id in following_set) or (doc_id in following_set):
+                    is_following = True
+
+            temple_data["is_following"] = is_following
             temple_data["distance"] = "2.5 km"  # Placeholder
             result.append(temple_data)
         
@@ -147,57 +209,116 @@ class TempleService:
                 raise ValueError("Temple not found")
             
             cached = serialize_doc(temple) or {}
-            cached["followers"] = temple.get("followers", [])
-            cached["follower_count"] = temple.get("follower_count", len(temple.get("followers", [])))
+            # Architectural fix: Strip full 'followers' array from detail cache
+            cached.pop("followers", None)
+            raw_followers = temple.get("followers")
+            fallback_len = len(raw_followers) if isinstance(raw_followers, list) else 0
+            cached["follower_count"] = temple.get("follower_count", fallback_len)
             await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
 
         temple_data = cached.copy() if cached else {}
-        followers_list = temple_data.pop("followers", [])
-        temple_data["is_following"] = user_id in followers_list if user_id else False
+        temple_data.pop("followers", None)
+
+        is_following = False
+        if user_id:
+            db = await TempleService.get_db()
+            canonical_id = temple_data.get("temple_id") or temple_id
+            doc_id = temple_data.get("id") or temple_id
+
+            f_doc1 = await db.get_document("temple_follows", f"{canonical_id}_{user_id}")
+            f_doc2 = await db.get_document("temple_follows", f"{doc_id}_{user_id}") if doc_id != canonical_id else None
+
+            if (f_doc1 and f_doc1.get("active", True) is not False) or (f_doc2 and f_doc2.get("active", True) is not False):
+                is_following = True
+            else:
+                # Fallback check against raw document followers array for legacy docs
+                raw_temple = await db.get_document_fields("temples", doc_id, ["followers"])
+                if raw_temple and user_id in (raw_temple.get("followers") or []):
+                    is_following = True
+
+        temple_data["is_following"] = is_following
         temple_data["follower_count"] = temple_data.get("follower_count", 0)
         
         return temple_data
 
     @staticmethod
     async def follow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
-        """Follow a temple atomically"""
+        """Follow a temple atomically using dedicated temple_follows collection"""
         db = await TempleService.get_db()
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         doc_id = temple["id"] if temple else temple_id
+        canonical_id = temple.get("temple_id") if temple and temple.get("temple_id") else temple_id
         if not temple:
             temple = await db.get_document("temples", doc_id)
         if not temple:
             raise ValueError("Temple not found")
 
+        follow_key = f"{canonical_id}_{user_id}"
+        existing_follow = await db.get_document("temple_follows", follow_key)
         followers = temple.get("followers", [])
-        if user_id not in followers:
-            await db.array_union_update("temples", doc_id, "followers", [user_id])
+        is_already_following = bool(existing_follow) or (user_id in followers)
+
+        if not is_already_following:
+            now_iso = datetime.utcnow().isoformat() + 'Z'
+            await db.create_document("temple_follows", {
+                "temple_id": canonical_id,
+                "user_id": user_id,
+                "created_at": now_iso,
+                "active": True
+            }, doc_id=follow_key)
+            if doc_id != canonical_id:
+                doc_follow_key = f"{doc_id}_{user_id}"
+                await db.create_document("temple_follows", {
+                    "temple_id": doc_id,
+                    "user_id": user_id,
+                    "created_at": now_iso,
+                    "active": True
+                }, doc_id=doc_follow_key)
+
+            # Architectural fix: Cap legacy followers array on temple document to max 100 UIDs
+            # to prevent document bloat and 1MB size limit crashes in Firestore.
+            if len(followers) < 100:
+                await db.array_union_update("temples", doc_id, "followers", [user_id])
             await db.increment_field("temples", doc_id, "follower_count", 1)
+
             await cache_manager.invalidate_temples()
             await cache_manager.delete(f"temple:detail:{temple_id}")
-            if temple.get("temple_id"):
-                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+            if canonical_id != temple_id:
+                await cache_manager.delete(f"temple:detail:{canonical_id}")
         return {"message": "Now following temple"}
 
     @staticmethod
     async def unfollow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
-        """Unfollow a temple atomically"""
+        """Unfollow a temple atomically using dedicated temple_follows collection"""
         db = await TempleService.get_db()
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         doc_id = temple["id"] if temple else temple_id
+        canonical_id = temple.get("temple_id") if temple and temple.get("temple_id") else temple_id
         if not temple:
             temple = await db.get_document("temples", doc_id)
         if not temple:
             raise ValueError("Temple not found")
 
+        follow_key = f"{canonical_id}_{user_id}"
+        existing_follow = await db.get_document("temple_follows", follow_key)
         followers = temple.get("followers", [])
-        if user_id in followers:
-            await db.array_remove_update("temples", doc_id, "followers", [user_id])
+        is_currently_following = bool(existing_follow) or (user_id in followers)
+
+        if is_currently_following:
+            if existing_follow:
+                await db.delete_document("temple_follows", follow_key)
+                if doc_id != canonical_id:
+                    await db.delete_document("temple_follows", f"{doc_id}_{user_id}")
+
+            if user_id in followers:
+                await db.array_remove_update("temples", doc_id, "followers", [user_id])
+
             await db.increment_field("temples", doc_id, "follower_count", -1)
+
             await cache_manager.invalidate_temples()
             await cache_manager.delete(f"temple:detail:{temple_id}")
-            if temple.get("temple_id"):
-                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+            if canonical_id != temple_id:
+                await cache_manager.delete(f"temple:detail:{canonical_id}")
         return {"message": "Unfollowed temple"}
     
 
