@@ -377,6 +377,11 @@ export const translations = {
     liveJaapRooms: 'लाइव जाप रूम',
     startJaapSession: 'जाप सत्र शुरू करें',
     joinRoom: 'रूम में शामिल हों',
+    // 🧡 Engagement: Reframed transactional status label "पूरा हुआ" to devotional status "समर्पित 🙏"
+    // Lever: Reframing + Devotion (Bhakti over Productivity)
+    // Why: "समर्पित" frames progress/completion as a sacred offering rather than task completion.
+    // UI: Text-only change.
+    completed: 'समर्पित 🙏',
     // 🧡 Engagement: Reframed transactional goal completion "लक्ष्य पूरा हुआ!" to devotional vow completion "साधना संकल्प समर्पित! 🙏"
     targetReached: 'साधना संकल्प समर्पित! 🙏',
     rounds: 'माला',
