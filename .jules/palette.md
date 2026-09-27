@@ -1,3 +1,3 @@
-## 2024-11-20 - Adding Accessibility Attributes to Icon-only Buttons
-**Learning:** Found a recurring pattern in the React Native application where `TouchableOpacity` components wrapping single icons (like `Ionicons` for back navigation or closing modals) frequently lacked the necessary `accessibilityRole="button"` and `accessibilityLabel` attributes. This renders them invisible or uninformative to screen readers like TalkBack or VoiceOver.
-**Action:** Always ensure any icon-only touchable elements are provided with semantic roles and clear labels for accessibility. Ensure labels utilize multi-lingual translation logic where applicable (e.g. `t('language') === 'hi' ? 'वापस जाएं' : 'Go back'`).
+## 2024-05-19 - Adding accessibility to dynamic modal states
+**Learning:** In React Native, `ActivityIndicator` and dynamic modal state changes (like moving from a form to a loading state to a success state) are often entirely silent to screen readers by default.
+**Action:** Always add an `accessibilityLabel` to `ActivityIndicator` components. For dynamically rendering success/error views within a modal, apply `accessibilityLiveRegion="polite"` and `accessibilityRole="alert"` to the parent container to force screen readers to announce the state change correctly.
