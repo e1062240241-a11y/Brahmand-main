@@ -19,7 +19,7 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange }
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'for_you' && styles.activeTabBtn,
-          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+          pressed && Platform.OS === 'ios' && styles.pressedTab,
         ]}
         android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('for_you')}
@@ -35,7 +35,7 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange }
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'following' && styles.activeTabBtn,
-          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+          pressed && Platform.OS === 'ios' && styles.pressedTab,
         ]}
         android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('following')}
@@ -51,7 +51,7 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange }
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'trending' && styles.activeTabBtn,
-          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+          pressed && Platform.OS === 'ios' && styles.pressedTab,
         ]}
         android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('trending')}
@@ -92,6 +92,9 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#FF6B00',
     fontWeight: '900',
+  },
+  pressedTab: {
+    opacity: 0.7,
   },
 });
 
