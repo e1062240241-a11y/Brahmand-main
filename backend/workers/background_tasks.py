@@ -121,7 +121,7 @@ async def cleanup_expired_otps():
     now = datetime.utcnow()
     otps = await db.query_documents('otps')
     
-    deleted_count = 0
+    delete_tasks = []
     for otp in otps:
         expires_at_val = otp.get("expires_at")
         if not expires_at_val:
@@ -138,12 +138,14 @@ async def cleanup_expired_otps():
                 continue
                 
             if expires_at < now:
-                await db.delete_document('otps', otp['id'])
-                deleted_count += 1
+                delete_tasks.append(db.delete_document('otps', otp['id']))
         except Exception as e:
             logger.warning(f"Error cleaning up expired OTP document {otp.get('id')}: {e}")
             
-    logger.info(f"Cleaned up {deleted_count} expired OTPs")
+    if delete_tasks:
+        import asyncio
+        await asyncio.gather(*delete_tasks, return_exceptions=True)
+    logger.info(f"Cleaned up {len(delete_tasks)} expired OTPs")
 
 
 async def update_community_stats():
@@ -155,11 +157,16 @@ async def update_community_stats():
     db = FirestoreDB(client)
     communities = await db.query_documents('communities')
     
+    update_tasks = []
     for community in communities:
         cid = community.get('id')
         if not cid:
             continue
         member_count = len(community.get("members", []))
-        await db.update_document('communities', cid, {"member_count": member_count})
+        update_tasks.append(db.update_document('communities', cid, {"member_count": member_count}))
+
+    if update_tasks:
+        import asyncio
+        await asyncio.gather(*update_tasks, return_exceptions=True)
     
     logger.info(f"Updated stats for {len(communities)} communities")
