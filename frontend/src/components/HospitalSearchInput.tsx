@@ -255,7 +255,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
           />
 
           {loading ? (
-            <ActivityIndicator size="small" color="#E53935" style={styles.rightIcon} />
+            <ActivityIndicator size="small" color="#E53935" style={styles.rightIcon} accessibilityLabel="Loading hospitals" />
           ) : hospitalQuery.length > 0 ? (
             <TouchableOpacity
               onPress={handleClear}
