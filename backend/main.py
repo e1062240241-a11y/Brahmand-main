@@ -10183,10 +10183,15 @@ async def get_reports(
     status: str = 'pending',
     content_type: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
     token_data: dict = Depends(verify_token),
 ):
     """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     filters = []
     if status:
@@ -10206,7 +10211,7 @@ async def get_reports(
             filters=filters if filters else None,
             order_by='created_at',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10215,7 +10220,7 @@ async def get_reports(
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
         reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-        reports = reports[:max(1, min(limit, 300))]
+        reports = reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across reports to fetch in batch
     missing_post_ids = set()
@@ -10271,7 +10276,7 @@ async def get_reports(
             filters=mod_filters if mod_filters else None,
             order_by='createdAt',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10280,7 +10285,7 @@ async def get_reports(
         )
         mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
         mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
-        mod_reports = mod_reports[:max(1, min(limit, 300))]
+        mod_reports = mod_reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across moderation reports to fetch in batch
     mod_post_ids = set()
@@ -10362,7 +10367,7 @@ async def get_reports(
 
     all_reports = reports + standardized_mod
     all_reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    sliced_reports = all_reports[:limit]
+    sliced_reports = all_reports[safe_offset : safe_offset + safe_limit]
 
     # Resolve user details for all reports to return names/sl_ids
     user_ids = set()
