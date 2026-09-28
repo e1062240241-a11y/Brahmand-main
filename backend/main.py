@@ -7402,7 +7402,7 @@ async def send_community_message(
         raise HTTPException(status_code=403, detail="Not a community member")
 
     # Check verification (state and country groups require verification)
-    community_doc = locals().get('community') or await db.get_document('communities', community_id)
+    community_doc = community
     comm_type = community_doc.get('type') if community_doc else None
     if comm_type in ['state', 'country']:
         is_verified = user.get('is_verified', False)
@@ -7962,7 +7962,14 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
                     'last_message': (message.content or "")[:100],
                     'updated_at': now,
                 })
-                chat = await db.get_document('chats', chat_id)
+                chat.update({
+                    'request_status': 'pending',
+                    'request_by': sender_id,
+                    'request_retry_after': None,
+                    'request_updated_at': now,
+                    'last_message': (message.content or "")[:100],
+                    'updated_at': now,
+                })
                 request_status = 'pending'
                 request_by = sender_id
             else:
@@ -14678,12 +14685,11 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
     
-    # Get updated responder count
-    updated_alert = await db.get_document('sos_alerts', sos_id)
-    responder_count = len((updated_alert or {}).get('responders', []) or [])
+    # Get updated responder count in-memory
+    responder_count = len(existing_responders) + 1
     
     # Send notification to SOS creator with count
-    creator_user_id = (updated_alert or {}).get('user_id')
+    creator_user_id = alert.get('user_id')
     if creator_user_id:
         count_msg = f"{responder_count} {'person is' if responder_count == 1 else 'people are'} on the way to help"
         notification_data = {
@@ -14718,7 +14724,7 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
 
     # Emit to creator and all responders only (targeted, not a global broadcast)
     response_rooms = [f"user_{creator_user_id}"] if creator_user_id else []
-    for existing in (updated_alert or {}).get('responders', []) or []:
+    for existing in alert.get('responders', []) or []:
         rid = existing.get('user_id')
         if rid and f"user_{rid}" not in response_rooms:
             response_rooms.append(f"user_{rid}")
