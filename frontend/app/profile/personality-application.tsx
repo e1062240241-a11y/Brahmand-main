@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useTranslation } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
