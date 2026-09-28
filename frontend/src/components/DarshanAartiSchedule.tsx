@@ -66,7 +66,7 @@ const AartiRow: React.FC<{
           pressed && { backgroundColor: '#F8FAFC' },
         ]}
       >
-        <Animated.View style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, animatedStyle]}>
+        <Animated.View style={[styles.aartiRowContent, animatedStyle]}>
           <View style={styles.aartiLeft}>
             <Text style={styles.aartiNameText}>{item.name}</Text>
           </View>
@@ -172,7 +172,7 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
       {/* Optional General Darshan Info Banner */}
       {generalDarshanText ? (
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.generalDarshanBanner}>
-          <Ionicons name="information-circle-outline" size={18} color="#2563EB" style={{ marginTop: 1, flexShrink: 0 }} />
+          <Ionicons name="information-circle-outline" size={18} color="#2563EB" style={styles.generalDarshanIcon} />
           <Text style={styles.generalDarshanText}>
             General Darshan: <Text style={styles.generalDarshanBold}>{generalDarshanText}</Text>
           </Text>
@@ -207,7 +207,7 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
           <View style={styles.vipBadgeIcon}>
             <Ionicons name="sparkles" size={16} color="#059669" />
           </View>
-          <View style={{ flex: 1, flexShrink: 1 }}>
+          <View style={styles.vipTextContainer}>
             <Text style={styles.vipTitle}>VIP & Special Queue</Text>
             <Text style={styles.vipSubtext}>{vipInfoText}</Text>
           </View>
@@ -317,6 +317,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 12,
   },
+  generalDarshanIcon: {
+    marginTop: 1,
+    flexShrink: 0,
+  },
   generalDarshanText: {
     fontSize: 13,
     color: '#1E40AF',
@@ -360,6 +364,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: 8,
+  },
+  aartiRowContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   aartiBorderBottom: {
     borderBottomWidth: 1,
@@ -418,6 +427,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     marginTop: 1,
+  },
+  vipTextContainer: {
+    flex: 1,
+    flexShrink: 1,
   },
   vipTitle: {
     fontSize: 13,
