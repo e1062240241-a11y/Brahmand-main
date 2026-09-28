@@ -222,14 +222,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         )}
 
         {step === 'submitting' && (
-          <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+          <View style={styles.centerContent} accessibilityLiveRegion="polite">
+            <ActivityIndicator size="large" color={COLORS.primary} accessibilityLabel="Submitting report" />
             <Text style={styles.submittingText}>Submitting...</Text>
           </View>
         )}
 
         {step === 'success' && (
-          <View style={styles.centerContent}>
+          <View style={styles.centerContent} accessibilityLiveRegion="polite" accessibilityRole="alert">
             <View style={styles.successIcon}>
               <Ionicons name="checkmark-circle" size={56} color="#4CAF50" />
             </View>

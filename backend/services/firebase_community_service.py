@@ -3,6 +3,7 @@ import logging
 import base64
 import os
 import re
+import asyncio
 from uuid import uuid4
 from urllib.parse import quote
 from datetime import datetime
@@ -324,13 +325,18 @@ class FirebaseCommunityService:
             logger.error(f"Error creating country community for country '{country_name_final}': {e}", exc_info=True)
         
         # Add user to each community safely
+        # ⚡ Bolt Optimization: Use asyncio.gather to add user to all location communities concurrently
+        results = await asyncio.gather(
+            *(db.add_member_to_community(cid, user_id) for cid in community_ids),
+            return_exceptions=True
+        )
+
         joined_ids = []
-        for cid in community_ids:
-            try:
-                await db.add_member_to_community(cid, user_id)
+        for cid, result in zip(community_ids, results):
+            if isinstance(result, Exception):
+                logger.error(f"Failed to add user {user_id} to community {cid}: {result}", exc_info=True)
+            else:
                 joined_ids.append(cid)
-            except Exception as e:
-                logger.error(f"Failed to add user {user_id} to community {cid}: {e}", exc_info=True)
                 
         return joined_ids
     
