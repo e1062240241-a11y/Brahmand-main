@@ -436,9 +436,13 @@ export default function PanchangScreen() {
         {loading ? (
           <BrandedLoading
             message={
+              /* 🧡 Engagement: Reframed transactional loading message ("पंचांग की गणना की जा रही है...") to devotional cosmic alignment copy. */
+              /* Lever: Reframing + Sanatan Context (तिथि व मुहूर्त) */
+              /* Why: Framing loading as aligning with today's sacred cosmic timing enhances spiritual anticipation. */
+              /* UI: Text-only change, no structural or visual component modifications. */
               language === 'hi'
-                ? 'पंचांग की गणना की जा रही है...'
-                : 'Fetching Cosmic Calculations...'
+                ? 'आज के शुभ मुहूर्त व ग्रहों की पावन स्थिति की गणना... 🪔'
+                : 'Aligning with today\'s sacred cosmic timing...'
             }
           />
         ) : error ? (
