@@ -815,6 +815,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               <TouchableOpacity 
                 style={[styles.input, { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: 90, paddingHorizontal: 8 }]}
                 onPress={() => setShowCountryDropdown(!showCountryDropdown)}
+                accessibilityRole="button"
+                accessibilityLabel="Select country code"
               >
                 <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500', marginRight: 4 }}>{countryCode}</Text>
                 <Ionicons name={showCountryDropdown ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
@@ -844,6 +846,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                           setCountryCode(item.code);
                           setShowCountryDropdown(false);
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select country code ${item.label}`}
                       >
                         <Text style={{ fontSize: 14, color: COLORS.text }}>{item.label}</Text>
                       </TouchableOpacity>
@@ -878,6 +882,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   setSelectedTempCategories(categories);
                   setShowCategorySelector(true);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Open category selector"
               >
                 <View style={styles.chipInputContent}>
                   {categories.length === 0 ? (
@@ -918,6 +924,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <TouchableOpacity 
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           onPress={() => setSubCategories(subCategories.filter(s => s !== subCat))}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove subcategory ${subCat}`}
                         >
                           <Ionicons name="close-circle" size={16} color={COLORS.primary} />
                         </TouchableOpacity>
@@ -955,6 +963,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     Keyboard.dismiss();
                     setShowSubCategoryDropdown(!showSubCategoryDropdown);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle subcategory dropdown"
                 >
                   <Ionicons name={showSubCategoryDropdown ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
@@ -982,6 +992,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                             setSubCategoryInput('');
                             setShowSubCategoryDropdown(false);
                           }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Add subcategory ${subCat}`}
                         >
                           <Text style={styles.dropdownListItemText}>{subCat}</Text>
                           <Ionicons name="add" size={16} color={COLORS.primary} />
@@ -1006,6 +1018,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                           setSubCategoryInput('');
                           setShowSubCategoryDropdown(false);
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add custom subcategory ${subCategoryInput.trim()}`}
                       >
                         <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
                           {`Add "${subCategoryInput.trim()}"`}
@@ -1037,6 +1051,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 style={{ position: 'absolute', right: 20, top: 16.5, zIndex: 10 }}
                 onPress={detectLocation}
                 disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Detect current location"
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <AddressIcon width={24} height={24} color="#94A3B8" />
               </TouchableOpacity>
@@ -1049,6 +1066,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <TouchableOpacity 
               style={styles.uploadArea} 
               onPress={pickBusinessPhotos}
+              accessibilityRole="button"
+              accessibilityLabel="Upload business photos"
             >
               <View style={styles.cloudIconContainer}>
                 <Ionicons name="cloud-upload" size={26} color="#FF6600" />
@@ -1208,6 +1227,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   style={[styles.submitBtn, { marginTop: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }, loading && styles.submitBtnDisabled]}
                   onPress={handleMapConfirm}
                   disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Confirm map location"
                 >
                   {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
                 </TouchableOpacity>
@@ -1433,6 +1454,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   setCustomCategoryQuery('');
                   setShowCategorySelector(false);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm selected categories"
               >
                 <Text style={styles.selectorDoneButtonText}>Done</Text>
               </TouchableOpacity>
