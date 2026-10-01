@@ -462,14 +462,19 @@ class PushNotificationService:
         
         try:
             from services.firebase_notification_service import FirebaseNotificationService
-            for member_id in member_ids:
-                await FirebaseNotificationService.create_notification(
+            tasks = [
+                FirebaseNotificationService.create_notification(
                     user_id=member_id,
                     title=f"{sender_name} in {community_name}",
                     body=preview,
                     notification_type=FirebaseNotificationService.TYPE_COMMUNITY,
                     data={'community_id': community_id, 'type': 'community', 'community_name': community_name}
-                )
+                ) for member_id in member_ids
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.warning(f"Failed to create community message notification: {res}")
         except Exception as e:
             logger.warning(f"Failed to create community message notifications in Firestore: {e}")
         
@@ -545,14 +550,19 @@ class PushNotificationService:
         
         try:
             from services.firebase_notification_service import FirebaseNotificationService
-            for member_id in actual_member_ids:
-                await FirebaseNotificationService.create_notification(
+            tasks = [
+                FirebaseNotificationService.create_notification(
                     user_id=member_id,
                     title=f"{sender_name} in {circle_name}",
                     body=preview,
                     notification_type="circle_message",
                     data={'circle_id': circle_id, 'type': 'circle_message', 'circle_name': circle_name}
-                )
+                ) for member_id in actual_member_ids
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.warning(f"Failed to create circle message notification: {res}")
         except Exception as e:
             logger.warning(f"Failed to create circle message notifications in Firestore: {e}")
         
@@ -597,14 +607,19 @@ class PushNotificationService:
         
         try:
             from services.firebase_notification_service import FirebaseNotificationService
-            for member_id in member_ids:
-                await FirebaseNotificationService.create_notification(
+            tasks = [
+                FirebaseNotificationService.create_notification(
                     user_id=member_id,
                     title=f"Added to Circle: {circle_name}",
                     body=f"{inviter_name} added you to {circle_name}.",
                     notification_type="circle_invite",
                     data={'circle_id': circle_id, 'type': 'circle_invite', 'circle_name': circle_name}
-                )
+                ) for member_id in member_ids
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.warning(f"Failed to create circle invite notification: {res}")
         except Exception as e:
             logger.warning(f"Failed to create circle invite notifications in Firestore: {e}")
         
