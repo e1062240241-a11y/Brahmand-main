@@ -165,14 +165,22 @@ export const translations = {
     chantInEkantMode: 'Chant in Ekant (Solo) Mode',
     chantingWithYou: 'CHANTING WITH YOU',
     souls: 'souls',
-    personalMalaProgress: 'Personal Mala Progress',
+    // 🧡 Engagement: Reframed transactional progress header "Personal Mala Progress" to "Personal Mala Sadhana 🙏"
+    // Lever: Reframing + Devotion (Bhakti over Productivity)
+    // Why: "Sadhana" elevates routine counter tracking to ongoing spiritual practice.
+    // UI: Text-only change.
+    personalMalaProgress: 'Personal Mala Sadhana 🙏',
     beads: 'Beads',
     deepBreath: 'Have a deep breath.',
     nextJaapStartingSoon: 'Next jaap is starting soon...',
     remaining: 'remaining',
     line: 'LINE',
     session: 'Session',
-    done: 'Done',
+    // 🧡 Engagement: Reframed "Done" to "Offered 🙏"
+    // Lever: Reframing + Samarpan
+    // Why: "Offered" frames completing mala as a devotional offering to the Divine.
+    // UI: Text-only change.
+    done: 'Offered 🙏',
     malas: 'Malas',
     mala: 'Mala',
 
@@ -465,14 +473,22 @@ export const translations = {
     chantInEkantMode: 'एकांत (अकेले) जाप करें',
     chantingWithYou: 'आपके साथ जाप कर रहे हैं',
     souls: 'भक्त',
-    personalMalaProgress: 'व्यक्तिगत माला प्रगति',
+    // 🧡 Engagement: Reframed transactional header "व्यक्तिगत माला प्रगति" to "आपकी माला साधना 🙏"
+    // Lever: Reframing + Devotion (Bhakti over Productivity)
+    // Why: "साधना" evokes sacred spiritual effort (bhavna) rather than transactional task progress meters.
+    // UI: Text-only change.
+    personalMalaProgress: 'आपकी माला साधना 🙏',
     beads: 'मनके',
     deepBreath: 'एक गहरी सांस लें।',
     nextJaapStartingSoon: 'अगला जाप जल्द ही शुरू हो रहा है...',
     remaining: 'शेष',
     line: 'पंक्ति',
     session: 'सत्र',
-    done: 'पूर्ण',
+    // 🧡 Engagement: Reframed transactional completion status "पूर्ण" to devotional offering "समर्पित 🙏"
+    // Lever: Reframing + Devotion / Samarpan
+    // Why: "समर्पित" connects deeply with Sanatan spiritual sentiment (bhavna), turning mala completion into sacred offering.
+    // UI: Text-only change.
+    done: 'समर्पित 🙏',
     malas: 'मालाएं',
     mala: 'माला',
 
