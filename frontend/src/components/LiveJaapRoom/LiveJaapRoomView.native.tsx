@@ -1333,8 +1333,12 @@ export default function LiveJaapRoomView() {
                         end={{ x: 1, y: 0 }}
                       >
                         <Ionicons name="sparkles" size={14} color="#FFF" />
+                        {/* 🧡 Engagement: Reframed transactional completion status "माला पूर्ण / Mala Done" to devotional offering "माला समर्पित 🙏 / Mala Offered 🙏".
+                            Lever: Reframing + Devotion / Samarpan
+                            Why: "समर्पित" connects deeply with Sanatan spiritual sentiment (bhavna), framing 108-chant mala completion as a sacred devotional offering.
+                            UI: Text-only change, no structural or visual changes. */}
                         <Text style={styles.completedMalaText}>
-                          {Math.floor(personalCount / 108)} {t('language') === 'hi' ? 'माला पूर्ण' : (Math.floor(personalCount / 108) === 1 ? 'Mala Done' : 'Malas Done')}
+                          {Math.floor(personalCount / 108)} {t('language') === 'hi' ? (Math.floor(personalCount / 108) === 1 ? 'माला समर्पित 🙏' : 'मालाएं समर्पित 🙏') : (Math.floor(personalCount / 108) === 1 ? 'Mala Offered 🙏' : 'Malas Offered 🙏')}
                         </Text>
                         <Ionicons name="sparkles" size={14} color="#FFF" />
                       </LinearGradient>
