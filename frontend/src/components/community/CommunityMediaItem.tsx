@@ -1,29 +1,48 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   TouchableOpacity,
   StyleSheet,
   Image,
+  StyleProp,
+  ImageStyle,
+  ViewStyle,
+  ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+export interface MediaObject {
+  uri?: string;
+  type?: string;
+  media_type?: string;
+  mediaType?: string;
+}
+
 export interface CommunityMediaItemProps {
-  media: string | any;
-  style: any;
+  media: string | MediaObject | ImageSourcePropType;
+  style?: StyleProp<ImageStyle | ViewStyle>;
   onPress?: (origin?: { x: number; y: number; width: number; height: number } | null) => void;
   isActive?: boolean;
 }
 
+/**
+ * 🎨 Varnish Code Quality & Performance Fix:
+ * 1. Replaced `any` types for `media` and `style` with explicit TypeScript interfaces (`MediaObject`, `StyleProp<ImageStyle | ViewStyle>`).
+ * 2. Added `fadeDuration={0}` to plain React Native `<Image>` component to prevent image reloading flashes during list re-renders/scrolling on Android.
+ * 3. Extracted inline video container styles (`backgroundColor`, `justifyContent`, `alignItems`) into `StyleSheet.create`.
+ * 4. Added accessibility attributes (`accessibilityRole="button"`, `accessibilityLabel`) to touchable wrapper when `onPress` handler is supplied.
+ */
 export const CommunityMediaItem = React.memo(({
   media,
   style,
   onPress,
-  isActive = true,
 }: CommunityMediaItemProps) => {
-  const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
+  const mediaObj = typeof media === 'object' && media !== null && 'uri' in media ? (media as MediaObject) : null;
+  const mediaUrl = typeof media === 'string' ? media : (mediaObj?.uri || '');
+
   const isVideo = (
     (typeof media === 'object' && media !== null && (
-      String(media.type || media.media_type || media.mediaType || '').toLowerCase().startsWith('video')
+      String((media as MediaObject).type || (media as MediaObject).media_type || (media as MediaObject).mediaType || '').toLowerCase().startsWith('video')
     )) || (
       typeof mediaUrl === 'string' && (
         /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
@@ -36,12 +55,12 @@ export const CommunityMediaItem = React.memo(({
     )
   );
 
-  const containerRef = React.useRef<View>(null);
+  const containerRef = useRef<View>(null);
 
-  const handlePress = React.useCallback(() => {
+  const handlePress = useCallback(() => {
     if (!onPress) return;
-    const node = containerRef.current as any;
-    if (node?.measureInWindow) {
+    const node = containerRef.current;
+    if (node && typeof node.measureInWindow === 'function') {
       node.measureInWindow((x: number, y: number, width: number, height: number) => {
         if (width > 0 && height > 0) {
           onPress({ x, y, width, height });
@@ -54,28 +73,69 @@ export const CommunityMediaItem = React.memo(({
     }
   }, [onPress]);
 
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress: handlePress } : {};
+  const imageSource = typeof media === 'string' ? { uri: media } : (media as ImageSourcePropType);
 
   if (isVideo) {
+    if (onPress) {
+      return (
+        <TouchableOpacity
+          ref={containerRef}
+          activeOpacity={0.9}
+          onPress={handlePress}
+          style={[style, styles.videoContainer]}
+          accessibilityRole="button"
+          accessibilityLabel="Play video"
+        >
+          <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
+        </TouchableOpacity>
+      );
+    }
     return (
-      <Wrapper ref={containerRef} {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+      <View ref={containerRef} style={[style, styles.videoContainer]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
-      </Wrapper>
+      </View>
+    );
+  }
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        ref={containerRef}
+        activeOpacity={0.9}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel="View media"
+      >
+        <Image
+          source={imageSource}
+          style={style as StyleProp<ImageStyle>}
+          resizeMode="cover"
+          fadeDuration={0}
+        />
+      </TouchableOpacity>
     );
   }
 
   return (
-    <Wrapper ref={containerRef} {...wrapperProps}>
+    <View ref={containerRef}>
       <Image
-        source={typeof media === 'string' ? { uri: media } : media}
-        style={style}
+        source={imageSource}
+        style={style as StyleProp<ImageStyle>}
         resizeMode="cover"
+        fadeDuration={0}
       />
-    </Wrapper>
+    </View>
   );
 });
 
 CommunityMediaItem.displayName = 'CommunityMediaItem';
 
 export default CommunityMediaItem;
+
+const styles = StyleSheet.create({
+  videoContainer: {
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
