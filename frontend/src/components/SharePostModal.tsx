@@ -166,7 +166,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           <View style={styles.headerRow}>
             <View style={{ width: 32 }} />
             <Text style={styles.title}>{t('share')}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={t('close') || 'Close'}>
               <Ionicons name="close" size={22} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -174,7 +174,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           {/* Users List */}
           <View style={styles.usersSection}>
             {loading ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} accessibilityLabel={t('loading_chats') || 'Loading chats'} />
             ) : (
               <FlatList
                 horizontal
@@ -185,12 +185,12 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                 renderItem={({ item, index }) => {
                   const itemKey = getConversationKey(item, index);
                   return (
-                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)}>
+                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? `${item.user?.name} ${t('send_to') || 'को भेजें'}` : `${t('send_to') || 'Send to'} ${item.user?.name}`}>
                       <Avatar photo={item.user?.photo} size={60} name={item.user?.name} />
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (
                         <View style={styles.sharingOverlay}>
-                          <ActivityIndicator color="#fff" size="small" />
+                          <ActivityIndicator color="#fff" size="small" accessibilityLabel={t('sending') || 'Sending'} />
                         </View>
                       )}
                     </TouchableOpacity>
