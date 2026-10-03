@@ -12445,10 +12445,15 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     
     # Handle new categories
     if 'categories' in update_data:
-        for category in update_data['categories']:
-            existing_cat = await db.find_one('vendor_categories', [('name', '==', category)])
-            if not existing_cat:
-                await db.create_document('vendor_categories', {'name': category, 'count': 1})
+        # ⚡ Bolt Optimization: Batch fetch to prevent N+1 queries, then sequential create to prevent race conditions
+        unique_categories = list(set([str(c).strip() for c in update_data['categories'] if str(c).strip()]))
+        if unique_categories:
+            existing_cats = await db.query_documents('vendor_categories', filters=[('name', 'in', unique_categories)])
+            existing_names = {cat['name'] for cat in existing_cats if cat and 'name' in cat}
+
+            for category in unique_categories:
+                if category not in existing_names:
+                    await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
     # Auto-geocode address updates or missing coordinates
     target_address = update_data.get('full_address') or vendor.get('full_address')
