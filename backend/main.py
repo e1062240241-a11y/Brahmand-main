@@ -8792,8 +8792,13 @@ async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)
         return {"message": f"Join request sent to {circle['name']}", "circle": circle['name'], "status": "pending"}
 
 @api_router.get("/circles/{circle_id}/requests")
-async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_token)):
-    """Get pending join requests for a circle (admin only)"""
+async def get_circle_requests(
+    circle_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get pending join requests for a circle with offset pagination (admin only)"""
     db = await get_db()
     user_id = token_data["user_id"]
     
@@ -8804,12 +8809,38 @@ async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_
     if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can view requests")
     
-    requests = await db.query_documents('circle_requests', filters=[
-        ('circle_id', '==', circle_id),
-        ('status', '==', 'pending')
-    ])
-    
-    return requests
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    # Architectural fix: Enforce DB query bounds with order_by created_at DESC
+    # to prevent unbounded document reads per request on popular/active circles.
+    try:
+        requests = await db.query_documents(
+            'circle_requests',
+            filters=[
+                ('circle_id', '==', circle_id),
+                ('status', '==', 'pending')
+            ],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(f"Firestore composite index missing for circle_requests, falling back: {query_err}")
+            requests = await db.query_documents(
+                'circle_requests',
+                filters=[
+                    ('circle_id', '==', circle_id),
+                    ('status', '==', 'pending')
+                ],
+                limit=fetch_limit
+            )
+        else:
+            raise query_err
+
+    return requests[safe_offset : safe_offset + safe_limit]
 
 @api_router.post("/circles/{circle_id}/approve/{request_user_id}")
 async def approve_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
