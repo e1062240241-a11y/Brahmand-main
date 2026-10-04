@@ -218,6 +218,11 @@ export default function AllLiveJaapsScreen() {
       </View>
 
       {/* Devotee count banner */}
+      {/* 🧡 Engagement: Reframed transactional live counter ("50,000+ भक्त अभी एकसाथ जाप कर रहे हैं")
+          to devotional Satsang proof ("50,000+ भक्त सामूहिक साधना में लीन हैं — जुड़ें 🙏").
+          Lever: Social Proof / Satsang Feeling + Devotion over Utility
+          Why: "सामूहिक साधना में लीन" evokes a deep feeling of Satsang, community belonging, and reverent devotion rather than a generic app stat.
+          UI: Text-only change, zero structural or visual component modifications. */}
       <LinearGradient
         colors={['#FFF4EB', '#FFE8D6']}
         style={styles.bannerRow}
@@ -227,8 +232,8 @@ export default function AllLiveJaapsScreen() {
         <Ionicons name="people" size={18} color="#FF6600" />
         <Text style={styles.bannerText}>
           {t('language') === 'hi' 
-            ? <Text>जुड़ें <Text style={styles.bannerBold}>50,000+</Text> भक्त अभी एकसाथ जाप कर रहे हैं</Text>
-            : <Text>Join <Text style={styles.bannerBold}>50,000+</Text> devotees chanting together right now</Text>}
+            ? <Text><Text style={styles.bannerBold}>50,000+</Text> भक्त सामूहिक साधना में लीन हैं — जुड़ें 🙏</Text>
+            : <Text>Join <Text style={styles.bannerBold}>50,000+</Text> devotees united in sacred chanting 🙏</Text>}
         </Text>
       </LinearGradient>
 
