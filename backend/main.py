@@ -2480,9 +2480,9 @@ async def get_users_batch(
     result = []
     # ⚡ Bolt Optimization: Replace db.get_documents_batch with asyncio.gather
     # to avoid threadpool exhaustion and ensure safe hydration
-    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids), return_exceptions=True)
+    users = await asyncio.gather(*(db.get_document('users', uid) for uid in safe_ids))
     for user in users:
-        if user and not isinstance(user, Exception):
+        if user:
             result.append({
                 "id": user.get('id'),
                 "name": user.get('name'),
