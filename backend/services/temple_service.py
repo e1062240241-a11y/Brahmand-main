@@ -82,7 +82,7 @@ class TempleService:
         limit: int = 300,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
-        """Get temples with caching and pagination"""
+        """Get temples with caching and pagination, stripping followers arrays from cache"""
         cached = await cache_manager.get_temples()
         if not cached:
             db = await TempleService.get_db()
@@ -92,8 +92,10 @@ class TempleService:
             cached = []
             for t in temples:
                 temple_data = serialize_doc(t) or {}
-                temple_data["followers"] = t.get("followers", [])
-                temple_data["follower_count"] = t.get("follower_count", len(t.get("followers", [])))
+                followers = t.get("followers", [])
+                # Architectural fix: strip followers array from Redis cached structure to prevent memory bloat
+                temple_data.pop("followers", None)
+                temple_data["follower_count"] = t.get("follower_count", len(followers))
                 cached.append(temple_data)
             
             await cache_manager.set_temples(cached)
@@ -101,11 +103,32 @@ class TempleService:
         safe_limit = max(1, min(limit, 500))
         paginated_items = cached[offset:offset + safe_limit]
 
+        # Batch lookup follow status from temple_follows collection for paged items
+        following_map = {}
+        if user_id and paginated_items:
+            db = await TempleService.get_db()
+            doc_ids = []
+            for t in paginated_items:
+                tid = t.get("id") or t.get("temple_id")
+                if tid:
+                    doc_ids.append(f"{tid}_{user_id}")
+            if doc_ids:
+                try:
+                    edge_docs = await db.get_documents_batch("temple_follows", doc_ids)
+                    existing_edge_ids = {doc.get("id") for doc in edge_docs if doc and doc.get("id")}
+                    for t in paginated_items:
+                        tid = t.get("id") or t.get("temple_id")
+                        if tid:
+                            following_map[tid] = f"{tid}_{user_id}" in existing_edge_ids
+                except Exception as err:
+                    logger.warning("Failed to batch fetch temple_follows edge docs: %s", err)
+
         result = []
         for t in paginated_items:
             temple_data = t.copy()
-            followers_list = temple_data.pop("followers", [])
-            temple_data["is_following"] = user_id in followers_list if user_id else False
+            temple_data.pop("followers", None)
+            tid = t.get("id") or t.get("temple_id")
+            temple_data["is_following"] = following_map.get(tid, False) if user_id else False
             result.append(temple_data)
         
         return result
@@ -116,17 +139,38 @@ class TempleService:
         lng: float = 72.8777,
         user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Get temples near user's location"""
+        """Get temples near user's location with batch edge lookups"""
         cached = await cache_manager.get_temples()
         if not cached:
             await TempleService.get_temples()
             cached = await cache_manager.get_temples() or []
         
+        top_items = cached[:20]
+        following_map = {}
+        if user_id and top_items:
+            db = await TempleService.get_db()
+            doc_ids = []
+            for t in top_items:
+                tid = t.get("id") or t.get("temple_id")
+                if tid:
+                    doc_ids.append(f"{tid}_{user_id}")
+            if doc_ids:
+                try:
+                    edge_docs = await db.get_documents_batch("temple_follows", doc_ids)
+                    existing_edge_ids = {doc.get("id") for doc in edge_docs if doc and doc.get("id")}
+                    for t in top_items:
+                        tid = t.get("id") or t.get("temple_id")
+                        if tid:
+                            following_map[tid] = f"{tid}_{user_id}" in existing_edge_ids
+                except Exception as err:
+                    logger.warning("Failed to batch fetch temple_follows in get_nearby_temples: %s", err)
+
         result = []
-        for t in cached[:20]:
+        for t in top_items:
             temple_data = t.copy()
-            followers_list = temple_data.pop("followers", [])
-            temple_data["is_following"] = user_id in followers_list if user_id else False
+            temple_data.pop("followers", None)
+            tid = t.get("id") or t.get("temple_id")
+            temple_data["is_following"] = following_map.get(tid, False) if user_id else False
             temple_data["distance"] = "2.5 km"  # Placeholder
             result.append(temple_data)
         
@@ -134,7 +178,7 @@ class TempleService:
     
     @staticmethod
     async def get_temple(temple_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get temple details"""
+        """Get temple details with followers array stripped from cache"""
         cache_key = f"temple:detail:{temple_id}"
         cached = await cache_manager.get(cache_key)
         
@@ -147,20 +191,34 @@ class TempleService:
                 raise ValueError("Temple not found")
             
             cached = serialize_doc(temple) or {}
-            cached["followers"] = temple.get("followers", [])
-            cached["follower_count"] = temple.get("follower_count", len(temple.get("followers", [])))
-            await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
+            followers = temple.get("followers", [])
+            cached.pop("followers", None)
+            cached["follower_count"] = temple.get("follower_count", len(followers))
+            await cache_manager.set(cache_key, cached, ttl=300)  # Cache for 5 minutes
 
         temple_data = cached.copy() if cached else {}
-        followers_list = temple_data.pop("followers", [])
-        temple_data["is_following"] = user_id in followers_list if user_id else False
+        temple_data.pop("followers", None)
+
+        is_following = False
+        if user_id:
+            db = await TempleService.get_db()
+            tid = temple_data.get("id") or temple_id
+            edge_doc = await db.get_document("temple_follows", f"{tid}_{user_id}")
+            if edge_doc:
+                is_following = True
+            elif temple_id and tid != temple_id:
+                alt_edge = await db.get_document("temple_follows", f"{temple_id}_{user_id}")
+                if alt_edge:
+                    is_following = True
+
+        temple_data["is_following"] = is_following
         temple_data["follower_count"] = temple_data.get("follower_count", 0)
         
         return temple_data
 
     @staticmethod
     async def follow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
-        """Follow a temple atomically"""
+        """Follow a temple atomically using temple_follows edge docs and capping legacy followers array"""
         db = await TempleService.get_db()
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         doc_id = temple["id"] if temple else temple_id
@@ -169,19 +227,31 @@ class TempleService:
         if not temple:
             raise ValueError("Temple not found")
 
-        followers = temple.get("followers", [])
-        if user_id not in followers:
-            await db.array_union_update("temples", doc_id, "followers", [user_id])
-            await db.increment_field("temples", doc_id, "follower_count", 1)
+        edge_id = f"{doc_id}_{user_id}"
+        existing_edge = await db.get_document("temple_follows", edge_id)
+        if not existing_edge:
+            await db.set_document("temple_follows", edge_id, {
+                "temple_id": doc_id,
+                "user_id": user_id,
+                "created_at": datetime.utcnow().isoformat() + 'Z'
+            })
+
+            followers = temple.get("followers", [])
+            if user_id not in followers:
+                updated_followers = (followers + [user_id])[-100:]
+                await db.update_document("temples", doc_id, {"followers": updated_followers})
+                await db.increment_field("temples", doc_id, "follower_count", 1)
+
             await cache_manager.invalidate_temples()
             await cache_manager.delete(f"temple:detail:{temple_id}")
             if temple.get("temple_id"):
                 await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+
         return {"message": "Now following temple"}
 
     @staticmethod
     async def unfollow_temple(temple_id: str, user_id: str) -> Dict[str, Any]:
-        """Unfollow a temple atomically"""
+        """Unfollow a temple atomically using temple_follows edge docs"""
         db = await TempleService.get_db()
         temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         doc_id = temple["id"] if temple else temple_id
@@ -190,14 +260,21 @@ class TempleService:
         if not temple:
             raise ValueError("Temple not found")
 
-        followers = temple.get("followers", [])
-        if user_id in followers:
-            await db.array_remove_update("temples", doc_id, "followers", [user_id])
+        edge_id = f"{doc_id}_{user_id}"
+        existing_edge = await db.get_document("temple_follows", edge_id)
+        if existing_edge:
+            await db.delete_document("temple_follows", edge_id)
+
+            followers = temple.get("followers", [])
+            if user_id in followers:
+                await db.array_remove_update("temples", doc_id, "followers", [user_id])
             await db.increment_field("temples", doc_id, "follower_count", -1)
+
             await cache_manager.invalidate_temples()
             await cache_manager.delete(f"temple:detail:{temple_id}")
             if temple.get("temple_id"):
                 await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
+
         return {"message": "Unfollowed temple"}
     
 
