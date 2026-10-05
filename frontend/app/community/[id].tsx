@@ -1,57 +1,40 @@
-import { formatDateIST, formatTimeIST, formatDateTimeIST, parseUTCDate, getUnixTimestamp, getTimeAgo } from '../../src/utils/dateUtils';
+import { parseUTCDate, getTimeAgo } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   InteractionManager,
-  RefreshControl,
   Alert,
   ActionSheetIOS,
   Share,
-  Modal,
-  Image,
-  ImageBackground,
   Dimensions,
   Keyboard,
   LayoutAnimation,
-  UIManager,
-  ScrollView,
-  TouchableWithoutFeedback,
   Animated,
-  PanResponder,
   Easing,
   Linking,
 } from 'react-native';
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { useIsFocused } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { decryptGroupMessage, getKeys, decryptSymmetricKey, generateSymmetricKey, encryptSymmetricKeyForUser } from '../../src/utils/cryptoUtil';
 import {
-  getCommunity,
-  getCommunityKey,
-  addCommunityKey,
   sendCommunityMessage,
   deleteCommunityMessage,
   resolveCommunityRequest,
-  deleteCommunityRequest,
   sendDirectMessage,
   getUserProfile,
   parseApiError,
-  getKYCStatus,
   toggleRequestInterest,
   getUsersBatch,
   reportContent,
   reportComment,
-  getCommunities,
   attendEvent,
   deletePost,
   togglePostLike,
@@ -71,16 +54,12 @@ import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
 import { useAuthStore } from '../../src/store/authStore';
 import { useChatStore, hydrateCommunityScreenCaches } from '../../src/store/chatStore';
-import { socketService } from '../../src/services/socket';
 import { useVendorStore } from '../../src/store/vendorStore';
-import { COLORS, FONTS } from '../../src/constants/theme';
+import { FONTS } from '../../src/constants/theme';
 import { useCreatePostState } from '../../src/hooks/useCreatePostState';
 
 import { Avatar } from '../../src/components/Avatar';
-import { MentionInput } from '../../src/components/MentionInput';
-import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
-import { CommentModal } from '../../src/components/community/CommentModal';
 import { CreatePostModal } from '../../src/components/community/CreatePostModal';
 import { AnimatedFullScreenMediaViewer } from '../../src/components/community/AnimatedFullScreenMediaViewer';
 import { AttendeesModal } from '../../src/components/community/AttendeesModal';
@@ -90,33 +69,28 @@ import { blockUser, unblockUser } from '../../src/services/firebase/moderationSe
 import { useBlockStore } from '../../src/store/blockStore';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import * as ImagePicker from 'expo-image-picker';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Image as ExpoImage } from 'expo-image';
-import * as Clipboard from 'expo-clipboard';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, G, Path } from 'react-native-svg';
 
 import { getFestivalImage } from '../../src/constants/festivalImages';
 import { CustomLoader } from '../../src/components/CustomLoader';
 
-import { useGlobalMute } from '../../src/contexts/MuteContext';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
-import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
 
 import {
   ensureCategoriesLoaded,
   saveLocalPost,
   iosUserCreatedPostIds,
 } from '../../src/services/localPostCache';
-import { COMMUNITY_TABS, POST_CATEGORIES } from '../../src/constants/community';
-import { getCommunityMemberCount, isSevaRequest, isSevaPost, isLostFoundRequest, isTempleUpdateRequest } from '../../src/utils/communityUtils';
+import { COMMUNITY_TABS } from '../../src/constants/community';
+import { getCommunityMemberCount, isSevaRequest } from '../../src/utils/communityUtils';
 import { splitTextIntoTweets } from '../../src/utils/textUtils';
 import { useCommunityData } from '../../src/hooks/useCommunityData';
 import { useCommunitySocket } from '../../src/hooks/useCommunitySocket';
 import { useCommunityTabData } from '../../src/hooks/useCommunityTabData';
 import { CommunityListItem } from '../../src/components/community/CommunityListItem';
 import { CommunityMediaItem } from '../../src/components/community/CommunityMediaItem';
-import { CommunityPost, CommunityRequest, FestivalEvent, DiscussionPost } from '../../src/types/community';
+import { CommunityRequest, FestivalEvent, DiscussionPost } from '../../src/types/community';
 
 
 
