@@ -306,6 +306,11 @@ export const translations = {
 
     // Notifications
     notificationsTitle: 'Notifications',
+    // 🧡 Engagement: Reframed empty notifications state from generic alert copy ("No Notifications")
+    // to peaceful, devotional invitation ("All is Peaceful ✨").
+    // Lever: Reframing + Peace Framing / Compassion over Guilt
+    // Why: Empty state becomes an opportunity for quiet reflection rather than an empty screen.
+    // UI: Text-only change.
     noNotifications: 'All is Peaceful ✨',
     noNotificationsSub: 'No new alerts. Take a quiet moment for Jaap or read the sacred scriptures.',
     markAllRead: 'Mark all read',
@@ -606,6 +611,11 @@ export const translations = {
 
     // Notifications
     notificationsTitle: 'सूचनाएं',
+    // 🧡 Engagement: Reframed empty notifications state from generic alert copy ("कोई सूचना नहीं है")
+    // to peaceful, devotional invitation ("सब शांत और मंगलमय है ✨").
+    // Lever: Reframing + Peace Framing / Compassion over Guilt
+    // Why: Empty state becomes an opportunity for quiet reflection rather than an empty screen.
+    // UI: Text-only change.
     noNotifications: 'सब शांत और मंगलमय है ✨',
     noNotificationsSub: 'कोई नई सूचना नहीं है। इस शांत पल में प्रभु का जाप करें या पवित्र ग्रंथ पढ़ें।',
     markAllRead: 'सभी पढ़े हुए चिह्नित करें',
