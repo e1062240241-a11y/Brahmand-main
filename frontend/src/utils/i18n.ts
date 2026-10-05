@@ -327,6 +327,19 @@ export const translations = {
     findPeopleGroups: 'Find people, groups',
     noGroupChatsYet: 'No group chats yet',
     startConversation: 'Start a conversation',
+
+    // Accessibility Labels
+    a11yClose: 'Close',
+    a11yExploreJaaps: 'Explore All Live Jaaps',
+    a11ySendHeart: 'Send heart reaction',
+    a11ySendFoldedHands: 'Send folded hands reaction',
+    a11ySendFire: 'Send fire reaction',
+    a11ySendOm: 'Send Om reaction',
+    a11yMuteMic: 'Mute microphone',
+    a11yUnmuteMic: 'Unmute microphone',
+    a11yMuteAudio: 'Mute audio',
+    a11yUnmuteAudio: 'Unmute audio',
+    a11yShareRoom: 'Share room',
   },
   hi: {
     // Bottom Tabs
@@ -628,6 +641,19 @@ export const translations = {
     findPeopleGroups: 'लोग, ग्रुप खोजें',
     noGroupChatsYet: 'अभी तक कोई ग्रुप चैट नहीं है',
     startConversation: 'बातचीत शुरू करें',
+
+    // Accessibility Labels
+    a11yClose: 'बंद करें',
+    a11yExploreJaaps: 'अन्य लाइव जाप देखें',
+    a11ySendHeart: 'हार्ट रिएक्शन भेजें',
+    a11ySendFoldedHands: 'हाथ जोड़ने का रिएक्शन भेजें',
+    a11ySendFire: 'फायर रिएक्शन भेजें',
+    a11ySendOm: 'ॐ रिएक्शन भेजें',
+    a11yMuteMic: 'माइक्रोफ़ोन म्यूट करें',
+    a11yUnmuteMic: 'माइक्रोफ़ोन अनम्यूट करें',
+    a11yMuteAudio: 'ऑडियो म्यूट करें',
+    a11yUnmuteAudio: 'ऑडियो अनम्यूट करें',
+    a11yShareRoom: 'रूम शेयर करें',
   },
 };
 
