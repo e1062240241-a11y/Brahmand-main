@@ -344,7 +344,12 @@ export default function SOSScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -453,8 +458,12 @@ export default function SOSScreen() {
                     longitude={location.coords.longitude} 
                   />
                 ) : (
-                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F0F0' }]}>
-                    <ActivityIndicator size="large" color="#FF3B30" />
+                  <View
+                    style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F0F0' }]}
+                    accessibilityRole="alert"
+                    accessibilityLiveRegion="polite"
+                  >
+                    <ActivityIndicator size="large" color="#FF3B30" accessibilityLabel="Fetching your location" />
                     <Text style={{ marginTop: 10, color: '#666' }}>Fetching your location...</Text>
                   </View>
                 )}
