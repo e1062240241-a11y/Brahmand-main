@@ -31,6 +31,7 @@ import Animated, {
 import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { loadRigvedaChapter } from '../../src/services/rigveda-service';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,6 +60,8 @@ const CHAPTER_TITLES: Record<number, string> = {
 export default function RigvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
   const [isOpened, setIsOpened] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const pendingProgressRef = useRef<any>(null);
@@ -316,7 +319,9 @@ export default function RigvedaPage() {
 
           <View style={styles.instructionBadge}>
             <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
-            <Text style={styles.instructionText}>Tap to start journey</Text>
+            <Text style={styles.instructionText}>
+              {isHindi ? 'स्वाध्याय आरंभ करने हेतु स्पर्श करें ✨' : 'Tap to start journey'}
+            </Text>
           </View>
         </LinearGradient>
       ) : (
@@ -521,7 +526,9 @@ export default function RigvedaPage() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Saved Bookmarks</Text>
+              <Text style={styles.modalTitle}>
+                {isHindi ? 'सहेजे गए पृष्ठ / चिह्न' : 'Saved Bookmarks'}
+              </Text>
               <TouchableOpacity onPress={() => setShowBookmarksMenu(false)}>
                 <Ionicons name="close" size={24} color="#5C250A" />
               </TouchableOpacity>
@@ -529,7 +536,9 @@ export default function RigvedaPage() {
             
             <ScrollView style={styles.modalScroll}>
               {bookmarks.length === 0 ? (
-                <Text style={styles.emptyBookmarks}>No bookmarks saved yet.</Text>
+                <Text style={styles.emptyBookmarks}>
+                  {isHindi ? 'अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨' : 'No bookmarks saved yet.'}
+                </Text>
               ) : (
                 bookmarks.map((bm, idx) => (
                   <TouchableOpacity 
@@ -545,7 +554,9 @@ export default function RigvedaPage() {
                   >
                     <View>
                       <Text style={styles.bookmarkItemTitle}>{bm.title}</Text>
-                      <Text style={styles.bookmarkItemSub}>Chapter {bm.chapter}</Text>
+                      <Text style={styles.bookmarkItemSub}>
+                        {isHindi ? `मण्डल ${convertToHindiNumerals(bm.chapter)}` : `Chapter ${bm.chapter}`}
+                      </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#8C3A00" />
                   </TouchableOpacity>
