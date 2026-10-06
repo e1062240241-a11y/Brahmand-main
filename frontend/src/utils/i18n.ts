@@ -325,7 +325,11 @@ export const translations = {
     allChats: 'All Chats',
     groupChats: 'Group Chats',
     findPeopleGroups: 'Find people, groups',
-    noGroupChatsYet: 'No group chats yet',
+    // 🧡 Engagement: Reframed transactional empty state "No group chats yet" to devotional community/satsang framing
+    // Lever: Reframing + Social Proof (Satsang)
+    // Why: "Satsang Groups" frames group conversations around spiritual community and communal harmony.
+    // UI: Text-only change.
+    noGroupChatsYet: 'No Satsang Groups Yet 🙏 — Connect with fellow devotees in communal harmony',
     startConversation: 'Start a conversation',
   },
   hi: {
@@ -626,7 +630,11 @@ export const translations = {
     allChats: 'सभी चैट',
     groupChats: 'ग्रुप चैट',
     findPeopleGroups: 'लोग, ग्रुप खोजें',
-    noGroupChatsYet: 'अभी तक कोई ग्रुप चैट नहीं है',
+    // 🧡 Engagement: Reframed transactional empty state "अभी तक कोई ग्रुप चैट नहीं है" to devotional community/satsang framing
+    // Lever: Reframing + Social Proof (Satsang)
+    // Why: "सत्संग समूह" frames group conversations around spiritual community and communal harmony.
+    // UI: Text-only change.
+    noGroupChatsYet: 'अभी कोई सत्संग समूह नहीं है 🙏 — साथी भक्तों के साथ जुड़े रहें',
     startConversation: 'बातचीत शुरू करें',
   },
 };
