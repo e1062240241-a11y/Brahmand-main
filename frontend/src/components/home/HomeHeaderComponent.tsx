@@ -14,7 +14,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, shivaImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 

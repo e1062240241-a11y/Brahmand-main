@@ -5,7 +5,6 @@ const SafeFlashList = FlashList as any;
 import { useIsFocused } from 'expo-router';
 import { OmSpinner, OmRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
-import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
 import { getHomeFeed } from '../../services/api';
