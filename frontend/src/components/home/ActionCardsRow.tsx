@@ -6,7 +6,7 @@ import { Alert, AppState, Image, ScrollView, StyleSheet, Text, TouchableOpacity,
 import Svg, { Path } from 'react-native-svg';
 import { HomeCardTextureBg } from './HomeCardTextureBg';
 import { styles } from './home.styles';
-import { ACTION_CARD_SNAP_INTERVAL, ROTATING_AARTIS } from './homeConstants';
+import { ROTATING_AARTIS } from './homeConstants';
 
 export interface ActionCommunityRequest {
     id?: string;
