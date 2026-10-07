@@ -4,3 +4,6 @@
 ## 2025-02-27 - Replace sequential db operations with asyncio.gather in location community joins
 **Learning:** Sequential `await db.add_member_to_community` operations in a `for` loop (e.g. joining 3+ location communities during signups or location changes) create significant N+1 I/O latency.
 **Action:** Replace `for` loops containing independent I/O database calls with `asyncio.gather(..., return_exceptions=True)`. Process the results safely using `zip(items, results)` to log individual exceptions without crashing the batch.
+## 2025-02-27 - Remove redundant sequential await before asyncio.gather
+**Learning:** When refactoring synchronous database writes (e.g., `await db.set_document`) to concurrent execution using `tasks.append()` and `asyncio.gather` in Python, ensure the original synchronous `await` statement is fully removed. Leaving both the `await` and the `append` causes redundant double-writes and unintended N+1 blocking behavior.
+**Action:** When updating a sequential DB query loop to concurrent batching, always double-check the modified block to confirm that the original blocking `await` is completely deleted, and only the unawaited coroutine is added to the tasks list. Ensure loop counters (like `created += 1`) are not duplicated.

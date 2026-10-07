@@ -10709,11 +10709,6 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 skipped += 1
             else:
                 f_uid = doc_map[doc_id]
-                await db.set_document('user_follows', doc_id, {
-                    'follower_uid': uid,
-                    'followee_uid': f_uid,
-                })
-                created += 1
                 tasks.append(db.set_document('user_follows', doc_id, {
                     'follower_uid': uid,
                     'followee_uid': f_uid,
