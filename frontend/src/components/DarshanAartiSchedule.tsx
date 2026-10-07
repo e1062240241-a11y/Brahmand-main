@@ -34,13 +34,20 @@ const DEFAULT_AARTIS: AartiItem[] = [
   { id: 'sandhya', name: 'Sandhya Aarti', time: '6:30 PM', color: '#7C3AED' },
 ];
 
+/**
+ * 🎨 Varnish Code Quality & Performance Optimization:
+ * 1. Wrapped AartiRow, HeroTimingCard, and DarshanAartiSchedule in React.memo to prevent unnecessary re-renders when parent screens re-render during scroll or tab switching.
+ * 2. Extracted inline style allocations ({ backgroundColor: '#F8FAFC' }, { backgroundColor: '#FEF3C7' }, { backgroundColor: '#E0E7FF' }) to static StyleSheet.create definitions.
+ * 3. Added explicit displayName properties for debugging and React DevTools clarity.
+ */
+
 /* Sub-component for Aarti row with spring press scaling interaction */
-const AartiRow: React.FC<{
+const AartiRow = React.memo<{
   item: AartiItem;
   index: number;
   isLast: boolean;
   accentColor: string;
-}> = ({ item, index, isLast, accentColor }) => {
+}>(function AartiRow({ item, index, isLast, accentColor }) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -63,7 +70,7 @@ const AartiRow: React.FC<{
         style={({ pressed }) => [
           styles.aartiItemRow,
           !isLast && styles.aartiBorderBottom,
-          pressed && { backgroundColor: '#F8FAFC' },
+          pressed && styles.aartiItemRowPressed,
         ]}
       >
         <Animated.View style={[styles.aartiRowContent, animatedStyle]}>
@@ -78,144 +85,150 @@ const AartiRow: React.FC<{
       </Pressable>
     </Animated.View>
   );
-};
+});
+
+AartiRow.displayName = 'AartiRow';
 
 /* Sub-component for Hero timing card with subtle press scale & pulse */
-const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = ({
-  openingTime,
-  closingTime,
-}) => {
-  const scale = useSharedValue(1);
-  const pulse = useSharedValue(1);
+const HeroTimingCard = React.memo<{ openingTime: string; closingTime: string }>(
+  function HeroTimingCard({ openingTime, closingTime }) {
+    const scale = useSharedValue(1);
+    const pulse = useSharedValue(1);
 
-  React.useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.15, { duration: 1200 }),
-        withTiming(1, { duration: 1200 })
-      ),
-      -1,
-      true
-    );
-  }, []);
+    React.useEffect(() => {
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 1200 }),
+          withTiming(1, { duration: 1200 })
+        ),
+        -1,
+        true
+      );
+    }, [pulse]);
 
-  const animatedCardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+    const animatedCardStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
 
-  const animatedPulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-    opacity: 0.8,
-  }));
+    const animatedPulseStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: pulse.value }],
+      opacity: 0.8,
+    }));
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
-  };
+    const handlePressIn = () => {
+      scale.value = withSpring(0.98, { damping: 15, stiffness: 300 });
+    };
 
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-  };
+    const handlePressOut = () => {
+      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    };
 
-  return (
-    <Animated.View entering={FadeInDown.duration(450)}>
-      <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
-        <Animated.View style={[styles.timingsCard, animatedCardStyle]}>
-          <View style={styles.timingItem}>
-            <View style={[styles.timingIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <Animated.View style={animatedPulseStyle}>
-                <Ionicons name="sunny" size={20} color="#D97706" />
-              </Animated.View>
+    return (
+      <Animated.View entering={FadeInDown.duration(450)}>
+        <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
+          <Animated.View style={[styles.timingsCard, animatedCardStyle]}>
+            <View style={styles.timingItem}>
+              <View style={[styles.timingIconWrap, styles.openingIconBg]}>
+                <Animated.View style={animatedPulseStyle}>
+                  <Ionicons name="sunny" size={20} color="#D97706" />
+                </Animated.View>
+              </View>
+              <View style={styles.timingTextContainer}>
+                <Text style={styles.timingLabel}>Opening Time</Text>
+                <Text style={styles.timingValue} numberOfLines={3}>{openingTime}</Text>
+              </View>
             </View>
-            <View style={styles.timingTextContainer}>
-              <Text style={styles.timingLabel}>Opening Time</Text>
-              <Text style={styles.timingValue} numberOfLines={3}>{openingTime}</Text>
+
+            <View style={styles.timingDivider} />
+
+            <View style={styles.timingItem}>
+              <View style={[styles.timingIconWrap, styles.closingIconBg]}>
+                <Ionicons name="moon" size={18} color="#4F46E5" />
+              </View>
+              <View style={styles.timingTextContainer}>
+                <Text style={styles.timingLabel}>Closing Time</Text>
+                <Text style={styles.timingValue} numberOfLines={3}>{closingTime}</Text>
+              </View>
             </View>
-          </View>
-
-          <View style={styles.timingDivider} />
-
-          <View style={styles.timingItem}>
-            <View style={[styles.timingIconWrap, { backgroundColor: '#E0E7FF' }]}>
-              <Ionicons name="moon" size={18} color="#4F46E5" />
-            </View>
-            <View style={styles.timingTextContainer}>
-              <Text style={styles.timingLabel}>Closing Time</Text>
-              <Text style={styles.timingValue} numberOfLines={3}>{closingTime}</Text>
-            </View>
-          </View>
-        </Animated.View>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
-  openingTime = '4:00 AM',
-  closingTime = '9:00 PM',
-  generalDarshanText,
-  aartis = DEFAULT_AARTIS,
-  vipInfoText = 'VIP / Special Darshan Available',
-}) => {
-  return (
-    <View style={styles.container}>
-      {/* SECTION TITLE */}
-      <View style={styles.headerRow}>
-        <View style={styles.iconBadge}>
-          <Ionicons name="time" size={18} color="#D97706" />
-        </View>
-        <Text style={styles.sectionTitle}>Darshan & Aarti Schedule</Text>
-      </View>
-
-      {/* 1. HERO TIMINGS CARD (OPENING & CLOSING WITH PULSE & PRESS INTERACTION) */}
-      <HeroTimingCard openingTime={openingTime} closingTime={closingTime} />
-
-      {/* Optional General Darshan Info Banner */}
-      {generalDarshanText ? (
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.generalDarshanBanner}>
-          <Ionicons name="information-circle-outline" size={18} color="#2563EB" style={styles.generalDarshanIcon} />
-          <Text style={styles.generalDarshanText}>
-            General Darshan: <Text style={styles.generalDarshanBold}>{generalDarshanText}</Text>
-          </Text>
-        </Animated.View>
-      ) : null}
-
-      {/* 2. DAILY AARTI TIMINGS LIST WITH STAGGERED ENTRANCE & PRESS SCALE */}
-      <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.aartiCardContainer}>
-        <Text style={styles.aartiCardHeader}>Daily Aarti & Rituals</Text>
-
-        <View style={styles.aartiList}>
-          {aartis.map((item, index) => {
-            const isLast = index === aartis.length - 1;
-            const accentColor = item.color || '#D97706';
-
-            return (
-              <AartiRow
-                key={item.id || `${item.name}-${index}`}
-                item={item}
-                index={index}
-                isLast={isLast}
-                accentColor={accentColor}
-              />
-            );
-          })}
-        </View>
+          </Animated.View>
+        </Pressable>
       </Animated.View>
+    );
+  }
+);
 
-      {/* 3. VIP & SPECIAL DARSHAN INFO BANNER */}
-      {vipInfoText ? (
-        <Animated.View entering={FadeInDown.delay(300).duration(450)} style={styles.vipCard}>
-          <View style={styles.vipBadgeIcon}>
-            <Ionicons name="sparkles" size={16} color="#059669" />
+HeroTimingCard.displayName = 'HeroTimingCard';
+
+export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = React.memo(
+  function DarshanAartiSchedule({
+    openingTime = '4:00 AM',
+    closingTime = '9:00 PM',
+    generalDarshanText,
+    aartis = DEFAULT_AARTIS,
+    vipInfoText = 'VIP / Special Darshan Available',
+  }) {
+    return (
+      <View style={styles.container}>
+        {/* SECTION TITLE */}
+        <View style={styles.headerRow}>
+          <View style={styles.iconBadge}>
+            <Ionicons name="time" size={18} color="#D97706" />
           </View>
-          <View style={styles.vipTextContainer}>
-            <Text style={styles.vipTitle}>VIP & Special Queue</Text>
-            <Text style={styles.vipSubtext}>{vipInfoText}</Text>
+          <Text style={styles.sectionTitle}>Darshan & Aarti Schedule</Text>
+        </View>
+
+        {/* 1. HERO TIMINGS CARD (OPENING & CLOSING WITH PULSE & PRESS INTERACTION) */}
+        <HeroTimingCard openingTime={openingTime} closingTime={closingTime} />
+
+        {/* Optional General Darshan Info Banner */}
+        {generalDarshanText ? (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.generalDarshanBanner}>
+            <Ionicons name="information-circle-outline" size={18} color="#2563EB" style={styles.generalDarshanIcon} />
+            <Text style={styles.generalDarshanText}>
+              General Darshan: <Text style={styles.generalDarshanBold}>{generalDarshanText}</Text>
+            </Text>
+          </Animated.View>
+        ) : null}
+
+        {/* 2. DAILY AARTI TIMINGS LIST WITH STAGGERED ENTRANCE & PRESS SCALE */}
+        <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.aartiCardContainer}>
+          <Text style={styles.aartiCardHeader}>Daily Aarti & Rituals</Text>
+
+          <View style={styles.aartiList}>
+            {aartis.map((item, index) => {
+              const isLast = index === aartis.length - 1;
+              const accentColor = item.color || '#D97706';
+
+              return (
+                <AartiRow
+                  key={item.id || `${item.name}-${index}`}
+                  item={item}
+                  index={index}
+                  isLast={isLast}
+                  accentColor={accentColor}
+                />
+              );
+            })}
           </View>
         </Animated.View>
-      ) : null}
-    </View>
-  );
-};
+
+        {/* 3. VIP & SPECIAL DARSHAN INFO BANNER */}
+        {vipInfoText ? (
+          <Animated.View entering={FadeInDown.delay(300).duration(450)} style={styles.vipCard}>
+            <View style={styles.vipBadgeIcon}>
+              <Ionicons name="sparkles" size={16} color="#059669" />
+            </View>
+            <View style={styles.vipTextContainer}>
+              <Text style={styles.vipTitle}>VIP & Special Queue</Text>
+              <Text style={styles.vipSubtext}>{vipInfoText}</Text>
+            </View>
+          </Animated.View>
+        ) : null}
+      </View>
+    );
+});
+
+DarshanAartiSchedule.displayName = 'DarshanAartiSchedule';
 
 const styles = StyleSheet.create({
   container: {
@@ -444,6 +457,15 @@ const styles = StyleSheet.create({
     color: '#047857',
     lineHeight: 18,
     flexWrap: 'wrap',
+  },
+  aartiItemRowPressed: {
+    backgroundColor: '#F8FAFC',
+  },
+  openingIconBg: {
+    backgroundColor: '#FEF3C7',
+  },
+  closingIconBg: {
+    backgroundColor: '#E0E7FF',
   },
 });
 
