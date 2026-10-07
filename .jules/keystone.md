@@ -49,6 +49,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
+- `/admin/anonymous-users` — unpaginated collection scan of all anonymous users — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -145,3 +146,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-24 - Offset-based pagination & DB query bounds for GET /admin/reports
 **Learning:** `GET /admin/reports` fetched user content reports across two collections (`reports` and `moderation_reports`) without an `offset` parameter, preventing admin clients from paginating past the first page. Furthermore, fallback queries fetched unpaginated full collections into Python memory when index constraints triggered ($O(N_{\text{total\_reports}})$ reads).
 **Action:** Introduced `offset: int = 0` query parameter to `get_reports` in `backend/main.py`, bounded candidate query fetches for both collections to `fetch_limit = safe_offset + safe_limit`, applied `fetch_limit` to fallback query slices, and sliced the merged sorted dataset using `[safe_offset : safe_offset + safe_limit]` prior to user profile resolution.
+
+## 2026-09-25 - Offset-based pagination & DB query bounds for GET /admin/anonymous-users
+**Learning:** `GET /admin/anonymous-users` fetched all registered anonymous users across the platform without limit or offset bounds ($O(N_{\text{anon\_users}})$ reads). As guest/anonymous logins scale to 1 lakh+ users, loading the full list of anonymous user records per request causes high memory usage, database read spikes, and response timeouts in the admin panel.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_admin_anonymous_users` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering and index fallback logic, and sliced response payloads accordingly.
