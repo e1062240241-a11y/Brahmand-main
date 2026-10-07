@@ -31,6 +31,7 @@ import Animated, {
 import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { loadRigvedaChapter } from '../../src/services/rigveda-service';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,6 +60,8 @@ const CHAPTER_TITLES: Record<number, string> = {
 export default function RigvedaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
   const [isOpened, setIsOpened] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const pendingProgressRef = useRef<any>(null);
@@ -517,11 +520,18 @@ export default function RigvedaPage() {
         </View>
       )}
 
+      {/* 🧡 Engagement: Reframed transactional bookmark labels ("Saved Bookmarks", "No bookmarks saved yet.")
+          to devotional Swadhyaya (स्वाध्याय) copy.
+          Lever: Reframing + Devotion + Mother Tongue
+          Why: "सहेजे गए पावन पृष्ठ" evokes reverence for sacred Rigveda verses and encourages ongoing study.
+          UI: Text-only change, no structural or visual component modifications. */}
       <Modal visible={showBookmarksMenu} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Saved Bookmarks</Text>
+              <Text style={styles.modalTitle}>
+                {isHindi ? 'सहेजे गए पावन पृष्ठ ✨' : 'Saved Sacred Bookmarks ✨'}
+              </Text>
               <TouchableOpacity onPress={() => setShowBookmarksMenu(false)}>
                 <Ionicons name="close" size={24} color="#5C250A" />
               </TouchableOpacity>
@@ -529,7 +539,9 @@ export default function RigvedaPage() {
             
             <ScrollView style={styles.modalScroll}>
               {bookmarks.length === 0 ? (
-                <Text style={styles.emptyBookmarks}>No bookmarks saved yet.</Text>
+                <Text style={styles.emptyBookmarks}>
+                  {isHindi ? 'अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨' : 'No bookmarks saved yet.'}
+                </Text>
               ) : (
                 bookmarks.map((bm, idx) => (
                   <TouchableOpacity 
