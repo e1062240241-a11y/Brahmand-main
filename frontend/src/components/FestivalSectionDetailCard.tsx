@@ -12,6 +12,7 @@ import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
+import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ const formatStructuredContent = (text: string, sectionTitle: string) => {
   };
 };
 
-const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSectionDetailCardProps) => {
+const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: FestivalSectionDetailCardProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const festivalName = festival.festival_name || festival.name || 'Festival';
@@ -616,6 +617,23 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
   }
 
 
+  // Dedicated Nav Durga Renderer (Navratri Special 9 Days Guide)
+  if (section === 'Nav Durga' || section === 'Navdurga') {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#030712' }}>
+        <Navratri9DaysGuide
+          festivalDate={festival.date}
+          onBack={onBack}
+          onJaapPress={(_mantra) => {
+            try {
+              router.push('/(tabs)/jaap');
+            } catch (_e) {}
+          }}
+        />
+      </View>
+    );
+  }
+
   // Dedicated Puja Vidhi Renderer
   if (section === 'Puja Vidhi') {
     const pujaData = getFestivalPujaVidhi(festivalName, festival);
@@ -627,11 +645,6 @@ const FestivalSectionDetailCard = ({ festival, section, onSharePdf }: FestivalSe
         </View>
 
         <View style={styles.contentCard}>
-          <View style={styles.sectionHeaderBadge}>
-            <Ionicons name="flame" size={14} color="#C2410C" />
-            <Text style={[styles.sectionBadgeText, { color: '#C2410C' }]}>SIMPLE RITUAL GUIDE (PUJA VIDHI)</Text>
-          </View>
-
           <Text style={styles.blockTitle}>{pujaData.title}</Text>
 
           {/* Items Needed Checklist */}

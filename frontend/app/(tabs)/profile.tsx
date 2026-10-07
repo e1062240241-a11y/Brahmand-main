@@ -109,11 +109,32 @@ export default function ProfileScreen() {
     extrapolate: 'clamp',
   });
 
+  const isNavigatingRef = useRef(false);
+  const safeNavigate = useCallback((action: () => void | Promise<void>, cooldown = 800) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    try {
+      action();
+    } finally {
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, cooldown);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      isNavigatingRef.current = false;
+    }
+  }, [isFocused]);
+
   useEffect(() => {
     if (section === 'personality_verification') {
-      router.push('/profile/personality-verification');
+      safeNavigate(() => {
+        router.push('/profile/personality-verification');
+      });
     }
-  }, [section]);
+  }, [section, safeNavigate]);
 
   const SETTINGS_SECTIONS = useMemo<{ id: string; title: string; items: SettingItem[] }[]>(() => {
     if (Platform.OS === 'android') {
@@ -926,19 +947,23 @@ export default function ProfileScreen() {
 
     if (item.id === 'personality_verification') {
       closeSettingsModal(() => {
-        const status = user?.personality_verification_status;
-        if (status === 'pending' || status === 'approved') {
-          router.push('/profile/personality-verification-success');
-        } else {
-          router.push('/profile/personality-verification');
-        }
+        safeNavigate(() => {
+          const status = user?.personality_verification_status;
+          if (status === 'pending' || status === 'approved') {
+            router.push('/profile/personality-verification-success');
+          } else {
+            router.push('/profile/personality-verification');
+          }
+        });
       });
       return;
     }
 
     if (item.route) {
       closeSettingsModal(() => {
-        router.push(item.route as any);
+        safeNavigate(() => {
+          router.push(item.route as any);
+        });
       });
     } else {
       closeSettingsModal();

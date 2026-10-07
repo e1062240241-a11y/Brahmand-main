@@ -17,8 +17,10 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { FestivalData } from '../../types/festival';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../constants/theme';
+import { Navratri9DaysGuide } from './Navratri9DaysGuide';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -85,6 +87,7 @@ export const StaggeredFestivalContent: React.FC<StaggeredFestivalContentProps> =
   onAartiReminderPress,
   onJoinKathaPress,
 }) => {
+  const router = useRouter();
   const primaryColor = festival.gradientColors?.[0] || '#FF6600';
   const accentColor = festival.gradientColors?.[1] || '#E53935';
 
@@ -153,8 +156,23 @@ export const StaggeredFestivalContent: React.FC<StaggeredFestivalContentProps> =
         </View>
       </StaggerCard>
 
+      {/* Navratri Special: 9 Days Devi, Auspicious Color, Bhog & Ritual Guide */}
+      {(festival.id?.toLowerCase().includes('navratri') ||
+        festival.name?.toLowerCase().includes('navratri')) && (
+        <StaggerCard index={1} isTriggered={isHandoffStarted}>
+          <Navratri9DaysGuide
+            festivalDate={festival.date}
+            onJaapPress={(_mantra) => {
+              try {
+                router.push('/(tabs)/jaap');
+              } catch (_e) {}
+            }}
+          />
+        </StaggerCard>
+      )}
+
       {/* 2. Aarti Schedule Card */}
-      <StaggerCard index={1} isTriggered={isHandoffStarted}>
+      <StaggerCard index={2} isTriggered={isHandoffStarted}>
         <View
           style={styles.card}
           accessible={true}

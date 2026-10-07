@@ -837,6 +837,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     )}
 
+
+
                     <View
                         style={{ position: 'relative' }}
                     >

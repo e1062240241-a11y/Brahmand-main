@@ -77,7 +77,9 @@ const FestivalSectionDetailPage = () => {
 
   const section = (params.section as string) || 'Story';
   const festivalIndex = parseInt((params.festivalIndex as string) || (params.index as string) || '0', 10);
-  const isStorySection = decodeURIComponent(section) === 'Story';
+  const decodedSection = decodeURIComponent(section);
+  const isNavDurgaSection = decodedSection === 'Nav Durga' || decodedSection === 'Navdurga';
+  const isStorySection = decodedSection === 'Story' || isNavDurgaSection;
 
   const [festival, setFestival] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -242,7 +244,8 @@ const FestivalSectionDetailPage = () => {
           />
         </View>
       </View>
-        {/* Header */}
+        {/* Header (rendered for other sections, Nav Durga renders its own integrated header) */}
+        {!isNavDurgaSection && (
         <View
           style={[
             styles.header,
@@ -280,7 +283,7 @@ const FestivalSectionDetailPage = () => {
           )}
 
           {/* Share as PDF Button - Only in 1st (story) section */}
-          {isStorySection ? (
+          {decodedSection === 'Story' ? (
             <TouchableOpacity 
               onPress={handleSharePdf}
               activeOpacity={0.8}
@@ -340,6 +343,7 @@ const FestivalSectionDetailPage = () => {
             <View style={{ width: 40 }} />
           )}
         </View>
+        )}
 
         {isStorySection ? (
           <FestivalSectionDetailCard

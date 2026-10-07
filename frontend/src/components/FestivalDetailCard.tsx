@@ -68,6 +68,13 @@ const SECTION_CONFIG: Record<string, {
     emoji: '🌸',
     stripColor: '#16A34A',
   },
+  'Nav Durga': {
+    icon: 'sparkles',
+    accent: '#C2410C',
+    bgGradient: ['#FFF7ED', '#FFEDD5'],
+    emoji: '🔱',
+    stripColor: '#EA580C',
+  },
   Purpose: {
     icon: 'sparkles',
     accent: '#C2410C',
@@ -324,7 +331,39 @@ const GuideItem = ({
           colors={cfg.bgGradient}
           style={styles.guideIconBox}
         >
-          <Text style={styles.guideEmoji}>{cfg.emoji}</Text>
+          {section.title === 'Nav Durga' ? (
+            <Image
+              source={require('../../assets/images/india.png')}
+              style={styles.navDurgaIndiaLogo}
+              contentFit="contain"
+            />
+          ) : section.title === 'Puja Vidhi' ? (
+            <Image
+              source={require('../../assets/images/pujav.png')}
+              style={styles.navDurgaIndiaLogo}
+              contentFit="contain"
+            />
+          ) : section.title === 'Mantra' ? (
+            <Image
+              source={require('../../assets/images/mantra.png')}
+              style={styles.navDurgaIndiaLogo}
+              contentFit="contain"
+            />
+          ) : section.title === 'Importance' ? (
+            <Image
+              source={require('../../assets/images/importantance.png')}
+              style={styles.navDurgaIndiaLogo}
+              contentFit="contain"
+            />
+          ) : section.title === 'Story' ? (
+            <Image
+              source={require('../../assets/images/story.png')}
+              style={styles.navDurgaIndiaLogo}
+              contentFit="contain"
+            />
+          ) : (
+            <Text style={styles.guideEmoji}>{cfg.emoji}</Text>
+          )}
         </LinearGradient>
 
         {/* Text Details */}
@@ -386,9 +425,15 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
 
   const funFacts: string[] = enrichment?.fun_facts ?? festival.funFacts ?? festival.fun_facts ?? [];
 
+  const isNavratriFestival =
+    festivalName.toLowerCase().includes('navratri') ||
+    festivalName.toLowerCase().includes('durga') ||
+    (festival.id && String(festival.id).toLowerCase().includes('navratri'));
+
   const sections = [
     { title: 'Story', value: rawStory },
     { title: 'About', value: rawAbout },
+    ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
     { title: 'Importance', value: rawImportance },
     { title: 'Puja Vidhi', value: rawPujaVidhi },
     { title: 'Mantra', value: rawMantra },
@@ -783,6 +828,10 @@ const styles = StyleSheet.create({
   },
   guideEmoji: {
     fontSize: 22,
+  },
+  navDurgaIndiaLogo: {
+    width: 28,
+    height: 28,
   },
   guideTextContainer: {
     flex: 1,
