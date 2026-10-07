@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
 import { loginAnonymous } from '../../src/services/api';
+import { validateInput, validatePhone, checkSecurityInjection } from '../../src/utils/validation';
 
 // Debug: Log Firebase config on web
 if (typeof window !== 'undefined' && Platform.OS === 'web') {
@@ -77,9 +78,19 @@ export default function PhoneScreen() {
     return () => subscription.remove();
   }, [router]);
 
+  const validatePhoneState = (text: string) => {
+    const secErr = checkSecurityInjection(text);
+    if (secErr) return secErr;
+    if (!text || text.length !== 10) {
+      return 'Please enter a valid 10-digit phone number';
+    }
+    return '';
+  };
+
   const handleSendOTP = async () => {
-    if (phone.length !== 10) {
-      setError('Please enter a valid 10-digit phone number');
+    const valErr = validatePhoneState(phone);
+    if (valErr) {
+      setError(valErr);
       return;
     }
 
@@ -189,7 +200,12 @@ export default function PhoneScreen() {
                   onChangeText={(text) => {
                     const formatted = formatPhoneNumber(text);
                     setPhone(formatted);
-                    setError('');
+                    const inlineErr = checkSecurityInjection(text) || (formatted.length > 0 && formatted.length < 10 ? 'Please enter a valid 10-digit phone number' : '');
+                    setError(inlineErr);
+                  }}
+                  onBlur={() => {
+                    setIsFocused(false);
+                    setError(validatePhoneState(phone));
                   }}
                   keyboardType="phone-pad"
                   maxLength={25}

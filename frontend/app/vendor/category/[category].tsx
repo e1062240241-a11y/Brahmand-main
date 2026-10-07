@@ -18,6 +18,7 @@ export default function CategoryScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const user = useAuthStore(state => state.user);
+  const isHindi = user?.language === 'hi';
   const homeLocation = (user as any)?.home_location;
 
   const { vendors, fetchVendors } = useVendorStore();
@@ -86,7 +87,7 @@ export default function CategoryScreen() {
 
   const renderVendorCard = ({ item, index }: { item: any, index: number }) => {
     const photo = (item.business_gallery_images || []).find((url: string) => !!url) || (item.photos && item.photos[0]);
-    const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : 'Unnamed Business';
+    const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : (isHindi ? 'व्यवसाय' : 'Unnamed Business');
     const displayTag = (item.categories && item.categories.length > 0) ? item.categories[0] : category;
     
     const hLat = Number(homeLocation?.latitude ?? homeLocation?.lat);
@@ -104,7 +105,7 @@ export default function CategoryScreen() {
     const locTier = computeLocationTier(item, userLocInfo);
     let distanceStr = locTier.fullLabel;
     if (!distanceStr || distanceStr === 'Location unknown' || distanceStr === 'Location unavailable') {
-      distanceStr = (item.full_address || item.address || item.current_address || item.preferred_work_city || item.city || 'India').trim();
+      distanceStr = (item.full_address || item.address || item.current_address || item.preferred_work_city || item.city || (isHindi ? 'भारत' : 'India')).trim();
     }
 
     return (
@@ -129,8 +130,13 @@ export default function CategoryScreen() {
             <Ionicons name="location-outline" size={14} color="#666" />
             <Text style={styles.locationText}>{distanceStr}</Text>
           </View>
-          <TouchableOpacity style={styles.requestButton} onPress={() => handleCall(item.phone_number)}>
-            <Text style={styles.requestButtonText}>Request Call</Text>
+          <TouchableOpacity
+            style={styles.requestButton}
+            onPress={() => handleCall(item.phone_number)}
+            accessibilityRole="button"
+            accessibilityLabel={isHindi ? 'संपर्क करें' : 'Request Call'}
+          >
+            <Text style={styles.requestButtonText}>{isHindi ? 'संपर्क करें' : 'Request Call'}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.callCircle} onPress={() => handleCall(item.phone_number)}>
@@ -195,7 +201,7 @@ export default function CategoryScreen() {
           <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search..."
+            placeholder={isHindi ? 'खोजें...' : 'Search...'}
             placeholderTextColor="#9CA3AF"
             value={searchTerm}
             onChangeText={setSearchTerm}
@@ -216,7 +222,11 @@ export default function CategoryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             {getCategoryIcon()}
-            <Text style={styles.emptyText}>Currently no "{category}" in your area.</Text>
+            <Text style={styles.emptyText}>
+              {isHindi
+                ? `आपके क्षेत्र में अभी कोई "${category}" उपलब्ध नहीं है ✨`
+                : `Currently no "${category}" in your area.`}
+            </Text>
           </View>
         }
       />

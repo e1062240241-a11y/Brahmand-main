@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, Animated, Easing } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 const SafeFlashList = FlashList as any;
 import { useIsFocused } from 'expo-router';

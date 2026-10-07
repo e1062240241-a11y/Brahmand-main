@@ -9,8 +9,7 @@ import {View,
   TextInput,
   Image,
   Alert,
-  Share,
-  ActivityIndicator} from 'react-native';
+  Share} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';

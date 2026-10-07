@@ -249,7 +249,11 @@ export default function AllLiveJaapsScreen() {
             showLive = hanumanActive;
             if (hanumanActive) {
               if (hanumanStatus.isCompleted) {
-                liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
+                // 🧡 Engagement: Reframed transactional completion status "पूरा हुआ" to devotional offering "साधना समर्पित 🙏".
+                // Lever: Reframing + Devotional Framing
+                // Why: "समर्पित" frames session completion as an act of devotion (bhavna) rather than task execution.
+                // UI: Text-only change, no new visual components.
+                liveLabel = t('language') === 'hi' ? 'साधना समर्पित 🙏' : 'SADHANA OFFERED 🙏';
               } else {
                 // 🧡 Engagement: Reframed transactional counter "जाप" to devotional offering "चालीसा समर्पित"
                 // Lever: Reframing + Devotional Framing

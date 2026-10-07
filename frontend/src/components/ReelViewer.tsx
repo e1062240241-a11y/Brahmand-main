@@ -1197,6 +1197,8 @@ const CommentItem = React.memo(({
               <TouchableOpacity
                 style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                 onPress={() => onDelete(item)}
+                accessibilityRole="button"
+                accessibilityLabel={t('language') === 'hi' ? 'हटाएं' : 'Delete'}
               >
                 <Ionicons name="trash-outline" size={16} color="#FF3B30" />
               </TouchableOpacity>
@@ -1204,6 +1206,8 @@ const CommentItem = React.memo(({
               <TouchableOpacity
                 style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                 onPress={() => onMenuPress(item)}
+                accessibilityRole="button"
+                accessibilityLabel={t('language') === 'hi' ? 'विकल्प' : 'Options'}
               >
                 <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
               </TouchableOpacity>
@@ -1268,6 +1272,8 @@ const CommentItem = React.memo(({
                   <TouchableOpacity
                     style={{ padding: 4, marginRight: -4 }}
                     onPress={() => onDelete(reply)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('language') === 'hi' ? 'हटाएं' : 'Delete'}
                   >
                     <Ionicons name="trash-outline" size={14} color="#FF3B30" />
                   </TouchableOpacity>
@@ -1275,6 +1281,8 @@ const CommentItem = React.memo(({
                   <TouchableOpacity
                     style={{ padding: 4, marginRight: -4 }}
                     onPress={() => onMenuPress(reply)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('language') === 'hi' ? 'विकल्प' : 'Options'}
                   >
                     <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
                   </TouchableOpacity>
@@ -2341,7 +2349,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     {t('language') === 'hi' ? 'को जवाब दिया जा रहा है' : 'Replying to'}{' '}
                     <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
                   </Text>
-                  <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                  <TouchableOpacity
+                    onPress={() => setReplyingToComment(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('language') === 'hi' ? 'रद्द करें' : 'Cancel reply'}
+                  >
                     <Ionicons name="close-circle" size={18} color="#999" />
                   </TouchableOpacity>
                 </View>

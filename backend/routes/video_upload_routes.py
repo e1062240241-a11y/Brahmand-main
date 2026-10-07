@@ -72,15 +72,6 @@ def _build_firebase_public_url(bucket_name: str, object_path: str, token: str) -
     )
 
 
-def _ensure_ffmpeg_tools_available() -> None:
-    if FFMPEG_BIN and FFPROBE_BIN:
-        return
-    if not FFMPEG_BIN:
-        raise HTTPException(status_code=500, detail="ffmpeg is not installed on server")
-    if not FFPROBE_BIN:
-        raise HTTPException(status_code=500, detail="ffprobe is not installed on server")
-
-
 async def _save_upload_to_temp_file(file: UploadFile) -> tuple[str, int]:
     suffix = ".mp4"
     filename = os.path.basename(file.filename.replace('\\', '/')) if file.filename else ""

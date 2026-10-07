@@ -1516,8 +1516,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             {shivaStatus.isActive
                                                 ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
                                                 : (t('language') === 'hi'
-                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा" to devotional offering "जाप समर्पित"
-                                                    // Lever: Devotional Reframing + Satsang Proof
+                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा कर चुके हैं" to devotional offering "जाप समर्पित कर चुके हैं"
+                                                    // Lever: Reframing + Devotional Framing + Satsang Social Proof
+                                                    // Why: "समर्पित" evokes sacred offering and devotional sentiment (bhavna) rather than a task completed.
                                                     // UI: Text-only change, zero new components.
                                                     ? '1800+ भक्त पहले ही जाप समर्पित कर चुके हैं'
                                                     : '1800+ devotees already offered jaap')}

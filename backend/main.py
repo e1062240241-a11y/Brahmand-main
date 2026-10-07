@@ -2193,11 +2193,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     
     # Update user with location and communities
     existing_defaults = (user.get('default_communities', []) if user else []) or []
-    await db.update_document('users', user_id, {
+    loc_update = {
         'location': loc,
         'home_location': loc,
         'default_communities': list(set(existing_defaults + community_ids))
-    })
+    }
+    await db.update_document('users', user_id, loc_update)
     await db.array_union_update('users', user_id, 'communities', community_ids)
     
     # Invalidate cache
@@ -2206,7 +2207,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Eliminated redundant sequential db.get_document fetch
+    user = user or {}
+    user.update(loc_update)
+    if 'communities' not in user:
+        user['communities'] = []
+    user['communities'] = list(set(user['communities'] + community_ids))
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
 
 @api_router.post("/user/current-location")
@@ -2403,7 +2409,10 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Merge updates in-memory instead of redundantly re-fetching the document
+    if user:
+        user.update(update_data)
+
     return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
 
 @api_router.get("/user/search/{sl_id}")
@@ -5000,10 +5009,10 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
         
     # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
     updated_post['likes_count'] = new_count
@@ -5037,9 +5046,12 @@ async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data
         return {"message": "No changes requested", "post": post}
         
     update_data['updated_at'] = datetime.utcnow()
-    
     await db.update_document('posts', post_id, update_data)
-    updated_post = await db.get_document('posts', post_id)
+
+    # ⚡ Bolt Optimization: Avoid redundant fetch
+    updated_post = post.copy()
+    updated_post['id'] = post_id
+    updated_post.update(update_data)
     
     return {
         "message": "Post updated successfully",
@@ -5239,12 +5251,9 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = prev_comments_count + 1
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        # Fallback if document not found in cache/db immediately
-        updated_post = post.copy()
-        updated_post['id'] = post_id
-
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5358,10 +5367,9 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5471,13 +5479,47 @@ async def verify_admin(token_data: dict = Depends(verify_token)):
     return token_data
 
 @api_router.get("/admin/personality-verifications")
-async def list_personality_verifications(status: str = "pending", token_data: dict = Depends(verify_admin)):
-    """List all personality verification requests by status"""
+async def list_personality_verifications(
+    status: str = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_admin)
+):
+    """
+    List all personality verification requests by status with offset-based pagination.
+    Architectural Fix: Bounds candidate document fetching at the DB level with DESC ordering
+    to fetch_limit = safe_offset + safe_limit instead of streaming all historical requests into memory.
+    Prevents O(N) Firestore document reads and memory spikes as verification requests scale.
+    """
     db = await get_db()
-    return await db.query_documents(
-        'personality_verifications', 
-        [('status', '==', status)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            order_by='submitted_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore ordered query failed in /admin/personality-verifications, falling back to un-ordered query: %s",
+            exc
+        )
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            limit=fetch_limit
+        )
+        verifications.sort(
+            key=lambda item: str(item.get('submitted_at') or item.get('created_at') or item.get('createdAt') or ''),
+            reverse=True
+        )
+
+    return verifications[safe_offset:safe_offset + safe_limit]
 
 @api_router.post("/admin/personality-verifications/{request_id}/action")
 async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):
@@ -6557,39 +6599,80 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     return communities
 
 @api_router.get("/communities/my-creation-requests")
-async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
-    """Get community creation requests initiated by the current user."""
+async def get_my_creation_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get community creation requests initiated by the current user with DB query bounds and offset pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        requests = await db.query_documents(
-            'community_creation_requests',
-            filters=[('owner_id', '==', user_id)]
-        )
-        
+        try:
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            logger.warning(f"Fallback query for my creation requests due to index/order error: {query_err}")
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                limit=fetch_limit
+            )
+            def _get_req_ts(r):
+                c_at = r.get('created_at')
+                if hasattr(c_at, 'timestamp'):
+                    return c_at.timestamp()
+                if isinstance(c_at, str):
+                    try:
+                        return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                    except Exception:
+                        return 0
+                return 0
+            requests.sort(key=_get_req_ts, reverse=True)
+
+        paged_requests = requests[safe_offset : safe_offset + safe_limit]
+
+        # Consolidate all invited user IDs across all paged requests to batch-fetch in ONE query (eliminates N+1)
+        all_invited_ids = set()
+        for req in paged_requests:
+            admin_ids = req.get('admin_ids', [])
+            member_ids = req.get('member_ids', [])
+            all_invited_ids.update(admin_ids)
+            all_invited_ids.update(member_ids)
+
+        user_map = {}
+        if all_invited_ids:
+            users_data = await db.get_documents_batch('users', list(all_invited_ids))
+            user_map = {u['id']: u for u in users_data if u and u.get('id')}
+
         result = []
-        for req in requests:
+        for req in paged_requests:
             req_id = req.get('id')
             if not req_id:
                 continue
-                
+
             admin_ids = req.get('admin_ids', [])
             member_ids = req.get('member_ids', [])
             responses = req.get('responses', {})
-            
-            invited_ids = list(set(admin_ids + member_ids))
-            users_data = []
-            if invited_ids:
-                users_data = await db.get_documents_batch('users', invited_ids)
-            
+
             admins_list = []
             members_list = []
-            
-            for u in users_data:
+
+            invited_ids = list(set(admin_ids + member_ids))
+            for uid in invited_ids:
+                u = user_map.get(uid)
                 if not u:
                     continue
-                uid = u.get('id')
                 status = responses.get(uid, 'pending')
                 invitee_info = {
                     'id': uid,
@@ -6597,12 +6680,12 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                     'photo': u.get('photo'),
                     'status': status
                 }
-                
+
                 if uid in admin_ids:
                     admins_list.append(invitee_info)
                 elif uid in member_ids:
                     members_list.append(invitee_info)
-            
+
             formatted_req = {
                 'id': req_id,
                 'name': req.get('name', ''),
@@ -6615,8 +6698,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                 'community_id': req.get('community_id')
             }
             result.append(formatted_req)
-            
-        result.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
@@ -7410,8 +7492,8 @@ async def send_community_message(
     
     # Send push notification to community members
     try:
-        comm = await db.get_document('communities', community_id)
-        comm_name = comm.get('name', 'Community') if comm else 'Community'
+        # ⚡ Bolt Optimization: Reuse existing community_doc instead of redundant db.get_document
+        comm_name = community_doc.get('name', 'Community') if community_doc else 'Community'
         await push_service.notify_community_message(
             community_id=community_id,
             community_name=comm_name,
@@ -7977,19 +8059,42 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     }
 
 @api_router.get("/dm/conversations")
-async def get_dm_conversations(token_data: dict = Depends(verify_token)):
-    """Get all private chat conversations for the current user"""
+async def get_dm_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get private chat conversations for the current user with offset-based pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    # Query all private chats where user is a member
-    user_chats = await db.query_documents(
-        'chats', 
-        filters=[
-            ('chat_type', '==', 'private'),
-            ('members', 'array_contains', user_id)
-        ]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    # Query private chats with DB-level limit bounds and index fallback
+    try:
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            order_by='updated_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(
+            f"Firestore query failed in get_dm_conversations, falling back to un-ordered query: {query_err}"
+        )
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            limit=fetch_limit
+        )
     
     result = []
     
@@ -8081,7 +8186,7 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
 
     result.sort(key=sort_key, reverse=True)
     
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 @api_router.get("/dm/{chat_id}/metadata")
 async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -10078,10 +10183,15 @@ async def get_reports(
     status: str = 'pending',
     content_type: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
     token_data: dict = Depends(verify_token),
 ):
     """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     filters = []
     if status:
@@ -10101,7 +10211,7 @@ async def get_reports(
             filters=filters if filters else None,
             order_by='created_at',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10110,7 +10220,7 @@ async def get_reports(
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
         reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-        reports = reports[:max(1, min(limit, 300))]
+        reports = reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across reports to fetch in batch
     missing_post_ids = set()
@@ -10166,7 +10276,7 @@ async def get_reports(
             filters=mod_filters if mod_filters else None,
             order_by='createdAt',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10175,7 +10285,7 @@ async def get_reports(
         )
         mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
         mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
-        mod_reports = mod_reports[:max(1, min(limit, 300))]
+        mod_reports = mod_reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across moderation reports to fetch in batch
     mod_post_ids = set()
@@ -10257,7 +10367,7 @@ async def get_reports(
 
     all_reports = reports + standardized_mod
     all_reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    sliced_reports = all_reports[:limit]
+    sliced_reports = all_reports[safe_offset : safe_offset + safe_limit]
 
     # Resolve user details for all reports to return names/sl_ids
     user_ids = set()
@@ -13377,8 +13487,11 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
     """Admin: delete a vendor and reset owner's KYC status."""
     db, admin_user_id = await _ensure_admin_user(token_data)
 
-    vendor = await db.get_document('vendors', vendor_id)
-    review_doc = await db.get_document('vendor_admin_reviews', vendor_id)
+    # ⚡ Bolt Optimization: Fetch vendor and review_doc concurrently instead of sequentially
+    vendor, review_doc = await asyncio.gather(
+        db.get_document('vendors', vendor_id),
+        db.get_document('vendor_admin_reviews', vendor_id)
+    )
     
     owner_id = None
     if vendor:
@@ -14122,7 +14235,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
             'escalation_step': step + 1
         })
 
-        sos_alert = await db.get_document('sos_alerts', sos_id)
+        # ⚡ Bolt Optimization: Reuse 'alert' document fetched at the top of the loop
+        sos_alert = alert
         if not sos_alert:
             return
         title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"

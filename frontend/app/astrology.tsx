@@ -24,7 +24,6 @@ import * as Location from 'expo-location';
 import { SvgXml } from 'react-native-svg';
 
 import { getNakshatraReport, updateExtendedProfile, getProfile, forwardGeocode } from '../src/services/api';
-import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore, getNextProfileVersion } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { BrandedLoading } from '../src/components/BrandedLoading';

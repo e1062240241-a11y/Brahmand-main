@@ -516,7 +516,11 @@ export default function JaapLandingScreen() {
                   showLive = hanumanActive;
                   if (hanumanActive) {
                     if (hanumanStatus.isCompleted) {
-                      liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
+                      // 🧡 Engagement: Reframed transactional completion status "पूरा हुआ" to devotional offering "साधना समर्पित 🙏".
+                      // Lever: Reframing + Devotional Framing
+                      // Why: "समर्पित" frames session completion as an act of devotion (bhavna) rather than task execution.
+                      // UI: Text-only change, no new visual components.
+                      liveLabel = t('language') === 'hi' ? 'साधना समर्पित 🙏' : 'SADHANA OFFERED 🙏';
                     } else {
                       // 🧡 Engagement: Reframed transactional counter "जाप" to devotional offering "चालीसा समर्पित"
                       // Lever: Reframing + Devotional Framing
@@ -526,11 +530,15 @@ export default function JaapLandingScreen() {
                         : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} chalisa offered`;
                     }
                   } else {
+                    // 🧡 Engagement: Reframed passive schedule text ("जल्द ही") to devotional commitment ("संकल्प लें")
+                    // Lever: Reframing + Sanskara/Sankalpa (Vow/Habit over Passive Broadcast)
+                    // Why: "संकल्प लें" inspires user to form a daily spiritual intention to return for jaap.
+                    // UI: Text-only change, zero UI structure modified.
                     if (hanumanStatus.nextSessionStart) {
                       const timeStr = formatTimeIST(hanumanStatus.nextSessionStart);
-                      liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
+                      liveLabel = t('language') === 'hi' ? `संकल्प लें • ${timeStr}` : `SANKALPA • ${timeStr}`;
                     } else {
-                      liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
+                      liveLabel = t('language') === 'hi' ? 'शीघ्र प्रारंभ 🚩' : 'COMING SOON 🚩';
                     }
                   }
                 } else if (isOtherLiveJaap) {
@@ -540,11 +548,15 @@ export default function JaapLandingScreen() {
                   if (otherStatus.isActive) {
                     liveLabel = t('language') === 'hi' ? 'लाइव' : 'LIVE';
                   } else {
+                    // 🧡 Engagement: Reframed passive schedule text ("जल्द ही") to devotional commitment ("संकल्प लें")
+                    // Lever: Reframing + Sanskara/Sankalpa (Vow/Habit over Passive Broadcast)
+                    // Why: "संकल्प लें" inspires user to form a daily spiritual intention to return for jaap.
+                    // UI: Text-only change, zero UI structure modified.
                     if (otherStatus.nextSessionStart) {
                       const timeStr = formatTimeIST(otherStatus.nextSessionStart);
-                      liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
+                      liveLabel = t('language') === 'hi' ? `संकल्प लें • ${timeStr}` : `SANKALPA • ${timeStr}`;
                     } else {
-                      liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
+                      liveLabel = t('language') === 'hi' ? 'शीघ्र प्रारंभ 🚩' : 'COMING SOON 🚩';
                     }
                   }
                 }

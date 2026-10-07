@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 // Touch file to force Metro bundler rebuild after correcting JSX tags
 import {
-  ActivityIndicator,
   Modal,
   Platform,
   StyleSheet,
@@ -32,6 +31,7 @@ import { useTranslation } from "../utils/i18n";
 import { useUploadStore } from "../store/uploadStore";
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
+import { OmSpinner } from './CustomRefreshControl';
 
 let ExpoVideoModule: any = null;
 try {
@@ -89,7 +89,7 @@ const UploadVideoPreview = React.memo(({
   const fallback = (
     <View style={{ width: '100%', height: '100%', backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }}>
       <Image source={{ uri }} style={{ width: '100%', height: '100%', position: 'absolute' }} contentFit="cover" />
-      <ActivityIndicator size="small" color="#FFF" />
+      <OmSpinner size="small" color="#FFF" />
     </View>
   );
 
@@ -146,7 +146,7 @@ const UploadingProgress = React.memo(({
           marginBottom: 8,
         }}
       >
-        <ActivityIndicator color={COLORS.primary} size="small" />
+        <OmSpinner color={COLORS.primary} size="small" />
         <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
           {isCompressing
             ? t("language") === "hi"
