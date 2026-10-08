@@ -466,13 +466,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     color: '#000',
                                     textAlign: 'center',
                                     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                    fontSize: Platform.OS === 'android' ? 24 : 28,
+                                    fontSize: Platform.OS === 'android' ? 24 : 27,
                                     fontStyle: 'normal',
                                     fontWeight: '400',
-                                    lineHeight: Platform.OS === 'android' ? 30 : 36,
                                     letterSpacing: 0.5,
                                     includeFontPadding: false,
-                                    paddingHorizontal: 8,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
                                 }}
                             >
                                 BRAHMAND

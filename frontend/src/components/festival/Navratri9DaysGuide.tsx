@@ -13,12 +13,43 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path, G, Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { NAVDURGA_9_DAYS, NavdurgaDayDetail } from '../../data/navdurgaDaysData';
 import { BORDER_RADIUS } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+
+
+// Real high-definition floral illustrations for each day matching the uploaded flower photos
+const FLOWER_ASSETS: Record<number, any> = {
+  1: require('../../../assets/images/navdurga_cards/flower_hd_1.png'),
+  2: require('../../../assets/images/navdurga_cards/flower_hd_2.png'),
+  3: require('../../../assets/images/navdurga_cards/flower_hd_3.png'),
+  4: require('../../../assets/images/navdurga_cards/flower_hd_4.png'),
+  5: require('../../../assets/images/navdurga_cards/flower_hd_5.png'),
+  6: require('../../../assets/images/navdurga_cards/flower_hd_6.png'),
+  7: require('../../../assets/images/navdurga_cards/flower_hd_7.png'),
+  8: require('../../../assets/images/navdurga_cards/flower_hd_8.png'),
+  9: require('../../../assets/images/navdurga_cards/flower_hd_9.png'),
+};
+
+// Golden ornamental lotus flourish at bottom of card (— 🪷 —)
+const GoldenFlourish: React.FC = () => (
+  <View style={styles.flourishContainer} pointerEvents="none">
+    <View style={styles.flourishLine} />
+    <Svg width={14} height={10} viewBox="0 0 16 12">
+      <Path
+        d="M8 1 Q10 5 13 4 Q11 8 8 10 Q5 8 3 4 Q6 5 8 1 Z"
+        fill="#D4AF37"
+        opacity={0.85}
+      />
+    </Svg>
+    <View style={styles.flourishLine} />
+  </View>
+);
 
 interface Navratri9DaysGuideProps {
   festivalDate?: string;
@@ -68,6 +99,17 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
   const [viewMode, setViewMode] = useState<'color_select' | 'devi_detail'>('color_select');
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(initialDayIndex);
 
+  // Eagerly pre-warm all 9 Devi image assets into memory cache on mount
+  React.useEffect(() => {
+    NAVDURGA_9_DAYS.forEach((item) => {
+      if (item.localImage) {
+        Image.prefetch(item.localImage).catch(() => {});
+      } else if (item.emblemUri) {
+        Image.prefetch(item.emblemUri).catch(() => {});
+      }
+    });
+  }, []);
+
   const activeDay: NavdurgaDayDetail = NAVDURGA_9_DAYS[selectedDayIndex] || NAVDURGA_9_DAYS[0];
   const todayNavdurgaDay = todayFestivalDayIndex >= 0 
     ? NAVDURGA_9_DAYS[todayFestivalDayIndex] 
@@ -92,18 +134,35 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (_e) {}
-    const shareMessage = `🌸 शारदीय नवरात्रि • दिवस ${activeDay.day}\n` +
-      `🔱 देवी स्वरूप: ${activeDay.deviName} (${activeDay.deviNameEn})\n` +
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
+    const appStoreUrl = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
+
+    const shareTitle = `शुभ नवरात्रि • दिवस ${activeDay.day} — ${activeDay.deviName}`;
+    const shareMessage = `🌸 Happy Navratri! शुभ नवरात्रि 🌸\n\n` +
+      `🚩 दिवस ${activeDay.day}: ${activeDay.deviName} (${activeDay.deviNameEn})\n` +
       `🎨 आज का शुभ रंग: ${activeDay.colorName} (${activeDay.colorNameEn})\n` +
-      `🍯 दैनिक भोग: ${activeDay.bhog}\n` +
-      `📿 सिद्ध मंत्र: ${activeDay.mantra}\n\n` +
-      `शुभ नवरात्रि! डाउनलोड करें ब्रह्मांड (Sanatan Lok) 🚩`;
+      `🍯 दैनिक नैवेद्य (भोग): ${activeDay.bhog}\n` +
+      `🌺 प्रिय पुष्प: ${activeDay.flower}\n` +
+      `📿 सिद्ध मंत्र: ${activeDay.mantra}\n` +
+      (activeDay.beejMantra ? `✨ बीज मंत्र: ${activeDay.beejMantra}\n` : '') +
+      `\nऔर जानने व संपूर्ण पूजा विधि के लिए डाउनलोड करें Brahmand (Sanatan Lok) 🚩\n\n` +
+      `📲 Available on Android & iOS:\n` +
+      `• Play Store: ${playStoreUrl}\n` +
+      `• App Store: ${appStoreUrl}`;
 
     try {
-      await Share.share({
-        message: shareMessage,
-        title: `Navratri Day ${activeDay.day} - ${activeDay.deviName}`,
-      });
+      await Share.share(
+        {
+          message: shareMessage,
+          title: shareTitle,
+        },
+        {
+          // Android specific: sets header of bottom share sheet
+          dialogTitle: shareTitle,
+          // iOS specific: subject line when shared via Mail / Messages
+          subject: shareTitle,
+        }
+      );
     } catch (_err) {}
   };
 
@@ -153,132 +212,126 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* 1. Personalised Devotee Welcome (Clean Text, No Card Background/Border) */}
-        <View style={styles.personalGreetingContainer}>
-          {/* Header: 🌺 जय माता दी, [नाम] 🙏 */}
-          <View style={styles.greetingHeaderRow}>
-            <View style={styles.greetingTitleContainer}>
-              <Text style={styles.greetingNamaste}>
-                🌺 जय माता दी{userName ? `, ${userName}` : ''} 🙏
-              </Text>
-            </View>
-          </View>
-
-          {/* Paragraph 1: आज माँ [देवी का नाम] की कृपा आपके जीवन में सुख, शांति और समृद्धि लेकर आए। ✨ */}
-          <Text style={styles.greetingParagraph}>
-            आज <Text style={styles.greetingHighlightText}>{todayNavdurgaDay.deviName}</Text> की कृपा आपके जीवन में{' '}
-            <Text style={styles.greetingHighlightText}>सुख, शांति, आरोग्य और समृद्धि</Text> लेकर आए। ✨
-          </Text>
-
-          {/* Paragraph 2: माँ आपके हर संकल्प को शक्ति दें... */}
-          <Text style={styles.greetingPrayerText}>
-            माँ आपके हर संकल्प को शक्ति दें, हर प्रार्थना को विश्वास दें, और आपके जीवन को अपने पावन आशीर्वाद से भर दें। 🌸
-          </Text>
-
-          {/* Wish & Signature */}
-          <View style={styles.greetingFooterRow}>
-            <Text style={styles.greetingWishText}>
-              आपको और आपके परिवार को नवरात्रि की हार्दिक शुभकामनाएँ।
-            </Text>
-            <Text style={styles.greetingBrandSignature}>— Brahmand 🙏</Text>
-          </View>
-        </View>
-
-        {/* 3. Section Divider & All 9 Days Grid Header */}
+        {/* Header Title: किसी भी दिन का रंग चुनें और माँ के स्वरूप का दर्शन करें */}
         <View style={styles.allColorsHeaderRow}>
-          <View>
-            <Text style={styles.colorSelectPromptTitle}>नवरात्रि के ९ पावन रंग</Text>
+          <View style={styles.promptHeaderCenterCol}>
             <Text style={styles.colorSelectPromptSub}>
               किसी भी दिन का रंग चुनें और माँ के स्वरूप का दर्शन करें
             </Text>
           </View>
         </View>
 
-        {/* 4. 9 Colors Grid - Click to fill with respective colour */}
+        {/* 9 Colors Grid - Exact Match to the Reference Design */}
         <View style={styles.colorsGrid}>
           {NAVDURGA_9_DAYS.map((item, idx) => {
-            const isWhiteColor = item.colorHex === '#FFFFFF' || item.colorHex === '#EEEEEE';
             const isToday = idx === todayFestivalDayIndex;
             const isSelected = idx === selectedDayIndex;
 
-            // When selected, card is filled with its own vibrant color!
-            const cardBgColor = isSelected ? item.colorHex : '#FFFFFF';
-            const isDarkBackground = isSelected && !isWhiteColor;
+            // Day-specific badge styling matching reference image:
+            // 1: Red (#E53935), 2: Light pearl white with subtle border & dark text, 3: Red (#E53935),
+            // 4: Royal Blue (#1E88E5), 5: Golden Orange (#F59E0B), 6: Green (#2E7D32),
+            // 7: Slate grey (#546E7A), 8: Purple (#7B1FA2), 9: Teal (#00897B)
+            const badgeBg = item.day === 1 ? '#E53935'
+              : item.day === 2 ? '#FFFFFF'
+              : item.day === 3 ? '#E53935'
+              : item.day === 4 ? '#1E88E5'
+              : item.day === 5 ? '#F59E0B'
+              : item.day === 6 ? '#2E7D32'
+              : item.day === 7 ? '#546E7A'
+              : item.day === 8 ? '#7B1FA2'
+              : '#00897B';
+
+            const badgeTextColor = item.day === 2 ? '#374151' : '#FFFFFF';
+
+            // Soft watercolor wave gradient colors at the bottom of each card
+            const waveGradients: Record<number, [string, string]> = {
+              1: ['rgba(254, 215, 170, 0)', 'rgba(251, 146, 60, 0.35)'],
+              2: ['rgba(243, 244, 246, 0)', 'rgba(209, 213, 219, 0.45)'],
+              3: ['rgba(254, 202, 202, 0)', 'rgba(248, 113, 113, 0.38)'],
+              4: ['rgba(191, 219, 254, 0)', 'rgba(96, 165, 250, 0.38)'],
+              5: ['rgba(254, 240, 138, 0)', 'rgba(251, 191, 36, 0.38)'],
+              6: ['rgba(187, 247, 208, 0)', 'rgba(74, 222, 128, 0.35)'],
+              7: ['rgba(226, 232, 240, 0)', 'rgba(148, 163, 184, 0.42)'],
+              8: ['rgba(243, 232, 255, 0)', 'rgba(192, 132, 252, 0.38)'],
+              9: ['rgba(204, 251, 241, 0)', 'rgba(45, 212, 191, 0.38)'],
+            };
+            const currentWave = waveGradients[item.day] || ['rgba(254, 215, 170, 0)', 'rgba(251, 146, 60, 0.3)'];
+            const flowerSource = FLOWER_ASSETS[item.day];
 
             return (
               <TouchableOpacity
                 key={item.day}
                 onPress={() => handleSelectColorCard(idx)}
-                activeOpacity={0.82}
+                activeOpacity={0.85}
                 style={[
                   styles.colorCard,
-                  { backgroundColor: cardBgColor },
-                  isSelected && styles.colorCardFilledActive,
-                  isSelected && isWhiteColor && { borderWidth: 1.5, borderColor: '#D1D5DB' },
+                  isSelected && styles.colorCardSelectedHalo,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`Day ${item.day} ${item.colorName} ${item.deviName}${isSelected ? ' Selected' : ''}`}
+                accessibilityLabel={`Day ${item.day} ${item.colorName} ${item.deviName}`}
               >
-                {/* Ribbon Tag: Only shows 'आज' if Navratri has actually started and today matches this day */}
-                {isToday && (
-                  <View style={[
-                    styles.todayRibbonTag,
-                    isSelected && { backgroundColor: isWhiteColor ? '#EA580C' : '#FFFFFF' },
-                  ]}>
-                    <Text style={[
-                      styles.todayRibbonText,
-                      isSelected && !isWhiteColor && { color: item.colorHex },
-                    ]}>
-                      आज
-                    </Text>
-                  </View>
-                )}
-
-                {/* Large Color Swatch Circle */}
+                {/* 1. Top-Left Circular Number Badge */}
                 <View
                   style={[
-                    styles.colorCardSwatch,
-                    {
-                      backgroundColor: isSelected
-                        ? (isWhiteColor ? '#F3F4F6' : '#FFFFFF')
-                        : item.colorHex,
-                    },
-                    isWhiteColor && !isSelected && { borderWidth: 1.5, borderColor: '#D1D5DB' },
+                    styles.dayNumberBadge,
+                    { backgroundColor: badgeBg },
+                    item.day === 2 && styles.dayTwoWhiteBadge,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.colorCardDayNumber,
-                      {
-                        color: isSelected
-                          ? (isWhiteColor ? '#1C1917' : item.colorHex)
-                          : (isWhiteColor ? '#1C1917' : '#FFFFFF'),
-                      },
-                    ]}
-                  >
+                  <Text style={[styles.dayNumberBadgeText, { color: badgeTextColor }]}>
                     {item.day}
                   </Text>
                 </View>
 
-                {/* Day & Color Name */}
-                <Text
-                  style={[
-                    styles.colorCardTitle,
-                    { color: isDarkBackground ? '#FFFFFF' : '#1C1917' },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.colorName}
-                </Text>
-                <Text
-                  style={[
-                    styles.colorCardSubTitle,
-                    { color: isDarkBackground ? 'rgba(255, 255, 255, 0.9)' : '#78716C' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item.deviName.replace('माँ ', '')}
-                </Text>
+                {/* 2. Ribbon Tag: Only shows 'आज' if today matches */}
+                {isToday && (
+                  <View style={styles.todayRibbonTag}>
+                    <Text style={styles.todayRibbonText}>आज</Text>
+                  </View>
+                )}
+
+                {/* 3. Center Flower Illustration */}
+                <View style={styles.cardIllustrationBox}>
+                  {flowerSource && (
+                    <Image
+                      source={flowerSource}
+                      style={[
+                        styles.flowerImage,
+                        (item.day === 7 || item.day === 8 || item.day === 9) && styles.flowerImageLarger,
+                      ]}
+                      contentFit="contain"
+                    />
+                  )}
+                </View>
+
+                {/* 4. Bottom Content: Color Name, Devi Name & Lotus Flourish */}
+                <View style={styles.cardBottomContent}>
+                  <Text style={styles.colorCardTitle} numberOfLines={1}>
+                    {item.colorName}
+                  </Text>
+                  <Text style={styles.colorCardSubTitle} numberOfLines={1}>
+                    {item.deviName.replace('माँ ', '')}
+                  </Text>
+                  <GoldenFlourish />
+                </View>
+
+                {/* 7. Bottom Curved Color Accent Wave */}
+                <View style={styles.cardBottomWaveContainer} pointerEvents="none">
+                  <LinearGradient
+                    colors={currentWave}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                  {/* Subtle curved edge path */}
+                  <Svg width="100%" height={24} viewBox="0 0 100 24" preserveAspectRatio="none">
+                    <Path
+                      d="M0 24 C30 8 70 8 100 24 L100 24 L0 24 Z"
+                      fill={currentWave[1]}
+                      opacity={0.3}
+                    />
+                  </Svg>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -296,7 +349,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
 
   return (
     <View style={styles.storyPageContainer}>
-      {/* 1. Full-Screen Immersive Deity Artwork Background (Identical to Story Page) */}
+      {/* 1. Full-Screen Immersive Deity Artwork Background */}
       {heroImage ? (
         <Image
           source={heroImage}
@@ -304,7 +357,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
           contentFit="cover"
           contentPosition={{ top: '0%', left: '26%' }}
           cachePolicy="memory-disk"
-          transition={300}
+          transition={250}
         />
       ) : (
         <LinearGradient
@@ -313,121 +366,175 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
         />
       )}
 
-      {/* 2. Multi-stage Vignette & Deep Dark Gradient Overlay (Identical to Story Page) */}
+      {/* 2. Multi-stage Vignette & Deep Dark Gradient Overlay */}
       <LinearGradient
         colors={[
-          'rgba(3, 7, 18, 0.55)',
-          'rgba(3, 7, 18, 0.15)',
-          'rgba(3, 7, 18, 0.15)',
-          'rgba(3, 7, 18, 0.82)',
+          'rgba(3, 7, 18, 0.45)',
+          'rgba(3, 7, 18, 0.12)',
+          'rgba(3, 7, 18, 0.12)',
+          'rgba(3, 7, 18, 0.85)',
           '#030712',
           '#030712',
         ]}
-        locations={[0, 0.22, 0.42, 0.62, 0.78, 1]}
+        locations={[0, 0.22, 0.45, 0.68, 0.84, 1]}
         style={styles.storyFullScreenGradient}
       />
 
-      {/* 3. Floating Top Bar: Back Button & Share Button */}
-      <View style={[styles.floatingTopBar, { top: insets.top + (Platform.OS === 'ios' ? 10 : 8) }]}>
+      {/* 3. Floating Top Bar: Back Button & Share Button (Corner buttons only, no day pill) */}
+      <View style={[styles.floatingTopBar, { top: insets.top + (Platform.OS === 'ios' ? 4 : 8) }]}>
         <TouchableOpacity
           onPress={handleBackToColorSelect}
-          style={styles.floatingBackButton}
-          activeOpacity={0.7}
+          style={styles.floatingGlassIconBtn}
+          activeOpacity={0.75}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Back to color selection"
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleShareDay}
-          style={styles.floatingShareButton}
-          activeOpacity={0.7}
+          style={styles.floatingGlassIconBtn}
+          activeOpacity={0.75}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Share today's devi and color"
         >
-          <Ionicons name="share-social-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      {/* 4. Scrollable Narrative & Ritual Content over the Background */}
-      <ScrollView
-        style={styles.storyScroll}
-        contentContainerStyle={styles.storyScrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        {/* Top Spacer allowing the majestic deity artwork to shine through */}
-        <View style={styles.storyHeroSpacer} />
+      {/* 4. Upper Section: Artwork clearance + Devi Title & Significance + Fixed Horizontal Line */}
+      <View style={styles.storyFixedHeaderSection}>
+        {/* Spacer to let majestic artwork be admired */}
+        <View
+          style={{
+            height: Platform.OS === 'ios' ? Math.round(SCREEN_HEIGHT * 0.32) : Math.round(SCREEN_HEIGHT * 0.28),
+          }}
+        />
 
-        {/* Devi Title Section */}
+        {/* Devi Title & Significance Header */}
         <View style={styles.deviTitleSection}>
           <Text style={styles.storyDeviHeading}>{activeDay.deviName}</Text>
           <Text style={styles.storyDeviEnglish}>{activeDay.deviNameEn}</Text>
           <Text style={styles.storyDeviSubtitle}>{activeDay.titleSubtitle}</Text>
+
+          {activeDay.chakraOrPlanet ? (
+            <View style={styles.chakraPillRow}>
+              <Text style={styles.chakraPillText}>{activeDay.chakraOrPlanet}</Text>
+            </View>
+          ) : null}
+
           <Text style={styles.storyDeviSignificance}>{activeDay.significance}</Text>
         </View>
 
-        {/* Content Body Cards */}
-        <View style={styles.storyContentCards}>
-          {/* 1. Bhog Offering Card */}
-          <View style={styles.storyGlassCard}>
-            <View style={styles.storyIconLeadCircle}>
-              <Text style={styles.leadEmoji}>🍯</Text>
-            </View>
-            <View style={styles.infoTextContent}>
-              <Text style={styles.storyFieldLabel}>दैनिक नैवेद्य</Text>
-              <Text style={styles.storyFieldValue}>{activeDay.bhog}</Text>
-              <Text style={styles.storyFieldMeaning}>{activeDay.bhogSignificance}</Text>
-            </View>
-          </View>
+        {/* Gold Flourish Divider (Acts as the fixed top ceiling boundary for scrollable text) */}
+        <View style={styles.sacredDividerRow}>
+          <View style={styles.sacredDividerLine} />
+          <Text style={styles.sacredDividerSymbol}>❖</Text>
+          <View style={styles.sacredDividerLine} />
+        </View>
+      </View>
 
-          {/* 3. Favourite Flower Card */}
-          <View style={styles.storyGlassCard}>
-            <View style={styles.storyIconLeadCircle}>
-              <Text style={styles.leadEmoji}>🌺</Text>
-            </View>
-            <View style={styles.infoTextContent}>
-              <Text style={styles.storyFieldLabel}>प्रिय पुष्प</Text>
-              <Text style={styles.storyFieldValue}>{activeDay.flower}</Text>
-              <Text style={styles.storyFieldMeaning}>माँ भगवती को अर्पण कर आशीर्वाद प्राप्त करें</Text>
-            </View>
-          </View>
+      {/* 5. Scrollable Content Section: Scrolls strictly below the horizontal divider line */}
+      <View style={styles.storyScrollAreaBelowDivider}>
+        <ScrollView
+          style={styles.storyScroll}
+          contentContainerStyle={[
+            styles.storyScrollContent,
+            { paddingBottom: Math.max(insets.bottom, 24) + 36 }
+          ]}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Sacred Content Body: Clean Editorial Rows */}
+          <View style={styles.storyContentBody}>
+            {/* Section A: Daily Sacred Offerings (Bhog, Flower, Auspicious Color) */}
+            <View style={styles.editorialSection}>
+              <Text style={styles.editorialSectionHeader}>दैनिक पवित्र अर्पण</Text>
 
-          {/* 4. Devi Siddha Mantra Card */}
-          <View style={styles.storyMantraCard}>
-            <View style={styles.mantraHeaderRow}>
-              <Text style={styles.storyMantraHeaderLabel}>
-                {activeDay.deviName.toUpperCase()} सिद्ध मंत्र
-              </Text>
-            </View>
-            <Text style={styles.storyMantraText}>{activeDay.mantra}</Text>
-            <Text style={styles.storyDhyanShlokaText}>{activeDay.dhyanShloka}</Text>
-          </View>
-
-          {/* 5. Puja Ritual Steps */}
-          <View style={styles.storyRitualsCard}>
-            <View style={styles.ritualsHeaderRow}>
-              <Ionicons name="flame" size={17} color="#F97316" />
-              <Text style={styles.storyRitualsHeading}>
-                दिवस {activeDay.day} दैनिक पूजा विधि (Daily Ritual)
-              </Text>
-            </View>
-
-            {activeDay.ritualSteps.map((step) => (
-              <View key={step.step} style={styles.storyRitualStepItem}>
-                <View style={styles.storyRitualStepBadge}>
-                  <Text style={styles.storyRitualStepBadgeText}>{step.step}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.storyRitualStepTitle}>{step.title}</Text>
-                  <Text style={styles.storyRitualStepDesc}>{step.desc}</Text>
+              {/* Bhog Row */}
+              <View style={styles.editorialItemRow}>
+                <Text style={styles.editorialItemIcon}>🍯</Text>
+                <View style={styles.editorialItemTextCol}>
+                  <Text style={styles.editorialItemLabel}>दैनिक नैवेद्य (BHOG)</Text>
+                  <Text style={styles.editorialItemValue}>{activeDay.bhog}</Text>
+                  {activeDay.bhogSignificance ? (
+                    <Text style={styles.editorialItemSub}>{activeDay.bhogSignificance}</Text>
+                  ) : null}
                 </View>
               </View>
-            ))}
+
+              {/* Flower Row */}
+              <View style={styles.editorialItemRow}>
+                <Text style={styles.editorialItemIcon}>🌺</Text>
+                <View style={styles.editorialItemTextCol}>
+                  <Text style={styles.editorialItemLabel}>प्रिय पुष्प (FLOWER)</Text>
+                  <Text style={styles.editorialItemValue}>{activeDay.flower}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Section B: Siddha Mantra & Dhyan Shloka */}
+            <View style={styles.editorialSection}>
+              <Text style={styles.editorialSectionHeader}>
+                {activeDay.deviName.toUpperCase()} सिद्ध मंत्र
+              </Text>
+
+              <View style={styles.mantraInlineBlock}>
+                <Text style={styles.storyMantraText}>{activeDay.mantra}</Text>
+
+                {activeDay.beejMantra ? (
+                  <View style={styles.beejMantraInlineRow}>
+                    <Text style={styles.beejMantraLabel}>बीज मंत्र</Text>
+                    <Text style={styles.beejMantraText}>{activeDay.beejMantra}</Text>
+                  </View>
+                ) : null}
+
+                <Text style={styles.storyDhyanShlokaText}>{activeDay.dhyanShloka}</Text>
+              </View>
+            </View>
+
+            {/* Section C: Paawan Katha (Story) */}
+            {activeDay.katha ? (
+              <View style={styles.editorialSection}>
+                <View style={styles.kathaHeaderRow}>
+                  <Text style={styles.kathaHeaderIcon}>📜</Text>
+                  <Text style={styles.editorialSectionHeader}>पावन कथा (Divine Legend)</Text>
+                </View>
+
+                <View style={styles.kathaTextContainer}>
+                  <Text style={styles.kathaBodyText}>{activeDay.katha}</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Section D: Puja Vidhi Ritual Steps */}
+            <View style={styles.editorialSection}>
+              <View style={styles.kathaHeaderRow}>
+                <Text style={styles.editorialSectionHeader}>
+                  पूजा विधि (Puja Vidhi)
+                </Text>
+              </View>
+
+              <View style={styles.ritualStepsList}>
+                {activeDay.ritualSteps.map((step) => (
+                  <View key={step.step} style={styles.editorialRitualRow}>
+                    <View style={styles.ritualStepNumberBadge}>
+                      <Text style={styles.ritualStepNumberText}>{step.step}</Text>
+                    </View>
+                    <View style={styles.ritualStepContentCol}>
+                      <Text style={styles.editorialRitualTitle}>{step.title}</Text>
+                      <Text style={styles.editorialRitualDesc}>{step.desc}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -735,8 +842,15 @@ const styles = StyleSheet.create({
   allColorsHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 18,
+    paddingHorizontal: 8,
+  },
+  promptHeaderCenterCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   calendarMiniChip: {
     flexDirection: 'row',
@@ -755,114 +869,150 @@ const styles = StyleSheet.create({
     color: '#9A3412',
   },
 
-  // 3-column Grid for 9 Colors
+  // 3-column Grid for 9 Colors matching reference image
   colorsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
     justifyContent: 'space-between',
+    rowGap: 14,
   },
   colorCard: {
-    width: '31%',
+    width: '31.3%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    borderRadius: 22,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    justifyContent: 'space-between',
+    borderWidth: 1.2,
+    borderColor: 'rgba(235, 215, 170, 0.75)',
+    shadowColor: '#78350F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
     position: 'relative',
+    overflow: 'hidden',
+    minHeight: 180,
   },
-  colorCardFilledActive: {
-    shadowColor: '#000',
+  colorCardSelectedHalo: {
+    borderColor: '#D4AF37',
+    borderWidth: 2,
+    shadowColor: '#B45309',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
-    elevation: 5,
-    borderWidth: 0,
-    transform: [{ scale: 1.03 }],
+    elevation: 6,
+    transform: [{ scale: 1.02 }],
+  },
+  dayNumberBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.5,
+    elevation: 3,
+  },
+  dayTwoWhiteBadge: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    shadowOpacity: 0.1,
+  },
+  dayNumberBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   todayRibbonTag: {
     position: 'absolute',
-    top: -6,
-    right: -4,
+    top: 6,
+    right: 8,
     backgroundColor: '#EA580C',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
-    zIndex: 10,
+    zIndex: 12,
   },
   todayRibbonText: {
     fontSize: 9,
     fontWeight: '900',
     color: '#FFFFFF',
   },
-  selectedRibbonTag: {
-    position: 'absolute',
-    top: -6,
-    right: -4,
-    backgroundColor: '#EA580C',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  cardIllustrationBox: {
+    width: '100%',
+    height: 58,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+    marginTop: 14,
   },
-  colorCardSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  flowerImage: {
+    width: 52,
+    height: 52,
+  },
+  flowerImageLarger: {
+    width: 60,
+    height: 60,
+  },
+  cardBottomContent: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  colorCardSwatchSelected: {
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
-    shadowColor: '#EA580C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-  },
-  colorCardDayNumber: {
-    fontSize: 14,
-    fontWeight: '900',
+    marginTop: 'auto',
+    paddingBottom: 2,
   },
   colorCardTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#1C1917',
     textAlign: 'center',
-  },
-  colorCardTitleSelected: {
-    color: '#9A3412',
-    fontWeight: '900',
+    letterSpacing: -0.1,
+    marginBottom: 2,
+    lineHeight: 16,
   },
   colorCardSubTitle: {
     fontSize: 11,
     fontWeight: '500',
     color: '#78716C',
     textAlign: 'center',
-    marginTop: 2,
+    marginBottom: 4,
+    lineHeight: 14,
+  },
+  flourishContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+    gap: 4,
+    width: '100%',
+  },
+  flourishLine: {
+    width: 14,
+    height: 1,
+    backgroundColor: '#E5C378',
+    opacity: 0.85,
+  },
+  cardBottomWaveContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 20,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
   },
 
-  // Story Page Reference Immersive Background Styles
+  // Story Page Immersive Background Styles (Matching Festival Story Page)
   storyPageContainer: {
     backgroundColor: '#030712',
     height: SCREEN_HEIGHT,
@@ -872,11 +1022,11 @@ const styles = StyleSheet.create({
   },
   storyFullScreenImage: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 44 : 32,
+    top: Platform.OS === 'ios' ? 36 : 22,
     left: 0,
     right: 0,
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.58,
+    height: Math.round(SCREEN_HEIGHT * 0.62),
   },
   storyFullScreenGradient: {
     position: 'absolute',
@@ -884,216 +1034,322 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.70,
+    height: Math.round(SCREEN_HEIGHT * 0.72),
+  },
+  storyHeroSpacer: {
+    height: Platform.OS === 'ios' ? Math.round(SCREEN_HEIGHT * 0.46) : Math.round(SCREEN_HEIGHT * 0.42),
+  },
+  topNotchShield: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 35,
   },
   floatingTopBar: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 12 : 8,
     left: 14,
     right: 14,
-    zIndex: 30,
+    zIndex: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  floatingBackButton: {
-    padding: 6,
+  floatingGlassIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(3, 7, 18, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  floatingShareButton: {
-    padding: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+  floatingDayPill: {
+    backgroundColor: 'rgba(3, 7, 18, 0.75)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.4)',
   },
-  storyScroll: {
+  floatingDayPillText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FFD700',
+    letterSpacing: 0.4,
+  },
+  storyFixedHeaderSection: {
+    zIndex: 20,
+  },
+  storyScrollAreaBelowDivider: {
     flex: 1,
     zIndex: 10,
   },
-  storyScrollContent: {
-    paddingBottom: 80,
+  storyScroll: {
+    flex: 1,
   },
-  storyHeroSpacer: {
-    height: Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.48 : SCREEN_HEIGHT * 0.44,
+  storyScrollContent: {
+    paddingTop: 6,
   },
   deviTitleSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  deviDayPillRow: {
+    paddingHorizontal: 22,
     marginBottom: 8,
   },
   storyDeviHeading: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '900',
     color: '#FFD700',
-    letterSpacing: -0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    textShadowRadius: 8,
   },
   storyDeviEnglish: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FED7AA',
     marginTop: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowRadius: 5,
   },
   storyDeviSubtitle: {
     fontSize: 14.5,
     fontWeight: '600',
-    color: '#F3F4F6',
+    color: '#FDE68A',
     marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    fontStyle: 'italic',
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  chakraPillRow: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+    marginTop: 8,
+  },
+  chakraPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FDE68A',
+    letterSpacing: 0.2,
   },
   storyDeviSignificance: {
-    fontSize: 14,
+    fontSize: 14.5,
     color: '#E5E7EB',
-    lineHeight: 22,
-    marginTop: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    lineHeight: 23,
+    marginTop: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-  storyContentCards: {
-    paddingHorizontal: 16,
-    gap: 16,
+  sacredDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 22,
+    marginVertical: 14,
+    gap: 12,
   },
-  storyGlassCard: {
+  sacredDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 215, 0, 0.22)',
+  },
+  sacredDividerSymbol: {
+    fontSize: 13,
+    color: '#FBBF24',
+    opacity: 0.8,
+  },
+  storyContentBody: {
+    paddingHorizontal: 22,
+    gap: 22,
+  },
+  editorialSection: {
+    marginBottom: 4,
+  },
+  editorialSectionHeader: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFD700',
+    letterSpacing: 0.2,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.85)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  editorialItemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
   },
-  storyIconLeadCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  editorialItemIcon: {
+    fontSize: 22,
+    marginRight: 14,
+    marginTop: 2,
+  },
+  editorialColorSwatch: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginRight: 14,
+    marginTop: 2,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+  },
+  editorialItemTextCol: {
+    flex: 1,
+  },
+  editorialItemLabel: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  editorialItemValue: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 22,
+    letterSpacing: 0.1,
+  },
+  editorialItemSub: {
+    fontSize: 12.5,
+    color: '#9CA3AF',
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  mantraInlineBlock: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+    paddingBottom: 16,
+  },
+  storyMantraText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFBEB',
+    textAlign: 'center',
+    marginVertical: 8,
+    lineHeight: 30,
+    letterSpacing: 0.4,
+    textShadowColor: 'rgba(255, 215, 0, 0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  beejMantraInlineRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 8,
+    marginVertical: 4,
   },
-  storyFieldLabel: {
+  beejMantraLabel: {
     fontSize: 11.5,
     fontWeight: '800',
     color: '#FBBF24',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 3,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
-  storyFieldValue: {
+  beejMantraText: {
     fontSize: 16.5,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 3,
-    lineHeight: 22,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  storyFieldMeaning: {
-    fontSize: 13.5,
-    color: '#D1D5DB',
-    lineHeight: 19,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  storyMantraCard: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-  },
-  storyMantraHeaderLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FBBF24',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  storyMantraText: {
-    fontSize: 18.5,
-    fontWeight: '900',
-    color: '#FFFBEB',
-    textAlign: 'center',
-    marginVertical: 8,
-    lineHeight: 28,
     letterSpacing: 0.3,
-    textShadowColor: 'rgba(0, 0, 0, 0.85)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 5,
   },
   storyDhyanShlokaText: {
     fontSize: 14,
     fontStyle: 'italic',
     color: '#FDE68A',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 10,
     lineHeight: 22,
     fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    paddingHorizontal: 8,
+    opacity: 0.95,
   },
-  storyRitualsCard: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+  kathaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
-  storyRitualsHeading: {
+  kathaHeaderIcon: {
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  kathaTextContainer: {
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+    paddingBottom: 16,
+  },
+  kathaBodyText: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#FB923C',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: '#F3F4F6',
+    lineHeight: 24.5,
+    letterSpacing: 0.2,
+    fontWeight: '400',
   },
-  storyRitualStepItem: {
+  ritualStepsList: {
+    gap: 12,
+  },
+  editorialRitualRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    paddingVertical: 6,
   },
-  storyRitualStepBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  ritualStepNumberBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#F97316',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
+    marginRight: 14,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
   },
-  storyRitualStepBadgeText: {
-    fontSize: 12,
+  ritualStepNumberText: {
+    fontSize: 12.5,
     fontWeight: '900',
     color: '#FFFFFF',
   },
-  storyRitualStepTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  ritualStepContentCol: {
+    flex: 1,
   },
-  storyRitualStepDesc: {
+  editorialRitualTitle: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 3,
+    lineHeight: 21,
+  },
+  editorialRitualDesc: {
     fontSize: 13.5,
     color: '#D1D5DB',
-    marginTop: 3,
     lineHeight: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
 
   // Detail Page Top Bar
