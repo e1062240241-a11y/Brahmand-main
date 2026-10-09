@@ -127,7 +127,9 @@ from routes.video_upload_routes import (
 )
 from utils.helpers import (
     moderate_content,
-    generate_sl_id
+    generate_sl_id,
+    is_true_flag,
+    env_flag
 )
 from utils.cache import cache_manager
 from utils.helpers import generate_circle_code, normalize_location
@@ -670,6 +672,10 @@ async def _create_post_document(
     _clean_caption = (caption or '').strip()
     _extracted_hashtags = list(set(_re.findall(r'#(\w+)', _clean_caption.lower())))
 
+    # Tag official posts strictly if creator is marked official in their user document.
+    # Client-provided is_official is ignored/overwritten to prevent spoofing.
+    _is_official_post = is_true_flag(user.get('is_official'))
+
     post_doc = {
         'user_id': user_id,
         'username': user.get('name') or user.get('sl_id') or 'User',
@@ -683,6 +689,7 @@ async def _create_post_document(
         'source': source,
         'filter_name': filter_name,
         'visibility': 'public',
+        'is_official': _is_official_post,
         'likes_count': 0,
         'comments_count': 0,
         'views_count': 0,
@@ -1896,10 +1903,50 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     
     return user
 
+ALLOWED_PROFILE_UPDATE_FIELDS = {
+    "name",
+    "username",
+    "bio",
+    "photo",
+    "cover_photo",
+    "avatar_url",
+    "cover_image",
+    "language",
+    "public_key",
+    "location",
+    "gender",
+    "dob",
+    "date_of_birth",
+    "time_of_birth",
+    "place_of_birth",
+    "place_of_birth_latitude",
+    "place_of_birth_longitude",
+    "kuldevi",
+    "kuldevi_temple_area",
+    "gotra",
+    "phone_number",
+}
+
+DISALLOWED_PROFILE_UPDATE_FIELDS = {
+    "is_official",
+    "is_admin",
+    "role",
+    "verified",
+    "permission",
+    "permissions",
+}
+
 @api_router.put("/user/profile")
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    raw_payload = update.dict() if hasattr(update, 'dict') else dict(update)
+    # Block dangerous fields explicitly and enforce whitelist
+    for disallowed in DISALLOWED_PROFILE_UPDATE_FIELDS:
+        raw_payload.pop(disallowed, None)
+    update_data = {
+        k: v for k, v in raw_payload.items()
+        if k in ALLOWED_PROFILE_UPDATE_FIELDS and v is not None
+    }
 
     # Pre-fetch user document to merge in-memory, avoiding read-after-write
     user_doc = await db.get_document('users', token_data["user_id"])
@@ -1950,7 +1997,13 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    raw_payload = update.dict() if hasattr(update, 'dict') else dict(update)
+    for disallowed in DISALLOWED_PROFILE_UPDATE_FIELDS:
+        raw_payload.pop(disallowed, None)
+    update_data = {
+        k: v for k, v in raw_payload.items()
+        if k in ALLOWED_PROFILE_UPDATE_FIELDS and v is not None
+    }
 
     user_doc = await db.get_document('users', token_data["user_id"])
     if not user_doc:
@@ -4299,7 +4352,14 @@ async def get_posts_feed(
         if not feed_pool_service.is_initialized():
             await feed_pool_service.refresh_pools(db)
 
-        high_eng_pool, fresh_pool, disc_pool, interest_pool, all_cand_dict = feed_pool_service.get_candidate_pools()
+        high_eng_pool, fresh_pool, disc_pool, official_pool, interest_pool, all_cand_dict = feed_pool_service.get_candidate_pools()
+
+        enable_official_priority = env_flag("ENABLE_OFFICIAL_FEED_PRIORITY", True)
+        MAX_OFFICIAL_TOP_POSTS = 1
+
+        # Helper to identify official posts strictly from document flag
+        def _is_official_post_obj(p: dict) -> bool:
+            return bool(isinstance(p, dict) and is_true_flag(p.get('is_official')))
 
         # Stage 2: Heavy Filtering (Seen Filter, Blocked, Reported, Locality)
         def _is_eligible(post: dict, ignore_seen: bool = False) -> bool:
@@ -4333,6 +4393,11 @@ async def get_posts_feed(
         eligible_eng = [p for p in high_eng_pool if _is_eligible(p)]
         eligible_fresh = [p for p in fresh_pool if _is_eligible(p)]
         eligible_disc = [p for p in disc_pool if _is_eligible(p)]
+        eligible_official = [p for p in official_pool if _is_eligible(p)]
+        # Also check all_cand_dict or other pools for official posts if official_pool has any missing
+        for cand in all_cand_dict.values():
+            if _is_official_post_obj(cand) and _is_eligible(cand) and cand not in eligible_official:
+                eligible_official.append(cand)
 
         user_interests = prefs_doc.get('category_scores', {}) if prefs_doc else {}
         eligible_interest = []
@@ -4345,14 +4410,6 @@ async def get_posts_feed(
                         eligible_interest.append(p)
 
         # Stage 3: Blending & Anti-Dominance Mixer
-        # Quotas: 40% Discovery / 30% Engagement / 20% Interest / 10% Fresh
-        n_disc = max(1, int(safe_limit * 0.4))
-        n_eng = max(1, int(safe_limit * 0.3))
-        n_int = max(1, int(safe_limit * 0.2))
-        n_fresh = max(1, safe_limit - n_disc - n_eng - n_int)
-
-        _random.shuffle(eligible_disc)
-
         selected_candidates = []
         seen_cand_ids = set()
 
@@ -4367,6 +4424,20 @@ async def get_posts_feed(
                     if added >= count:
                         break
 
+        # Priority: When feature flag is enabled, reserve official posts for blending
+        # We blend up to MAX_OFFICIAL_TOP_POSTS official posts into candidate selection
+        if enable_official_priority and eligible_official:
+            _add_candidates(eligible_official, min(MAX_OFFICIAL_TOP_POSTS, safe_limit))
+
+        remaining_slots = max(0, safe_limit - len(selected_candidates))
+        # Quotas for remainder: 40% Discovery / 30% Engagement / 20% Interest / 10% Fresh
+        n_disc = max(1, int(remaining_slots * 0.4))
+        n_eng = max(1, int(remaining_slots * 0.3))
+        n_int = max(1, int(remaining_slots * 0.2))
+        n_fresh = max(1, remaining_slots - n_disc - n_eng - n_int)
+
+        _random.shuffle(eligible_disc)
+
         _add_candidates(eligible_disc, n_disc)
         _add_candidates(eligible_eng, n_eng)
         _add_candidates(eligible_interest, n_int)
@@ -4374,11 +4445,14 @@ async def get_posts_feed(
 
         # If quota wasn't filled, backfill with remaining eligible candidates
         if len(selected_candidates) < safe_limit:
-            all_eligible_combined = eligible_fresh + eligible_eng + eligible_disc + eligible_interest
+            all_eligible_combined = eligible_fresh + eligible_eng + eligible_disc + eligible_interest + eligible_official
             _add_candidates(all_eligible_combined, safe_limit - len(selected_candidates))
 
         # Fallback if candidates exhausted due to seen_set: allow seen items so feed is never empty
         if len(selected_candidates) < safe_limit and seen_set:
+            if enable_official_priority:
+                official_seen_fallback = [p for p in all_cand_dict.values() if _is_official_post_obj(p) and _is_eligible(p, ignore_seen=True)]
+                _add_candidates(official_seen_fallback, 1)
             seen_fallback = [p for p in all_cand_dict.values() if _is_eligible(p, ignore_seen=True)]
             _random.shuffle(seen_fallback)
             _add_candidates(seen_fallback, safe_limit - len(selected_candidates))
@@ -4402,10 +4476,30 @@ async def get_posts_feed(
             needed = safe_limit - len(author_capped_batch)
             author_capped_batch.extend(overflow_batch[:needed])
 
-        # Strict Anti-Consecutive Author Rule: No two adjacent posts from the same author
+        # Stage 4: Official Priority Injection (#0) and Anti-Consecutive Author interleaving
+        # Separate official posts from others: exactly MAX_OFFICIAL_TOP_POSTS (1) official post at position #0 when enabled
         final_ordered_posts = []
-        remaining_pool = list(author_capped_batch)
 
+        if enable_official_priority:
+            # Prefer unseen official post if available; otherwise seen fallback only if needed as last resort
+            official_unseen = [p for p in author_capped_batch if _is_official_post_obj(p) and p.get('id') not in seen_set]
+            official_seen = [p for p in author_capped_batch if _is_official_post_obj(p) and p.get('id') in seen_set]
+            top_official_cand = (official_unseen[0] if official_unseen else (official_seen[0] if official_seen else None))
+
+            if top_official_cand:
+                final_ordered_posts.append(top_official_cand)
+                logger.info(
+                    f"official_post_injected: post_id={top_official_cand.get('id')}, "
+                    f"user_id={top_official_cand.get('user_id')}, position=0"
+                )
+                # Remaining pool excludes the top post placed at #0
+                remaining_pool = [p for p in author_capped_batch if p.get('id') != top_official_cand.get('id')]
+            else:
+                remaining_pool = list(author_capped_batch)
+        else:
+            remaining_pool = list(author_capped_batch)
+
+        # Interleave remaining posts without consecutive same authors
         while remaining_pool:
             last_author = final_ordered_posts[-1].get('user_id') if final_ordered_posts else None
 
@@ -4420,7 +4514,17 @@ async def get_posts_feed(
             else:
                 final_ordered_posts.append(remaining_pool.pop(0))
 
-        paged_posts = final_ordered_posts[:safe_limit]
+        # Strict Deduplication across all final selected items
+        dedup_seen = set()
+        dedup_final_posts = []
+        for p in final_ordered_posts:
+            pid = p.get('id')
+            if not pid or pid in dedup_seen:
+                continue
+            dedup_seen.add(pid)
+            dedup_final_posts.append(p)
+
+        paged_posts = dedup_final_posts[:safe_limit]
         unseen_pool = [p for p in paged_posts if p.get('id') not in seen_set]
     else:
         # Define tasks to run concurrently for non-for_you tabs
@@ -4599,12 +4703,23 @@ async def get_posts_feed(
         unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
         seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
 
+        # Sort: Official posts first when enabled, then unseen recent, unseen older, seen
+        enable_official_priority = env_flag("ENABLE_OFFICIAL_FEED_PRIORITY", True)
+        def _is_official_cand(p):
+            return bool(isinstance(p, dict) and is_true_flag(p.get('is_official')))
+
         cutoff_ts = now_ts - 172800  # 48 hours
         recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
         older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
 
         recent_unseen.sort(key=_get_ts, reverse=True)
-        paged_posts = recent_unseen + older_unseen + seen_returned
+        combined_tab_posts = recent_unseen + older_unseen + seen_returned
+        if enable_official_priority:
+            official_tab_posts = [p for p in combined_tab_posts if _is_official_cand(p)]
+            other_tab_posts = [p for p in combined_tab_posts if not _is_official_cand(p)]
+            paged_posts = official_tab_posts + other_tab_posts
+        else:
+            paged_posts = combined_tab_posts
 
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
@@ -4637,6 +4752,10 @@ async def get_posts_feed(
             post['comments_count'] = post.get('comments_count', 0)
             post['views_count'] = post.get('views_count', 0)
             post['liked_by_me'] = current_user_id in liked_by
+            post['is_official'] = bool(
+                is_true_flag(post.get('is_official'))
+                or (author and is_true_flag(author.get('is_official')))
+            )
             
             # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
@@ -4922,6 +5041,7 @@ async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
         'source': 'repost',
         'filter_name': original_post.get('filter_name'),
         'visibility': 'public',
+        'is_official': is_true_flag(user.get('is_official')),
         'original_post_id': post_id,
         'reposted_by': user_id,
         'likes_count': 0,
@@ -10727,6 +10847,174 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
+
+class BackfillOfficialRequest(BaseModel):
+    user_ids: Optional[List[str]] = None
+    usernames: Optional[List[str]] = None
+    dry_run: Optional[bool] = False
+
+@api_router.post("/admin/backfill-official-posts")
+async def backfill_official_posts(
+    payload: Optional[BackfillOfficialRequest] = None,
+    token_data: dict = Depends(verify_admin)
+):
+    """One-time / maintenance admin migration:
+    Tag specified official users with is_official: true, and mark all their posts with is_official: true.
+    Idempotent. Does NOT rely on hardcoded IDs at runtime — targets are passed via payload or
+    derived from existing users who already have is_official == true.
+    Supports dry_run to simulate counts without modifying the database.
+    """
+    db = await get_db()
+    is_dry_run = bool(payload and payload.dry_run)
+
+    target_uids = set(payload.user_ids or []) if payload and payload.user_ids else set()
+    target_names = {u.strip().lower() for u in (payload.usernames or []) if u and u.strip()} if payload and payload.usernames else set()
+
+    users_to_mark = set(target_uids)
+
+    # Scan users to find matching usernames or existing official users
+    all_users = await db.query_documents('users')
+    username_matches: Dict[str, List[str]] = {}
+    for u in all_users:
+        uid = u.get('id') or u.get('user_id')
+        if not uid:
+            continue
+        uname = str(u.get('name') or '').strip().lower()
+        sl_id = str(u.get('sl_id') or '').strip().lower()
+
+        if target_names:
+            if uname in target_names:
+                username_matches.setdefault(uname, []).append(uid)
+            if sl_id in target_names and sl_id != uname:
+                username_matches.setdefault(sl_id, []).append(uid)
+
+        if is_true_flag(u.get('is_official')):
+            users_to_mark.add(uid)
+
+    # For usernames provided, enforce exact unique match to avoid ambiguity
+    if target_names:
+        for name in target_names:
+            matches = username_matches.get(name, [])
+            if len(matches) > 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ambiguous username '{name}' matches multiple users ({matches}). Please specify user_ids directly."
+                )
+            for m_uid in matches:
+                users_to_mark.add(m_uid)
+
+    users_to_update = []
+    users_already_official = 0
+
+    for uid in users_to_mark:
+        u_doc = await db.get_document('users', uid)
+        if not u_doc:
+            continue
+        if not is_true_flag(u_doc.get('is_official')):
+            users_to_update.append(uid)
+        else:
+            users_already_official += 1
+
+    posts_to_update = []
+    posts_already_official = 0
+
+    for uid in users_to_mark:
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', uid)])
+        for p in user_posts:
+            pid = p.get('id')
+            if not pid:
+                continue
+            if is_true_flag(p.get('is_official')):
+                posts_already_official += 1
+            else:
+                posts_to_update.append(pid)
+
+    if not is_dry_run:
+        for uid in users_to_update:
+            await db.update_document('users', uid, {'is_official': True})
+            from utils.cache import cache_manager
+            await cache_manager.invalidate_user(uid)
+
+        for pid in posts_to_update:
+            await db.update_document('posts', pid, {'is_official': True})
+
+        # Refresh feed pools to pick up updated official posts
+        try:
+            from services.feed_pool_service import feed_pool_service
+            await feed_pool_service.refresh_pools(db)
+        except Exception as ref_err:
+            logger.warning(f"Failed to refresh feed pools after official backfill: {ref_err}")
+
+    return {
+        "message": "Official posts backfill dry run complete" if is_dry_run else "Official posts backfill complete",
+        "dry_run": is_dry_run,
+        "official_users_count": len(users_to_mark),
+        "users_updated": len(users_to_update),
+        "users_already_official": users_already_official,
+        "posts_updated": len(posts_to_update),
+        "posts_skipped": posts_already_official
+    }
+
+
+class SetUserOfficialRequest(BaseModel):
+    is_official: bool
+
+@api_router.post("/admin/users/{user_id}/official")
+async def admin_set_user_official(
+    user_id: str,
+    payload: SetUserOfficialRequest,
+    token_data: dict = Depends(verify_admin)
+):
+    """Admin endpoint to grant or revoke official status on a user.
+    If revoking official status (True -> False):
+    Cascades posts.is_official = False across all posts belonging to user_id,
+    invalidates caches, and refreshes the feed pools immediately.
+    """
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_status = is_true_flag(user.get('is_official'))
+    new_status = is_true_flag(payload.is_official)
+
+    await db.update_document('users', user_id, {'is_official': new_status})
+    from utils.cache import cache_manager
+    await cache_manager.invalidate_user(user_id)
+
+    cascaded_posts_count = 0
+    if old_status and not new_status:
+        # Cascade revoke across all posts belonging to this user
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        for p in user_posts:
+            pid = p.get('id')
+            if pid and is_true_flag(p.get('is_official')):
+                await db.update_document('posts', pid, {'is_official': False})
+                cascaded_posts_count += 1
+        logger.info(f"Cascaded official status revocation for user {user_id}: updated {cascaded_posts_count} posts to is_official=False")
+    elif not old_status and new_status:
+        # Cascade grant across all posts belonging to this user
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        for p in user_posts:
+            pid = p.get('id')
+            if pid and not is_true_flag(p.get('is_official')):
+                await db.update_document('posts', pid, {'is_official': True})
+                cascaded_posts_count += 1
+        logger.info(f"Cascaded official status grant for user {user_id}: updated {cascaded_posts_count} posts to is_official=True")
+
+    # Refresh feed candidate pools
+    try:
+        from services.feed_pool_service import feed_pool_service
+        await feed_pool_service.refresh_pools(db)
+    except Exception as ref_err:
+        logger.warning(f"Failed to refresh feed pools after official status change: {ref_err}")
+
+    return {
+        "message": "User official status updated",
+        "user_id": user_id,
+        "is_official": new_status,
+        "cascaded_posts_count": cascaded_posts_count
+    }
 
 # =================== EVENTS ===================
 

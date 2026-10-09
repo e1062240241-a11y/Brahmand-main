@@ -328,8 +328,11 @@ const GuideItem = ({
 
         {/* Custom Icon Box */}
         <LinearGradient
-          colors={cfg.bgGradient}
-          style={styles.guideIconBox}
+          colors={section.title === 'Mantra' ? ['transparent', 'transparent'] : cfg.bgGradient}
+          style={[
+            styles.guideIconBox,
+            section.title === 'Mantra' && styles.guideIconBoxTransparent,
+          ]}
         >
           {section.title === 'Nav Durga' ? (
             <Image
@@ -825,6 +828,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 1,
     borderColor: 'rgba(212,175,55,0.4)',
+  },
+  guideIconBoxTransparent: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
   },
   guideEmoji: {
     fontSize: 22,

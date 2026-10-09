@@ -8,6 +8,7 @@ to eliminate repetitive DB reads during rapid consecutive scrolls.
 
 import asyncio
 import logging
+import os
 import random
 import time
 from typing import Dict, List, Optional, Any, Tuple
@@ -21,6 +22,8 @@ class FeedPoolService:
         self._high_engagement_pool: List[Dict[str, Any]] = []
         self._fresh_pool: List[Dict[str, Any]] = []
         self._discovery_pool: List[Dict[str, Any]] = []
+        self._official_pool: List[Dict[str, Any]] = []
+        self._official_pool_updated_at: float = 0.0
         self._interest_pool: Dict[str, List[Dict[str, Any]]] = {}
         self._all_candidates_dict: Dict[str, Dict[str, Any]] = {}
         self._is_initialized: bool = False
@@ -33,6 +36,12 @@ class FeedPoolService:
 
     def is_initialized(self) -> bool:
         return self._is_initialized
+
+    def get_official_pool_age(self) -> float:
+        """Returns age of the official pool in seconds."""
+        if not self._official_pool_updated_at:
+            return float('inf')
+        return time.time() - self._official_pool_updated_at
 
     async def get_user_filter_context(
         self,
@@ -82,6 +91,7 @@ class FeedPoolService:
         Updates internal candidate pools atomically.
         """
         async with self._refresh_lock:
+            refresh_start_ts = time.time()
             try:
                 rand_start = random.random()
 
@@ -117,6 +127,17 @@ class FeedPoolService:
                         order_by='random_score',
                         order_direction='DESCENDING'
                     ),
+                    # Task 4: Official Posts Pool (Latest posts where is_official == True)
+                    db.query_documents(
+                        'posts',
+                        filters=[
+                            ('is_official', '==', True),
+                            ('visibility', '==', 'public'),
+                        ],
+                        limit=50,
+                        order_by='created_at',
+                        order_direction='DESCENDING'
+                    ),
                 ]
 
                 results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -125,6 +146,19 @@ class FeedPoolService:
                 fresh_res = results[1] if not isinstance(results[1], Exception) else []
                 discovery_1_res = results[2] if not isinstance(results[2], Exception) else []
                 discovery_2_res = results[3] if not isinstance(results[3], Exception) else []
+                official_failed = False
+                official_res = []
+
+                if len(results) > 4:
+                    if isinstance(results[4], Exception):
+                        pool_age = self.get_official_pool_age()
+                        logger.error(
+                            f"[FeedPoolService] official_pool_refresh_failed_using_cached_pool: "
+                            f"error={results[4]}, cached_count={len(self._official_pool)}, pool_age_seconds={round(pool_age, 1)}"
+                        )
+                        official_failed = True
+                    else:
+                        official_res = results[4]
 
                 # Fallback if queries return empty (e.g., initial empty db or indexing delay)
                 if not engagement_res and not fresh_res:
@@ -135,12 +169,29 @@ class FeedPoolService:
                     except Exception as fb_err:
                         logger.error(f"[FeedPoolService] Fallback query failed: {fb_err}")
 
+                # Populate Official Posts Pool
+                from utils.helpers import is_true_flag
+                if official_failed:
+                    # Graceful degradation: retain previously cached official pool
+                    new_official = list(self._official_pool)
+                else:
+                    new_official = []
+                    for p in official_res:
+                        if isinstance(p, dict) and p.get('id'):
+                            # Ensure strict boolean flag
+                            p['is_official'] = True
+                            new_official.append(p)
+                    self._official_pool_updated_at = time.time()
+                    duration_ms = round((time.time() - refresh_start_ts) * 1000, 2)
+                    logger.info(
+                        f"[FeedPoolService] official_pool_refresh_success: "
+                        f"count={len(new_official)}, duration_ms={duration_ms}"
+                    )
+
                 # Populate High Engagement Pool
                 new_high_engagement = [p for p in engagement_res if isinstance(p, dict) and p.get('id')]
 
                 # Populate Fresh Pool (posts created within last 24h prioritized, fallback to latest)
-                pass
-
                 new_fresh = []
                 for p in fresh_res:
                     if not isinstance(p, dict) or not p.get('id'):
@@ -156,7 +207,7 @@ class FeedPoolService:
 
                 # Build Interest Pool grouped by post category
                 all_candidates = {}
-                for p_list in (new_high_engagement, new_fresh, new_discovery):
+                for p_list in (new_official, new_high_engagement, new_fresh, new_discovery):
                     for p in p_list:
                         pid = p.get('id')
                         if pid:
@@ -170,6 +221,7 @@ class FeedPoolService:
                     new_interest[cat].append(p)
 
                 # Swap pools in memory
+                self._official_pool = new_official
                 self._high_engagement_pool = new_high_engagement
                 self._fresh_pool = new_fresh
                 self._discovery_pool = new_discovery
@@ -179,7 +231,7 @@ class FeedPoolService:
 
                 logger.info(
                     f"[FeedPoolService] Refreshed candidate pools: "
-                    f"Engagement={len(new_high_engagement)}, Fresh={len(new_fresh)}, "
+                    f"Official={len(new_official)}, Engagement={len(new_high_engagement)}, Fresh={len(new_fresh)}, "
                     f"Discovery={len(new_discovery)}, Total Unique={len(all_candidates)}, "
                     f"Categories={len(new_interest)}"
                 )
@@ -209,17 +261,44 @@ class FeedPoolService:
         List[Dict[str, Any]],
         List[Dict[str, Any]],
         List[Dict[str, Any]],
+        List[Dict[str, Any]],
         Dict[str, List[Dict[str, Any]]],
         Dict[str, Dict[str, Any]]
     ]:
         """
         Returns a snapshot of in-memory candidate pools:
-        (high_engagement_pool, fresh_pool, discovery_pool, interest_pool, all_candidates_dict)
+        (high_engagement_pool, fresh_pool, discovery_pool, official_pool, interest_pool, all_candidates_dict)
+        Applies stale pool protection on official pool:
+        - <= 300s (5m): healthy cached pool
+        - > 300s and <= 900s (15m): cached pool with warning
+        - > 900s and <= 1800s (30m): cached pool with alert
+        - > 1800s (30m): stale pool protection disables official injection until refresh succeeds
         """
+        age = self.get_official_pool_age()
+        if age > 1800 and self._official_pool_updated_at > 0:
+            logger.warning(
+                f"[FeedPoolService] Official pool is critically stale ({round(age, 1)}s > 1800s). "
+                f"Disabling official injection until next successful refresh."
+            )
+            effective_official_pool: List[Dict[str, Any]] = []
+        elif age > 900 and self._official_pool_updated_at > 0:
+            logger.warning(
+                f"[FeedPoolService] Official pool is stale ({round(age, 1)}s > 900s). Using cached pool with alert."
+            )
+            effective_official_pool = list(self._official_pool)
+        elif age > 300 and self._official_pool_updated_at > 0:
+            logger.info(
+                f"[FeedPoolService] Official pool age is {round(age, 1)}s > 300s. Using cached pool."
+            )
+            effective_official_pool = list(self._official_pool)
+        else:
+            effective_official_pool = list(self._official_pool)
+
         return (
             list(self._high_engagement_pool),
             list(self._fresh_pool),
             list(self._discovery_pool),
+            effective_official_pool,
             {k: list(v) for k, v in self._interest_pool.items()},
             dict(self._all_candidates_dict)
         )

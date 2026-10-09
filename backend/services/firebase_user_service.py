@@ -37,14 +37,30 @@ class FirebaseUserService:
         await cache_manager.set_user(user_id, user)
         
         return user
-    
+    ALLOWED_PROFILE_FIELDS = {
+        "name", "username", "bio", "photo", "cover_photo", "avatar_url",
+        "cover_image", "language", "public_key", "location", "gender",
+        "dob", "date_of_birth", "time_of_birth", "place_of_birth",
+        "place_of_birth_latitude", "place_of_birth_longitude",
+        "kuldevi", "kuldevi_temple_area", "gotra", "phone_number",
+    }
+    DISALLOWED_PROFILE_FIELDS = {
+        "is_official", "is_admin", "role", "verified", "permission", "permissions",
+    }
+
     @staticmethod
     async def update_profile(user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update user profile"""
         db = await FirebaseUserService.get_db()
         
-        # Filter out None values
-        update_data = {k: v for k, v in update_data.items() if v is not None}
+        # Explicitly block dangerous fields and whitelist allowed profile fields
+        raw_payload = dict(update_data)
+        for disallowed in FirebaseUserService.DISALLOWED_PROFILE_FIELDS:
+            raw_payload.pop(disallowed, None)
+        update_data = {
+            k: v for k, v in raw_payload.items()
+            if k in FirebaseUserService.ALLOWED_PROFILE_FIELDS and v is not None
+        }
         
         if "language" in update_data and update_data["language"] not in SUPPORTED_LANGUAGES:
             raise ValueError("Unsupported language")
@@ -62,8 +78,13 @@ class FirebaseUserService:
         """Update extended profile fields"""
         db = await FirebaseUserService.get_db()
         
-        # Filter out None values
-        update_data = {k: v for k, v in update_data.items() if v is not None}
+        raw_payload = dict(update_data)
+        for disallowed in FirebaseUserService.DISALLOWED_PROFILE_FIELDS:
+            raw_payload.pop(disallowed, None)
+        update_data = {
+            k: v for k, v in raw_payload.items()
+            if k in FirebaseUserService.ALLOWED_PROFILE_FIELDS and v is not None
+        }
         
         if update_data:
             await db.update_document('users', user_id, update_data)

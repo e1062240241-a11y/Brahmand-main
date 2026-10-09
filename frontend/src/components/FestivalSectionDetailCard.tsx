@@ -546,8 +546,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
                       <View
                         style={[
                           styles.journeyCircleBadge,
-                          isOmBadge && styles.journeyCircleBadgePurple,
                           isActive && styles.journeyCircleBadgeActive,
+                          isOmBadge && styles.journeyCircleBadgePurple,
                         ]}
                       >
                         {ch.icon === 'leaf' && (
@@ -620,7 +620,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
   // Dedicated Nav Durga Renderer (Navratri Special 9 Days Guide)
   if (section === 'Nav Durga' || section === 'Navdurga') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#030712' }}>
+      <View style={{ flex: 1, backgroundColor: '#F9E5C2' }}>
         <Navratri9DaysGuide
           festivalDate={festival.date}
           onBack={onBack}
@@ -1143,9 +1143,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   journeyCircleBadgePurple: {
-    backgroundColor: '#7E22CE',
-    borderColor: '#C084FC',
-    borderWidth: 1.5,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
   },
   journeyFloatingAccentBadge: {
     position: 'absolute',

@@ -31,7 +31,7 @@ if (typeof (global as any).regeneratorRuntime === 'undefined') {
 }
 
 // Pure JS Base64 to Uint8Array decoder (cross-platform compatible across iOS, Android, Node)
-function decodeBase64ToUint8(b64: string): Uint8Array {
+export function decodeBase64ToUint8(b64: string): Uint8Array {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   const clean = b64.replace(/[^A-Za-z0-9+/]/g, '');
   const len = clean.length;
@@ -119,7 +119,7 @@ export function getTrackedBrahmandUrl(
  * Omit QuadPoints and F: 4 so all mobile and desktop viewers (Android, iOS QuickLook, Acrobat, Chrome, WhatsApp)
  * cleanly handle touch hit-testing using Rect bounds without print-only flag or vertex conflicts.
  */
-function addClickableLink(
+export function addClickableLink(
   doc: PDFDocument,
   page: any,
   uri: string,
@@ -149,6 +149,64 @@ function addClickableLink(
     page.node.addAnnot(linkAnnotation);
   } catch (err) {
     console.warn('[PDF] Failed to add link annotation:', err);
+  }
+}
+
+/**
+ * Draws a crisp QR code matrix onto the PDF page using qrcode-generator.
+ */
+export function drawQrCodeMatrix(
+  page: any,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  darkColor: any,
+  lightColor: any,
+  centerLogo?: any
+) {
+  try {
+    const qrcode = require('qrcode-generator');
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    const count = qr.getModuleCount();
+    const cellSize = size / count;
+
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (qr.isDark(r, c)) {
+          page.drawRectangle({
+            x: x + c * cellSize,
+            y: y + (count - 1 - r) * cellSize,
+            width: cellSize + 0.1,
+            height: cellSize + 0.1,
+            color: darkColor,
+          });
+        }
+      }
+    }
+
+    if (centerLogo) {
+      const logoSize = size * 0.22;
+      const logoX = x + (size - logoSize) / 2;
+      const logoY = y + (size - logoSize) / 2;
+      page.drawRectangle({
+        x: logoX - 2,
+        y: logoY - 2,
+        width: logoSize + 4,
+        height: logoSize + 4,
+        color: lightColor,
+      });
+      page.drawImage(centerLogo, {
+        x: logoX,
+        y: logoY,
+        width: logoSize,
+        height: logoSize,
+      });
+    }
+  } catch (qrErr) {
+    console.warn('[PDF] drawQrCodeMatrix fallback:', qrErr);
   }
 }
 
@@ -307,31 +365,56 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
     };
   }
 
-  if (lower.includes('navratri') || lower.includes('durga')) {
+  if (lower.includes('navratri') || lower.includes('durga') || festival?.dayData || festival?.day) {
+    const dayData = festival?.dayData || (festival?.day ? festival : null);
+    const dayNum = dayData?.day || 1;
+    const deviNameEn = dayData?.deviNameEn || 'Maa Durga';
+    const dayColorName = dayData?.colorNameEn || 'Auspicious';
+    const dayHex = dayData?.colorHex;
+
+    const navColors: Record<number, { primary: any; secondary: any }> = {
+      1: { primary: rgb(0.82, 0.50, 0.05), secondary: rgb(0.96, 0.72, 0.15) }, // Day 1: Yellow (Warm Golden Yellow & Amber)
+      2: { primary: rgb(0.42, 0.46, 0.50), secondary: rgb(0.85, 0.70, 0.28) }, // Day 2: White (Serene Platinum Slate & Temple Gold)
+      3: { primary: rgb(0.78, 0.10, 0.10), secondary: rgb(0.95, 0.35, 0.12) }, // Day 3: Red (Sacred Crimson & Fiery Vermilion)
+      4: { primary: rgb(0.08, 0.38, 0.75), secondary: rgb(0.20, 0.58, 0.90) }, // Day 4: Royal Blue (Deep Royal Blue & Azure)
+      5: { primary: rgb(0.88, 0.38, 0.05), secondary: rgb(0.98, 0.60, 0.15) }, // Day 5: Orange (Sacred Saffron Orange & Marigold)
+      6: { primary: rgb(0.12, 0.48, 0.20), secondary: rgb(0.28, 0.68, 0.35) }, // Day 6: Green (Emerald Forest Green & Spring Leaf)
+      7: { primary: rgb(0.35, 0.40, 0.46), secondary: rgb(0.58, 0.64, 0.70) }, // Day 7: Grey (Noble Sterling Slate & Silver Mist)
+      8: { primary: rgb(0.46, 0.12, 0.60), secondary: rgb(0.68, 0.28, 0.82) }, // Day 8: Purple (Royal Amethyst Purple & Orchid)
+      9: { primary: rgb(0.02, 0.48, 0.44), secondary: rgb(0.12, 0.68, 0.62) }, // Day 9: Peacock Green (Deep Peacock Teal & Sea Jewel)
+    };
+
+    const chosenColor = navColors[dayNum] || {
+      primary: rgb(0.68, 0.06, 0.18),
+      secondary: rgb(0.92, 0.42, 0.08),
+    };
+
+    const chapterList = dayData?.chapters || [
+      { id: 1, title: 'Divya Utpatti', icon: 'lotus', content: 'Tridev ke tej aur shradhha se Maa Durga ka divya roop prakat hua, jinhone adharm ka naash kiya.' },
+      { id: 2, title: 'Kathin Tapasya', icon: 'diya', content: 'Nau pawan ratriyon tak tapasya karke Mata ne sabhi devtaon aur bhakton ko mangal aashirwad diya.' },
+      { id: 3, title: 'Vijay Praapti', icon: 'star', content: 'Maa Durga ne Mahishasura ka sanhar karke teeno lokon mein shanti aur dharm sthaapit kiya.' },
+      { id: 4, title: 'Bhog Aur Kripa', icon: 'anjali', content: `Day ${dayNum} par bhakt pavitra ${cleanTextForPdf(dayData?.bhogEn || 'Naivedya')} aur ${cleanTextForPdf(dayData?.flower || 'phool')} arpit karke Mata ki kripa paate hain.` },
+      { id: 5, title: 'Pawan Parva', icon: 'flower', content: 'Parivaar aur bhakt paramparik vastra pehankar garba aur aarti se is pawan parva ko manate hain.' },
+    ];
+
     return {
-      name: 'Navratri',
-      hindiName: 'SHARAD NAVRATRI',
-      devanagariRoman: 'SHARAD NAVRATRI',
-      primaryAccent: rgb(0.68, 0.06, 0.18), // Rich Red #AE102E
-      secondaryAccent: rgb(0.92, 0.42, 0.08), // Saffron #EA6B14
+      name: dayData ? `Day ${dayNum} ${deviNameEn}` : 'Navratri',
+      hindiName: dayData ? `NAVRATRI DAY ${dayNum} - ${deviNameEn.toUpperCase()}` : 'SHARAD NAVRATRI',
+      devanagariRoman: dayData ? `NAVRATRI DAY ${dayNum} - ${deviNameEn.toUpperCase()}` : 'SHARAD NAVRATRI',
+      primaryAccent: chosenColor.primary,
+      secondaryAccent: chosenColor.secondary,
       gold: antiqueGold,
       cream: creamBg,
       charcoal: deepCharcoal,
-      heroGradientTop: rgb(0.55, 0.05, 0.15),
-      heroGradientBottom: rgb(0.85, 0.35, 0.08),
-      date: dateFromData || '11TH OCTOBER 2026',
-      tithi: 'ASHWIN SHUKLA PRATIPADA TO NAVAMI',
-      greeting: 'May the nine manifestations of Maa Durga bless your home with fearless strength, inner radiance, boundless prosperity and victory.',
-      deity: 'Maa Durga & Navadurga',
-      tradition: '9 Nights Fasting, Garba & Kanya Pujan',
-      subtitle: 'Cosmic Shakti & Goddess Durga Triumph - Ashwin / Chaitra',
-      chapters: [
-        { id: 1, title: 'The Divine Genesis', icon: 'lotus', content: 'The unified celestial radiance of the Trinity manifested ten-armed Goddess Durga, wielding cosmic weapons of righteousness.' },
-        { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Nine divine nights of tapasya worshipping the Navadurga embodiments of purity, wisdom, cosmic power, and divine motherhood.' },
-        { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'On Vijayadashami, Maa Durga vanquished demon Mahishasura, re-establishing cosmic harmony and eternal righteous order.' },
-        { id: 4, title: 'The Grace of Blessings', icon: 'anjali', content: 'Devotees observe observant fasts, chant Durga Saptashati, and perform reverent Kanya Pujan honoring the divine feminine.' },
-        { id: 5, title: 'The Joyous Heritage', icon: 'flower', content: 'Vibrant Garba and Dandiya Raas in traditional attire, uniting communities in joyful devotion and supreme spiritual elevation.' },
-      ],
+      heroGradientTop: chosenColor.primary,
+      heroGradientBottom: chosenColor.secondary,
+      date: dateFromData || `DAY ${dayNum} • SHARAD NAVRATRI 2026`,
+      tithi: dayData?.titleSubtitle ? cleanTextForPdf(dayData.titleSubtitle).toUpperCase() : 'ASHWIN SHUKLA NAVRATRI',
+      greeting: `May ${deviNameEn} bless your home with fearless courage, spiritual light, peace, vibrant health, and boundless prosperity.`,
+      deity: deviNameEn,
+      tradition: dayData?.bhogEn ? `Auspicious Color: ${dayColorName} • Bhog: ${dayData.bhogEn}` : '9 Nights Fasting, Garba & Kanya Pujan',
+      subtitle: dayData?.titleSubtitle ? cleanTextForPdf(dayData.titleSubtitle) : 'Cosmic Shakti & Goddess Durga Triumph',
+      chapters: chapterList,
       blessing: 'Dharmo Rakshati Rakshitah - Dharma protects those who protect Dharma. May the auspicious grace of this festival bring peace, prosperity, good health, and enlightenment to you and your family.',
     };
   }
@@ -520,7 +603,7 @@ export function getFestivalChapters(festival: any, sectionValue?: string) {
   };
 }
 
-async function loadPdfFonts(doc: PDFDocument) {
+export async function loadPdfFonts(doc: PDFDocument) {
   let fontCinzel: any = null;
   let fontRozha: any = null;
   let fontPoppins: any = null;
@@ -621,10 +704,42 @@ async function loadPdfFonts(doc: PDFDocument) {
  * - Fallback: embeds official Brahmand logo or returns null for vector medallion fallback.
  */
 async function resolveFestivalHeroImage(doc: PDFDocument, theme: FestivalTheme, festival: any): Promise<any> {
+  // If a specific local image module is provided (e.g. Navratri 9 days Devi images)
+  const localImageMod = festival?.localImage || festival?.customHeroImage;
+  if (localImageMod) {
+    try {
+      const modAsset = Asset.fromModule(localImageMod);
+      await modAsset.downloadAsync();
+      let uri = modAsset.localUri || modAsset.uri;
+      if (uri) {
+        if (uri.includes('.webp')) {
+          try {
+            const manip = await ImageManipulator.manipulateAsync(
+              uri,
+              [],
+              { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92 }
+            );
+            if (manip?.uri) uri = manip.uri;
+          } catch (_me) {}
+        }
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        const bytes = decodeBase64ToUint8(b64);
+        try {
+          return await doc.embedJpg(bytes);
+        } catch {
+          return await doc.embedPng(bytes);
+        }
+      }
+    } catch (modErr) {
+      console.warn('[PDF] Error loading local image module:', modErr);
+    }
+  }
+
   const lower = (theme.name || festival?.festival_name || festival?.name || '').toLowerCase();
+  const isNavratriFest = lower.includes('navratri') || lower.includes('durga') || !!festival?.dayData || !!festival?.day;
 
   // 1. If Ganesh Chaturthi / Vinayaka: use local high-res Ganesh image from the story page
-  if (lower.includes('ganesh') || lower.includes('vinayaka') || lower.includes('chaturthi')) {
+  if (!isNavratriFest && (lower.includes('ganesh') || lower.includes('vinayaka') || lower.includes('chaturthi'))) {
     try {
       const ganeshAsset = Asset.fromModule(require('../../assets/images/ganesh_chaturthi_hero.jpg'));
       await ganeshAsset.downloadAsync();
@@ -782,25 +897,26 @@ export async function renderDynamicFestivalPage1(
   const { fontCinzel, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
 
-  // Warm Peach + Beige Foundation Palette
+  // Dynamic Royal Theme Palette (adapts to festival/day color)
   const colPeachSoft = rgb(1.0, 0.910, 0.827);     // #FFE8D3
   const colPeachDeep = rgb(0.961, 0.710, 0.541);    // #F5B58A
   const colCream = rgb(0.984, 0.953, 0.902);       // #FBF3E6
 
-  const colTerracotta = rgb(0.769, 0.388, 0.247);   // #C4633F
+  // Primary and Secondary Sacred Accents dynamically driven by Festival / Navratri Day
+  const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08); // dynamic sacred primary
+  const colTerracotta = theme.secondaryAccent || rgb(0.769, 0.388, 0.247); // dynamic secondary
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);    // #802E17 - deep readable terracotta
-  const colCrimson = rgb(0.56, 0.11, 0.08);         // #8F1C14 - royal sacred crimson
-  const colRose = rgb(0.851, 0.525, 0.525);         // #D98686
+  const colRose = theme.secondaryAccent || rgb(0.851, 0.525, 0.525);
   const colSage = rgb(0.541, 0.584, 0.451);         // #8A9573
   const colSageDeep = rgb(0.20, 0.28, 0.15);       // #334726 - deep forest sage for high readability
-  const colAmber = rgb(0.878, 0.651, 0.298);        // #E0A64C
+  const colAmber = theme.gold || rgb(0.878, 0.651, 0.298);
   const colOchre = rgb(0.776, 0.541, 0.235);        // #C68A3C
   const colPlum = rgb(0.38, 0.14, 0.26);           // #612442 - deep readable royal plum
 
   const colInk = rgb(0.10, 0.07, 0.05);            // #1A120D - solid deep black-brown ink
   const colInkSoft = rgb(0.18, 0.13, 0.10);        // #2E211A - crisp dark readable ink
 
-  // 1. Warm Sunrise Background
+  // 1. Warm Sunrise & Festive Background
   page1.drawRectangle({
     x: 0,
     y: 0,
@@ -809,34 +925,108 @@ export async function renderDynamicFestivalPage1(
     color: colCream,
   });
 
-  // Soft bottom beige gradient bands
+  // Soft bottom festive gradient bands in Day theme colors
   const bands = 25;
   for (let b = 0; b < bands; b++) {
     const fraction = b / bands;
     const bandH = (pageHeight * 0.7) / bands;
     const yPos = b * bandH;
-    const r = 0.984 - fraction * 0.04;
-    const g = 0.953 - fraction * 0.08;
-    const bl = 0.902 - fraction * 0.13;
     page1.drawRectangle({
       x: 0,
       y: yPos,
       width: pageWidth,
       height: bandH + 1,
-      color: rgb(r, g, bl),
-      opacity: 0.35,
+      color: colPeachDeep,
+      opacity: 0.08 * (1 - fraction),
     });
   }
 
-  // 2. Side Ribbons
-  page1.drawRectangle({ x: 14, y: 440, width: 3.5, height: 130, color: colPeachDeep, opacity: 0.65 });
-  page1.drawRectangle({ x: 14, y: 150, width: 3.5, height: 120, color: colRose, opacity: 0.5 });
-  page1.drawRectangle({ x: pageWidth - 17.5, y: 440, width: 3.5, height: 130, color: colSage, opacity: 0.55 });
-  page1.drawRectangle({ x: pageWidth - 17.5, y: 150, width: 3.5, height: 120, color: colOchre, opacity: 0.5 });
+  // 1b. Sacred Navratri Festive Frame Borders
+  page1.drawRectangle({
+    x: 10,
+    y: 10,
+    width: pageWidth - 20,
+    height: pageHeight - 20,
+    borderColor: colCrimson,
+    borderWidth: 1.2,
+    opacity: 0.85,
+  });
+  page1.drawRectangle({
+    x: 14,
+    y: 14,
+    width: pageWidth - 28,
+    height: pageHeight - 28,
+    borderColor: colTerracotta,
+    borderWidth: 0.6,
+    opacity: 0.65,
+  });
 
-  // 4. Corner Fans (Peach TL, Rose TR, Sage BL, Amber BR)
+  // 1c. Festive Navratri Toran (Top Marigold & Mango Leaves Garland)
+  const toranPendantCount = 13;
+  const toranStep = (pageWidth - 60) / (toranPendantCount - 1);
+  for (let tp = 0; tp < toranPendantCount; tp++) {
+    const tX = 30 + tp * toranStep;
+    const tY = pageHeight - 16;
+    // Mango leaf (Sacred green/gold triangle pendant)
+    page1.drawEllipse({
+      x: tX,
+      y: tY - 6,
+      xScale: 3.2,
+      yScale: 7.5,
+      color: tp % 2 === 0 ? colSage : colTerracotta,
+      opacity: 0.85,
+    });
+    // Golden marigold bead
+    page1.drawCircle({
+      x: tX,
+      y: tY,
+      size: 2.8,
+      color: colAmber,
+      opacity: 0.9,
+    });
+  }
+  // Toran arching string
+  page1.drawLine({
+    start: { x: 22, y: pageHeight - 16 },
+    end: { x: pageWidth - 22, y: pageHeight - 16 },
+    thickness: 0.8,
+    color: colAmber,
+    opacity: 0.75,
+  });
+
+  // 2. Side Ribbons & Dandiya Raas Festive Accents
+  page1.drawRectangle({ x: 17, y: 440, width: 3, height: 130, color: colCrimson, opacity: 0.7 });
+  page1.drawRectangle({ x: 17, y: 150, width: 3, height: 120, color: colTerracotta, opacity: 0.6 });
+  page1.drawRectangle({ x: pageWidth - 20, y: 440, width: 3, height: 130, color: colTerracotta, opacity: 0.7 });
+  page1.drawRectangle({ x: pageWidth - 20, y: 150, width: 3, height: 120, color: colCrimson, opacity: 0.6 });
+
+  // Sacred Dandiya Sticks Motif in side margins
+  const drawDandiyaPair = (dx: number, dy: number) => {
+    // Stick 1
+    page1.drawLine({
+      start: { x: dx - 6, y: dy - 12 },
+      end: { x: dx + 6, y: dy + 12 },
+      thickness: 1.8,
+      color: colCrimson,
+      opacity: 0.8,
+    });
+    // Stick 2
+    page1.drawLine({
+      start: { x: dx + 6, y: dy - 12 },
+      end: { x: dx - 6, y: dy + 12 },
+      thickness: 1.8,
+      color: colAmber,
+      opacity: 0.85,
+    });
+    // Center ghungroo bell / bead
+    page1.drawCircle({ x: dx, y: dy, size: 2.2, color: colTerracotta });
+  };
+  drawDandiyaPair(28, 400);
+  drawDandiyaPair(pageWidth - 28, 400);
+
+  // 4. Corner Fans & Divine Trishul-Inspired Motifs
   const drawCornerFan = (originX: number, originY: number, dirX: number, dirY: number, strokeCol: any, fillCol: any, dotCol: any) => {
-    const rList = [30, 48, 66, 82];
+    const rList = [28, 44, 60, 76];
     for (let i = 0; i < rList.length; i++) {
       const rad = rList[i];
       const steps = 10;
@@ -866,24 +1056,31 @@ export async function renderDynamicFestivalPage1(
         opacity: 0.85,
       });
     }
-    page1.drawCircle({
-      x: originX + dirX * 18,
-      y: originY + dirY * 18,
-      size: 5,
+    // Sacred Trishul prongs in corner
+    page1.drawLine({
+      start: { x: originX + dirX * 12, y: originY + dirY * 12 },
+      end: { x: originX + dirX * 26, y: originY + dirY * 26 },
+      thickness: 1.4,
       color: dotCol,
     });
     page1.drawCircle({
-      x: originX + dirX * 18,
-      y: originY + dirY * 18,
-      size: 2,
+      x: originX + dirX * 20,
+      y: originY + dirY * 20,
+      size: 4.5,
+      color: dotCol,
+    });
+    page1.drawCircle({
+      x: originX + dirX * 20,
+      y: originY + dirY * 20,
+      size: 1.8,
       color: colCream,
     });
   };
 
-  drawCornerFan(10, pageHeight - 10, 1, -1, colPeachDeep, colPeachDeep, colTerracotta); // TL
-  drawCornerFan(pageWidth - 10, pageHeight - 10, -1, -1, colRose, colRose, colTerracotta); // TR
-  drawCornerFan(10, 10, 1, 1, colSage, colSage, colAmber); // BL
-  drawCornerFan(pageWidth - 10, 10, -1, 1, colAmber, colAmber, colTerracotta); // BR
+  drawCornerFan(14, pageHeight - 14, 1, -1, colCrimson, colPeachDeep, colTerracotta); // TL
+  drawCornerFan(pageWidth - 14, pageHeight - 14, -1, -1, colCrimson, colPeachDeep, colTerracotta); // TR
+  drawCornerFan(14, 14, 1, 1, colTerracotta, colSage, colAmber); // BL
+  drawCornerFan(pageWidth - 14, 14, -1, 1, colTerracotta, colAmber, colCrimson); // BR
 
   // -------------------------------------------------------------
   // CONTENT STACK
@@ -937,62 +1134,6 @@ export async function renderDynamicFestivalPage1(
   const mCy = 595;
   const coreR = 140;
 
-  // Subtle halo
-  page1.drawCircle({
-    x: cx,
-    y: mCy,
-    size: 240,
-    color: colPeachSoft,
-    opacity: 0.45,
-  });
-
-  // 24 Rays
-  const rayColors = [colPeachDeep, colRose, colTerracotta, colSage];
-  for (let r = 0; r < 24; r++) {
-    const angle = (r * 15 * Math.PI) / 180;
-    const rCol = rayColors[r % 4];
-    page1.drawLine({
-      start: { x: cx + Math.cos(angle) * (coreR + 9), y: mCy + Math.sin(angle) * (coreR + 9) },
-      end: { x: cx + Math.cos(angle) * (coreR + 45), y: mCy + Math.sin(angle) * (coreR + 45) },
-      thickness: 1.1,
-      color: rCol,
-      opacity: 0.75,
-    });
-  }
-
-  // Outer dot ring
-  for (let d = 0; d < 24; d++) {
-    const angle = (d * 15 * Math.PI) / 180;
-    const dCol = rayColors[d % 4];
-    page1.drawCircle({
-      x: cx + Math.cos(angle) * (coreR + 49),
-      y: mCy + Math.sin(angle) * (coreR + 49),
-      size: 1.8,
-      color: dCol,
-      opacity: 0.8,
-    });
-  }
-
-  // 12 Outer Petals
-  for (let p = 0; p < 12; p++) {
-    const angle = (p * 30 * Math.PI) / 180;
-    const pCol = p % 2 === 0 ? colPeachDeep : colTerracotta;
-    page1.drawEllipse({
-      x: cx + Math.cos(angle) * (coreR + 20),
-      y: mCy + Math.sin(angle) * (coreR + 20),
-      xScale: 9,
-      yScale: 4,
-      color: pCol,
-      rotate: degrees(p * 30 + 90),
-      opacity: 0.85,
-    });
-  }
-
-  // Concentric Rings
-  page1.drawCircle({ x: cx, y: mCy, size: coreR + 14, borderColor: colTerracotta, borderWidth: 1, opacity: 0.85 });
-  page1.drawCircle({ x: cx, y: mCy, size: coreR + 9, borderColor: colRose, borderWidth: 0.7, opacity: 0.65 });
-  page1.drawCircle({ x: cx, y: mCy, size: coreR + 4, borderColor: colPlum, borderWidth: 0.6, opacity: 0.5 });
-
   // Flanking Diyas (Left & Right)
   const drawDiya = (dx: number, dy: number) => {
     page1.drawCircle({ x: dx, y: dy + 11, size: 10, color: rgb(1, 0.92, 0.7), opacity: 0.6 });
@@ -1036,23 +1177,6 @@ export async function renderDynamicFestivalPage1(
     });
 
     page1.pushOperators(popGraphicsState());
-
-    // Framed gold & terracotta outer circular borders around the image
-    page1.drawCircle({
-      x: cx,
-      y: mCy,
-      size: coreR,
-      borderColor: colTerracottaDk,
-      borderWidth: 1.5,
-    });
-    page1.drawCircle({
-      x: cx,
-      y: mCy,
-      size: coreR + 2.5,
-      borderColor: colAmber,
-      borderWidth: 0.8,
-      opacity: 0.9,
-    });
   } else {
     // Vector glowing lotus fallback
     page1.drawCircle({ x: cx, y: mCy, size: coreR, color: colPeachSoft, borderColor: colTerracottaDk, borderWidth: 1.5 });
@@ -1163,7 +1287,8 @@ export async function renderDynamicFestivalPage1(
   curY -= 14;
 
   // 9. BLESSING SECTION (Personalized blessing from Brahmand) - ULTRA READABLE
-  const isGanesh = /ganesh|vinayaka/i.test(theme.name);
+  const isNavratriFestive = /navratri|durga/i.test(theme.name) || !!festival?.dayData || !!festival?.day;
+  const isGanesh = !isNavratriFestive && /ganesh|vinayaka/i.test(theme.name);
   let blessingParagraph = '';
   if (isGanesh) {
     blessingParagraph =
@@ -1227,7 +1352,7 @@ export async function renderDynamicFestivalPage1(
   // 10. VEDIC MANTRA (KEPT, BUT NO BACKGROUND BOX BEHIND IT!)
   const isShiva = /shiv|mahadev|bholenath/i.test(theme.name) || /shiv|mahadev/i.test(theme.deity);
   const isKrishna = /krishna|janmashtami|govind/i.test(theme.name) || /krishna/i.test(theme.deity);
-  const isDevi = /durga|navratri|kali|lakshmi|parvati|saraswati/i.test(theme.name) || /devi|durga|lakshmi|parvati/i.test(theme.deity);
+  const isDevi = isNavratriFestive || /durga|navratri|kali|lakshmi|parvati|saraswati|shailputri|brahmacharini|chandraghanta|kushmanda|skandamata|katyayani|kalaratri|mahagauri|siddhidatri/i.test(theme.name) || /devi|durga|lakshmi|parvati/i.test(theme.deity);
   const isRama = /rama|ram|diwali|deepavali/i.test(theme.name) || /rama|ram/i.test(theme.deity);
 
   let mHead = '||   VEDIC   GANESHA   MAHA   MANTRA   ||';
@@ -1235,26 +1360,48 @@ export async function renderDynamicFestivalPage1(
   let shloka1 = 'VAKRATUNDA MAHAKAYA SURYAKOTI SAMAPRABHA';
   let shloka2 = 'NIRVIGHNAM KURU ME DEVA SARVAKARYESHU SARVADA';
 
-  if (isShiva) {
-    mHead = '||   VEDIC   SHIVA   MAHA   MANTRA   ||';
-    mText = 'OM   NAMAH   SHIVAYA';
-    shloka1 = 'TRYAMBAKAM YAJAMAHE SUGANDHIM PUSHTIVARDHANAM';
-    shloka2 = 'URVARUKAMIVA BANDHANAN MRITYORMUKSHIYA MAMRITAT';
-  } else if (isKrishna) {
-    mHead = '||   MAHA   VISHNU   KRISHNA   MANTRA   ||';
-    mText = 'OM   NAMO   BHAGAVATE   VASUDEVAYA';
-    shloka1 = 'SHANTAKARAM BHUJAGASHAYANAM PADMANABHAM SURESHAM';
-    shloka2 = 'VISHWADHARAM GAGANASADRISHAM MEGHAVARNAM SHUBHANGAM';
-  } else if (isDevi) {
+  if (isDevi) {
     mHead = '||   MAHA   DEVI   SHAKTI   MANTRA   ||';
     mText = 'OM   DUM   DURGAYEI   NAMAHA';
     shloka1 = 'SARVAMANGALA MANGALYE SHIVE SARVARTHA SADHIKE';
     shloka2 = 'SHARANYE TRYAMBAKE GAURI NARAYANI NAMOSTUTE';
-  } else if (isRama) {
-    mHead = '||   SRI   RAMA   MAHA   MANTRA   ||';
-    mText = 'OM   SRI   RAMAYA   NAMAHA';
-    shloka1 = 'SRI RAMA RAMA RAMETI RAME RAME MANORAME';
-    shloka2 = 'SAHASRANAMA TATTULYAM RAMA NAMA VARANANE';
+  }
+
+  if (festival?.mantraHead) {
+    mHead = cleanTextForPdf(festival.mantraHead).toUpperCase();
+  }
+  if (festival?.mantraText) {
+    mText = cleanTextForPdf(festival.mantraText).toUpperCase();
+  }
+  if (festival?.shloka1) {
+    shloka1 = cleanTextForPdf(festival.shloka1).toUpperCase();
+  }
+  if (festival?.shloka2) {
+    shloka2 = cleanTextForPdf(festival.shloka2).toUpperCase();
+  }
+
+  if (!festival?.mantraText) {
+    if (isShiva) {
+      mHead = '||   VEDIC   SHIVA   MAHA   MANTRA   ||';
+      mText = 'OM   NAMAH   SHIVAYA';
+      shloka1 = 'TRYAMBAKAM YAJAMAHE SUGANDHIM PUSHTIVARDHANAM';
+      shloka2 = 'URVARUKAMIVA BANDHANAN MRITYORMUKSHIYA MAMRITAT';
+    } else if (isKrishna) {
+      mHead = '||   MAHA   VISHNU   KRISHNA   MANTRA   ||';
+      mText = 'OM   NAMO   BHAGAVATE   VASUDEVAYA';
+      shloka1 = 'SHANTAKARAM BHUJAGASHAYANAM PADMANABHAM SURESHAM';
+      shloka2 = 'VISHWADHARAM GAGANASADRISHAM MEGHAVARNAM SHUBHANGAM';
+    } else if (isDevi) {
+      mHead = '||   MAHA   DEVI   SHAKTI   MANTRA   ||';
+      mText = 'OM   DUM   DURGAYEI   NAMAHA';
+      shloka1 = 'SARVAMANGALA MANGALYE SHIVE SARVARTHA SADHIKE';
+      shloka2 = 'SHARANYE TRYAMBAKE GAURI NARAYANI NAMOSTUTE';
+    } else if (isRama) {
+      mHead = '||   SRI   RAMA   MAHA   MANTRA   ||';
+      mText = 'OM   SRI   RAMAYA   NAMAHA';
+      shloka1 = 'SRI RAMA RAMA RAMETI RAME RAME MANORAME';
+      shloka2 = 'SAHASRANAMA TATTULYAM RAMA NAMA VARANANE';
+    }
   }
 
   const mHeadW = brandFont.widthOfTextAtSize(mHead, 8);
@@ -1422,22 +1569,23 @@ export async function renderDynamicFestivalPage2(
   const { fontCinzel, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
 
-  // Warm Peach + Beige Foundation Palette
+  // Dynamic Royal Theme Palette (adapts to festival/day color)
   const colPeachDeep = rgb(0.961, 0.710, 0.541);    // #F5B58A
   const colCream = rgb(0.984, 0.953, 0.902);       // #FBF3E6
 
-  const colTerracotta = rgb(0.769, 0.388, 0.247);   // #C4633F
+  // Primary and Secondary Sacred Accents dynamically driven by Festival / Navratri Day
+  const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08); // dynamic sacred primary
+  const colTerracotta = theme.secondaryAccent || rgb(0.769, 0.388, 0.247); // dynamic secondary
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);    // #802E17
-  const colCrimson = rgb(0.56, 0.11, 0.08);         // #8F1C14
-  const colRose = rgb(0.851, 0.525, 0.525);         // #D98686
+  const colRose = theme.secondaryAccent || rgb(0.851, 0.525, 0.525);
   const colSage = rgb(0.541, 0.584, 0.451);         // #8A9573
   const colSageDeep = rgb(0.20, 0.28, 0.15);       // #334726
-  const colAmber = rgb(0.878, 0.651, 0.298);        // #E0A64C
+  const colAmber = theme.gold || rgb(0.878, 0.651, 0.298);
 
   const colInk = rgb(0.10, 0.07, 0.05);            // #1A120D
   const colInkSoft = rgb(0.18, 0.13, 0.10);        // #2E211A
 
-  // 1. Warm Sunrise Background
+  // 1. Warm Sunrise & Festive Background
   page2.drawRectangle({
     x: 0,
     y: 0,
@@ -1446,34 +1594,102 @@ export async function renderDynamicFestivalPage2(
     color: colCream,
   });
 
-  // Soft bottom beige gradient bands
+  // Soft bottom festive gradient bands
   const bands = 25;
   for (let b = 0; b < bands; b++) {
     const fraction = b / bands;
     const bandH = (pageHeight * 0.7) / bands;
     const yPos = b * bandH;
-    const r = 0.984 - fraction * 0.04;
-    const g = 0.953 - fraction * 0.08;
-    const bl = 0.902 - fraction * 0.13;
     page2.drawRectangle({
       x: 0,
       y: yPos,
       width: pageWidth,
       height: bandH + 1,
-      color: rgb(r, g, bl),
-      opacity: 0.35,
+      color: colPeachDeep,
+      opacity: 0.08 * (1 - fraction),
     });
   }
 
-  // 2. Side Ribbons
-  page2.drawRectangle({ x: 14, y: 440, width: 3.5, height: 130, color: colPeachDeep, opacity: 0.65 });
-  page2.drawRectangle({ x: 14, y: 150, width: 3.5, height: 120, color: colRose, opacity: 0.5 });
-  page2.drawRectangle({ x: pageWidth - 17.5, y: 440, width: 3.5, height: 130, color: colSage, opacity: 0.55 });
-  page2.drawRectangle({ x: pageWidth - 17.5, y: 150, width: 3.5, height: 120, color: colAmber, opacity: 0.5 });
+  // 1b. Sacred Navratri Festive Frame Borders
+  page2.drawRectangle({
+    x: 10,
+    y: 10,
+    width: pageWidth - 20,
+    height: pageHeight - 20,
+    borderColor: colCrimson,
+    borderWidth: 1.2,
+    opacity: 0.85,
+  });
+  page2.drawRectangle({
+    x: 14,
+    y: 14,
+    width: pageWidth - 28,
+    height: pageHeight - 28,
+    borderColor: colTerracotta,
+    borderWidth: 0.6,
+    opacity: 0.65,
+  });
 
-  // 3. 4 Corner Fans
+  // 1c. Festive Navratri Toran (Top Marigold & Mango Leaves Garland)
+  const toranPendantCountP2 = 13;
+  const toranStepP2 = (pageWidth - 60) / (toranPendantCountP2 - 1);
+  for (let tp = 0; tp < toranPendantCountP2; tp++) {
+    const tX = 30 + tp * toranStepP2;
+    const tY = pageHeight - 16;
+    page2.drawEllipse({
+      x: tX,
+      y: tY - 6,
+      xScale: 3.2,
+      yScale: 7.5,
+      color: tp % 2 === 0 ? colSage : colTerracotta,
+      opacity: 0.85,
+    });
+    page2.drawCircle({
+      x: tX,
+      y: tY,
+      size: 2.8,
+      color: colAmber,
+      opacity: 0.9,
+    });
+  }
+  page2.drawLine({
+    start: { x: 22, y: pageHeight - 16 },
+    end: { x: pageWidth - 22, y: pageHeight - 16 },
+    thickness: 0.8,
+    color: colAmber,
+    opacity: 0.75,
+  });
+
+  // 2. Side Ribbons & Dandiya Raas Festive Accents
+  page2.drawRectangle({ x: 17, y: 440, width: 3, height: 130, color: colCrimson, opacity: 0.7 });
+  page2.drawRectangle({ x: 17, y: 150, width: 3, height: 120, color: colTerracotta, opacity: 0.6 });
+  page2.drawRectangle({ x: pageWidth - 20, y: 440, width: 3, height: 130, color: colTerracotta, opacity: 0.7 });
+  page2.drawRectangle({ x: pageWidth - 20, y: 150, width: 3, height: 120, color: colCrimson, opacity: 0.6 });
+
+  // Sacred Dandiya Sticks Motif in side margins
+  const drawDandiyaPairP2 = (dx: number, dy: number) => {
+    page2.drawLine({
+      start: { x: dx - 6, y: dy - 12 },
+      end: { x: dx + 6, y: dy + 12 },
+      thickness: 1.8,
+      color: colCrimson,
+      opacity: 0.8,
+    });
+    page2.drawLine({
+      start: { x: dx + 6, y: dy - 12 },
+      end: { x: dx - 6, y: dy + 12 },
+      thickness: 1.8,
+      color: colAmber,
+      opacity: 0.85,
+    });
+    page2.drawCircle({ x: dx, y: dy, size: 2.2, color: colTerracotta });
+  };
+  drawDandiyaPairP2(28, 400);
+  drawDandiyaPairP2(pageWidth - 28, 400);
+
+  // 3. 4 Corner Fans with Trishul Motifs
   const drawCornerFanP2 = (originX: number, originY: number, dirX: number, dirY: number, strokeCol: any, fillCol: any, dotCol: any) => {
-    const rList = [30, 48, 66, 82];
+    const rList = [28, 44, 60, 76];
     for (let i = 0; i < rList.length; i++) {
       const rad = rList[i];
       const steps = 10;
@@ -1503,14 +1719,21 @@ export async function renderDynamicFestivalPage2(
         opacity: 0.85,
       });
     }
-    page2.drawCircle({ x: originX + dirX * 18, y: originY + dirY * 18, size: 5, color: dotCol });
-    page2.drawCircle({ x: originX + dirX * 18, y: originY + dirY * 18, size: 2, color: colCream });
+    // Sacred Trishul prongs in corner
+    page2.drawLine({
+      start: { x: originX + dirX * 12, y: originY + dirY * 12 },
+      end: { x: originX + dirX * 26, y: originY + dirY * 26 },
+      thickness: 1.4,
+      color: dotCol,
+    });
+    page2.drawCircle({ x: originX + dirX * 20, y: originY + dirY * 20, size: 4.5, color: dotCol });
+    page2.drawCircle({ x: originX + dirX * 20, y: originY + dirY * 20, size: 1.8, color: colCream });
   };
 
-  drawCornerFanP2(10, pageHeight - 10, 1, -1, colPeachDeep, colPeachDeep, colTerracotta);
-  drawCornerFanP2(pageWidth - 10, pageHeight - 10, -1, -1, colRose, colRose, colTerracotta);
-  drawCornerFanP2(10, 10, 1, 1, colSage, colSage, colAmber);
-  drawCornerFanP2(pageWidth - 10, 10, -1, 1, colAmber, colAmber, colTerracotta);
+  drawCornerFanP2(14, pageHeight - 14, 1, -1, colCrimson, colPeachDeep, colTerracotta);
+  drawCornerFanP2(pageWidth - 14, pageHeight - 14, -1, -1, colCrimson, colPeachDeep, colTerracotta);
+  drawCornerFanP2(14, 14, 1, 1, colTerracotta, colSage, colAmber);
+  drawCornerFanP2(pageWidth - 14, 14, -1, 1, colTerracotta, colAmber, colCrimson);
 
   // 4. BRAND HEADER (Logo + BRAHMAND in Cinzel)
   let curY = pageHeight - 40;
@@ -1618,35 +1841,6 @@ export async function renderDynamicFestivalPage2(
   for (let cIdx = 0; cIdx < chaptersCount; cIdx++) {
     const ch = theme.chapters[cIdx];
     const chNum = chapterNumerals[cIdx] || `CHAPTER ${cIdx + 1}`;
-    const chTitle = cleanTextForPdf(ch.title).toUpperCase();
-
-    // Chapter Header
-    page2.drawText(chNum, {
-      x: p2Margin,
-      y: curY,
-      size: 9.5,
-      font: brandFont,
-      color: colSageDeep,
-    });
-    const numW = brandFont.widthOfTextAtSize(chNum, 9.5);
-    page2.drawText('  *  ', {
-      x: p2Margin + numW,
-      y: curY,
-      size: 9.5,
-      font: brandFont,
-      color: colPeachDeep,
-    });
-    const sepW = brandFont.widthOfTextAtSize('  *  ', 9.5);
-    page2.drawText(chTitle, {
-      x: p2Margin + numW + sepW,
-      y: curY,
-      size: 11,
-      font: brandFont,
-      color: colCrimson,
-    });
-
-    curY -= 13;
-
     // Drop Cap
     const cleanContent = cleanTextForPdf(ch.content);
     const dropLetter = cleanContent.charAt(0) || 'T';
