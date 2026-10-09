@@ -741,6 +741,14 @@ export default function NotificationsScreen() {
               </View>
               <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
               <Text style={styles.emptyText}>{t('noNotificationsSub')}</Text>
+              {/*
+                🧡 Engagement: Reframed transactional empty state call-to-actions ("जाप शुरू करें" / "आज का पंचांग")
+                to devotional practice ("साधना में लीन हों 🙏") and auspicious calendar connection ("शुभ मुहूर्त देखें ✨").
+                Lever: Reframing + Devotion over Productivity + Sanskara (Ritual/Habit)
+                Why: "साधना में लीन हों" invites the user into sacred absorption rather than initiating a task,
+                     and "शुभ मुहूर्त देखें" connects with daily Sanatan living and Panchang rhythm.
+                UI: Text-only change, zero new visual components.
+              */}
               <View style={styles.emptyActionRow}>
                 <TouchableOpacity
                   style={styles.emptyActionButton}
@@ -748,7 +756,7 @@ export default function NotificationsScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.emptyActionText}>
-                    {t('language') === 'hi' ? 'जाप शुरू करें 🙏' : 'Start Jaap 🙏'}
+                    {t('language') === 'hi' ? 'साधना में लीन हों 🙏' : 'Begin Sadhana 🙏'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -757,7 +765,7 @@ export default function NotificationsScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.emptyActionText, styles.emptySecondaryText]}>
-                    {t('language') === 'hi' ? 'आज का पंचांग ✨' : "Today's Panchang ✨"}
+                    {t('language') === 'hi' ? 'शुभ मुहूर्त देखें ✨' : 'View Shubh Muhurat ✨'}
                   </Text>
                 </TouchableOpacity>
               </View>
