@@ -107,7 +107,14 @@ async def verify_token(
         # Do not expose exception details or stack traces to the client (CWE-209/CWE-200)
         logger.exception(f"Error checking user block status in verify_token: {e}")
         raise HTTPException(status_code=403, detail="User account verification failed")
-        
+
+    # Throttled user activity heartbeat (at most once every 6 hours via Redis/cache)
+    try:
+        from services.user_activity_service import UserActivityService
+        await UserActivityService.record_heartbeat_if_due(user_id)
+    except Exception as hb_err:
+        logger.debug(f"Heartbeat check bypassed: {hb_err}")
+
     return payload
 
 

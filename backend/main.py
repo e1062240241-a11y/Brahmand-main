@@ -87,7 +87,8 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate,
+    NotificationPreferencesUpdate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -210,6 +211,11 @@ async def lifespan(app: FastAPI):
     # Start Jaap reminder worker
     asyncio.create_task(_jaap_reminder_worker())
     logger.info("Jaap reminder worker started")
+
+    # Start Re-engagement campaign worker
+    from services.reengagement_worker import _reengagement_campaign_worker
+    asyncio.create_task(_reengagement_campaign_worker())
+    logger.info("Re-engagement campaign worker started")
 
     # Sync legacy KYC data across users and vendors
     asyncio.create_task(sync_legacy_kyc_data_in_db())
@@ -1675,6 +1681,11 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
             # Existing user - return token
             token = create_jwt_token(user['id'], user['sl_id'])
+            try:
+                from services.user_activity_service import UserActivityService
+                await UserActivityService.record_user_login(user['id'], db)
+            except Exception:
+                pass
             return {
                 "message": "Login successful",
                 "token": token,
@@ -1871,6 +1882,25 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
         "kyc_status": None,  # pending/verified/rejected (only for temple/vendor/organizer roles)
         "kyc_role": None,  # temple/vendor/organizer
         "kyc_documents": None,  # Stored KYC documents
+        "created_at": datetime.utcnow().isoformat() + 'Z',
+        "updated_at": datetime.utcnow().isoformat() + 'Z',
+        "last_login_at": datetime.utcnow().isoformat() + 'Z',
+        "last_active_at": datetime.utcnow().isoformat() + 'Z',
+        "last_seen_at": datetime.utcnow().isoformat() + 'Z',
+        "notification_preferences": {
+            "push_enabled": True,
+            "reengagement_enabled": True,
+            "trending_enabled": True,
+            "library_reminder_enabled": True,
+            "jaap_reminder_enabled": True,
+            "quiet_hours_enabled": False,
+            "quiet_start_hour": 22,
+            "quiet_end_hour": 7,
+            "timezone": "Asia/Kolkata",
+            "max_reengagement_per_week": 2,
+            "max_trending_per_day": 1,
+            "unsubscribed_from_marketing": False
+        },
         "privacy_settings": {
             "read_receipts": True,
             "online_status": True,
@@ -2565,7 +2595,7 @@ async def get_user_by_id(
     # transfer them to the backend on every profile view.
     SCALAR_FIELDS = [
         'name', 'photo', 'cover_photo', 'sl_id', 'online_status',
-        'last_seen_at', 'last_active', 'updated_at', 'badges',
+        'last_seen_at', 'last_active', 'last_active_at', 'last_login_at', 'updated_at', 'badges',
         'home_location', 'followers_count', 'following_count',
         'is_verified', 'verification_level',
     ]
@@ -2620,6 +2650,8 @@ async def get_user_by_id(
         'online_status': doc.get('online_status'),
         'last_seen_at': doc.get('last_seen_at'),
         'last_active': doc.get('last_active'),
+        'last_active_at': doc.get('last_active_at') or doc.get('last_active'),
+        'last_login_at': doc.get('last_login_at'),
         'updated_at': doc.get('updated_at'),
         'badges': doc.get('badges', []),
         'home_location': doc.get('home_location'),
@@ -3959,6 +3991,8 @@ async def _upload_chat_media_impl(
     return {
         'message': 'Chat media uploaded successfully',
         'url': media_url,
+        'media_url': media_url,
+        'mediaUrl': media_url,
         'path': object_path,
     }
 
@@ -11214,6 +11248,120 @@ async def send_library_reminder_notification(
         force=force
     )
     return {"status": "success", "result": result}
+
+# ================= NOTIFICATION PREFERENCES ENDPOINTS =================
+
+@api_router.get("/notifications/preferences")
+async def get_notification_preferences(token_data: dict = Depends(verify_token)):
+    """Fetch user's current notification preferences merged with safe defaults."""
+    db = await get_db()
+    from services.notification_campaign_service import NotificationCampaignService
+    prefs = await NotificationCampaignService.get_user_preferences(db, token_data["user_id"])
+    return {"preferences": prefs}
+
+@api_router.put("/notifications/preferences")
+async def update_notification_preferences(
+    request: NotificationPreferencesUpdate,
+    token_data: dict = Depends(verify_token)
+):
+    """Update notification preferences for authenticated user."""
+    db = await get_db()
+    from services.notification_campaign_service import NotificationCampaignService
+    updated = await NotificationCampaignService.update_user_preferences(
+        db,
+        token_data["user_id"],
+        request.dict(exclude_unset=True)
+    )
+    return {"message": "Preferences updated successfully", "preferences": updated}
+
+# ================= ADMIN RE-ENGAGEMENT CAMPAIGN ENDPOINTS =================
+
+@api_router.post("/admin/reengagement-campaign/dry-run")
+async def run_reengagement_campaign_dry_run(
+    batch_size: int = 500,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: trigger dry-run evaluation of re-engagement campaign."""
+    db, _ = await _ensure_admin_user(token_data)
+    from services.reengagement_worker import ReengagementCampaignRunner
+    res = await ReengagementCampaignRunner.run_campaign(db, dry_run=True, max_batch_size=batch_size)
+    return res
+
+@api_router.post("/admin/reengagement-campaign/run")
+async def run_reengagement_campaign_live(
+    batch_size: int = 500,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: trigger live re-engagement campaign run."""
+    db, _ = await _ensure_admin_user(token_data)
+    from services.reengagement_worker import ReengagementCampaignRunner
+    res = await ReengagementCampaignRunner.run_campaign(db, dry_run=False, max_batch_size=batch_size)
+    return res
+
+@api_router.get("/admin/reengagement-campaign/status")
+async def get_reengagement_campaign_status(
+    limit: int = 50,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: get latest campaign run history and stats."""
+    db, _ = await _ensure_admin_user(token_data)
+    logs = await db.query_documents(
+        "notification_campaign_logs",
+        order_by="sent_at",
+        order_direction="DESCENDING",
+        limit=limit
+    )
+    return {
+        "count": len(logs),
+        "recent_logs": logs
+    }
+
+@api_router.post("/admin/reengagement-campaign/preview")
+async def preview_reengagement_campaign_user(
+    user_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: preview eligibility, message copy, and skip reasons for a specific user."""
+    db, _ = await _ensure_admin_user(token_data)
+    user_doc = await db.get_document("users", user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    from services.notification_campaign_service import NotificationCampaignService
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    campaign_date = now_ist.strftime("%Y-%m-%d")
+
+    eval_res = await NotificationCampaignService.evaluate_user_eligibility(db, user_doc, campaign_date)
+    trending_posts = await NotificationCampaignService.get_top_trending_posts(db, limit=1)
+    selected_trending_post = trending_posts[0] if trending_posts else None
+
+    title, body, route = "", "", ""
+    if eval_res.get("segment"):
+        title, body, route = NotificationCampaignService.build_campaign_message(
+            segment=eval_res["segment"],
+            language=eval_res.get("language", "en"),
+            trending_post=selected_trending_post
+        )
+
+    # Sanitize tokens from preview response
+    tokens_count = len(eval_res.get("tokens", []))
+    sanitized_eval = dict(eval_res)
+    sanitized_eval.pop("tokens", None)
+
+    return {
+        "user_id": user_id,
+        "last_active_at": user_doc.get("last_active_at") or user_doc.get("last_active"),
+        "last_login_at": user_doc.get("last_login_at"),
+        "tokens_count": tokens_count,
+        "eligibility": sanitized_eval,
+        "selected_trending_post_id": selected_trending_post.get("id") if selected_trending_post else None,
+        "preview_message": {
+            "title": title,
+            "body": body,
+            "route": route
+        }
+    }
+
 
 def sanitize_krishna_response(response_text: str) -> str:
     """

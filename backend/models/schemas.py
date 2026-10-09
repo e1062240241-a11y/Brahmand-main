@@ -659,3 +659,31 @@ class CommunityRequestCreate(BaseModel):
     contact_person_name: Optional[str] = None
     support_needed: Optional[str] = None
     attachments: Optional[List[str]] = None
+
+
+# ================= NOTIFICATION PREFERENCES =================
+
+class NotificationPreferencesUpdate(BaseModel):
+    push_enabled: Optional[bool] = None
+    reengagement_enabled: Optional[bool] = None
+    trending_enabled: Optional[bool] = None
+    library_reminder_enabled: Optional[bool] = None
+    jaap_reminder_enabled: Optional[bool] = None
+    quiet_hours_enabled: Optional[bool] = None
+    quiet_start_hour: Optional[int] = Field(None, ge=0, le=23)
+    quiet_end_hour: Optional[int] = Field(None, ge=0, le=23)
+    timezone: Optional[str] = "Asia/Kolkata"
+    max_reengagement_per_week: Optional[int] = Field(None, ge=1, le=14)
+    max_trending_per_day: Optional[int] = Field(None, ge=1, le=5)
+    unsubscribed_from_marketing: Optional[bool] = None
+
+    @validator('timezone')
+    def validate_timezone(cls, v):
+        if v is not None:
+            from zoneinfo import ZoneInfo
+            try:
+                ZoneInfo(v)
+            except Exception:
+                raise ValueError(f"Invalid IANA timezone: {v}")
+        return v
+

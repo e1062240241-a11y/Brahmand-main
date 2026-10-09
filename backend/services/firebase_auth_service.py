@@ -223,6 +223,11 @@ class FirebaseAuthService:
             # User exists, return token
             sl_id = await FirebaseAuthService._ensure_sl_id(db, user)
             token = create_jwt_token(user['id'], sl_id)
+            try:
+                from services.user_activity_service import UserActivityService
+                await UserActivityService.record_user_login(user['id'], db)
+            except Exception:
+                pass
             return {
                 "message": "Login successful",
                 "token": token,
@@ -289,7 +294,26 @@ class FirebaseAuthService:
             "communities": [],
             "circles": [],
             "fcm_tokens": [],  # For push notifications
-            "agreed_rules": []
+            "agreed_rules": [],
+            "created_at": datetime.utcnow().isoformat() + 'Z',
+            "updated_at": datetime.utcnow().isoformat() + 'Z',
+            "last_login_at": datetime.utcnow().isoformat() + 'Z',
+            "last_active_at": datetime.utcnow().isoformat() + 'Z',
+            "last_seen_at": datetime.utcnow().isoformat() + 'Z',
+            "notification_preferences": {
+                "push_enabled": True,
+                "reengagement_enabled": True,
+                "trending_enabled": True,
+                "library_reminder_enabled": True,
+                "jaap_reminder_enabled": True,
+                "quiet_hours_enabled": False,
+                "quiet_start_hour": 22,
+                "quiet_end_hour": 7,
+                "timezone": "Asia/Kolkata",
+                "max_reengagement_per_week": 2,
+                "max_trending_per_day": 1,
+                "unsubscribed_from_marketing": False
+            }
         }
         
         user_id = await db.create_user(user_data)
@@ -386,6 +410,11 @@ class FirebaseAuthService:
                     await cache_manager.set_user(existing['id'], existing)
 
                 token = create_jwt_token(existing['id'], existing['sl_id'])
+                try:
+                    from services.user_activity_service import UserActivityService
+                    await UserActivityService.record_user_login(existing['id'], db)
+                except Exception:
+                    pass
                 return {
                     "message": "Anonymous login successful",
                     "token": token,
@@ -431,6 +460,25 @@ class FirebaseAuthService:
                 "anonymous_disabled": False,
                 "anonymous_login_source": "predefined_number",
                 "anonymous_created_at": datetime.utcnow().isoformat() + 'Z',
+                "created_at": datetime.utcnow().isoformat() + 'Z',
+                "updated_at": datetime.utcnow().isoformat() + 'Z',
+                "last_login_at": datetime.utcnow().isoformat() + 'Z',
+                "last_active_at": datetime.utcnow().isoformat() + 'Z',
+                "last_seen_at": datetime.utcnow().isoformat() + 'Z',
+                "notification_preferences": {
+                    "push_enabled": True,
+                    "reengagement_enabled": True,
+                    "trending_enabled": True,
+                    "library_reminder_enabled": True,
+                    "jaap_reminder_enabled": True,
+                    "quiet_hours_enabled": False,
+                    "quiet_start_hour": 22,
+                    "quiet_end_hour": 7,
+                    "timezone": "Asia/Kolkata",
+                    "max_reengagement_per_week": 2,
+                    "max_trending_per_day": 1,
+                    "unsubscribed_from_marketing": False
+                },
                 "privacy_settings": {
                     "read_receipts": True,
                     "online_status": True,

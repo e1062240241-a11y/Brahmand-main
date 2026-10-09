@@ -25,6 +25,14 @@ function NotificationsSettingsScreen() {
   const [pushLoading, setPushLoading] = useState(false);
   const [pushStatus, setPushStatus] = useState(fcmToken ? 'Enabled' : 'Disabled');
 
+  // Backend Notification Preferences
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [reengagementEnabled, setReengagementEnabled] = useState(true);
+  const [trendingEnabled, setTrendingEnabled] = useState(true);
+  const [libraryEnabled, setLibraryEnabled] = useState(true);
+  const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
+  const [marketingUnsubscribed, setMarketingUnsubscribed] = useState(false);
+
   useEffect(() => {
     const backAction = () => {
       handleBack();
@@ -38,6 +46,40 @@ function NotificationsSettingsScreen() {
     setReceivePush(!!fcmToken);
     setPushStatus(fcmToken ? 'Enabled' : 'Disabled');
   }, [fcmToken]);
+
+  // Load preferences from backend
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { getNotificationPreferences } = await import('../../src/services/api');
+        const res = await getNotificationPreferences();
+        if (res?.data?.preferences && isMounted) {
+          const p = res.data.preferences;
+          setReengagementEnabled(p.reengagement_enabled ?? true);
+          setTrendingEnabled(p.trending_enabled ?? true);
+          setLibraryEnabled(p.library_reminder_enabled ?? true);
+          setQuietHoursEnabled(p.quiet_hours_enabled ?? false);
+          setMarketingUnsubscribed(p.unsubscribed_from_marketing ?? false);
+        }
+      } catch (err) {
+        console.warn('[NotificationsSettings] Failed to fetch preferences:', err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleUpdatePref = async (key: string, value: boolean) => {
+    setPrefsLoading(true);
+    try {
+      const { updateNotificationPreferences } = await import('../../src/services/api');
+      await updateNotificationPreferences({ [key]: value });
+    } catch (err) {
+      console.warn(`[NotificationsSettings] Failed to update ${key}:`, err);
+    } finally {
+      setPrefsLoading(false);
+    }
+  };
 
   const handleEnablePush = async () => {
     if (pushLoading) return;
@@ -141,54 +183,150 @@ function NotificationsSettingsScreen() {
 
             <View style={styles.divider} />
 
-            {/* Email Notifications Section */}
+            {/* Re-engagement Reminders */}
             <View style={styles.settingItem}>
               <View style={styles.cardHeader}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(2, 132, 199, 0.12)' }]}>
-                  <Ionicons name="mail-outline" size={20} color="#0284C7" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
+                  <Ionicons name="flame-outline" size={20} color="#F59E0B" />
                 </View>
                 <View style={styles.labelContainer}>
                   <Text style={styles.settingLabel}>
-                    {t('language') === 'hi' ? 'ईमेल सूचनाएं' : 'Email Notifications'}
+                    {t('language') === 'hi' ? 'साधना एवं उपस्थिति स्मरण' : 'Re-engagement Reminders'}
                   </Text>
                   <Text style={styles.settingSubLabel}>
                     {t('language') === 'hi'
-                      ? 'महत्वपूर्ण अपडेट, समाचार और सारांश ईमेल द्वारा प्राप्त करें (जल्द आ रहा है)'
-                      : 'Receive important updates, newsletters, and digests via email. (Coming soon)'}
+                      ? 'अनुपस्थिति पर साधना और समुदाय से जुड़े रहने के विनम्र स्मरण'
+                      : 'Gentle nudges to resume your sadhana when inactive for several days.'}
                   </Text>
                 </View>
                 <Switch
-                  value={false}
-                  disabled
-                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#0284C7' }}
-                  thumbColor="#F1F5F9"
+                  value={reengagementEnabled}
+                  onValueChange={(val) => {
+                    setReengagementEnabled(val);
+                    handleUpdatePref('reengagement_enabled', val);
+                  }}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#F59E0B' }}
+                  thumbColor={reengagementEnabled ? '#FFFFFF' : '#F1F5F9'}
                 />
               </View>
             </View>
 
             <View style={styles.divider} />
 
-            {/* SMS Alerts Section */}
+            {/* Trending Content Notifications */}
             <View style={styles.settingItem}>
               <View style={styles.cardHeader}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.12)' }]}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={20} color="#8B5CF6" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                  <Ionicons name="trending-up-outline" size={20} color="#10B981" />
                 </View>
                 <View style={styles.labelContainer}>
                   <Text style={styles.settingLabel}>
-                    {t('language') === 'hi' ? 'एसएमएस सूचनाएं' : 'SMS Alerts'}
+                    {t('language') === 'hi' ? 'लोकप्रिय सामग्री' : 'Trending Content'}
                   </Text>
                   <Text style={styles.settingSubLabel}>
                     {t('language') === 'hi'
-                      ? 'सुरक्षा अलर्ट और आपातकालीन अपडेट के लिए एसएमएस प्राप्त करें'
-                      : 'Receive text alerts for security updates and emergency notifications.'}
+                      ? 'सनातन समुदाय में लोकप्रिय विचार और सबसे अधिक पसंद की गई पोस्ट'
+                      : 'Highlights of top sacred posts loved by the community.'}
                   </Text>
                 </View>
                 <Switch
-                  value={false}
-                  disabled
-                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#8B5CF6' }}
-                  thumbColor="#F1F5F9"
+                  value={trendingEnabled}
+                  onValueChange={(val) => {
+                    setTrendingEnabled(val);
+                    handleUpdatePref('trending_enabled', val);
+                  }}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#10B981' }}
+                  thumbColor={trendingEnabled ? '#FFFFFF' : '#F1F5F9'}
+                />
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Library Reminders */}
+            <View style={styles.settingItem}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                  <Ionicons name="book-outline" size={20} color="#3B82F6" />
+                </View>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.settingLabel}>
+                    {t('language') === 'hi' ? 'पुस्तकालय स्मरण' : 'Library Reading Reminders'}
+                  </Text>
+                  <Text style={styles.settingSubLabel}>
+                    {t('language') === 'hi'
+                      ? 'अधूरे ग्रंथों और भगवद्गीता के पठन को आगे बढ़ाने के लिए सुझाव'
+                      : 'Reminders to pick up your sacred reading sessions.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={libraryEnabled}
+                  onValueChange={(val) => {
+                    setLibraryEnabled(val);
+                    handleUpdatePref('library_reminder_enabled', val);
+                  }}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#3B82F6' }}
+                  thumbColor={libraryEnabled ? '#FFFFFF' : '#F1F5F9'}
+                />
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Quiet Hours */}
+            <View style={styles.settingItem}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                  <Ionicons name="moon-outline" size={20} color="#6366F1" />
+                </View>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.settingLabel}>
+                    {t('language') === 'hi' ? 'शांत समय (Quiet Hours)' : 'Quiet Hours (10 PM - 7 AM)'}
+                  </Text>
+                  <Text style={styles.settingSubLabel}>
+                    {t('language') === 'hi'
+                      ? 'रात 10 बजे से सुबह 7 बजे तक कोई गैर-आपातकालीन सूचना न भेजें'
+                      : 'Silence marketing and re-engagement notifications overnight.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={quietHoursEnabled}
+                  onValueChange={(val) => {
+                    setQuietHoursEnabled(val);
+                    handleUpdatePref('quiet_hours_enabled', val);
+                  }}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#6366F1' }}
+                  thumbColor={quietHoursEnabled ? '#FFFFFF' : '#F1F5F9'}
+                />
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Global Marketing Opt-out */}
+            <View style={styles.settingItem}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
+                  <Ionicons name="hand-left-outline" size={20} color="#EF4444" />
+                </View>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.settingLabel}>
+                    {t('language') === 'hi' ? 'सभी प्रचार और पुनः-सक्रियण सूचनाओं से बाहर निकलें' : 'Opt Out of Marketing Notifications'}
+                  </Text>
+                  <Text style={styles.settingSubLabel}>
+                    {t('language') === 'hi'
+                      ? 'सुरक्षा एवं आपातकालीन SOS सूचनाएं हमेशा सुरक्षित रूप से प्राप्त होंगी'
+                      : 'Critical SOS and direct messages are never affected by this setting.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={marketingUnsubscribed}
+                  onValueChange={(val) => {
+                    setMarketingUnsubscribed(val);
+                    handleUpdatePref('unsubscribed_from_marketing', val);
+                  }}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: '#EF4444' }}
+                  thumbColor={marketingUnsubscribed ? '#FFFFFF' : '#F1F5F9'}
                 />
               </View>
             </View>

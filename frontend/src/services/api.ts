@@ -1305,29 +1305,14 @@ export const uploadChatMedia = (file: {
 
     if (Platform.OS !== "web") {
       try {
-        const token = await secureStorage.getItem("auth_token");
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
+        return await nativeMultipartPost("/media/upload", formData);
+      } catch (nativeErr: any) {
+        console.warn("[API] nativeMultipartPost failed for /media/upload, attempting axios fallback:", nativeErr?.message || nativeErr);
+        try {
+          return await api.post("/media/upload", formData);
+        } catch (axiosErr) {
+          throw nativeErr;
         }
-
-        const response = await fetch(`${API_URL}/api/media/upload`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          // If it's a validation error, we want to know why
-          throw new Error(`Upload failed: ${response.status} ${text}`);
-        }
-
-        const data = await response.json();
-        return { data };
-      } catch (error: any) {
-        console.warn("[API] Native chat media upload failed:", error);
-        throw error;
       }
     }
 
@@ -2784,3 +2769,8 @@ export const leaveCircle = (circleId: string) => api.post(`/circles/${circleId}/
 export const removeCircleMember = (circleId: string, memberId: string) => api.delete(`/circles/${circleId}/members/${memberId}`);
 export const inviteToCircle = (circleId: string, userId: string) => api.post(`/circles/${circleId}/invite`, { user_id: userId });
 export const transferCircleAdmin = (circleId: string, newAdminId: string) => api.post(`/circles/${circleId}/transfer-admin`, { new_admin_id: newAdminId });
+
+// Notification Preferences
+export const getNotificationPreferences = () => api.get('/notifications/preferences');
+export const updateNotificationPreferences = (prefs: any) => api.put('/notifications/preferences', prefs);
+

@@ -375,15 +375,15 @@ export default function LiveJaapWelcomeScreen() {
               <Text style={styles.streakBadgeSubtitle}>
                 {streakData.isTodayCompleted
                   ? (t('language') === 'hi'
-                      ? '✨ आज का साधना दीप प्रज्वलित — संकल्प समर्पित 🙏'
-                      : '✨ Today\'s Sadhana Diya Lit • Sankalpa Offered 🙏')
+                      ? '✨ आज का दिया जल गया — संकल्प पूरा हुआ 🙏'
+                      : '✨ Today\'s Diya Lit • Sankalpa Completed 🙏')
                   : streakData.todayCount > 0
                   ? (t('language') === 'hi'
-                      ? `साधना दीप प्रज्वलित • बस ${Math.max(0, 108 - streakData.todayCount)} जाप और`
-                      : `Diya Lit • Just ${Math.max(0, 108 - streakData.todayCount)} chants left`)
+                      ? `🪔 दिया जल गया • बस ${Math.max(0, 108 - streakData.todayCount)} जाप बाकी`
+                      : `🪔 Diya Lit • Just ${Math.max(0, 108 - streakData.todayCount)} chants left`)
                   : (t('language') === 'hi'
-                      ? 'जाप साधना से आज का दिव्य दीप प्रज्वलित करें 🪔'
-                      : 'Chant in this session to light today\'s sacred Diya 🪔')}
+                      ? 'जाप शुरू करके आज का दिया जलाएं 🪔'
+                      : 'Start chanting to light today\'s diya 🪔')}
               </Text>
             </View>
           </View>
