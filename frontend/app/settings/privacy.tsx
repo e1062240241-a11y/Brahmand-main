@@ -85,7 +85,7 @@ export default function PrivacySettingsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF8D57" />
+        <ActivityIndicator size="large" color="#FF8D57" accessibilityLabel="Loading" />
       </View>
     );
   }
@@ -103,7 +103,7 @@ export default function PrivacySettingsScreen() {
             <Ionicons name="chevron-back" size={28} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Privacy Settings</Text>
-          {saving && <ActivityIndicator size="small" color="#000000" />}
+          {saving && <ActivityIndicator size="small" color="#000000" accessibilityLabel="Saving" />}
         </View>
 
         {/* Content */}

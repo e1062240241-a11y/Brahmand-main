@@ -128,7 +128,7 @@ function NotificationsSettingsScreen() {
                     disabled={pushLoading}
                   >
                     {pushLoading ? (
-                      <ActivityIndicator size="small" color="#FF8D57" />
+                      <ActivityIndicator size="small" color="#FF8D57" accessibilityLabel="Updating notification settings" />
                     ) : (
                       <Text style={styles.actionLinkText}>
                         {t('language') === 'hi' ? 'सक्षम करें' : 'Enable Now'}
