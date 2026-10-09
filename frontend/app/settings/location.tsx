@@ -758,6 +758,7 @@ export default function ChangeLocationScreen() {
                   size="small"
                   color={COLORS.primary}
                   style={{ marginVertical: SPACING.xs }}
+                  accessibilityLabel="Searching locations"
                 />
               )}
 
