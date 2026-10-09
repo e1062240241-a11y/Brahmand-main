@@ -30,7 +30,8 @@ const getTextStyle = (type: HoraNatureType, isActive: boolean) => {
   return isActive ? styles.natureText_bad_active : styles.natureText_bad;
 };
 
-export const HoraTabContent: React.FC<HoraTabContentProps> = ({
+// Wrapping component in React.memo prevents unnecessary re-renders during parent tab or date updates
+export const HoraTabContent: React.FC<HoraTabContentProps> = React.memo(({
   horaList,
   activeHoraIdx,
   setActiveHoraIdx,
@@ -134,14 +135,7 @@ export const HoraTabContent: React.FC<HoraTabContentProps> = ({
                         </View>
                       </View>
                     )}
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        width: '100%',
-                      }}
-                    >
+                    <View style={styles.horaInactiveRowInner}>
                       <View style={styles.horaInactiveInfo}>
                         <Text style={styles.horaInactiveTime}>{h.time}</Text>
                         <View style={styles.horaPlanetLeft}>
@@ -171,4 +165,6 @@ export const HoraTabContent: React.FC<HoraTabContentProps> = ({
       </View>
     </View>
   );
-};
+});
+
+HoraTabContent.displayName = 'HoraTabContent';
