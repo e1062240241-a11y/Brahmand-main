@@ -23,6 +23,8 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
 };
 
 export const shivaImage = { uri: 'https://brahmandfeed23.b-cdn.net/temples/SomnathTemple.webp' };
+export const navratriBannerImage = require('../../../assets/images/navratri_banner.jpg');
+export const maaDurgaIcon = require('../../../assets/images/maa_durga_icon.png');
 export const communityPhoneImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/community_phone.webp' };
 export const kundliChartImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/kundli_chart.webp' };
 export const astrologerMockImg = { uri: 'https://brahmandfeed23.b-cdn.net/assets/tab-bar/rashi/vendor/Astrologer.webp' };

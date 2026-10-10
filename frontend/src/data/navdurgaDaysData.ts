@@ -498,6 +498,70 @@ export const NAVDURGA_9_DAYS: NavdurgaDayDetail[] = [
   },
 ];
 
+export interface NavratriDayNotification {
+  day: number;
+  title: string;
+  body: string;
+  actionText: string;
+}
+
+export const NAVRATRI_DAY_NOTIFICATIONS: NavratriDayNotification[] = [
+  {
+    day: 1,
+    title: 'नवरात्रि के पहले दिन माँ शैलपुत्री की पूजा क्यों होती है? 🌺',
+    body: 'जानें माँ शैलपुत्री की महिमा, पूजा का महत्व और नवरात्रि के पहले दिन की खास बातें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 2,
+    title: 'नवरात्रि के दूसरे दिन का क्या है खास? 🙏',
+    body: 'माँ ब्रह्मचारिणी की कथा, पूजा का महत्व और आज के दिन से जुड़ी खास जानकारी जानें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 3,
+    title: 'माँ चंद्रघंटा की पूजा का महत्व जानते हैं? 🔔',
+    body: 'नवरात्रि के तीसरे दिन की कथा और माँ के इस स्वरूप से जुड़ी मान्यताएँ जानने के लिए Festival टैब देखें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 4,
+    title: 'नवरात्रि के चौथे दिन की खास बातें जानें ✨',
+    body: 'माँ कूष्मांडा की महिमा और आज के दिन से जुड़ी परंपराओं को जानें—ब्रह्मांड के Festival टैब पर।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 5,
+    title: 'आज माँ स्कंदमाता की आराधना क्यों की जाती है? 🌼',
+    body: 'जानें माँ स्कंदमाता की कथा, पूजा का महत्व और पंचम नवरात्रि से जुड़ी खास बातें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 6,
+    title: 'माँ कात्यायनी और नवरात्रि के छठे दिन का महत्व 🌸',
+    body: 'इस दिन की पूजा, माँ की महिमा और नवरात्रि से जुड़ी रोचक जानकारी Festival टैब पर जानें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 7,
+    title: 'सप्तमी पर माँ कालरात्रि के स्वरूप को जानें 🪔',
+    body: 'माँ कालरात्रि की कथा और सातवें दिन की धार्मिक मान्यताओं के बारे में जानें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 8,
+    title: 'महाष्टमी की पूजा और कन्या पूजन का महत्व 🙏',
+    body: 'अष्टमी की परंपराएँ, कन्या पूजन का महत्व और इस दिन से जुड़ी खास बातें जानें।',
+    actionText: 'Explore Festival',
+  },
+  {
+    day: 9,
+    title: 'महानवमी की खास बातें जानना न भूलें 🌺',
+    body: 'माँ सिद्धिदात्री की महिमा और नवरात्रि के अंतिम दिन के महत्व को ब्रह्मांड के Festival टैब पर जानें।',
+    actionText: 'Explore Festival',
+  },
+];
+
 /**
  * Calculates the current Navdurga active day (1 to 9).
  * If today falls within the 9-day window of the festival date, returns that specific day.

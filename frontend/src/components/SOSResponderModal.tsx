@@ -50,9 +50,11 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
   if (!sosData) return null;
 
   const handleRespond = async () => {
+    const sosId = sosData.sos_id || sosData.id;
+    if (!sosId) return;
     setLoading(true);
     try {
-      await onRespond(sosData.sos_id || sosData.id || '');
+      await onRespond(sosId);
       onClose();
     } catch (error) {
       console.error('Respond error:', error);
@@ -63,6 +65,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
 
   const handleReportMisuse = () => {
     const sosId = sosData.sos_id || sosData.id;
+    if (!sosId) return;
     Alert.alert(
       'Report SOS Misuse',
       'Are you sure this SOS alert is fake or spam?',
@@ -129,7 +132,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
             <View style={styles.mapContainer}>
               <SOSMap 
                 latitude={Number(sosData.latitude) || 0} 
-                longitude={Number(sosData.longitude) || 0} 
+                longitude={Number(sosData.longitude) || 0}
               />
             </View>
 
