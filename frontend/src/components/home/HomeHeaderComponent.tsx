@@ -14,8 +14,9 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, navratriBannerImage, maaDurgaIcon } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
+import { NavratriPetals } from './NavratriPetals';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
@@ -401,7 +402,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         const updatePlayback = (appState: string = AppState.currentState) => {
             if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
-            const targetBannerIdx = isHanumanActive ? 1 : 0;
+            const targetBannerIdx = isHanumanActive ? 2 : 1;
             const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === targetBannerIdx;
             if (shouldPlay) {
                 try {
@@ -433,6 +434,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     }, [achPlayer, isFocused, videoError, activeBannerIndex, isHanumanActive]);
     return (
         <View style={{ paddingTop: 4 }}>
+            <NavratriPetals />
 
             {/* Feed loading state is now handled inside FeedSection */}
             <View>
@@ -441,12 +443,24 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         <View style={styles.headerLeft}>
                             <TouchableOpacity
                                 activeOpacity={0.86}
-                                style={styles.profileButton}
+                                style={{
+                                    width: Platform.OS === 'android' ? 48 : 56,
+                                    height: Platform.OS === 'android' ? 48 : 56,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                }}
                                 onPress={() => router.push('/(tabs)/profile')}
                                 accessibilityRole="button"
                                 accessibilityLabel="View your profile"
                             >
-                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
+                                <Image
+                                    source={maaDurgaIcon}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                    }}
+                                    resizeMode="contain"
+                                />
                             </TouchableOpacity>
                         </View>
 
@@ -876,7 +890,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -886,7 +900,80 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Helper components for Banner 1 & Banner 2 */}
+                            {/* Banner 1: Shubh Shardiya Navratri (1st Preference) */}
+                            <Pressable
+                                key="navratri_banner"
+                                onPress={() => {
+                                    try {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    } catch (_e) { }
+                                    router.push('/festivals');
+                                }}
+                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                style={{
+                                    width: screenWidth - 40,
+                                    height: Platform.OS === 'ios' ? 185 : 160,
+                                    borderRadius: 16,
+                                    overflow: 'hidden',
+                                    alignSelf: 'center',
+                                    marginBottom: 5,
+                                    backgroundColor: '#000',
+                                }}
+                            >
+                                <Image
+                                    source={navratriBannerImage}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode="cover"
+                                />
+                                {/* Centered Explore button without AI icon */}
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(0,0,0,0.45)']}
+                                    style={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        height: 58,
+                                        flexDirection: 'row',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        paddingHorizontal: 14,
+                                        paddingBottom: 8,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            backgroundColor: '#FF5100',
+                                            height: 34,
+                                            paddingHorizontal: 18,
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            borderRadius: 17,
+                                            borderWidth: 1,
+                                            borderColor: 'rgba(255, 255, 255, 0.45)',
+                                            shadowColor: '#000',
+                                            shadowOffset: { width: 0, height: 2 },
+                                            shadowOpacity: 0.35,
+                                            shadowRadius: 3,
+                                            elevation: 3,
+                                        }}
+                                    >
+                                        <Text style={{
+                                            color: '#FFF',
+                                            fontSize: 13,
+                                            fontWeight: '700',
+                                            letterSpacing: 0.3,
+                                        }}>
+                                            {t('language') === 'hi' ? 'नवरात्रि दर्शन' : 'Explore Festival'}
+                                        </Text>
+                                        <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                                    </View>
+                                </LinearGradient>
+                            </Pressable>
+
+                            {/* Helper components for Banner 2 & Banner 3 */}
                             {(() => {
                                 const renderHanumanBanner = (key: string) => (
                                     <StaticBannerCard
@@ -1241,7 +1328,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1].map((idx) => (
+                            {[0, 1, 2].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
