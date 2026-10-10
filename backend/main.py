@@ -10940,14 +10940,20 @@ async def backfill_official_posts(
     users_to_update = []
     users_already_official = 0
 
-    for uid in users_to_mark:
-        u_doc = await db.get_document('users', uid)
-        if not u_doc:
-            continue
-        if not is_true_flag(u_doc.get('is_official')):
-            users_to_update.append(uid)
-        else:
-            users_already_official += 1
+    # ⚡ Bolt Optimization: Batch fetch users to eliminate N+1 queries
+    users_to_mark_list = list(users_to_mark)
+    if users_to_mark_list:
+        users_docs = await db.get_documents_batch('users', users_to_mark_list)
+        u_docs_map = {u.get('id'): u for u in users_docs if u and u.get('id')}
+
+        for uid in users_to_mark:
+            u_doc = u_docs_map.get(uid)
+            if not u_doc:
+                continue
+            if not is_true_flag(u_doc.get('is_official')):
+                users_to_update.append(uid)
+            else:
+                users_already_official += 1
 
     posts_to_update = []
     posts_already_official = 0
