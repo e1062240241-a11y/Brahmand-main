@@ -1889,8 +1889,14 @@ function MessagesScreen({
               </View>
             ) : !searchQuery && (
               <View style={styles.emptyChat}>
+                {/* 🧡 Engagement: Reframed transactional empty chat state ("No private messages yet") to devotional Satsang communion framing.
+                    Lever: Reframing + Satsang (Collectiveness)
+                    Why: "सत्संग संवाद" (Satsang Dialogue) invites users into sacred spiritual fellowship rather than framing the empty state as a lack of activity.
+                    UI: Text content change only, zero new visual components or structural alterations. */}
                 <Text style={styles.emptyChatText}>
-                  {t('language') === 'hi' ? 'अभी तक कोई निजी संदेश नहीं है' : 'No private messages yet'}
+                  {t('language') === 'hi'
+                    ? 'सत्संग संवाद का शुभारंभ करें ✨ भक्तजनों से जुड़ें'
+                    : 'Begin Satsang dialogue ✨ Connect with fellow devotees'}
                 </Text>
               </View>
             )}
