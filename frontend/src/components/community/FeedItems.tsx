@@ -79,7 +79,7 @@ export const CommunityMediaItem = React.memo(({
     <Wrapper ref={ref} {...wrapperProps}>
       <ExpoImage
         source={typeof media === 'string' ? { uri: media } : media}
-        style={style}
+        style={style as any}
         contentFit="cover"
       />
     </Wrapper>
