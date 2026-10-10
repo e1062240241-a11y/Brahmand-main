@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -111,9 +112,101 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
 
   // Screen modes: 'color_select' (step 1: choose colour) | 'devi_detail' (step 2: view devi photo, name & details)
   const [viewMode, setViewMode] = useState<'color_select' | 'devi_detail'>('color_select');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(initialDayIndex);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(-1);
   const [isDescExpanded, setIsDescExpanded] = useState<boolean>(false);
   const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
+
+  // Guided tour sequence: Cycles through cards slowly and smoothly, then stops and settles on today's card
+  const [animatedFocusIndex, setAnimatedFocusIndex] = useState<number>(0);
+  const [isTourActiveState, setIsTourActiveState] = useState<boolean>(true);
+  const [showColorText, setShowColorText] = useState<boolean>(true);
+
+  const arrowBounceAnim = useRef(new Animated.Value(0)).current;
+  const arrowGlowAnim = useRef(new Animated.Value(0.5)).current;
+  const borderPulseAnim = useRef(new Animated.Value(0.6)).current;
+
+  // Active day index throughout the day (Day 1..9 based on festival date, default Day 1)
+  const activeFestivalDayIndex = todayFestivalDayIndex >= 0 ? todayFestivalDayIndex : 0;
+
+  useEffect(() => {
+    if (viewMode !== 'color_select') return;
+
+    // Reset visibility flags when entering color_select screen
+    setIsTourActiveState(true);
+    setShowColorText(true);
+
+    // Color text shows for 1 second, then disappears
+    const colorTimer = setTimeout(() => {
+      setShowColorText(false);
+    }, 1000);
+
+    // Smooth & relaxed card switching: each card stays highlighted for 1.1s so user can clearly see it
+    const cycleInterval = setInterval(() => {
+      setAnimatedFocusIndex((prev) => (prev + 1) % NAVDURGA_9_DAYS.length);
+    }, 1100);
+
+    // Tour runs for 4.5 seconds (relaxed intro), then stops completely and lands on today's card
+    const tourTimer = setTimeout(() => {
+      setIsTourActiveState(false);
+    }, 4500);
+
+    // Gentle upward float / bounce for the arrow
+    const bounceLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowBounceAnim, {
+          toValue: -5,
+          duration: 550,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowBounceAnim, {
+          toValue: 0,
+          duration: 550,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    // Glowing opacity breathing pulse for the arrow and card border
+    const glowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(arrowGlowAnim, {
+            toValue: 1,
+            duration: 550,
+            useNativeDriver: true,
+          }),
+          Animated.timing(borderPulseAnim, {
+            toValue: 1,
+            duration: 550,
+            useNativeDriver: false,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(arrowGlowAnim, {
+            toValue: 0.45,
+            duration: 550,
+            useNativeDriver: true,
+          }),
+          Animated.timing(borderPulseAnim, {
+            toValue: 0.5,
+            duration: 550,
+            useNativeDriver: false,
+          }),
+        ]),
+      ])
+    );
+
+    bounceLoop.start();
+    glowLoop.start();
+
+    return () => {
+      clearTimeout(colorTimer);
+      clearTimeout(tourTimer);
+      clearInterval(cycleInterval);
+      bounceLoop.stop();
+      glowLoop.stop();
+    };
+  }, [viewMode]);
 
   // Eagerly pre-warm all 9 Devi image assets into memory cache on mount
   React.useEffect(() => {
@@ -266,6 +359,9 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                   // 100% Solid opaque background - completely prevents Android edge artifacting
                   const cardBg = SOLID_CARD_BG[item.day] || '#FFFFFF';
 
+                  const isTourActive = isTourActiveState && idx === animatedFocusIndex;
+                  const isDayPersistentActive = !isTourActiveState && idx === activeFestivalDayIndex;
+
                   return (
                     <TouchableOpacity
                       key={item.day}
@@ -274,7 +370,8 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                       style={[
                         styles.colorCard,
                         { backgroundColor: cardBg },
-                        isSelected && styles.colorCardSelectedHalo,
+                        isTourActive && styles.colorCardTourBorder,
+                        isDayPersistentActive && styles.colorCardTodayGoldBorder,
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`Day ${item.day} ${item.colorName} ${item.deviName}`}
@@ -346,12 +443,46 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                           />
                         </Svg>
                       </View>
+
+                      {/* Animated Glowing Up-Arrow Indicator at bottom of card */}
+                      {isTourActive && (
+                        <Animated.View
+                          pointerEvents="none"
+                          style={[
+                            styles.cardBottomArrowBadge,
+                            {
+                              opacity: arrowGlowAnim,
+                              transform: [{ translateY: arrowBounceAnim }],
+                            },
+                          ]}
+                        >
+                          <Ionicons name="chevron-up" size={14} color="#FFFFFF" />
+                        </Animated.View>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
             );
           })}
+        </View>
+
+        {/* Devotional Inline Hint Banner: Borderless, shows Today's Color (1s only) & Devi Name (permanent) */}
+        <View style={styles.clickHintBannerContainer}>
+          {showColorText && (
+            <View style={styles.todayColorTitleRow}>
+              <View style={[styles.todayColorDot, { backgroundColor: todayNavdurgaDay.colorHex }]} />
+              <Text style={styles.todayColorLabel}>
+                {todayFestivalDayIndex >= 0 ? 'Today' : 'Day 1'} — {todayNavdurgaDay.colorName.includes(' (') ? todayNavdurgaDay.colorName.split(' (')[0] : todayNavdurgaDay.colorName}{todayNavdurgaDay.colorNameEn ? ` (${todayNavdurgaDay.colorNameEn})` : ''}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.todayDeviNameText}>
+            🌸 {todayNavdurgaDay.deviName} 🪷
+          </Text>
+          <Text style={styles.clickHintSubText}>
+            Tap any <Text style={styles.clickHintHighlight}>Roop</Text> above to explore Her sacred <Text style={styles.clickHintHighlight}>Divine Form</Text>, <Text style={styles.clickHintHighlight}>Mantra</Text> & <Text style={styles.clickHintHighlight}>Katha</Text>
+          </Text>
         </View>
       </ScrollView>
     );
@@ -1022,6 +1153,89 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     transform: [{ scale: 1.02 }],
+  },
+  colorCardTourBorder: {
+    borderColor: '#E11D48',
+    borderWidth: 2,
+    shadowColor: '#BE123C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  colorCardTodayGoldBorder: {
+    borderColor: '#D4AF37',
+    borderWidth: 2,
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardBottomArrowBadge: {
+    position: 'absolute',
+    bottom: 6,
+    alignSelf: 'center',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E11D48',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 15,
+    shadowColor: '#BE123C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  clickHintBannerContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  todayColorTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    marginBottom: 4,
+  },
+  todayColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.15)',
+  },
+  todayColorLabel: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#9A3412',
+    letterSpacing: -0.1,
+  },
+  todayDeviNameText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#7C2D12',
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  clickHintSubText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#78716C',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 12,
+  },
+  clickHintHighlight: {
+    fontWeight: '800',
+    color: '#9A3412',
   },
   dayNumberBadge: {
     position: 'absolute',

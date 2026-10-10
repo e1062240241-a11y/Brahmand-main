@@ -835,18 +835,37 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     );
                                 })}
                             </ScrollView>
-                            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                {featuredItems.map((_, idx) => (
-                                    <View
-                                        key={idx}
-                                        style={{
-                                            width: activeFeatureIndex === idx ? 8 : 6,
-                                            height: activeFeatureIndex === idx ? 8 : 6,
-                                            borderRadius: 4,
-                                            backgroundColor: activeFeatureIndex === idx ? '#FFF' : 'rgba(255, 255, 255, 0.45)',
-                                        }}
-                                    />
-                                ))}
+                            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                                {featuredItems.map((_, idx) => {
+                                    const dist = Math.abs(idx - activeFeatureIndex);
+                                    let size = 8;
+                                    let opacity = 1;
+                                    if (dist === 0) {
+                                        size = 8;
+                                        opacity = 1;
+                                    } else if (dist === 1) {
+                                        size = 5.5;
+                                        opacity = 0.65;
+                                    } else if (dist === 2) {
+                                        size = 4;
+                                        opacity = 0.45;
+                                    } else {
+                                        size = 3;
+                                        opacity = 0.3;
+                                    }
+
+                                    return (
+                                        <View
+                                            key={idx}
+                                            style={{
+                                                width: size,
+                                                height: size,
+                                                borderRadius: size / 2,
+                                                backgroundColor: dist === 0 ? '#FFF' : `rgba(255, 255, 255, ${opacity})`,
+                                            }}
+                                        />
+                                    );
+                                })}
                             </View>
                         </View>
                     )}
