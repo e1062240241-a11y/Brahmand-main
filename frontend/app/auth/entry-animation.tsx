@@ -193,6 +193,9 @@ export default function EntryAnimationScreen() {
               style={styles.checkbox}
               onPress={() => setAgreed(!agreed)}
               activeOpacity={0.8}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreed }}
+              accessibilityLabel="Agree to Terms of Condition and Privacy Policy"
             >
               {agreed ? <CheckedCheckboxIcon /> : <UncheckedCheckboxIcon />}
             </TouchableOpacity>
@@ -210,6 +213,9 @@ export default function EntryAnimationScreen() {
             onPress={handleContinue}
             disabled={!agreed}
             activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !agreed }}
+            accessibilityLabel="Continue"
           >
             <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
@@ -225,6 +231,8 @@ export default function EntryAnimationScreen() {
                 style={styles.adminLoginButton}
                 onPress={() => router.push('/admin/login')}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Login as Admin"
               >
                 <Text style={styles.adminLoginText}>Login as Admin</Text>
               </TouchableOpacity>
