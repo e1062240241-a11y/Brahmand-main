@@ -22,8 +22,8 @@ export const Input: React.FC<InputProps> = ({ label, error: externalError, rules
   const activeError = externalError || (touched ? validationError : null);
 
   const runValidation = (text: string) => {
-    if (rules || rules?.preventInjection !== false) {
-      const err = validateInput(text, rules || { preventInjection: true });
+    if (rules) {
+      const err = validateInput(text, rules);
       setValidationError(err);
       if (onErrorChange) {
         onErrorChange(err);

@@ -215,7 +215,6 @@ export default function PhoneScreen() {
                   autoComplete="tel"
                   importantForAutofill="yes"
                   onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                 />
               </View>
             </TouchableWithoutFeedback>
