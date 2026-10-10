@@ -8,7 +8,6 @@ to eliminate repetitive DB reads during rapid consecutive scrolls.
 
 import asyncio
 import logging
-import os
 import random
 import time
 from typing import Dict, List, Optional, Any, Tuple
@@ -170,7 +169,6 @@ class FeedPoolService:
                         logger.error(f"[FeedPoolService] Fallback query failed: {fb_err}")
 
                 # Populate Official Posts Pool
-                from utils.helpers import is_true_flag
                 if official_failed:
                     # Graceful degradation: retain previously cached official pool
                     new_official = list(self._official_pool)
