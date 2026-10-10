@@ -615,6 +615,14 @@ function useNotificationResponseHandler() {
         navigateOrQueue(targetRoute);
         return;
       }
+
+      // Handle Festival / Navratri reminder tap - navigate user directly to Festivals screen
+      if (data.type === 'festival_reminder') {
+        const targetRoute = data.route || '/festivals';
+        console.log(`[Push] Routing festival_reminder tap to ${targetRoute}`);
+        navigateOrQueue(targetRoute);
+        return;
+      }
     };
 
 

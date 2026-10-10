@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { NAVRATRI_DAY_NOTIFICATIONS } from '../data/navdurgaDaysData';
 
 const STORAGE_KEY = '@festival_reminders';
 
@@ -58,7 +59,12 @@ async function saveFestivalReminderState(festivalId: string, state: ReminderStat
 
 async function scheduleLocalNotif(title: string, body: string, data: any, triggerDate: Date): Promise<string | null> {
   if (Platform.OS === 'web') return null;
+  const now = Date.now();
+  const triggerTime = triggerDate.getTime();
+  const secondsFromNow = Math.max(1, Math.round((triggerTime - now) / 1000));
+
   try {
+    // 1. Try date trigger (object format expected by newer expo-notifications)
     return await Notifications.scheduleNotificationAsync({
       content: {
         title,
@@ -68,14 +74,33 @@ async function scheduleLocalNotif(title: string, body: string, data: any, trigge
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
       trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        type: 'date',
         date: triggerDate,
         channelId: 'default_v4',
       } as any,
     });
-  } catch (e) {
-    console.warn('Failed to schedule local notification', e);
-    return null;
+  } catch (err1) {
+    // 2. Fallback to timeInterval (seconds) which works consistently across all Expo versions & iOS simulators
+    try {
+      return await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data,
+          sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: {
+          type: 'timeInterval',
+          seconds: secondsFromNow,
+          repeats: false,
+          channelId: 'default_v4',
+        } as any,
+      });
+    } catch (err2) {
+      console.warn('[FestivalReminders] Failed to schedule notification:', err2 || err1);
+      return null;
+    }
   }
 }
 
@@ -94,62 +119,107 @@ async function scheduleNotificationsForFestival(
   const notificationIds: string[] = [];
   const notificationData = { type: 'festival_reminder', festivalId };
 
-  // 1. Day before - Morning (9:00 AM)
-  const dayBefore9AM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-  dayBefore9AM.setHours(9, 0, 0, 0);
-  if (dayBefore9AM > now) {
-    const id = await scheduleLocalNotif(
-      `🪔 Tomorrow: ${festivalName}`,
-      `Get ready! ${festivalName} begins tomorrow.`,
-      notificationData,
-      dayBefore9AM
-    );
-    if (id) notificationIds.push(id);
-  }
+  // Check if this festival is Navratri (Sharad Navratri, Chaitra Navratri, etc.)
+  const isNavratri = festivalId.toLowerCase().includes('navratri') || festivalName.toLowerCase().includes('navratri');
 
-  // 2. Day before - Evening (8:00 PM)
-  const dayBefore8PM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-  dayBefore8PM.setHours(20, 0, 0, 0);
-  if (dayBefore8PM > now) {
-    const id = await scheduleLocalNotif(
-      `🪔 Tomorrow: ${festivalName}`,
-      `Reminder: ${festivalName} is tomorrow!`,
-      notificationData,
-      dayBefore8PM
-    );
-    if (id) notificationIds.push(id);
-  }
+  if (isNavratri) {
+    // Schedule dedicated Day 1 to Day 9 notifications for Navratri
+    for (const dayNotif of NAVRATRI_DAY_NOTIFICATIONS) {
+      const dayIndex = dayNotif.day - 1; // 0-indexed offset from start date
+      const navratriDayDate = new Date(festivalDate.getTime() + dayIndex * 24 * 60 * 60 * 1000);
+      
+      // Morning notification at 8:00 AM on each of the 9 days
+      const morningTrigger = new Date(navratriDayDate.getTime());
+      morningTrigger.setHours(8, 0, 0, 0);
 
-  // 3. Festival Day - Morning (8:00 AM)
-  const festivalDay8AM = new Date(festivalDate.getTime());
-  festivalDay8AM.setHours(8, 0, 0, 0);
-  if (festivalDay8AM > now) {
-    const id = await scheduleLocalNotif(
-      `🪔 Today is ${festivalName}!`,
-      `Wishing you a joyful and blessed ${festivalName}!`,
-      notificationData,
-      festivalDay8AM
-    );
-    if (id) notificationIds.push(id);
-  }
+      const navratriNotifData = {
+        type: 'festival_reminder',
+        festivalId,
+        navratriDay: dayNotif.day,
+        route: '/festivals',
+      };
 
-  // 4. Fallback Trigger (Immediate alert if festival is tomorrow/today & pre-scheduled times passed)
-  const isTomorrow = now.toDateString() === new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000).toDateString();
-  const isToday = now.toDateString() === festivalDate.toDateString();
-
-  if ((isTomorrow || isToday) && notificationIds.length === 0) {
-    const festivalEnd = new Date(festivalDate.getTime());
-    festivalEnd.setHours(23, 59, 59, 999);
-
-    if (now < festivalEnd) {
-      const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+      if (morningTrigger > now) {
+        const id = await scheduleLocalNotif(
+          dayNotif.title,
+          dayNotif.body,
+          navratriNotifData,
+          morningTrigger
+        );
+        if (id) notificationIds.push(id);
+      } else {
+        // If today is this specific Navratri day and 8 AM has passed but day is not over
+        const isCurrentDay = now.toDateString() === navratriDayDate.toDateString();
+        if (isCurrentDay && now.getHours() < 22) {
+          const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+          const id = await scheduleLocalNotif(
+            dayNotif.title,
+            dayNotif.body,
+            navratriNotifData,
+            immediateTrigger
+          );
+          if (id) notificationIds.push(id);
+        }
+      }
+    }
+  } else {
+    // 1. Day before - Morning (9:00 AM)
+    const dayBefore9AM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+    dayBefore9AM.setHours(9, 0, 0, 0);
+    if (dayBefore9AM > now) {
       const id = await scheduleLocalNotif(
-        `🪔 ${isToday ? 'Today' : 'Tomorrow'} is ${festivalName}!`,
-        `Don't miss out! ${festivalName} ${isToday ? 'is today' : 'begins tomorrow'}.`,
+        `🪔 Tomorrow: ${festivalName}`,
+        `Get ready! ${festivalName} begins tomorrow.`,
         notificationData,
-        immediateTrigger
+        dayBefore9AM
       );
       if (id) notificationIds.push(id);
+    }
+
+    // 2. Day before - Evening (8:00 PM)
+    const dayBefore8PM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+    dayBefore8PM.setHours(20, 0, 0, 0);
+    if (dayBefore8PM > now) {
+      const id = await scheduleLocalNotif(
+        `🪔 Tomorrow: ${festivalName}`,
+        `Reminder: ${festivalName} is tomorrow!`,
+        notificationData,
+        dayBefore8PM
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 3. Festival Day - Morning (8:00 AM)
+    const festivalDay8AM = new Date(festivalDate.getTime());
+    festivalDay8AM.setHours(8, 0, 0, 0);
+    if (festivalDay8AM > now) {
+      const id = await scheduleLocalNotif(
+        `🪔 Today is ${festivalName}!`,
+        `Wishing you a joyful and blessed ${festivalName}!`,
+        notificationData,
+        festivalDay8AM
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 4. Fallback Trigger (Immediate alert if festival is tomorrow/today & pre-scheduled times passed)
+    const isTomorrow = now.toDateString() === new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000).toDateString();
+    const isToday = now.toDateString() === festivalDate.toDateString();
+
+    if ((isTomorrow || isToday) && notificationIds.length === 0) {
+      const festivalEnd = new Date(festivalDate.getTime());
+      festivalEnd.setHours(23, 59, 59, 999);
+
+      if (now < festivalEnd) {
+        const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+        const id = await scheduleLocalNotif(
+          `🪔 ${isToday ? 'Today' : 'Tomorrow'} is ${festivalName}!`,
+          `Don't miss out! ${festivalName} ${isToday ? 'is today' : 'begins tomorrow'}.`,
+          notificationData,
+          immediateTrigger
+        );
+        if (id) notificationIds.push(id);
+      }
     }
   }
 
@@ -219,8 +289,9 @@ export async function syncFestivalReminders(festivals: any[]) {
       const festivalDate = new Date(`${festDateStr}T00:00:00`);
       if (isNaN(festivalDate.getTime())) continue;
 
-      // Skip past festivals
-      const festivalEnd = new Date(festivalDate.getTime());
+      // Skip past festivals (for Navratri, festival spans 9 days)
+      const isNav = (festivalId || '').toLowerCase().includes('navratri') || (festival.name || festival.festival_name || '').toLowerCase().includes('navratri');
+      const festivalEnd = new Date(festivalDate.getTime() + (isNav ? 9 * 24 * 60 * 60 * 1000 : 0));
       festivalEnd.setHours(23, 59, 59, 999);
       if (now > festivalEnd) {
         if (reminders[festivalId]) {

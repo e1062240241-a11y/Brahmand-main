@@ -401,16 +401,27 @@ const FestivalPage: React.FC = () => {
 
       Alert.alert(
         newValue
-          ? (isHindi ? 'सभी रिमाइंडर सेट हो गए' : 'All Reminders Set')
+          ? (isHindi ? 'सभी रिमाइंडर सेट हो गए 🔔' : 'All Reminders Set 🔔')
           : (isHindi ? 'रिमाइंडर रद्द कर दिए गए' : 'Reminders Cancelled'),
         newValue
-          ? (isHindi ? 'आपको हर आगामी त्योहार से पहले सूचित किया जाएगा।' : 'You will be notified before every upcoming festival.')
+          ? (isHindi ? 'आपको हर आगामी त्योहार और नवरात्रि के दिनों से पहले सूचित किया जाएगा।' : 'You will be notified before every upcoming festival and Navratri day.')
           : (isHindi ? 'सभी निर्धारित त्योहार सूचनाएं हटा दी गई हैं।' : 'All scheduled festival notifications have been removed.')
       );
-    } catch (_err) {
+    } catch (err: any) {
+      console.warn('[Festivals] Failed to toggle reminders:', err);
+      const isPermissionErr =
+        err?.message?.toLowerCase().includes('permission') ||
+        err?.message?.toLowerCase().includes('denied');
+
       Alert.alert(
         isHindi ? 'सूचना' : 'Notice',
-        isHindi ? 'रिमाइंडर प्राथमिकताओं को अपडेट करने में असमर्थ।' : 'Unable to update reminder preferences.'
+        isPermissionErr
+          ? (isHindi
+              ? 'कृपया सेटिंग्स में जाकर Brahmand ऐप के लिए नोटिफिकेशन की अनुमति दें।'
+              : 'Please enable notifications for Brahmand in your device Settings to receive festival reminders.')
+          : (isHindi
+              ? 'रिमाइंडर प्राथमिकताओं को अपडेट करने में असमर्थ। कृपया पुनः प्रयास करें।'
+              : 'Unable to update reminder preferences. Please try again.')
       );
     } finally {
       if (isMountedRef.current) {
