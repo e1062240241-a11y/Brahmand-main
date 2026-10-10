@@ -19,6 +19,8 @@ import { useVendorStore, Vendor } from '../../src/store/vendorStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { extractKycTextFromImage } from '../../src/services/api';
 import { CollapsibleSection } from '../../src/components/CollapsibleSection';
+import { Input } from '../../src/components/Input';
+import { checkSecurityInjection } from '../../src/utils/validation';
 
 const IMAGE_SLOTS = [0, 1, 2, 3, 4];
 
@@ -358,12 +360,11 @@ export default function VendorBusinessDetailsScreen() {
         {/* Section 3: Business Hours */}
         <CollapsibleSection title="Business Hours" icon="time" defaultExpanded={true}>
           <Text style={styles.sectionDescription}>Let customers know when you're open</Text>
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="e.g., Mon-Sat: 9 AM - 9 PM, Sunday: Closed"
-            placeholderTextColor={COLORS.textLight}
             value={businessHours}
             onChangeText={setBusinessHours}
+            rules={{ preventInjection: true }}
             multiline
           />
         </CollapsibleSection>
@@ -371,12 +372,11 @@ export default function VendorBusinessDetailsScreen() {
         {/* Section 4: Offers & Deals */}
         <CollapsibleSection title="Offers & Deals" icon="pricetag" defaultExpanded={true}>
           <Text style={styles.sectionDescription}>Attract customers with special offers, discounts, or deals</Text>
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="e.g., 10% off on first order, Free delivery above ₹500"
-            placeholderTextColor={COLORS.textLight}
             value={offers}
             onChangeText={setOffers}
+            rules={{ preventInjection: true }}
             multiline
           />
         </CollapsibleSection>
@@ -424,40 +424,36 @@ export default function VendorBusinessDetailsScreen() {
         {/* Section 6: Website & Social Media */}
         <CollapsibleSection title="Website & Social Media" icon="globe" defaultExpanded={true}>
           <Text style={styles.sectionDescription}>Connect with customers through your online presence</Text>
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="Website (e.g., https://mybusiness.com)"
-            placeholderTextColor={COLORS.textLight}
             value={websiteLink}
             onChangeText={setWebsiteLink}
+            rules={{ preventInjection: true }}
             autoCapitalize="none"
             keyboardType="url"
           />
           
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="Facebook URL or Page ID"
-            placeholderTextColor={COLORS.textLight}
             value={facebook}
             onChangeText={setFacebook}
+            rules={{ preventInjection: true }}
             autoCapitalize="none"
           />
           
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="Instagram handle (e.g., @mybusiness)"
-            placeholderTextColor={COLORS.textLight}
             value={instagram}
             onChangeText={setInstagram}
+            rules={{ preventInjection: true }}
             autoCapitalize="none"
           />
           
-          <TextInput
-            style={styles.textInput}
+          <Input
             placeholder="WhatsApp number (e.g., 919876543210)"
-            placeholderTextColor={COLORS.textLight}
             value={whatsapp}
             onChangeText={setWhatsapp}
+            rules={{ phone: true, preventInjection: true }}
             keyboardType="phone-pad"
           />
         </CollapsibleSection>

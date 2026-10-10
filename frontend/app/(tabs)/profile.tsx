@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   ImageBackground,
-  ActivityIndicator,
   Modal,
   Dimensions,
   RefreshControl,
@@ -95,6 +94,9 @@ export default function ProfileScreen() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
   const activeUserIdRef = useRef<string | undefined>(userId);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const lastLoadedUserIdRef = useRef<string | null>(null);
   const requestSequenceRef = useRef(0); // ponytail: track request sequence to avoid race conditions
   const isFetchingRef = useRef(false); // ponytail: track fetch state to prevent overlapping calls
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -106,11 +108,32 @@ export default function ProfileScreen() {
     extrapolate: 'clamp',
   });
 
+  const isNavigatingRef = useRef(false);
+  const safeNavigate = useCallback((action: () => void | Promise<void>, cooldown = 800) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    try {
+      action();
+    } finally {
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, cooldown);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      isNavigatingRef.current = false;
+    }
+  }, [isFocused]);
+
   useEffect(() => {
     if (section === 'personality_verification') {
-      router.push('/profile/personality-verification');
+      safeNavigate(() => {
+        router.push('/profile/personality-verification');
+      });
     }
-  }, [section]);
+  }, [section, safeNavigate]);
 
   const SETTINGS_SECTIONS = useMemo<{ id: string; title: string; items: SettingItem[] }[]>(() => {
     if (Platform.OS === 'android') {
@@ -178,6 +201,12 @@ export default function ProfileScreen() {
 
   const [profile, setProfile] = useState<any>(user || null);
   const [loading, setLoading] = useState(!user);
+
+  useEffect(() => {
+    if (user) {
+      setProfile((prev: any) => prev ? { ...prev, ...user } : user);
+    }
+  }, [user]);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -418,7 +447,7 @@ export default function ProfileScreen() {
         console.error('Error data:', error.response.data);
       }
       console.error('Error message:', error?.message);
-      setProfile(user || null);
+      setProfile(userRef.current || null);
       if (error?.response?.status === 401 || error?.response?.status === 502) {
         console.log('[Profile] auth error, logging out');
         await logout();
@@ -831,7 +860,6 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const isDifferentUser = activeUserIdRef.current !== userId;
       const isPlaceholder = !userId ||
         userId.toLowerCase().trim() === 'undefined' ||
         userId.toLowerCase().trim() === 'null' ||
@@ -844,7 +872,15 @@ export default function ProfileScreen() {
         return;
       }
 
-      if (isDifferentUser || posts.length === 0) {
+      const currentUser = userRef.current;
+      if (currentUser) {
+        setProfile((prev: any) => prev ? { ...prev, ...currentUser } : currentUser);
+      }
+
+      const isDifferentUser = lastLoadedUserIdRef.current !== userId;
+
+      if (isDifferentUser) {
+        lastLoadedUserIdRef.current = userId;
         activeUserIdRef.current = userId;
 
         setPosts([]);
@@ -853,12 +889,15 @@ export default function ProfileScreen() {
         hasMoreRef.current = true;
         setOffset(0);
         setHasMore(true);
-        setProfile(user || null);
+        setProfile(currentUser || null);
 
-        fetchProfile(!user);
+        fetchProfile(!currentUser);
         loadPosts(true);
+      } else {
+        // Tab focus return: light refresh without wiping posts or triggering infinite re-render loop
+        fetchProfile(false);
       }
-    }, [userId, loadPosts, user, fetchProfile, posts.length])
+    }, [userId, loadPosts, fetchProfile])
   );
 
   // Listen for background video/post uploads and instantly prepend to profile feed & increment posts count
@@ -907,19 +946,23 @@ export default function ProfileScreen() {
 
     if (item.id === 'personality_verification') {
       closeSettingsModal(() => {
-        const status = user?.personality_verification_status;
-        if (status === 'pending' || status === 'approved') {
-          router.push('/profile/personality-verification-success');
-        } else {
-          router.push('/profile/personality-verification');
-        }
+        safeNavigate(() => {
+          const status = user?.personality_verification_status;
+          if (status === 'pending' || status === 'approved') {
+            router.push('/profile/personality-verification-success');
+          } else {
+            router.push('/profile/personality-verification');
+          }
+        });
       });
       return;
     }
 
     if (item.route) {
       closeSettingsModal(() => {
-        router.push(item.route as any);
+        safeNavigate(() => {
+          router.push(item.route as any);
+        });
       });
     } else {
       closeSettingsModal();

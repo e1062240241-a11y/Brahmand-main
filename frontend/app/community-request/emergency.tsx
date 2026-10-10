@@ -190,7 +190,7 @@ export default function CommunityRequestEmergencyPage() {
             
             {/* Inner Header */}
             <View style={styles.headerBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
                 <Ionicons name="chevron-back" size={24} color="#333" />
               </TouchableOpacity>
               <View style={styles.iconCircle}>
@@ -372,7 +372,7 @@ export default function CommunityRequestEmergencyPage() {
 
       {/* Emergency Type Modal */}
       <Modal visible={showTypeModal} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypeModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTypeModal(false)} accessibilityRole="button" accessibilityLabel="Close modal">
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Emergency Type</Text>
             {EMERGENCY_TYPES.map((type) => (
@@ -393,7 +393,7 @@ export default function CommunityRequestEmergencyPage() {
 
       {/* Contact Preference Modal */}
       <Modal visible={showContactModal} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowContactModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowContactModal(false)} accessibilityRole="button" accessibilityLabel="Close modal">
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Contact Method</Text>
             {CONTACT_OPTIONS.map((opt) => (
@@ -414,7 +414,7 @@ export default function CommunityRequestEmergencyPage() {
 
       {/* Country Code Modal */}
       <Modal visible={showCountryModal} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCountryModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCountryModal(false)} accessibilityRole="button" accessibilityLabel="Close modal">
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Country Code</Text>
             {COUNTRY_CODES.map((item) => (

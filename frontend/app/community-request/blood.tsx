@@ -155,7 +155,7 @@ export default function CommunityRequestBloodPage() {
   return (
     <SafeAreaView style={styles.container as ViewStyle}>
       <View style={styles.pageHeader}>
-        <TouchableOpacity style={styles.iconButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.iconButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <View style={styles.pageHeaderText}>

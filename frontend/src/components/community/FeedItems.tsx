@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Platform,
   StyleSheet,
   StyleProp,
   ViewStyle,
@@ -12,9 +11,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { Avatar } from '../Avatar';
-import { getTimeAgo, parseUTCDate } from '../../utils/dateUtils';
-import { formatDateTimeIST } from '../../utils/dateUtils';
-import { getFestivalImage } from '../../constants/festivalImages';
+import { getTimeAgo, formatDateTimeIST } from '../../utils/dateUtils';
 import { FONTS } from '../../constants/theme';
 
 export interface CommunityMediaItemProps {
@@ -268,6 +265,7 @@ export const FeedPostItem: React.FC<FeedPostItemProps> = React.memo(({
     </View>
   );
 });
+FeedPostItem.displayName = 'FeedPostItem';
 
 export interface EventItemProps {
   item: any;
@@ -457,6 +455,7 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
     </View>
   );
 });
+EventItem.displayName = 'EventItem';
 
 export interface SevaItemProps {
   item: any;
@@ -589,6 +588,7 @@ export const SevaItem: React.FC<SevaItemProps> = React.memo(({
     </View>
   );
 });
+SevaItem.displayName = 'SevaItem';
 
 export interface RequestItemProps {
   item: any;
@@ -821,6 +821,7 @@ export const RequestItem: React.FC<RequestItemProps> = React.memo(({
     </View>
   );
 });
+RequestItem.displayName = 'RequestItem';
 
 const feedItemStyles = StyleSheet.create({
   postActionsRow: {

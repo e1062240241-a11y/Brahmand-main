@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Modal,
   Dimensions,
   FlatList,
@@ -78,6 +77,12 @@ const UserProfileScreen = () => {
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && profileUserId && String(user.id) === String(profileUserId)) {
+      setProfile((prev: any) => prev ? { ...prev, ...user } : user);
+    }
+  }, [user, profileUserId]);
   const [error, setError] = useState<string | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);

@@ -15,7 +15,7 @@ import {View,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
 import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -161,7 +161,7 @@ export default function GauSevaRequestScreen() {
           <View style={styles.modalBar} />
           <View style={styles.modalHeaderOrange}>
             <Text style={styles.modalTitleWhite}>{title}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite} accessibilityRole="button" accessibilityLabel="Close modal">
               <Ionicons name="close" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
@@ -208,7 +208,7 @@ export default function GauSevaRequestScreen() {
       
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
-          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={22} color="#10B981" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>

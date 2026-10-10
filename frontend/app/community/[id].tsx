@@ -5,7 +5,6 @@ import {View,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -58,6 +57,7 @@ import {
   togglePostLike,
   toggleCommunityMessageLike,
   uploadChatMedia,
+  uploadCompressedVideo,
   reverseGeocode,
   getPostComments,
   getCommunityMessageComments,
@@ -1490,25 +1490,56 @@ export default function CommunityDetailScreen() {
         localImage.toLowerCase().includes('/video/') ||
         localImage.toLowerCase().includes('video=true')
       ));
-      const fileExtension = isVideoFile ? (localImage.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
-      const fileMime = isVideoFile ? (localImage.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
 
-      const uploadRes = await uploadChatMedia({
-        uri: localImage,
-        name: `community_post_${Date.now()}.${fileExtension}`,
-        type: fileMime
-      });
-      const uploadedUrl = (uploadRes?.data as any)?.media_url || (uploadRes?.data as any)?.mediaUrl || (uploadRes?.data as any)?.url || (uploadRes as any)?.url || (uploadRes as any)?.mediaUrl;
+      let uploadRes: any;
+      if (isVideoFile) {
+        const fileExtension = localImage.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
+        const fileMime = localImage.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
+        uploadRes = await uploadCompressedVideo({
+          uri: localImage,
+          name: `community_video_${Date.now()}.${fileExtension}`,
+          type: fileMime
+        });
+      } else {
+        let finalImageUri = localImage;
+        try {
+          const ImageManipulator = await import('expo-image-manipulator');
+          const result = await ImageManipulator.manipulateAsync(
+            localImage,
+            [{ resize: { width: 1280 } }],
+            { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          if (result?.uri) {
+            finalImageUri = result.uri;
+          }
+        } catch (manipErr) {
+          console.warn('[Community] Image compression bypassed, uploading original:', manipErr);
+        }
+
+        uploadRes = await uploadChatMedia({
+          uri: finalImageUri,
+          name: `community_post_${Date.now()}.jpg`,
+          type: 'image/jpeg'
+        });
+      }
+
+      const uploadedUrl =
+        (uploadRes?.data as any)?.url ||
+        (uploadRes?.data as any)?.media_url ||
+        (uploadRes?.data as any)?.mediaUrl ||
+        (uploadRes as any)?.url ||
+        (uploadRes as any)?.media_url ||
+        (uploadRes as any)?.mediaUrl;
 
       if (!uploadedUrl) {
-        Alert.alert('Upload Failed', 'Could not upload the image. Please try again.');
+        Alert.alert('Upload Failed', 'Could not upload media. Please try again.');
         return null;
       }
       console.log('[Community] Media uploaded successfully:', uploadedUrl);
       return uploadedUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Community] Media upload failed:', error);
-      Alert.alert('Upload Failed', 'Could not upload the image. Please try again.');
+      Alert.alert('Upload Failed', error?.message || 'Could not upload media. Please try again.');
       return null;
     }
   };

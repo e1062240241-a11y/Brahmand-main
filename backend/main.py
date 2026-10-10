@@ -87,7 +87,8 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate,
+    NotificationPreferencesUpdate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -127,7 +128,9 @@ from routes.video_upload_routes import (
 )
 from utils.helpers import (
     moderate_content,
-    generate_sl_id
+    generate_sl_id,
+    is_true_flag,
+    env_flag
 )
 from utils.cache import cache_manager
 from utils.helpers import generate_circle_code, normalize_location
@@ -208,6 +211,11 @@ async def lifespan(app: FastAPI):
     # Start Jaap reminder worker
     asyncio.create_task(_jaap_reminder_worker())
     logger.info("Jaap reminder worker started")
+
+    # Start Re-engagement campaign worker
+    from services.reengagement_worker import _reengagement_campaign_worker
+    asyncio.create_task(_reengagement_campaign_worker())
+    logger.info("Re-engagement campaign worker started")
 
     # Sync legacy KYC data across users and vendors
     asyncio.create_task(sync_legacy_kyc_data_in_db())
@@ -670,6 +678,10 @@ async def _create_post_document(
     _clean_caption = (caption or '').strip()
     _extracted_hashtags = list(set(_re.findall(r'#(\w+)', _clean_caption.lower())))
 
+    # Tag official posts strictly if creator is marked official in their user document.
+    # Client-provided is_official is ignored/overwritten to prevent spoofing.
+    _is_official_post = is_true_flag(user.get('is_official'))
+
     post_doc = {
         'user_id': user_id,
         'username': user.get('name') or user.get('sl_id') or 'User',
@@ -683,6 +695,7 @@ async def _create_post_document(
         'source': source,
         'filter_name': filter_name,
         'visibility': 'public',
+        'is_official': _is_official_post,
         'likes_count': 0,
         'comments_count': 0,
         'views_count': 0,
@@ -1668,6 +1681,11 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
             # Existing user - return token
             token = create_jwt_token(user['id'], user['sl_id'])
+            try:
+                from services.user_activity_service import UserActivityService
+                await UserActivityService.record_user_login(user['id'], db)
+            except Exception:
+                pass
             return {
                 "message": "Login successful",
                 "token": token,
@@ -1864,6 +1882,25 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
         "kyc_status": None,  # pending/verified/rejected (only for temple/vendor/organizer roles)
         "kyc_role": None,  # temple/vendor/organizer
         "kyc_documents": None,  # Stored KYC documents
+        "created_at": datetime.utcnow().isoformat() + 'Z',
+        "updated_at": datetime.utcnow().isoformat() + 'Z',
+        "last_login_at": datetime.utcnow().isoformat() + 'Z',
+        "last_active_at": datetime.utcnow().isoformat() + 'Z',
+        "last_seen_at": datetime.utcnow().isoformat() + 'Z',
+        "notification_preferences": {
+            "push_enabled": True,
+            "reengagement_enabled": True,
+            "trending_enabled": True,
+            "library_reminder_enabled": True,
+            "jaap_reminder_enabled": True,
+            "quiet_hours_enabled": False,
+            "quiet_start_hour": 22,
+            "quiet_end_hour": 7,
+            "timezone": "Asia/Kolkata",
+            "max_reengagement_per_week": 2,
+            "max_trending_per_day": 1,
+            "unsubscribed_from_marketing": False
+        },
         "privacy_settings": {
             "read_receipts": True,
             "online_status": True,
@@ -1896,10 +1933,50 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     
     return user
 
+ALLOWED_PROFILE_UPDATE_FIELDS = {
+    "name",
+    "username",
+    "bio",
+    "photo",
+    "cover_photo",
+    "avatar_url",
+    "cover_image",
+    "language",
+    "public_key",
+    "location",
+    "gender",
+    "dob",
+    "date_of_birth",
+    "time_of_birth",
+    "place_of_birth",
+    "place_of_birth_latitude",
+    "place_of_birth_longitude",
+    "kuldevi",
+    "kuldevi_temple_area",
+    "gotra",
+    "phone_number",
+}
+
+DISALLOWED_PROFILE_UPDATE_FIELDS = {
+    "is_official",
+    "is_admin",
+    "role",
+    "verified",
+    "permission",
+    "permissions",
+}
+
 @api_router.put("/user/profile")
 async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    raw_payload = update.dict() if hasattr(update, 'dict') else dict(update)
+    # Block dangerous fields explicitly and enforce whitelist
+    for disallowed in DISALLOWED_PROFILE_UPDATE_FIELDS:
+        raw_payload.pop(disallowed, None)
+    update_data = {
+        k: v for k, v in raw_payload.items()
+        if k in ALLOWED_PROFILE_UPDATE_FIELDS and v is not None
+    }
 
     # Pre-fetch user document to merge in-memory, avoiding read-after-write
     user_doc = await db.get_document('users', token_data["user_id"])
@@ -1950,7 +2027,13 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
 @api_router.put("/user/profile/extended")
 async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    raw_payload = update.dict() if hasattr(update, 'dict') else dict(update)
+    for disallowed in DISALLOWED_PROFILE_UPDATE_FIELDS:
+        raw_payload.pop(disallowed, None)
+    update_data = {
+        k: v for k, v in raw_payload.items()
+        if k in ALLOWED_PROFILE_UPDATE_FIELDS and v is not None
+    }
 
     user_doc = await db.get_document('users', token_data["user_id"])
     if not user_doc:
@@ -1958,6 +2041,8 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
 
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user(token_data["user_id"])
         from datetime import datetime, timezone
         update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
         user_doc.update(update_data)
@@ -2191,11 +2276,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     
     # Update user with location and communities
     existing_defaults = (user.get('default_communities', []) if user else []) or []
-    await db.update_document('users', user_id, {
+    loc_update = {
         'location': loc,
         'home_location': loc,
         'default_communities': list(set(existing_defaults + community_ids))
-    })
+    }
+    await db.update_document('users', user_id, loc_update)
     await db.array_union_update('users', user_id, 'communities', community_ids)
     
     # Invalidate cache
@@ -2204,7 +2290,12 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Eliminated redundant sequential db.get_document fetch
+    user = user or {}
+    user.update(loc_update)
+    if 'communities' not in user:
+        user['communities'] = []
+    user['communities'] = list(set(user['communities'] + community_ids))
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
 
 @api_router.post("/user/current-location")
@@ -2401,7 +2492,10 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         await asyncio.gather(*(cache_manager.invalidate_community(cid) for cid in unique_community_ids))
     await cache_manager.invalidate_user_communities(user_id)
     
-    user = await db.get_document('users', user_id)
+    # ⚡ Bolt Optimization: Merge updates in-memory instead of redundantly re-fetching the document
+    if user:
+        user.update(update_data)
+
     return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
 
 @api_router.get("/user/search/{sl_id}")
@@ -2501,7 +2595,7 @@ async def get_user_by_id(
     # transfer them to the backend on every profile view.
     SCALAR_FIELDS = [
         'name', 'photo', 'cover_photo', 'sl_id', 'online_status',
-        'last_seen_at', 'last_active', 'updated_at', 'badges',
+        'last_seen_at', 'last_active', 'last_active_at', 'last_login_at', 'updated_at', 'badges',
         'home_location', 'followers_count', 'following_count',
         'is_verified', 'verification_level',
     ]
@@ -2556,6 +2650,8 @@ async def get_user_by_id(
         'online_status': doc.get('online_status'),
         'last_seen_at': doc.get('last_seen_at'),
         'last_active': doc.get('last_active'),
+        'last_active_at': doc.get('last_active_at') or doc.get('last_active'),
+        'last_login_at': doc.get('last_login_at'),
         'updated_at': doc.get('updated_at'),
         'badges': doc.get('badges', []),
         'home_location': doc.get('home_location'),
@@ -3895,6 +3991,8 @@ async def _upload_chat_media_impl(
     return {
         'message': 'Chat media uploaded successfully',
         'url': media_url,
+        'media_url': media_url,
+        'mediaUrl': media_url,
         'path': object_path,
     }
 
@@ -4185,6 +4283,15 @@ async def get_my_posts(
                 raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
             validated_posts.append(post)
 
+        if target_user:
+            author_name = target_user.get('name')
+            author_photo = target_user.get('photo')
+            for post in validated_posts:
+                if author_name:
+                    post['username'] = author_name
+                if author_photo is not None:
+                    post['user_photo'] = author_photo
+
         # Slice for offset/limit pagination
         paginated_posts = validated_posts[offset : offset + safe_limit]
 
@@ -4279,7 +4386,14 @@ async def get_posts_feed(
         if not feed_pool_service.is_initialized():
             await feed_pool_service.refresh_pools(db)
 
-        high_eng_pool, fresh_pool, disc_pool, interest_pool, all_cand_dict = feed_pool_service.get_candidate_pools()
+        high_eng_pool, fresh_pool, disc_pool, official_pool, interest_pool, all_cand_dict = feed_pool_service.get_candidate_pools()
+
+        enable_official_priority = env_flag("ENABLE_OFFICIAL_FEED_PRIORITY", True)
+        MAX_OFFICIAL_TOP_POSTS = 1
+
+        # Helper to identify official posts strictly from document flag
+        def _is_official_post_obj(p: dict) -> bool:
+            return bool(isinstance(p, dict) and is_true_flag(p.get('is_official')))
 
         # Stage 2: Heavy Filtering (Seen Filter, Blocked, Reported, Locality)
         def _is_eligible(post: dict, ignore_seen: bool = False) -> bool:
@@ -4313,6 +4427,11 @@ async def get_posts_feed(
         eligible_eng = [p for p in high_eng_pool if _is_eligible(p)]
         eligible_fresh = [p for p in fresh_pool if _is_eligible(p)]
         eligible_disc = [p for p in disc_pool if _is_eligible(p)]
+        eligible_official = [p for p in official_pool if _is_eligible(p)]
+        # Also check all_cand_dict or other pools for official posts if official_pool has any missing
+        for cand in all_cand_dict.values():
+            if _is_official_post_obj(cand) and _is_eligible(cand) and cand not in eligible_official:
+                eligible_official.append(cand)
 
         user_interests = prefs_doc.get('category_scores', {}) if prefs_doc else {}
         eligible_interest = []
@@ -4325,14 +4444,6 @@ async def get_posts_feed(
                         eligible_interest.append(p)
 
         # Stage 3: Blending & Anti-Dominance Mixer
-        # Quotas: 40% Discovery / 30% Engagement / 20% Interest / 10% Fresh
-        n_disc = max(1, int(safe_limit * 0.4))
-        n_eng = max(1, int(safe_limit * 0.3))
-        n_int = max(1, int(safe_limit * 0.2))
-        n_fresh = max(1, safe_limit - n_disc - n_eng - n_int)
-
-        _random.shuffle(eligible_disc)
-
         selected_candidates = []
         seen_cand_ids = set()
 
@@ -4347,6 +4458,20 @@ async def get_posts_feed(
                     if added >= count:
                         break
 
+        # Priority: When feature flag is enabled, reserve official posts for blending
+        # We blend up to MAX_OFFICIAL_TOP_POSTS official posts into candidate selection
+        if enable_official_priority and eligible_official:
+            _add_candidates(eligible_official, min(MAX_OFFICIAL_TOP_POSTS, safe_limit))
+
+        remaining_slots = max(0, safe_limit - len(selected_candidates))
+        # Quotas for remainder: 40% Discovery / 30% Engagement / 20% Interest / 10% Fresh
+        n_disc = max(1, int(remaining_slots * 0.4))
+        n_eng = max(1, int(remaining_slots * 0.3))
+        n_int = max(1, int(remaining_slots * 0.2))
+        n_fresh = max(1, remaining_slots - n_disc - n_eng - n_int)
+
+        _random.shuffle(eligible_disc)
+
         _add_candidates(eligible_disc, n_disc)
         _add_candidates(eligible_eng, n_eng)
         _add_candidates(eligible_interest, n_int)
@@ -4354,11 +4479,14 @@ async def get_posts_feed(
 
         # If quota wasn't filled, backfill with remaining eligible candidates
         if len(selected_candidates) < safe_limit:
-            all_eligible_combined = eligible_fresh + eligible_eng + eligible_disc + eligible_interest
+            all_eligible_combined = eligible_fresh + eligible_eng + eligible_disc + eligible_interest + eligible_official
             _add_candidates(all_eligible_combined, safe_limit - len(selected_candidates))
 
         # Fallback if candidates exhausted due to seen_set: allow seen items so feed is never empty
         if len(selected_candidates) < safe_limit and seen_set:
+            if enable_official_priority:
+                official_seen_fallback = [p for p in all_cand_dict.values() if _is_official_post_obj(p) and _is_eligible(p, ignore_seen=True)]
+                _add_candidates(official_seen_fallback, 1)
             seen_fallback = [p for p in all_cand_dict.values() if _is_eligible(p, ignore_seen=True)]
             _random.shuffle(seen_fallback)
             _add_candidates(seen_fallback, safe_limit - len(selected_candidates))
@@ -4382,10 +4510,30 @@ async def get_posts_feed(
             needed = safe_limit - len(author_capped_batch)
             author_capped_batch.extend(overflow_batch[:needed])
 
-        # Strict Anti-Consecutive Author Rule: No two adjacent posts from the same author
+        # Stage 4: Official Priority Injection (#0) and Anti-Consecutive Author interleaving
+        # Separate official posts from others: exactly MAX_OFFICIAL_TOP_POSTS (1) official post at position #0 when enabled
         final_ordered_posts = []
-        remaining_pool = list(author_capped_batch)
 
+        if enable_official_priority:
+            # Prefer unseen official post if available; otherwise seen fallback only if needed as last resort
+            official_unseen = [p for p in author_capped_batch if _is_official_post_obj(p) and p.get('id') not in seen_set]
+            official_seen = [p for p in author_capped_batch if _is_official_post_obj(p) and p.get('id') in seen_set]
+            top_official_cand = (official_unseen[0] if official_unseen else (official_seen[0] if official_seen else None))
+
+            if top_official_cand:
+                final_ordered_posts.append(top_official_cand)
+                logger.info(
+                    f"official_post_injected: post_id={top_official_cand.get('id')}, "
+                    f"user_id={top_official_cand.get('user_id')}, position=0"
+                )
+                # Remaining pool excludes the top post placed at #0
+                remaining_pool = [p for p in author_capped_batch if p.get('id') != top_official_cand.get('id')]
+            else:
+                remaining_pool = list(author_capped_batch)
+        else:
+            remaining_pool = list(author_capped_batch)
+
+        # Interleave remaining posts without consecutive same authors
         while remaining_pool:
             last_author = final_ordered_posts[-1].get('user_id') if final_ordered_posts else None
 
@@ -4400,7 +4548,17 @@ async def get_posts_feed(
             else:
                 final_ordered_posts.append(remaining_pool.pop(0))
 
-        paged_posts = final_ordered_posts[:safe_limit]
+        # Strict Deduplication across all final selected items
+        dedup_seen = set()
+        dedup_final_posts = []
+        for p in final_ordered_posts:
+            pid = p.get('id')
+            if not pid or pid in dedup_seen:
+                continue
+            dedup_seen.add(pid)
+            dedup_final_posts.append(p)
+
+        paged_posts = dedup_final_posts[:safe_limit]
         unseen_pool = [p for p in paged_posts if p.get('id') not in seen_set]
     else:
         # Define tasks to run concurrently for non-for_you tabs
@@ -4579,12 +4737,23 @@ async def get_posts_feed(
         unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
         seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
 
+        # Sort: Official posts first when enabled, then unseen recent, unseen older, seen
+        enable_official_priority = env_flag("ENABLE_OFFICIAL_FEED_PRIORITY", True)
+        def _is_official_cand(p):
+            return bool(isinstance(p, dict) and is_true_flag(p.get('is_official')))
+
         cutoff_ts = now_ts - 172800  # 48 hours
         recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
         older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
 
         recent_unseen.sort(key=_get_ts, reverse=True)
-        paged_posts = recent_unseen + older_unseen + seen_returned
+        combined_tab_posts = recent_unseen + older_unseen + seen_returned
+        if enable_official_priority:
+            official_tab_posts = [p for p in combined_tab_posts if _is_official_cand(p)]
+            other_tab_posts = [p for p in combined_tab_posts if not _is_official_cand(p)]
+            paged_posts = official_tab_posts + other_tab_posts
+        else:
+            paged_posts = combined_tab_posts
 
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
@@ -4617,6 +4786,10 @@ async def get_posts_feed(
             post['comments_count'] = post.get('comments_count', 0)
             post['views_count'] = post.get('views_count', 0)
             post['liked_by_me'] = current_user_id in liked_by
+            post['is_official'] = bool(
+                is_true_flag(post.get('is_official'))
+                or (author and is_true_flag(author.get('is_official')))
+            )
             
             # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
@@ -4902,6 +5075,7 @@ async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
         'source': 'repost',
         'filter_name': original_post.get('filter_name'),
         'visibility': 'public',
+        'is_official': is_true_flag(user.get('is_official')),
         'original_post_id': post_id,
         'reposted_by': user_id,
         'likes_count': 0,
@@ -4989,10 +5163,10 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     # avoiding read-modify-write race conditions when multiple users like/unlike concurrently.
 
     # Return the updated state immediately
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
         
     # Force the local values to ensure UI reflects them even if DB fetch was slightly stale
     updated_post['likes_count'] = new_count
@@ -5026,9 +5200,12 @@ async def update_post(post_id: str, data: Dict[str, Any] = Body(...), token_data
         return {"message": "No changes requested", "post": post}
         
     update_data['updated_at'] = datetime.utcnow()
-    
     await db.update_document('posts', post_id, update_data)
-    updated_post = await db.get_document('posts', post_id)
+
+    # ⚡ Bolt Optimization: Avoid redundant fetch
+    updated_post = post.copy()
+    updated_post['id'] = post_id
+    updated_post.update(update_data)
     
     return {
         "message": "Post updated successfully",
@@ -5228,12 +5405,9 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = prev_comments_count + 1
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        # Fallback if document not found in cache/db immediately
-        updated_post = post.copy()
-        updated_post['id'] = post_id
-
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5347,10 +5521,9 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     prev_comments_count = (post.get('comments_count', 0) or 0)
     comments_count = max(0, prev_comments_count - 1)
 
-    updated_post = await db.get_document('posts', post_id)
-    if not updated_post:
-        updated_post = post.copy()
-        updated_post['id'] = post_id
+    # ⚡ Bolt Optimization: Avoid redundant get_document fetch, construct state locally
+    updated_post = post.copy()
+    updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
 
@@ -5460,13 +5633,47 @@ async def verify_admin(token_data: dict = Depends(verify_token)):
     return token_data
 
 @api_router.get("/admin/personality-verifications")
-async def list_personality_verifications(status: str = "pending", token_data: dict = Depends(verify_admin)):
-    """List all personality verification requests by status"""
+async def list_personality_verifications(
+    status: str = "pending",
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_admin)
+):
+    """
+    List all personality verification requests by status with offset-based pagination.
+    Architectural Fix: Bounds candidate document fetching at the DB level with DESC ordering
+    to fetch_limit = safe_offset + safe_limit instead of streaming all historical requests into memory.
+    Prevents O(N) Firestore document reads and memory spikes as verification requests scale.
+    """
     db = await get_db()
-    return await db.query_documents(
-        'personality_verifications', 
-        [('status', '==', status)]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            order_by='submitted_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore ordered query failed in /admin/personality-verifications, falling back to un-ordered query: %s",
+            exc
+        )
+        verifications = await db.query_documents(
+            'personality_verifications',
+            filters=[('status', '==', status)],
+            limit=fetch_limit
+        )
+        verifications.sort(
+            key=lambda item: str(item.get('submitted_at') or item.get('created_at') or item.get('createdAt') or ''),
+            reverse=True
+        )
+
+    return verifications[safe_offset:safe_offset + safe_limit]
 
 @api_router.post("/admin/personality-verifications/{request_id}/action")
 async def action_personality_verification(request_id: str, action: str = Body(..., embed=True), token_data: dict = Depends(verify_admin)):
@@ -6546,39 +6753,80 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     return communities
 
 @api_router.get("/communities/my-creation-requests")
-async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
-    """Get community creation requests initiated by the current user."""
+async def get_my_creation_requests(
+    limit: int = 20,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get community creation requests initiated by the current user with DB query bounds and offset pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        requests = await db.query_documents(
-            'community_creation_requests',
-            filters=[('owner_id', '==', user_id)]
-        )
-        
+        try:
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            logger.warning(f"Fallback query for my creation requests due to index/order error: {query_err}")
+            requests = await db.query_documents(
+                'community_creation_requests',
+                filters=[('owner_id', '==', user_id)],
+                limit=fetch_limit
+            )
+            def _get_req_ts(r):
+                c_at = r.get('created_at')
+                if hasattr(c_at, 'timestamp'):
+                    return c_at.timestamp()
+                if isinstance(c_at, str):
+                    try:
+                        return datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                    except Exception:
+                        return 0
+                return 0
+            requests.sort(key=_get_req_ts, reverse=True)
+
+        paged_requests = requests[safe_offset : safe_offset + safe_limit]
+
+        # Consolidate all invited user IDs across all paged requests to batch-fetch in ONE query (eliminates N+1)
+        all_invited_ids = set()
+        for req in paged_requests:
+            admin_ids = req.get('admin_ids', [])
+            member_ids = req.get('member_ids', [])
+            all_invited_ids.update(admin_ids)
+            all_invited_ids.update(member_ids)
+
+        user_map = {}
+        if all_invited_ids:
+            users_data = await db.get_documents_batch('users', list(all_invited_ids))
+            user_map = {u['id']: u for u in users_data if u and u.get('id')}
+
         result = []
-        for req in requests:
+        for req in paged_requests:
             req_id = req.get('id')
             if not req_id:
                 continue
-                
+
             admin_ids = req.get('admin_ids', [])
             member_ids = req.get('member_ids', [])
             responses = req.get('responses', {})
-            
-            invited_ids = list(set(admin_ids + member_ids))
-            users_data = []
-            if invited_ids:
-                users_data = await db.get_documents_batch('users', invited_ids)
-            
+
             admins_list = []
             members_list = []
-            
-            for u in users_data:
+
+            invited_ids = list(set(admin_ids + member_ids))
+            for uid in invited_ids:
+                u = user_map.get(uid)
                 if not u:
                     continue
-                uid = u.get('id')
                 status = responses.get(uid, 'pending')
                 invitee_info = {
                     'id': uid,
@@ -6586,12 +6834,12 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                     'photo': u.get('photo'),
                     'status': status
                 }
-                
+
                 if uid in admin_ids:
                     admins_list.append(invitee_info)
                 elif uid in member_ids:
                     members_list.append(invitee_info)
-            
+
             formatted_req = {
                 'id': req_id,
                 'name': req.get('name', ''),
@@ -6604,8 +6852,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
                 'community_id': req.get('community_id')
             }
             result.append(formatted_req)
-            
-        result.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
         return result
     except Exception as e:
         logger.error(f"Error fetching my creation requests: {e}")
@@ -7399,8 +7646,8 @@ async def send_community_message(
     
     # Send push notification to community members
     try:
-        comm = await db.get_document('communities', community_id)
-        comm_name = comm.get('name', 'Community') if comm else 'Community'
+        # ⚡ Bolt Optimization: Reuse existing community_doc instead of redundant db.get_document
+        comm_name = community_doc.get('name', 'Community') if community_doc else 'Community'
         await push_service.notify_community_message(
             community_id=community_id,
             community_name=comm_name,
@@ -7966,19 +8213,42 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     }
 
 @api_router.get("/dm/conversations")
-async def get_dm_conversations(token_data: dict = Depends(verify_token)):
-    """Get all private chat conversations for the current user"""
+async def get_dm_conversations(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get private chat conversations for the current user with offset-based pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
-    
-    # Query all private chats where user is a member
-    user_chats = await db.query_documents(
-        'chats', 
-        filters=[
-            ('chat_type', '==', 'private'),
-            ('members', 'array_contains', user_id)
-        ]
-    )
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    # Query private chats with DB-level limit bounds and index fallback
+    try:
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            order_by='updated_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        logger.warning(
+            f"Firestore query failed in get_dm_conversations, falling back to un-ordered query: {query_err}"
+        )
+        user_chats = await db.query_documents(
+            'chats',
+            filters=[
+                ('chat_type', '==', 'private'),
+                ('members', 'array_contains', user_id)
+            ],
+            limit=fetch_limit
+        )
     
     result = []
     
@@ -8070,7 +8340,7 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
 
     result.sort(key=sort_key, reverse=True)
     
-    return result
+    return result[safe_offset:safe_offset + safe_limit]
 
 @api_router.get("/dm/{chat_id}/metadata")
 async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)):
@@ -10067,10 +10337,15 @@ async def get_reports(
     status: str = 'pending',
     content_type: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
     token_data: dict = Depends(verify_token),
 ):
     """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     filters = []
     if status:
@@ -10090,7 +10365,7 @@ async def get_reports(
             filters=filters if filters else None,
             order_by='created_at',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10099,7 +10374,7 @@ async def get_reports(
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
         reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-        reports = reports[:max(1, min(limit, 300))]
+        reports = reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across reports to fetch in batch
     missing_post_ids = set()
@@ -10155,7 +10430,7 @@ async def get_reports(
             filters=mod_filters if mod_filters else None,
             order_by='createdAt',
             order_direction='DESCENDING',
-            limit=max(1, min(limit, 300)),
+            limit=fetch_limit,
         )
     except Exception as exc:
         logger.warning(
@@ -10164,7 +10439,7 @@ async def get_reports(
         )
         mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
         mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
-        mod_reports = mod_reports[:max(1, min(limit, 300))]
+        mod_reports = mod_reports[:fetch_limit]
 
     # Pre-collect missing post and comment IDs across moderation reports to fetch in batch
     mod_post_ids = set()
@@ -10246,7 +10521,7 @@ async def get_reports(
 
     all_reports = reports + standardized_mod
     all_reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    sliced_reports = all_reports[:limit]
+    sliced_reports = all_reports[safe_offset : safe_offset + safe_limit]
 
     # Resolve user details for all reports to return names/sl_ids
     user_ids = set()
@@ -10261,6 +10536,7 @@ async def get_reports(
     user_map = {}
     if user_ids:
         user_ids_list = list(user_ids)
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
         try:
             users_docs = await db.get_documents_batch('users', user_ids_list)
             for u in users_docs:
@@ -10576,6 +10852,7 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
         doc_ids = list(doc_map.keys())
 
+        # ⚡ Bolt Optimization: Use get_documents_batch natively without manual chunking
         existing_docs = await db.get_documents_batch('user_follows', doc_ids)
         # db.get_documents_batch injects the document ID into the data dict as 'id'
         existing_ids = {doc.get('id') for doc in existing_docs if doc and doc.get('id')}
@@ -10586,6 +10863,11 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 skipped += 1
             else:
                 f_uid = doc_map[doc_id]
+                await db.set_document('user_follows', doc_id, {
+                    'follower_uid': uid,
+                    'followee_uid': f_uid,
+                })
+                created += 1
                 tasks.append(db.set_document('user_follows', doc_id, {
                     'follower_uid': uid,
                     'followee_uid': f_uid,
@@ -10599,6 +10881,174 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
+
+class BackfillOfficialRequest(BaseModel):
+    user_ids: Optional[List[str]] = None
+    usernames: Optional[List[str]] = None
+    dry_run: Optional[bool] = False
+
+@api_router.post("/admin/backfill-official-posts")
+async def backfill_official_posts(
+    payload: Optional[BackfillOfficialRequest] = None,
+    token_data: dict = Depends(verify_admin)
+):
+    """One-time / maintenance admin migration:
+    Tag specified official users with is_official: true, and mark all their posts with is_official: true.
+    Idempotent. Does NOT rely on hardcoded IDs at runtime — targets are passed via payload or
+    derived from existing users who already have is_official == true.
+    Supports dry_run to simulate counts without modifying the database.
+    """
+    db = await get_db()
+    is_dry_run = bool(payload and payload.dry_run)
+
+    target_uids = set(payload.user_ids or []) if payload and payload.user_ids else set()
+    target_names = {u.strip().lower() for u in (payload.usernames or []) if u and u.strip()} if payload and payload.usernames else set()
+
+    users_to_mark = set(target_uids)
+
+    # Scan users to find matching usernames or existing official users
+    all_users = await db.query_documents('users')
+    username_matches: Dict[str, List[str]] = {}
+    for u in all_users:
+        uid = u.get('id') or u.get('user_id')
+        if not uid:
+            continue
+        uname = str(u.get('name') or '').strip().lower()
+        sl_id = str(u.get('sl_id') or '').strip().lower()
+
+        if target_names:
+            if uname in target_names:
+                username_matches.setdefault(uname, []).append(uid)
+            if sl_id in target_names and sl_id != uname:
+                username_matches.setdefault(sl_id, []).append(uid)
+
+        if is_true_flag(u.get('is_official')):
+            users_to_mark.add(uid)
+
+    # For usernames provided, enforce exact unique match to avoid ambiguity
+    if target_names:
+        for name in target_names:
+            matches = username_matches.get(name, [])
+            if len(matches) > 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Ambiguous username '{name}' matches multiple users ({matches}). Please specify user_ids directly."
+                )
+            for m_uid in matches:
+                users_to_mark.add(m_uid)
+
+    users_to_update = []
+    users_already_official = 0
+
+    for uid in users_to_mark:
+        u_doc = await db.get_document('users', uid)
+        if not u_doc:
+            continue
+        if not is_true_flag(u_doc.get('is_official')):
+            users_to_update.append(uid)
+        else:
+            users_already_official += 1
+
+    posts_to_update = []
+    posts_already_official = 0
+
+    for uid in users_to_mark:
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', uid)])
+        for p in user_posts:
+            pid = p.get('id')
+            if not pid:
+                continue
+            if is_true_flag(p.get('is_official')):
+                posts_already_official += 1
+            else:
+                posts_to_update.append(pid)
+
+    if not is_dry_run:
+        for uid in users_to_update:
+            await db.update_document('users', uid, {'is_official': True})
+            from utils.cache import cache_manager
+            await cache_manager.invalidate_user(uid)
+
+        for pid in posts_to_update:
+            await db.update_document('posts', pid, {'is_official': True})
+
+        # Refresh feed pools to pick up updated official posts
+        try:
+            from services.feed_pool_service import feed_pool_service
+            await feed_pool_service.refresh_pools(db)
+        except Exception as ref_err:
+            logger.warning(f"Failed to refresh feed pools after official backfill: {ref_err}")
+
+    return {
+        "message": "Official posts backfill dry run complete" if is_dry_run else "Official posts backfill complete",
+        "dry_run": is_dry_run,
+        "official_users_count": len(users_to_mark),
+        "users_updated": len(users_to_update),
+        "users_already_official": users_already_official,
+        "posts_updated": len(posts_to_update),
+        "posts_skipped": posts_already_official
+    }
+
+
+class SetUserOfficialRequest(BaseModel):
+    is_official: bool
+
+@api_router.post("/admin/users/{user_id}/official")
+async def admin_set_user_official(
+    user_id: str,
+    payload: SetUserOfficialRequest,
+    token_data: dict = Depends(verify_admin)
+):
+    """Admin endpoint to grant or revoke official status on a user.
+    If revoking official status (True -> False):
+    Cascades posts.is_official = False across all posts belonging to user_id,
+    invalidates caches, and refreshes the feed pools immediately.
+    """
+    db = await get_db()
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_status = is_true_flag(user.get('is_official'))
+    new_status = is_true_flag(payload.is_official)
+
+    await db.update_document('users', user_id, {'is_official': new_status})
+    from utils.cache import cache_manager
+    await cache_manager.invalidate_user(user_id)
+
+    cascaded_posts_count = 0
+    if old_status and not new_status:
+        # Cascade revoke across all posts belonging to this user
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        for p in user_posts:
+            pid = p.get('id')
+            if pid and is_true_flag(p.get('is_official')):
+                await db.update_document('posts', pid, {'is_official': False})
+                cascaded_posts_count += 1
+        logger.info(f"Cascaded official status revocation for user {user_id}: updated {cascaded_posts_count} posts to is_official=False")
+    elif not old_status and new_status:
+        # Cascade grant across all posts belonging to this user
+        user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        for p in user_posts:
+            pid = p.get('id')
+            if pid and not is_true_flag(p.get('is_official')):
+                await db.update_document('posts', pid, {'is_official': True})
+                cascaded_posts_count += 1
+        logger.info(f"Cascaded official status grant for user {user_id}: updated {cascaded_posts_count} posts to is_official=True")
+
+    # Refresh feed candidate pools
+    try:
+        from services.feed_pool_service import feed_pool_service
+        await feed_pool_service.refresh_pools(db)
+    except Exception as ref_err:
+        logger.warning(f"Failed to refresh feed pools after official status change: {ref_err}")
+
+    return {
+        "message": "User official status updated",
+        "user_id": user_id,
+        "is_official": new_status,
+        "cascaded_posts_count": cascaded_posts_count
+    }
 
 # =================== EVENTS ===================
 
@@ -10798,6 +11248,120 @@ async def send_library_reminder_notification(
         force=force
     )
     return {"status": "success", "result": result}
+
+# ================= NOTIFICATION PREFERENCES ENDPOINTS =================
+
+@api_router.get("/notifications/preferences")
+async def get_notification_preferences(token_data: dict = Depends(verify_token)):
+    """Fetch user's current notification preferences merged with safe defaults."""
+    db = await get_db()
+    from services.notification_campaign_service import NotificationCampaignService
+    prefs = await NotificationCampaignService.get_user_preferences(db, token_data["user_id"])
+    return {"preferences": prefs}
+
+@api_router.put("/notifications/preferences")
+async def update_notification_preferences(
+    request: NotificationPreferencesUpdate,
+    token_data: dict = Depends(verify_token)
+):
+    """Update notification preferences for authenticated user."""
+    db = await get_db()
+    from services.notification_campaign_service import NotificationCampaignService
+    updated = await NotificationCampaignService.update_user_preferences(
+        db,
+        token_data["user_id"],
+        request.dict(exclude_unset=True)
+    )
+    return {"message": "Preferences updated successfully", "preferences": updated}
+
+# ================= ADMIN RE-ENGAGEMENT CAMPAIGN ENDPOINTS =================
+
+@api_router.post("/admin/reengagement-campaign/dry-run")
+async def run_reengagement_campaign_dry_run(
+    batch_size: int = 500,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: trigger dry-run evaluation of re-engagement campaign."""
+    db, _ = await _ensure_admin_user(token_data)
+    from services.reengagement_worker import ReengagementCampaignRunner
+    res = await ReengagementCampaignRunner.run_campaign(db, dry_run=True, max_batch_size=batch_size)
+    return res
+
+@api_router.post("/admin/reengagement-campaign/run")
+async def run_reengagement_campaign_live(
+    batch_size: int = 500,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: trigger live re-engagement campaign run."""
+    db, _ = await _ensure_admin_user(token_data)
+    from services.reengagement_worker import ReengagementCampaignRunner
+    res = await ReengagementCampaignRunner.run_campaign(db, dry_run=False, max_batch_size=batch_size)
+    return res
+
+@api_router.get("/admin/reengagement-campaign/status")
+async def get_reengagement_campaign_status(
+    limit: int = 50,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: get latest campaign run history and stats."""
+    db, _ = await _ensure_admin_user(token_data)
+    logs = await db.query_documents(
+        "notification_campaign_logs",
+        order_by="sent_at",
+        order_direction="DESCENDING",
+        limit=limit
+    )
+    return {
+        "count": len(logs),
+        "recent_logs": logs
+    }
+
+@api_router.post("/admin/reengagement-campaign/preview")
+async def preview_reengagement_campaign_user(
+    user_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    """Admin: preview eligibility, message copy, and skip reasons for a specific user."""
+    db, _ = await _ensure_admin_user(token_data)
+    user_doc = await db.get_document("users", user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    from services.notification_campaign_service import NotificationCampaignService
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    campaign_date = now_ist.strftime("%Y-%m-%d")
+
+    eval_res = await NotificationCampaignService.evaluate_user_eligibility(db, user_doc, campaign_date)
+    trending_posts = await NotificationCampaignService.get_top_trending_posts(db, limit=1)
+    selected_trending_post = trending_posts[0] if trending_posts else None
+
+    title, body, route = "", "", ""
+    if eval_res.get("segment"):
+        title, body, route = NotificationCampaignService.build_campaign_message(
+            segment=eval_res["segment"],
+            language=eval_res.get("language", "en"),
+            trending_post=selected_trending_post
+        )
+
+    # Sanitize tokens from preview response
+    tokens_count = len(eval_res.get("tokens", []))
+    sanitized_eval = dict(eval_res)
+    sanitized_eval.pop("tokens", None)
+
+    return {
+        "user_id": user_id,
+        "last_active_at": user_doc.get("last_active_at") or user_doc.get("last_active"),
+        "last_login_at": user_doc.get("last_login_at"),
+        "tokens_count": tokens_count,
+        "eligibility": sanitized_eval,
+        "selected_trending_post_id": selected_trending_post.get("id") if selected_trending_post else None,
+        "preview_message": {
+            "title": title,
+            "body": body,
+            "route": route
+        }
+    }
+
 
 def sanitize_krishna_response(response_text: str) -> str:
     """
@@ -13359,8 +13923,11 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
     """Admin: delete a vendor and reset owner's KYC status."""
     db, admin_user_id = await _ensure_admin_user(token_data)
 
-    vendor = await db.get_document('vendors', vendor_id)
-    review_doc = await db.get_document('vendor_admin_reviews', vendor_id)
+    # ⚡ Bolt Optimization: Fetch vendor and review_doc concurrently instead of sequentially
+    vendor, review_doc = await asyncio.gather(
+        db.get_document('vendors', vendor_id),
+        db.get_document('vendor_admin_reviews', vendor_id)
+    )
     
     owner_id = None
     if vendor:
@@ -14104,7 +14671,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
             'escalation_step': step + 1
         })
 
-        sos_alert = await db.get_document('sos_alerts', sos_id)
+        # ⚡ Bolt Optimization: Reuse 'alert' document fetched at the top of the loop
+        sos_alert = alert
         if not sos_alert:
             return
         title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"

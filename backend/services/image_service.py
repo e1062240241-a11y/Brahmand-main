@@ -121,29 +121,6 @@ def is_valid_image(base64_string: str) -> bool:
         return False
 
 
-def get_image_size(base64_string: str) -> tuple:
-    """
-    Get the dimensions of a base64 encoded image.
-    
-    Args:
-        base64_string: Base64 encoded image
-    
-    Returns:
-        Tuple of (width, height) or (0, 0) if invalid
-    """
-    try:
-        if ',' in base64_string:
-            base64_data = base64_string.split(',')[1]
-        else:
-            base64_data = base64_string
-        
-        image_bytes = base64.b64decode(base64_data)
-        image = Image.open(io.BytesIO(image_bytes))
-        return image.size
-    except Exception:
-        return (0, 0)
-
-
 async def validate_id_proof_with_llm(
     base64_string: str,
     expected_id_type: str = None,

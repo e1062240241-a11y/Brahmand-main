@@ -99,7 +99,7 @@ export default function PrivacySettingsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="chevron-back" size={28} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Privacy Settings</Text>

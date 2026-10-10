@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
+import { FONTS } from '../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../src/store/authStore';
 import { useVendorStore } from '../src/store/vendorStore';

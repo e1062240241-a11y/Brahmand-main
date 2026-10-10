@@ -244,14 +244,18 @@ function LibraryPage() {
             ]}
           >
             <Ionicons name="search-outline" size={19} color="#9E8878" style={{ marginRight: 10 }} />
+            {/* 🧡 Engagement: Reframed transactional search placeholder to devotional scripture discovery */}
+            {/* Lever: Reframing (Utility -> Devotion) */}
+            {/* Why: "वेद, गीता या धर्म शास्त्र खोजें..." invites spiritual exploration rather than keyword searching. */}
+            {/* UI: Text-only change, zero new components. */}
             <TextInput
               value={query}
               onChangeText={setQuery}
               onSelectionChange={handleSelectionChange}
               placeholder={
                 language === 'hi'
-                  ? 'पुस्तक, लेखक या विषय खोजें...'
-                  : 'Search by book name, author or topic.'
+                  ? 'वेद, गीता या धर्म शास्त्र खोजें... ✨'
+                  : 'Discover Gita, Vedas, or divine scriptures... ✨'
               }
               placeholderTextColor="#A09090"
               style={styles.searchInput}
@@ -279,10 +283,14 @@ function LibraryPage() {
                 style={{ marginTop: -12 }} // Adjust icon to perfectly fit the 18px height visually
               />
             </View>
+            {/* 🧡 Engagement: Reframed generic motivational quote to Sanatan Swadhyaya (स्वाध्याय) wisdom */}
+            {/* Lever: Reframing + Cultivating Sanskara (Self-study habit) */}
+            {/* Why: Reminding users that scriptures guide life and purify the mind deepens emotional connection to reading. */}
+            {/* UI: Text-only change, zero new components. */}
             <Text style={styles.quoteText}>
               {language === 'hi'
-                ? '"पुस्तकालय केवल पुस्तकों का संग्रह नहीं,\nयह स्वयं को श्रेष्ठ बनाने की यात्रा है।"'
-                : '"A library is not just a collection of\nbooks, but a journey towards a better you."'}
+                ? '"शास्त्र केवल ग्रंथ नहीं, जीवन की दिशा हैं।\nस्वाध्याय से ही मन शांत और चित्त शुद्ध होता है।"'
+                : '"Scriptures are not merely books, but life guides.\nThrough Swadhyaya, the mind attains true peace."'}
             </Text>
 
             {/* Diya circular avatar */}

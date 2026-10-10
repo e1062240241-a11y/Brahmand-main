@@ -82,9 +82,19 @@ class Settings:
     
     GROQ_API_KEY: str = os.environ.get('GROQ_API_KEY', '')
 
+    # Re-engagement & Trending Push Campaign Settings
+    ENABLE_REENGAGEMENT_CAMPAIGN: bool = os.environ.get('ENABLE_REENGAGEMENT_CAMPAIGN', 'true').lower() == 'true'
+    REENGAGEMENT_CAMPAIGN_DRY_RUN: bool = os.environ.get('REENGAGEMENT_CAMPAIGN_DRY_RUN', 'true').lower() == 'true'
+    ENABLE_TRENDING_PUSH: bool = os.environ.get('ENABLE_TRENDING_PUSH', 'false').lower() == 'true'
+    REENGAGEMENT_ROLLOUT_PERCENTAGE: int = int(os.environ.get('REENGAGEMENT_ROLLOUT_PERCENTAGE', 1))
+    REENGAGEMENT_MIN_ENGAGEMENT_SCORE: float = float(os.environ.get('REENGAGEMENT_MIN_ENGAGEMENT_SCORE', 5.0))
+    REENGAGEMENT_COOLDOWN_DAYS: int = int(os.environ.get('REENGAGEMENT_COOLDOWN_DAYS', 7))
+    TRENDING_PUSH_COOLDOWN_HOURS: int = int(os.environ.get('TRENDING_PUSH_COOLDOWN_HOURS', 24))
+
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
 
 
 settings = get_settings()
+

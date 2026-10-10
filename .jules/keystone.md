@@ -46,7 +46,9 @@ ENDPOINTS NEEDING PAGINATION:
 - `/vendors` — unpaginated fetch of all vendor docs — FIXED
 - `/admin/kyc/pending` — full collection scan of all vendor docs and unpaginated user query — FIXED
 - `/admin/sos-misuse-reports` — full collection scan of all SOS misuse reports — FIXED
+- `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
+- `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -62,6 +64,7 @@ UNBOUNDED GROWTH:
 - `temple.posts` array — embedded posts and reactions grow unbounded in temple doc — FIXED
 
 N+1 QUERY PATTERNS:
+- `/communities/my-creation-requests` — executed batch user fetches in a loop per creation request — FIXED
 
 MISSING RATE LIMITS:
 - `/panchang/today`, `/astrology/nakshatra`, `/astrology/city-search`, `/astrology/ask`, `/spiritual/panchang` — expensive third-party API calls (AstrologyAPI.com / Groq LLM) callable without rate limits — FIXED
@@ -122,3 +125,23 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-19 - DB-level bounded candidate query & offset pagination for community message comments
 **Learning:** `GET /messages/community/{community_id}/{subgroup_type}/{message_id}/comments` fetched all historical comments for a community chat message without query limits or ordering parameters. On viral community messages at 1 lakh+ scale, this resulted in $O(N_{\text{comments}})$ reads and memory allocation per request.
 **Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_community_message_comments` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and added composite index exception fallback handling.
+
+## 2026-09-20 - DB-level bounded candidate query & offset pagination for GET /jaap/certificates
+**Learning:** `GET /jaap/certificates` fetched all earned certificates for a user without limit parameters or DB-level ordering. As users complete daily and weekly Jaap milestones, certificate records grow continuously, causing $O(N_{\text{user\_certs}})$ database reads and memory allocation per request.
+**Action:** Introduced `limit` (default 50, max 100) and `offset` (default 0) query parameters to `get_certificates` in `backend/routes/jaap_routes.py`, applied DB-level limit bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, added index exception fallback handling, and sliced returned certificates accordingly.
+
+## 2026-09-21 - Offset-based pagination & DB query bounds for GET /dm/conversations
+**Learning:** `GET /dm/conversations` previously fetched all private chat documents where the requesting user was a member without limit bounds ($O(N_{\text{user\_chats}})$ reads). On accounts with active chat histories, this caused high memory usage, database read spikes, and network latency on conversation listings.
+**Action:** Added `limit` (default 50, max 100) and `offset` (default 0) parameters to `get_dm_conversations` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `updated_at` DESC ordering and index exception fallback logic, and sliced response payloads accordingly.
+
+## 2026-09-22 - DB query bounds, offset pagination, & consolidated user batch lookups for GET /communities/my-creation-requests
+**Learning:** `GET /communities/my-creation-requests` fetched all historical community creation requests for a user without query limits or ordering. Furthermore, inside the request loop, it called `db.get_documents_batch('users', invited_ids)` for each creation request individually ($O(N_{\text{requests}})$ network calls). Consolidating all invited user UIDs across paged creation requests into a single set before the loop reduces user lookups to $O(1)$ batch query.
+**Action:** Added `limit` (default 20, max 100) and `offset` (default 0) parameters to `GET /communities/my-creation-requests` in `backend/main.py`, `backend/routes/community_routes.py`, and `backend/services/firebase_community_service.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering, and consolidated invited user lookups into a single batch query prior to request processing.
+
+## 2026-09-23 - Offset-based pagination & DB query bounds for GET /admin/personality-verifications
+**Learning:** `GET /admin/personality-verifications` fetched all personality verification requests matching a status across the entire database history without limit or offset bounds ($O(N_{\text{verifications}})$ reads). At 1 lakh+ users, this caused high memory usage, database read spikes, and request timeouts in the admin dashboard.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `list_personality_verifications` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `submitted_at` DESC ordering and index exception fallback logic, and sliced response payloads accordingly.
+
+## 2026-09-24 - Offset-based pagination & DB query bounds for GET /admin/reports
+**Learning:** `GET /admin/reports` fetched user content reports across two collections (`reports` and `moderation_reports`) without an `offset` parameter, preventing admin clients from paginating past the first page. Furthermore, fallback queries fetched unpaginated full collections into Python memory when index constraints triggered ($O(N_{\text{total\_reports}})$ reads).
+**Action:** Introduced `offset: int = 0` query parameter to `get_reports` in `backend/main.py`, bounded candidate query fetches for both collections to `fetch_limit = safe_offset + safe_limit`, applied `fetch_limit` to fallback query slices, and sliced the merged sorted dataset using `[safe_offset : safe_offset + safe_limit]` prior to user profile resolution.

@@ -224,16 +224,16 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
 
     if (isTodayCompleted) {
       statusChipType = 'complete';
-      statusChipText = isHindi ? '✨ साधना दीप प्रज्वलित 🙏' : '✨ Sadhana Diya Lit 🙏';
+      statusChipText = isHindi ? '✨ आज का दिया जल गया 🙏' : '✨ Today\'s Diya Lit 🙏';
     } else if (todayCount > 0) {
       statusChipType = 'in_progress';
       const remaining = Math.max(0, 108 - todayCount);
       statusChipText = isHindi
-        ? `🪔 बस ${remaining} जाप और`
-        : `🪔 Just ${remaining} More Chants`;
+        ? `🪔 बस ${remaining} जाप बाकी`
+        : `🪔 Just ${remaining} chants left`;
     } else {
       statusChipType = 'unlit';
-      statusChipText = isHindi ? 'आज का साधना दीप जलाएं 🪔' : 'Light Today\'s Sadhana Diya 🪔';
+      statusChipText = isHindi ? 'जाप शुरू करें और दिया जलाएं 🪔' : 'Start Jaap to Light Diya 🪔';
     }
 
     if (isDismissed) {

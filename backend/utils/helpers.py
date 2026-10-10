@@ -229,3 +229,29 @@ def normalize_location(loc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]
     
     return normalized
 
+
+def is_true_flag(value: Any) -> bool:
+    """Strict boolean parsing helper.
+    Returns True ONLY if value is boolean True, integer 1, or string 'true' / '1' / 'yes' / 'on'.
+    Guards against Python gotcha where bool('false') == True.
+    """
+    if value is True:
+        return True
+    if value == 1 and not isinstance(value, str):
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "on"}
+    return False
+
+
+def env_flag(name: str, default: bool = True) -> bool:
+    """Strict environment variable boolean parsing helper.
+    Guards against bool(os.getenv(...)) evaluating to True for 'false'.
+    """
+    import os
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
