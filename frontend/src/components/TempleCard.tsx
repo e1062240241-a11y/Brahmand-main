@@ -19,7 +19,7 @@ export interface TempleItem {
 }
 
 export interface RouterLike {
-  push: (href: string) => void;
+  push: (href: any, ...args: any[]) => void;
   [key: string]: unknown;
 }
 
