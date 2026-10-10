@@ -37,6 +37,19 @@ const FLOWER_ASSETS: Record<number, any> = {
   9: require('../../../assets/images/navdurga_cards/flower_hd_9.png'),
 };
 
+// 100% Solid opaque pastel background for each day's card (Zero alpha transparency to eliminate Android Skia anti-aliasing edge artifacts)
+const SOLID_CARD_BG: Record<number, string> = {
+  1: '#FFFBEB', // Day 1: Yellow (soft warm cream)
+  2: '#FAFAFA', // Day 2: White (clean off-white)
+  3: '#FEF2F2', // Day 3: Red (soft blush rose)
+  4: '#EFF6FF', // Day 4: Royal Blue (soft ice blue)
+  5: '#FFEDD5', // Day 5: Orange (subtle warm orange)
+  6: '#F0FDF4', // Day 6: Green (soft fresh mint)
+  7: '#F3F4F6', // Day 7: Grey (soft silver slate)
+  8: '#FAF5FF', // Day 8: Purple (soft lavender)
+  9: '#F0FDFA', // Day 9: Peacock Green (soft teal)
+};
+
 // Golden ornamental lotus flourish at bottom of card (— 🪷 —)
 const GoldenFlourish: React.FC = () => (
   <View style={styles.flourishContainer} pointerEvents="none">
@@ -250,9 +263,8 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                   const currentWave = waveGradients[item.day] || ['rgba(254, 215, 170, 0)', 'rgba(251, 146, 60, 0.3)'];
                   const flowerSource = FLOWER_ASSETS[item.day];
 
-                  // Soft day-specific background tint derived from item.colorHex
-                  const cardBgTint = item.day === 2 ? '#FAFAFA' : `${item.colorHex}14`; // 8% opacity soft tint
-                  const cardBorderTint = item.day === 2 ? 'rgba(229, 231, 235, 0.9)' : `${item.colorHex}35`; // ~20% opacity matching border
+                  // 100% Solid opaque background - completely prevents Android edge artifacting
+                  const cardBg = SOLID_CARD_BG[item.day] || '#FFFFFF';
 
                   return (
                     <TouchableOpacity
@@ -261,7 +273,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                       activeOpacity={0.85}
                       style={[
                         styles.colorCard,
-                        { backgroundColor: cardBgTint, borderColor: cardBorderTint },
+                        { backgroundColor: cardBg },
                         isSelected && styles.colorCardSelectedHalo,
                       ]}
                       accessibilityRole="button"
@@ -990,13 +1002,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1.2,
-    borderColor: 'rgba(235, 215, 170, 0.75)',
+    borderWidth: 0,
+    borderColor: 'transparent',
     shadowColor: '#78350F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 5,
-    elevation: 3,
+    elevation: 0,
     position: 'relative',
     overflow: 'hidden',
     minHeight: 168,
@@ -1121,9 +1133,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 20,
-    overflow: 'hidden',
-    borderBottomLeftRadius: 22,
-    borderBottomRightRadius: 22,
   },
 
   // Story Page Immersive Background Styles (Matching Festival Story Page)

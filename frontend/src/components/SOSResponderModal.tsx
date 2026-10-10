@@ -52,7 +52,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
   const handleRespond = async () => {
     setLoading(true);
     try {
-      await onRespond(sosData.sos_id || sosData.id);
+      await onRespond(sosData.sos_id || sosData.id || '');
       onClose();
     } catch (error) {
       console.error('Respond error:', error);
@@ -128,8 +128,8 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
 
             <View style={styles.mapContainer}>
               <SOSMap 
-                latitude={parseFloat(sosData.latitude)} 
-                longitude={parseFloat(sosData.longitude)} 
+                latitude={Number(sosData.latitude) || 0} 
+                longitude={Number(sosData.longitude) || 0} 
               />
             </View>
 

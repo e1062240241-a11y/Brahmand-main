@@ -22,7 +22,7 @@ export const Input: React.FC<InputProps> = ({ label, error: externalError, rules
   const activeError = externalError || (touched ? validationError : null);
 
   const runValidation = (text: string) => {
-    if (rules || rules?.preventInjection !== false) {
+    if (!rules || rules.preventInjection !== false) {
       const err = validateInput(text, rules || { preventInjection: true });
       setValidationError(err);
       if (onErrorChange) {

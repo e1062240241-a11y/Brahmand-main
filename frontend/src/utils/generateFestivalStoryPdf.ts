@@ -152,64 +152,6 @@ export function addClickableLink(
   }
 }
 
-/**
- * Draws a crisp QR code matrix onto the PDF page using qrcode-generator.
- */
-export function drawQrCodeMatrix(
-  page: any,
-  text: string,
-  x: number,
-  y: number,
-  size: number,
-  darkColor: any,
-  lightColor: any,
-  centerLogo?: any
-) {
-  try {
-    const qrcode = require('qrcode-generator');
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    const count = qr.getModuleCount();
-    const cellSize = size / count;
-
-    for (let r = 0; r < count; r++) {
-      for (let c = 0; c < count; c++) {
-        if (qr.isDark(r, c)) {
-          page.drawRectangle({
-            x: x + c * cellSize,
-            y: y + (count - 1 - r) * cellSize,
-            width: cellSize + 0.1,
-            height: cellSize + 0.1,
-            color: darkColor,
-          });
-        }
-      }
-    }
-
-    if (centerLogo) {
-      const logoSize = size * 0.22;
-      const logoX = x + (size - logoSize) / 2;
-      const logoY = y + (size - logoSize) / 2;
-      page.drawRectangle({
-        x: logoX - 2,
-        y: logoY - 2,
-        width: logoSize + 4,
-        height: logoSize + 4,
-        color: lightColor,
-      });
-      page.drawImage(centerLogo, {
-        x: logoX,
-        y: logoY,
-        width: logoSize,
-        height: logoSize,
-      });
-    }
-  } catch (qrErr) {
-    console.warn('[PDF] drawQrCodeMatrix fallback:', qrErr);
-  }
-}
-
 // Draw justified text line with elegant typographical spacing
 function drawJustifiedLine(
   page: any,
@@ -269,7 +211,7 @@ function drawJustifiedLine(
 }
 
 // Draw authentic, scannable vector QR code matrix with vintage gold styling & embedded Brahmand logo
-function drawQrCodeMatrix(
+export function drawQrCodeMatrix(
   page: any,
   text: string,
   startX: number,

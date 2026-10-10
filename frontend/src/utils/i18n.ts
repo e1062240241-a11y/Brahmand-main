@@ -372,7 +372,6 @@ export const translations = {
     communalJaap: 'सामूहिक जाप',
     dailyTarget: 'दैनिक लक्ष्य',
     jaapCounter: 'जाप काउंटर',
-    completed: 'पूरा हुआ',
     totalJaapCount: 'कुल जाप संख्या',
     liveJaapRooms: 'लाइव जाप रूम',
     startJaapSession: 'जाप सत्र शुरू करें',
