@@ -155,8 +155,15 @@ export default function OTPScreen() {
       }
 
       setError(message);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      const isInvalidCodeErr =
+        err?.code === 'auth/invalid-verification-code' ||
+        err?.code === 'auth/code-expired' ||
+        (typeof message === 'string' && (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('expired')));
+
+      if (isInvalidCodeErr) {
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
     } finally {
       setLoading(false);
     }
