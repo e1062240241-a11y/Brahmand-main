@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUploadStore } from '../store/uploadStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useTranslation } from '../utils/i18n';
 import { usePathname } from 'expo-router';
+import { OmSpinner } from './CustomRefreshControl';
 
 export const UploadProgressBanner = () => {
   const { isUploading, progress, isCompressing, status, mediaType, reset } = useUploadStore();
@@ -103,7 +104,7 @@ export const UploadProgressBanner = () => {
             ) : status === 'error' ? (
               <Ionicons name="alert-circle" size={24} color={COLORS.error} />
             ) : isCompressing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <OmSpinner size="small" color={COLORS.primary} />
             ) : (
               <Ionicons
                 name={mediaType === 'video' ? 'videocam' : 'image'}
