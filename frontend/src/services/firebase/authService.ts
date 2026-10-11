@@ -298,10 +298,6 @@ export function startAuthStateListener(onChange?: (user: any) => void): (() => v
   }
 
   const unsubscribe = auth.onAuthStateChanged((user: any) => {
-    try {
-      confirmationResult = null;
-    } catch (e) {}
-
     if (typeof onChange === 'function') {
       try { onChange(user); } catch (e) {}
     }
