@@ -46,8 +46,12 @@ async def verify_firebase_token(request: FirebaseTokenRequest, _: bool = Depends
     """Verify Firebase ID token from client after Firebase Phone Auth flow."""
     try:
         return await AuthService.verify_firebase_token(request.id_token)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Validation error")
+    except ValueError as e:
+        logger.warning(f"/auth/verify-firebase-token failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e) or "Validation error")
+    except Exception as e:
+        logger.exception("Unexpected error in /auth/verify-firebase-token")
+        raise HTTPException(status_code=500, detail=str(e) or "Internal server error")
 
 
 @router.post("/register")

@@ -223,30 +223,41 @@ const getResolvedApiUrl = (): string => {
 
   const baseApiUrl = configuredApiUrl || "http://127.0.0.1:8000";
 
+  const extractHost = (url: string): string => {
+    try {
+      const match = url.match(/\/\/([^\/:]+)/);
+      return match ? match[1] : "";
+    } catch {
+      return "";
+    }
+  };
+
+  const configuredHost = extractHost(baseApiUrl);
+
   const isLocalHostAddress = (host: string) =>
-    /^(127\.0\.0\.1|localhost|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(host);
+    !host || /^(127\.0\.0\.1|localhost|192\.168\.|10\.\d{1,3}\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(host);
 
   if (!Device.isDevice) {
     // Use 10.0.2.2 for Android emulator to reference host computer, 127.0.0.1 for iOS simulator.
-    const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
-    const port = portMatch ? portMatch[1] : "8000";
-    const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
-    let targetHost = configuredHost.replace("localhost", "127.0.0.1");
-    if (isLocalHostAddress(targetHost)) {
-      targetHost = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
+    if (isLocalHostAddress(configuredHost)) {
+      const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
+      const port = portMatch ? portMatch[1] : "8000";
+      let targetHost = configuredHost.replace("localhost", "127.0.0.1") || "127.0.0.1";
+      if (isLocalHostAddress(targetHost)) {
+        targetHost = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
+      }
+      return `http://${targetHost}:${port}`;
     }
-    return `http://${targetHost}:${port}`;
   }
 
   // If running on a physical device in development, dynamically resolve to the Metro server host IP
-  if (Device.isDevice) {
-    const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
+  if (Device.isDevice && __DEV__) {
     if (isLocalHostAddress(configuredHost)) {
       const metroIp = getMetroHostIp();
       if (metroIp) {
         const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
         const port = portMatch ? portMatch[1] : "8000";
-        console.info(`[API] Physical device detected. Dynamically routing to Metro host IP: http://${metroIp}:${port}`);
+        console.info(`[API] Physical device detected in DEV. Dynamically routing to Metro host IP: http://${metroIp}:${port}`);
         return `http://${metroIp}:${port}`;
       }
     }
