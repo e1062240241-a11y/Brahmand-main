@@ -6,7 +6,7 @@ caching and throttling to avoid database write amplification.
 """
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
