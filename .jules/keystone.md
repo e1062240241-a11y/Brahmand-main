@@ -145,3 +145,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-24 - Offset-based pagination & DB query bounds for GET /admin/reports
 **Learning:** `GET /admin/reports` fetched user content reports across two collections (`reports` and `moderation_reports`) without an `offset` parameter, preventing admin clients from paginating past the first page. Furthermore, fallback queries fetched unpaginated full collections into Python memory when index constraints triggered ($O(N_{\text{total\_reports}})$ reads).
 **Action:** Introduced `offset: int = 0` query parameter to `get_reports` in `backend/main.py`, bounded candidate query fetches for both collections to `fetch_limit = safe_offset + safe_limit`, applied `fetch_limit` to fallback query slices, and sliced the merged sorted dataset using `[safe_offset : safe_offset + safe_limit]` prior to user profile resolution.
+
+## 2026-09-25 - Offset-based pagination & DB query bounds for GET /circles/{circle_id}/requests
+**Learning:** `GET /circles/{circle_id}/requests` previously fetched all pending join requests for a circle without limit or offset query parameters. On popular circles with many pending requests at 1 lakh+ scale, this resulted in unbounded $O(N_{\text{requests}})$ database reads and excessive memory consumption.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_circle_requests` in `backend/main.py`, applied DB-level query bounds (`fetch_limit = safe_offset + safe_limit`), and sliced response payloads accordingly.
