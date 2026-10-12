@@ -223,36 +223,41 @@ const getResolvedApiUrl = (): string => {
 
   const baseApiUrl = configuredApiUrl || "http://127.0.0.1:8000";
 
+  if (!__DEV__) {
+    return baseApiUrl.replace(/localhost/g, "127.0.0.1");
+  }
+
   const isLocalHostAddress = (host: string) =>
-    /^(127\.0\.0\.1|localhost|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))/.test(host);
+    /^(127\.0\.0\.1|localhost|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})$/.test(
+      host,
+    );
+
+  const configuredHost = (
+    baseApiUrl.match(/\/\/([^/:]+)/)?.[1] || "127.0.0.1"
+  ).replace("localhost", "127.0.0.1");
+
+  if (!isLocalHostAddress(configuredHost)) {
+    return baseApiUrl.replace(/localhost/g, "127.0.0.1");
+  }
 
   if (!Device.isDevice) {
-    // Use 10.0.2.2 for Android emulator to reference host computer, 127.0.0.1 for iOS simulator.
     const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
     const port = portMatch ? portMatch[1] : "8000";
-    const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
-    let targetHost = configuredHost.replace("localhost", "127.0.0.1");
-    if (isLocalHostAddress(targetHost)) {
-      targetHost = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
-    }
+    const targetHost = Platform.OS === "android" ? "10.0.2.2" : "127.0.0.1";
     return `http://${targetHost}:${port}`;
   }
 
-  // If running on a physical device in development, dynamically resolve to the Metro server host IP
-  if (Device.isDevice) {
-    const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
-    if (isLocalHostAddress(configuredHost)) {
-      const metroIp = getMetroHostIp();
-      if (metroIp) {
-        const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
-        const port = portMatch ? portMatch[1] : "8000";
-        console.info(`[API] Physical device detected. Dynamically routing to Metro host IP: http://${metroIp}:${port}`);
-        return `http://${metroIp}:${port}`;
-      }
-    }
+  const metroIp = getMetroHostIp();
+  if (metroIp) {
+    const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
+    const port = portMatch ? portMatch[1] : "8000";
+    console.info(
+      `[API] Physical device detected. Dynamically routing to Metro host IP: http://${metroIp}:${port}`,
+    );
+    return `http://${metroIp}:${port}`;
   }
 
-  return baseApiUrl.replace("localhost", "127.0.0.1");
+  return baseApiUrl.replace(/localhost/g, "127.0.0.1");
 };
 
 export const API_URL = getResolvedApiUrl();

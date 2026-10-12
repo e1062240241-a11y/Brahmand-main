@@ -1975,7 +1975,7 @@ export async function renderDynamicFestivalPage2(
 
   // 7. HIGH-CONVERTING MINI-FEATURE MARKETING CARD (65% Left Text / 35% Right QR, Vintage Gold #C8A97E, Embedded Logo QR)
   curY -= 14;
-
+  
   const cardW = pageWidth - p2Margin * 2; // ~519.28
   const cardH = 152;
   const cardX = p2Margin;

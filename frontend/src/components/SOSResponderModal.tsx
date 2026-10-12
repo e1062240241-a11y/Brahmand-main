@@ -131,8 +131,8 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
 
             <View style={styles.mapContainer}>
               <SOSMap 
-                latitude={parseFloat(String(sosData.latitude))} 
-                longitude={parseFloat(String(sosData.longitude))} 
+                latitude={Number(sosData.latitude) || 0} 
+                longitude={Number(sosData.longitude) || 0}
               />
             </View>
 
