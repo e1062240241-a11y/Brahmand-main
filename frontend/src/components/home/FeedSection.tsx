@@ -97,6 +97,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       if (!isActive) return;
 
       let videos: any[] = [];
+      let images: any[] = [];
       // Find top official Brahmand post if present at position 0 of raw feed
       let topOfficialPost: any = null;
       let nonTopOfficialPostsCount = 0;

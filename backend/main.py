@@ -15684,17 +15684,22 @@ async def get_all_festivals():
     response_items = []
 
     for festival in festivals:
+        fest_name = (festival.get("festival_name") or festival.get("name") or "").lower()
+        duration_days = 9 if "navratri" in fest_name else (5 if "diwali" in fest_name else (10 if "ganesh" in fest_name else 1))
+        
         festival_date = _parse_festival_date(festival, today.year)
-        if festival_date is None or festival_date.date() < today.date():
+        # Check if the festival (including multi-day duration) has completely passed
+        if festival_date is None or (festival_date.date() + timedelta(days=duration_days)) <= today.date():
             festival_date = _parse_festival_date(festival, today.year + 1)
             if festival_date is None:
                 continue
 
+        days_diff = (festival_date.date() - today.date()).days
         response_items.append({
             **festival,
             "name": festival.get("festival_name", festival.get("name")),
             "date": festival_date.strftime("%Y-%m-%d"),
-            "days_until": (festival_date.date() - today.date()).days,
+            "days_until": max(0, days_diff) if days_diff <= 0 else days_diff,
         })
 
     sorted_items = sorted(response_items, key=lambda item: item["days_until"])

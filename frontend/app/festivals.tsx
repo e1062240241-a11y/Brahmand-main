@@ -466,16 +466,107 @@ const FestivalPage: React.FC = () => {
     []
   );
 
+  const navratriFestivalIndex = useMemo(() => {
+    const idx = festivals.findIndex((f) => {
+      const name = (f.name || f.festival_name || f.title || '').toLowerCase();
+      const id = String(f.id || '').toLowerCase();
+      return name.includes('navratri') || name.includes('durga') || id.includes('navratri');
+    });
+    return idx >= 0 ? idx : 0;
+  }, [festivals]);
+
+  const handleNavDurgaPress = useCallback(() => {
+    router.push(`/festival-section-detail?index=${navratriFestivalIndex}&section=Nav%20Durga`);
+  }, [router, navratriFestivalIndex]);
+
   const listHeader = useMemo(
     () => (
-      <HeroHeader
-        userName={userName}
-        nextFestivalName={nextFestivalName}
-        isHindi={isHindi}
-        onTypingComplete={handleTypingComplete}
-      />
+      <View>
+        <HeroHeader
+          userName={userName}
+          nextFestivalName={nextFestivalName}
+          isHindi={isHindi}
+          onTypingComplete={handleTypingComplete}
+        />
+
+        {/* Independent Nav Durga 9 Swaroop Card Section */}
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={handleNavDurgaPress}
+          style={styles.navDurgaCardTouchable}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isHindi ? 'माँ नवदुर्गा ९ पावन स्वरूप दर्शन एवं उपासना' : 'Nav Durga 9 Divine Forms & Rituals'}
+        >
+          <LinearGradient
+            colors={['#7C2D12', '#9A3412', '#C2410C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.navDurgaCardGradient}
+          >
+            {/* Subtle Divine Ornamental Glow */}
+            <View style={styles.navDurgaGlowCircle} pointerEvents="none" />
+
+            <View style={styles.navDurgaCardContent}>
+              <View style={styles.navDurgaTextCol}>
+                <View style={styles.navDurgaBadgeRow}>
+                  <View style={styles.navDurgaPill}>
+                    <Text style={styles.navDurgaPillText}>९ पावन स्वरूप</Text>
+                  </View>
+                  <View style={styles.navDurgaSpecialPill}>
+                    <Text style={styles.navDurgaSpecialText}>विशेष दर्शन</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.navDurgaTitle}>
+                  {isHindi ? 'माँ नवदुर्गा दर्शन' : 'Maa Navdurga Darshan'}
+                </Text>
+
+                <Text style={styles.navDurgaSubtitle} numberOfLines={2}>
+                  {isHindi
+                    ? '९ देवियों के पावन स्वरूप, शुभ रंग, भोग, प्रिय पुष्प व सिद्ध मंत्र'
+                    : '9 Sacred Forms, Daily Colors, Divine Bhog, Flowers & Mantras'}
+                </Text>
+
+                <View style={styles.navDurgaActionRow}>
+                  <Text style={styles.navDurgaActionText}>
+                    {isHindi ? 'दर्शन करें' : 'Explore Now'}
+                  </Text>
+                  <Ionicons name="arrow-forward-circle" size={18} color="#FFEDD5" />
+                </View>
+              </View>
+
+              <View style={styles.navDurgaIconBox}>
+                <Image
+                  source={require('../assets/images/maa_durga_icon.png')}
+                  style={styles.navDurgaIconImg}
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
+                />
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Section Heading for Festival List */}
+        <View style={styles.festivalsListHeader}>
+          <Text style={styles.festivalsListTitle}>
+            {isHindi ? 'आगामी पर्व एवं व्रत' : 'Upcoming Festivals & Vrats'}
+          </Text>
+          <Text style={styles.festivalsListCount}>
+            {festivals.length > 0 ? `(${festivals.length})` : ''}
+          </Text>
+        </View>
+      </View>
     ),
-    [userName, nextFestivalName, isHindi, handleTypingComplete]
+    [
+      userName,
+      nextFestivalName,
+      isHindi,
+      handleTypingComplete,
+      handleNavDurgaPress,
+      festivals.length,
+    ]
   );
 
   if (loading) {
@@ -713,6 +804,136 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  navDurgaCardTouchable: {
+    marginBottom: 20,
+    borderRadius: 24,
+    shadowColor: '#9A3412',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  navDurgaCardGradient: {
+    borderRadius: 24,
+    padding: 18,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 237, 213, 0.35)',
+  },
+  navDurgaGlowCircle: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 237, 213, 0.12)',
+  },
+  navDurgaCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  navDurgaTextCol: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  navDurgaBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  navDurgaPill: {
+    backgroundColor: 'rgba(255, 237, 213, 0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 237, 213, 0.35)',
+  },
+  navDurgaPillText: {
+    color: '#FFEDD5',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  navDurgaSpecialPill: {
+    backgroundColor: '#D97706',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  navDurgaSpecialText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  navDurgaTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+    fontFamily: Platform.select({
+      ios: 'Canela-Bold',
+      android: 'serif',
+      default: 'serif',
+    }),
+    letterSpacing: -0.3,
+  },
+  navDurgaSubtitle: {
+    color: 'rgba(255, 237, 213, 0.92)',
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  navDurgaActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  navDurgaActionText: {
+    color: '#FFEDD5',
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  navDurgaIconBox: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 237, 213, 0.16)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 237, 213, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 6,
+  },
+  navDurgaIconImg: {
+    width: '100%',
+    height: '100%',
+  },
+  festivalsListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    paddingHorizontal: 2,
+  },
+  festivalsListTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    letterSpacing: -0.2,
+  },
+  festivalsListCount: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
   },
 });
 

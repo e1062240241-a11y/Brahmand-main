@@ -82,29 +82,29 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
   const userName = user?.name ? user.name.split(' ')[0] : 'भक्त';
 
   // Determine today's Navratri day index (0 to 8) based on actual dates
-  // Only returns a valid index if Navratri has actually started and is ongoing
+  // Navratri starts on 11 Oct for 9 days (or from festivalDate if explicitly within ongoing range)
   const todayFestivalDayIndex = useMemo(() => {
-    // If festivalDate prop is provided, parse it; otherwise check current year's Navratri date
-    let festDate: Date | null = null;
-    if (festivalDate) {
-      const parsed = new Date(festivalDate);
-      if (!isNaN(parsed.getTime())) festDate = parsed;
-    }
-
-    // Fallback: If no valid festivalDate passed or invalid, use current year's Sharad Navratri (e.g. 11 Oct 2026)
-    if (!festDate) {
-      const thisYear = new Date().getFullYear();
-      festDate = new Date(`${thisYear}-10-11T00:00:00`);
-    }
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    festDate.setHours(0, 0, 0, 0);
 
-    const diff = Math.floor((today.getTime() - festDate.getTime()) / (1000 * 60 * 60 * 24));
-    // Only return 0..8 if festival is currently ongoing (diff >= 0 and diff < 9)
-    if (diff >= 0 && diff < 9) return diff;
-    return -1; // Festival hasn't started yet or has ended (do NOT show fake 'आज')
+    // 1. Try parsed festivalDate prop first if provided
+    if (festivalDate) {
+      const parsed = new Date(festivalDate);
+      if (!isNaN(parsed.getTime())) {
+        parsed.setHours(0, 0, 0, 0);
+        const diff = Math.floor((today.getTime() - parsed.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff >= 0 && diff < 9) return diff;
+      }
+    }
+
+    // 2. Navratri for current year (e.g. 11 Oct 2026)
+    const thisYear = today.getFullYear();
+    const currentYearFest = new Date(`${thisYear}-10-11T00:00:00`);
+    currentYearFest.setHours(0, 0, 0, 0);
+    const diffCurrentYear = Math.floor((today.getTime() - currentYearFest.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffCurrentYear >= 0 && diffCurrentYear < 9) return diffCurrentYear;
+
+    return -1; // Festival hasn't started yet or has ended
   }, [festivalDate]);
 
   // Default selected day: if festival is live, select today's day; otherwise default to Day 1 (index 0)
@@ -112,99 +112,41 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
 
   // Screen modes: 'color_select' (step 1: choose colour) | 'devi_detail' (step 2: view devi photo, name & details)
   const [viewMode, setViewMode] = useState<'color_select' | 'devi_detail'>('color_select');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(-1);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(initialDayIndex);
   const [isDescExpanded, setIsDescExpanded] = useState<boolean>(false);
   const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
 
+  // Sync selected day if initial day index resolves on live updates
+  useEffect(() => {
+    setSelectedDayIndex(initialDayIndex);
+    setAnimatedFocusIndex(initialDayIndex);
+  }, [initialDayIndex]);
+
   // Guided tour sequence: Cycles through cards slowly and smoothly, then stops and settles on today's card
-  const [animatedFocusIndex, setAnimatedFocusIndex] = useState<number>(0);
-  const [isTourActiveState, setIsTourActiveState] = useState<boolean>(true);
+  const [animatedFocusIndex, setAnimatedFocusIndex] = useState<number>(initialDayIndex);
+  const [isTourActiveState, setIsTourActiveState] = useState<boolean>(false);
   const [showColorText, setShowColorText] = useState<boolean>(true);
+
+  // Active day index throughout the day (Day 1..9 based on festival date, default Day 1)
+  const activeFestivalDayIndex = todayFestivalDayIndex >= 0 ? todayFestivalDayIndex : 0;
 
   const arrowBounceAnim = useRef(new Animated.Value(0)).current;
   const arrowGlowAnim = useRef(new Animated.Value(0.5)).current;
   const borderPulseAnim = useRef(new Animated.Value(0.6)).current;
 
-  // Active day index throughout the day (Day 1..9 based on festival date, default Day 1)
-  const activeFestivalDayIndex = todayFestivalDayIndex >= 0 ? todayFestivalDayIndex : 0;
-
   useEffect(() => {
     if (viewMode !== 'color_select') return;
 
     // Reset visibility flags when entering color_select screen
-    setIsTourActiveState(true);
     setShowColorText(true);
 
-    // Color text shows for 1 second, then disappears
+    // Color text shows for 1.5 seconds, then fades
     const colorTimer = setTimeout(() => {
       setShowColorText(false);
-    }, 1000);
-
-    // Smooth & relaxed card switching: each card stays highlighted for 1.1s so user can clearly see it
-    const cycleInterval = setInterval(() => {
-      setAnimatedFocusIndex((prev) => (prev + 1) % NAVDURGA_9_DAYS.length);
-    }, 1100);
-
-    // Tour runs for 4.5 seconds (relaxed intro), then stops completely and lands on today's card
-    const tourTimer = setTimeout(() => {
-      setIsTourActiveState(false);
-    }, 4500);
-
-    // Gentle upward float / bounce for the arrow
-    const bounceLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(arrowBounceAnim, {
-          toValue: -5,
-          duration: 550,
-          useNativeDriver: true,
-        }),
-        Animated.timing(arrowBounceAnim, {
-          toValue: 0,
-          duration: 550,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Glowing opacity breathing pulse for the arrow and card border
-    const glowLoop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(arrowGlowAnim, {
-            toValue: 1,
-            duration: 550,
-            useNativeDriver: true,
-          }),
-          Animated.timing(borderPulseAnim, {
-            toValue: 1,
-            duration: 550,
-            useNativeDriver: false,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(arrowGlowAnim, {
-            toValue: 0.45,
-            duration: 550,
-            useNativeDriver: true,
-          }),
-          Animated.timing(borderPulseAnim, {
-            toValue: 0.5,
-            duration: 550,
-            useNativeDriver: false,
-          }),
-        ]),
-      ])
-    );
-
-    bounceLoop.start();
-    glowLoop.start();
+    }, 1500);
 
     return () => {
       clearTimeout(colorTimer);
-      clearTimeout(tourTimer);
-      clearInterval(cycleInterval);
-      bounceLoop.stop();
-      glowLoop.stop();
     };
   }, [viewMode]);
 
@@ -359,8 +301,10 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                   // 100% Solid opaque background - completely prevents Android edge artifacting
                   const cardBg = SOLID_CARD_BG[item.day] || '#FFFFFF';
 
+                  // Active selection: Card is selected if it matches selectedDayIndex (defaults to today's day)
+                  const isCardSelected = idx === selectedDayIndex;
                   const isTourActive = isTourActiveState && idx === animatedFocusIndex;
-                  const isDayPersistentActive = !isTourActiveState && idx === activeFestivalDayIndex;
+                  const isDayPersistentActive = !isTourActiveState && (idx === activeFestivalDayIndex || isCardSelected);
 
                   return (
                     <TouchableOpacity
@@ -371,7 +315,8 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                         styles.colorCard,
                         { backgroundColor: cardBg },
                         isTourActive && styles.colorCardTourBorder,
-                        isDayPersistentActive && styles.colorCardTodayGoldBorder,
+                        isCardSelected && styles.colorCardSelectedHalo,
+                        (!isCardSelected && isDayPersistentActive) && styles.colorCardTodayGoldBorder,
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`Day ${item.day} ${item.colorName} ${item.deviName}`}
@@ -389,7 +334,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
                         </Text>
                       </View>
 
-                      {/* 2. Ribbon Tag: Only shows 'आज' if today matches */}
+                      {/* 2. Ribbon Tag: Shows 'आज' if today matches */}
                       {isToday && (
                         <View style={styles.todayRibbonTag}>
                           <Text style={styles.todayRibbonText}>आज</Text>
@@ -467,18 +412,18 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
           })}
         </View>
 
-        {/* Devotional Inline Hint Banner: Borderless, shows Today's Color (1s only) & Devi Name (permanent) */}
+        {/* Devotional Inline Hint Banner: Borderless, shows Today's/Selected Color & Devi Name */}
         <View style={styles.clickHintBannerContainer}>
           {showColorText && (
             <View style={styles.todayColorTitleRow}>
-              <View style={[styles.todayColorDot, { backgroundColor: todayNavdurgaDay.colorHex }]} />
+              <View style={[styles.todayColorDot, { backgroundColor: activeDay.colorHex }]} />
               <Text style={styles.todayColorLabel}>
-                {todayFestivalDayIndex >= 0 ? 'Today' : 'Day 1'} — {todayNavdurgaDay.colorName.includes(' (') ? todayNavdurgaDay.colorName.split(' (')[0] : todayNavdurgaDay.colorName}{todayNavdurgaDay.colorNameEn ? ` (${todayNavdurgaDay.colorNameEn})` : ''}
+                {selectedDayIndex === todayFestivalDayIndex ? 'Today' : `Day ${activeDay.day}`} — {activeDay.colorName.includes(' (') ? activeDay.colorName.split(' (')[0] : activeDay.colorName}{activeDay.colorNameEn ? ` (${activeDay.colorNameEn})` : ''}
               </Text>
             </View>
           )}
           <Text style={styles.todayDeviNameText}>
-            🌸 {todayNavdurgaDay.deviName} 🪷
+            🌸 {activeDay.deviName} 🪷
           </Text>
           <Text style={styles.clickHintSubText}>
             Tap any <Text style={styles.clickHintHighlight}>Roop</Text> above to explore Her sacred <Text style={styles.clickHintHighlight}>Divine Form</Text>, <Text style={styles.clickHintHighlight}>Mantra</Text> & <Text style={styles.clickHintHighlight}>Katha</Text>
@@ -528,7 +473,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
         style={styles.storyFullScreenGradient}
       />
 
-      {/* 3. Floating Top Bar: Back Button & Share Button (Corner buttons only, no day pill) */}
+      {/* 3. Floating Top Bar: Back Button, Selected Day Pill & Share Button */}
       <View style={[styles.floatingTopBar, { top: insets.top + (Platform.OS === 'ios' ? 4 : 8) }]}>
         <TouchableOpacity
           onPress={handleBackToColorSelect}
@@ -539,6 +484,20 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
           accessibilityLabel="Back to color selection"
         >
           <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        {/* Center: Selected Day Pill */}
+        <TouchableOpacity
+          onPress={handleBackToColorSelect}
+          style={styles.floatingDayPill}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`Day ${activeDay.day}: ${activeDay.colorName} - Tap to change day`}
+        >
+          <View style={[styles.floatingDayColorDot, { backgroundColor: activeDay.colorHex }]} />
+          <Text style={styles.floatingDayPillText}>
+            Day {activeDay.day} • {activeDay.colorName.includes(' (') ? activeDay.colorName.split(' (')[0] : activeDay.colorName}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1401,18 +1360,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   floatingDayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(3, 7, 18, 0.75)',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
+    borderColor: 'rgba(255, 215, 0, 0.45)',
+    gap: 6,
+  },
+  floatingDayColorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   floatingDayPillText: {
     fontSize: 12.5,
     fontWeight: '800',
     color: '#FFD700',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   storyFixedHeaderSection: {
     zIndex: 20,
