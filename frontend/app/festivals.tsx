@@ -611,10 +611,7 @@ const FestivalPage: React.FC = () => {
 
           {/* Notification Button in Top-Right Corner */}
           <TouchableOpacity
-            style={[
-              styles.cornerNotificationButton,
-              allRemindersEnabled && styles.cornerNotificationButtonActive,
-            ]}
+            style={styles.cornerNotificationButton}
             onPress={handleToggleAll}
             accessible={true}
             accessibilityRole="button"
@@ -679,9 +676,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
-  },
-  cornerNotificationButtonActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   listContent: {
     paddingHorizontal: 20,

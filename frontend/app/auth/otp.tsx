@@ -162,7 +162,11 @@ export default function OTPScreen() {
       }
 
       setError(message);
-      if (!isNetwork) {
+      // Only reset OTP inputs if the code was actually rejected as invalid/expired by the auth server
+      const isCodeError =
+        err?.code === 'auth/invalid-verification-code' ||
+        err?.code === 'auth/code-expired';
+      if (isCodeError) {
         setOtp(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
       }
