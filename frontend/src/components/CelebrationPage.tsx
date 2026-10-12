@@ -290,10 +290,12 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: BORDER_RADIUS.md,
     padding: 3,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.35)',
   },
   tab: {
     flex: 1,
@@ -307,7 +309,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: '#78350F',
   },
   tabTextActive: {
     color: '#fff',
@@ -316,10 +318,12 @@ const styles = StyleSheet.create({
     minHeight: 200,
   },
   ritualCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
     borderRadius: BORDER_RADIUS.md,
-    marginBottom: 10,
+    marginBottom: 8,
     overflow: 'hidden',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(212, 175, 55, 0.25)',
   },
   ritualCardFirst: {
     marginTop: 0,
@@ -327,7 +331,8 @@ const styles = StyleSheet.create({
   ritualHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
   },
   ritualBadge: {
     width: 28,
@@ -357,13 +362,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   ritualDetails: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingBottom: 16,
   },
   durationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(25,118,210,0.1)',
+    backgroundColor: 'rgba(255, 102, 0, 0.15)',
     alignSelf: 'flex-start',
     borderRadius: BORDER_RADIUS.full,
     paddingHorizontal: 10,
@@ -391,10 +396,13 @@ const styles = StyleSheet.create({
   quizOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
     borderRadius: BORDER_RADIUS.md,
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
   },
   quizOptionDisabled: {
     opacity: 0.7,
@@ -404,7 +412,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#ccc',
+    borderColor: '#D4AF37',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -427,9 +435,10 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   quizResult: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
     borderRadius: BORDER_RADIUS.md,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
     marginTop: 10,
   },
   quizResultEmoji: {
@@ -464,7 +473,7 @@ const styles = StyleSheet.create({
   statBarBg: {
     flex: 1,
     height: 8,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: 'rgba(212, 175, 55, 0.25)',
     borderRadius: 4,
     marginHorizontal: 8,
     overflow: 'hidden',
@@ -498,7 +507,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 8,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: 'rgba(212, 175, 55, 0.25)',
     borderRadius: 4,
     marginBottom: 16,
     overflow: 'hidden',
@@ -510,10 +519,13 @@ const styles = StyleSheet.create({
   },
   checkItem: {
     flexDirection: 'row',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
     borderRadius: BORDER_RADIUS.md,
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
   },
   checkbox: {
     width: 22,

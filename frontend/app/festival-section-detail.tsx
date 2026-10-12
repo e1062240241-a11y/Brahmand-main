@@ -76,7 +76,11 @@ const FestivalSectionDetailPage = () => {
   const router = useRouter();
 
   const section = (params.section as string) || 'Story';
-  const festivalIndex = parseInt((params.festivalIndex as string) || (params.index as string) || '0', 10);
+  const rawIndex = params.festivalIndex || params.index;
+  const festivalIndex = rawIndex !== undefined && rawIndex !== '' ? parseInt(rawIndex as string, 10) : -1;
+  const targetId = params.id ? decodeURIComponent(params.id as string).trim() : '';
+  const targetName = params.name ? decodeURIComponent(params.name as string).trim() : '';
+
   const decodedSection = decodeURIComponent(section);
   const isNavDurgaSection = decodedSection === 'Nav Durga' || decodedSection === 'Navdurga';
   const isStorySection = decodedSection === 'Story' || isNavDurgaSection;
@@ -123,8 +127,46 @@ const FestivalSectionDetailPage = () => {
       try {
         setLoading(true);
         const response = await getFestivalList();
-        const items = response.data || [];
-        const selected = items[festivalIndex] || items[0];
+        const items = response?.data || response || [];
+
+        let selected: any = undefined;
+
+        // 1. Primary lookup: Exact ID match
+        if (targetId) {
+          selected = items.find((f: any) => f.id && String(f.id).trim().toLowerCase() === targetId.toLowerCase());
+        }
+
+        // 2. Secondary lookup: Cleaned Name match
+        if (!selected && targetName) {
+          const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          selected = items.find((f: any) => {
+            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            return fName && (fName === cleanTarget || fName.includes(cleanTarget) || cleanTarget.includes(fName));
+          });
+        }
+
+        // 3. Fallback: If no match yet and index is valid, match against date-sorted upcoming list (matching festivals.tsx order)
+        if (!selected && !Number.isNaN(festivalIndex) && festivalIndex >= 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const upcoming = items.filter((f: any) => {
+            if (!f.date) return true;
+            return new Date(f.date) >= today;
+          });
+
+          const sorted = upcoming.sort(
+            (a: any, b: any) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
+          );
+
+          const sortedList = sorted.length > 0 ? sorted : items;
+          selected = sortedList[festivalIndex] || items[festivalIndex];
+        }
+
+        if (!selected && items.length > 0) {
+          selected = items[0];
+        }
+
         setFestival(selected);
       } catch (err) {
         console.warn('Failed to load festival section detail', err);
@@ -135,7 +177,7 @@ const FestivalSectionDetailPage = () => {
     };
 
     loadFestival();
-  }, [festivalIndex]);
+  }, [festivalIndex, targetId, targetName]);
 
   const handleSharePdf = async () => {
     if (!festival || isSharing) return;
@@ -261,7 +303,9 @@ const FestivalSectionDetailPage = () => {
               if (router.canGoBack()) {
                 router.back();
               } else {
-                router.replace(`/festival-detail?index=${festivalIndex}`);
+                const festId = festival?.id ? String(festival.id) : targetId;
+                const festName = festival?.festival_name || festival?.name || festival?.title || targetName;
+                router.replace(`/festival-detail?index=${festivalIndex}&id=${encodeURIComponent(festId)}&name=${encodeURIComponent(festName)}`);
               }
             }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

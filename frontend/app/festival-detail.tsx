@@ -42,9 +42,12 @@ export interface FestivalRawItem {
 // ============================================================================
 
 const FestivalDetailPage: React.FC = () => {
-  const params = useLocalSearchParams<{ index?: string; festivalIndex?: string }>();
+  const params = useLocalSearchParams<{ index?: string; festivalIndex?: string; id?: string; name?: string }>();
   const router = useRouter();
-  const festivalIndex = Number(params?.index ?? params?.festivalIndex ?? -1);
+  const rawIndex = params?.index ?? params?.festivalIndex;
+  const festivalIndex = rawIndex !== undefined && rawIndex !== '' ? Number(rawIndex) : -1;
+  const targetId = params?.id ? decodeURIComponent(params.id).trim() : '';
+  const targetName = params?.name ? decodeURIComponent(params.name).trim() : '';
 
   const [festival, setFestival] = useState<FestivalRawItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -58,18 +61,43 @@ const FestivalDetailPage: React.FC = () => {
     isMountedRef.current = true;
 
     const loadFestival = async () => {
-      if (Number.isNaN(festivalIndex) || festivalIndex < 0) {
-        if (isMountedRef.current) {
-          setError('Festival not found.');
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
         const response = await getFestivalList();
         const items: FestivalRawItem[] = response?.data || response || [];
-        const selected = items[festivalIndex];
+
+        let selected: FestivalRawItem | undefined;
+
+        // 1. Primary lookup: Exact ID match
+        if (targetId) {
+          selected = items.find((f) => f.id && String(f.id).trim().toLowerCase() === targetId.toLowerCase());
+        }
+
+        // 2. Secondary lookup: Cleaned Name match
+        if (!selected && targetName) {
+          const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          selected = items.find((f) => {
+            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            return fName && (fName === cleanTarget || fName.includes(cleanTarget) || cleanTarget.includes(fName));
+          });
+        }
+
+        // 3. Fallback: If no match yet and index is valid, match against date-sorted upcoming list (matching festivals.tsx order)
+        if (!selected && !Number.isNaN(festivalIndex) && festivalIndex >= 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const upcoming = items.filter((f) => {
+            if (!f.date) return true;
+            return new Date(f.date) >= today;
+          });
+
+          const sorted = upcoming.sort(
+            (a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
+          );
+
+          const sortedList = sorted.length > 0 ? sorted : items;
+          selected = sortedList[festivalIndex] || items[festivalIndex];
+        }
 
         if (!selected) {
           if (isMountedRef.current) {
@@ -101,7 +129,7 @@ const FestivalDetailPage: React.FC = () => {
     return () => {
       isMountedRef.current = false;
     };
-  }, [festivalIndex]);
+  }, [festivalIndex, targetId, targetName]);
 
   // Handler for toggling notifications
   const handleToggleReminder = useCallback(async () => {
@@ -144,11 +172,13 @@ const FestivalDetailPage: React.FC = () => {
 
   const handleGuidePress = useCallback(
     (section: string) => {
+      const festId = festival?.id ? String(festival.id) : targetId;
+      const festName = festival?.festival_name || festival?.name || festival?.title || targetName;
       router.push(
-        `/festival-section-detail?index=${festivalIndex}&section=${encodeURIComponent(section)}`
+        `/festival-section-detail?index=${festivalIndex}&id=${encodeURIComponent(festId)}&name=${encodeURIComponent(festName)}&section=${encodeURIComponent(section)}`
       );
     },
-    [router, festivalIndex]
+    [router, festivalIndex, festival, targetId, targetName]
   );
 
   if (loading) {

@@ -432,9 +432,12 @@ const FestivalPage: React.FC = () => {
 
   const handleItemPress = useCallback(
     (index: number) => {
-      router.push(`/festival-detail?index=${index}`);
+      const selectedItem = festivals[index];
+      const targetId = selectedItem?.id ? String(selectedItem.id) : '';
+      const targetName = encodeURIComponent(selectedItem?.festival_name || selectedItem?.name || selectedItem?.title || '');
+      router.push(`/festival-detail?index=${index}&id=${encodeURIComponent(targetId)}&name=${targetName}`);
     },
-    [router]
+    [router, festivals]
   );
 
   const handleTypingComplete = useCallback(() => {
@@ -466,6 +469,14 @@ const FestivalPage: React.FC = () => {
     []
   );
 
+  const navratriFestival = useMemo(() => {
+    return festivals.find((f) => {
+      const name = (f.name || f.festival_name || f.title || '').toLowerCase();
+      const id = String(f.id || '').toLowerCase();
+      return name.includes('navratri') || name.includes('durga') || id.includes('navratri');
+    }) || festivals[0];
+  }, [festivals]);
+
   const navratriFestivalIndex = useMemo(() => {
     const idx = festivals.findIndex((f) => {
       const name = (f.name || f.festival_name || f.title || '').toLowerCase();
@@ -476,8 +487,10 @@ const FestivalPage: React.FC = () => {
   }, [festivals]);
 
   const handleNavDurgaPress = useCallback(() => {
-    router.push(`/festival-section-detail?index=${navratriFestivalIndex}&section=Nav%20Durga`);
-  }, [router, navratriFestivalIndex]);
+    const targetId = navratriFestival?.id ? String(navratriFestival.id) : '';
+    const targetName = encodeURIComponent(navratriFestival?.festival_name || navratriFestival?.name || navratriFestival?.title || 'Navratri');
+    router.push(`/festival-section-detail?index=${navratriFestivalIndex}&id=${encodeURIComponent(targetId)}&name=${targetName}&section=Nav%20Durga`);
+  }, [router, navratriFestival, navratriFestivalIndex]);
 
   const listHeader = useMemo(
     () => (
