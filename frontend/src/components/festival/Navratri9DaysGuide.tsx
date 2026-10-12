@@ -25,17 +25,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 
 
-// Real high-definition floral illustrations for each day matching the uploaded flower photos
+// Real high-definition floral illustrations for each day matching the uploaded flower photos (WebP via BunnyCDN)
 const FLOWER_ASSETS: Record<number, any> = {
-  1: require('../../../assets/images/navdurga_cards/flower_hd_1.png'),
-  2: require('../../../assets/images/navdurga_cards/flower_hd_2.png'),
-  3: require('../../../assets/images/navdurga_cards/flower_hd_3.png'),
-  4: require('../../../assets/images/navdurga_cards/flower_hd_4.png'),
-  5: require('../../../assets/images/navdurga_cards/flower_hd_5.png'),
-  6: require('../../../assets/images/navdurga_cards/flower_hd_6.png'),
-  7: require('../../../assets/images/navdurga_cards/flower_hd_7.png'),
-  8: require('../../../assets/images/navdurga_cards/flower_hd_8.png'),
-  9: require('../../../assets/images/navdurga_cards/flower_hd_9.png'),
+  1: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_1.webp' },
+  2: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_2.webp' },
+  3: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_3.webp' },
+  4: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_4.webp' },
+  5: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_5.webp' },
+  6: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_6.webp' },
+  7: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_7.webp' },
+  8: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_8.webp' },
+  9: { uri: 'https://brahmandfeed23.b-cdn.net/assets/navdurga_cards/flower_hd_9.webp' },
 };
 
 // 100% Solid opaque pastel background for each day's card (Zero alpha transparency to eliminate Android Skia anti-aliasing edge artifacts)

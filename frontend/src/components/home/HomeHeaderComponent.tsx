@@ -945,7 +945,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     style={{ width: '100%', height: '100%' }}
                                     resizeMode="cover"
                                 />
-                                {/* Centered Explore button without AI icon */}
+                                {/* Centered Explore button without AI icon with touch ripple */}
                                 <LinearGradient
                                     colors={['transparent', 'rgba(0,0,0,0.45)']}
                                     style={{
@@ -960,18 +960,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         paddingHorizontal: 14,
                                         paddingBottom: 8,
                                     }}
+                                    pointerEvents="box-none"
                                 >
                                     <View
                                         style={{
-                                            backgroundColor: '#FF5100',
-                                            height: 34,
-                                            paddingHorizontal: 18,
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 6,
                                             borderRadius: 17,
-                                            borderWidth: 1,
-                                            borderColor: 'rgba(255, 255, 255, 0.45)',
+                                            overflow: 'hidden',
                                             shadowColor: '#000',
                                             shadowOffset: { width: 0, height: 2 },
                                             shadowOpacity: 0.35,
@@ -979,15 +973,50 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             elevation: 3,
                                         }}
                                     >
-                                        <Text style={{
-                                            color: '#FFF',
-                                            fontSize: 13,
-                                            fontWeight: '700',
-                                            letterSpacing: 0.3,
-                                        }}>
-                                            {t('language') === 'hi' ? 'नवरात्रि दर्शन' : 'Explore Festival'}
-                                        </Text>
-                                        <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                                        <Pressable
+                                            android_ripple={{
+                                                color: 'rgba(255, 255, 255, 0.32)',
+                                                borderless: false,
+                                            }}
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                try {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                } catch (_e) { }
+                                                router.push('/festivals');
+                                            }}
+                                            onPressIn={() => {
+                                                if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                            }}
+                                            onPressOut={() => {
+                                                if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                            }}
+                                            style={({ pressed }) => [
+                                                {
+                                                    backgroundColor: '#FF5100',
+                                                    height: 34,
+                                                    paddingHorizontal: 18,
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    borderRadius: 17,
+                                                    borderWidth: 1,
+                                                    borderColor: 'rgba(255, 255, 255, 0.45)',
+                                                    opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1,
+                                                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                                                },
+                                            ]}
+                                        >
+                                            <Text style={{
+                                                color: '#FFF',
+                                                fontSize: 13,
+                                                fontWeight: '700',
+                                                letterSpacing: 0.3,
+                                            }}>
+                                                {t('language') === 'hi' ? 'नवरात्रि दर्शन' : 'Explore Festival'}
+                                            </Text>
+                                            <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                                        </Pressable>
                                     </View>
                                 </LinearGradient>
                             </Pressable>
