@@ -107,11 +107,10 @@ export default function PhoneScreen() {
       }
 
       const digits = fullPhone.replace(/[^0-9]/g, '');
+      const last10 = digits.slice(-10);
       const isMockNumber =
-        digits.endsWith('1234567890') ||
-        digits.endsWith('9876543210') ||
-        digits.includes('9999') ||
-        digits.includes('1111');
+        last10 === '1234567890' ||
+        last10 === '9876543210';
 
       if (isMockNumber) {
         console.log('[Phone Auth] Detected mock testing number, using backend OTP service');

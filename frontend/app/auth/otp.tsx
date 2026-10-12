@@ -143,11 +143,18 @@ export default function OTPScreen() {
     } catch (err: any) {
       console.log('Verification Error:', err);
       let message = 'Invalid OTP. Please try again.';
+      const isNetwork =
+        err?.code === 'ERR_NETWORK' ||
+        err?.code === 'auth/network-request-failed' ||
+        err?.message === 'Network Error' ||
+        /network error/i.test(err?.message || '');
 
       if (err?.code === 'auth/invalid-verification-code') {
         message = 'Invalid code. Please check and try again.';
       } else if (err?.code === 'auth/code-expired') {
         message = 'OTP has expired. Please request a new one.';
+      } else if (isNetwork) {
+        message = 'Could not reach server. Please try again.';
       } else if (err?.response?.data?.detail) {
         message = err.response.data.detail;
       } else if (err?.message) {
@@ -155,8 +162,10 @@ export default function OTPScreen() {
       }
 
       setError(message);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
+      if (!isNetwork) {
+        setOtp(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
     } finally {
       setLoading(false);
     }
