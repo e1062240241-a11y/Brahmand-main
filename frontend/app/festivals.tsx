@@ -538,7 +538,7 @@ const FestivalPage: React.FC = () => {
 
               <View style={styles.navDurgaIconBox}>
                 <Image
-                  source={require('../assets/images/maa_durga_icon.png')}
+                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/maa_durga_icon.webp' }}
                   style={styles.navDurgaIconImg}
                   contentFit="contain"
                   cachePolicy="memory-disk"
