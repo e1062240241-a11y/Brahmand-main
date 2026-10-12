@@ -14,10 +14,10 @@ try {
 const ENCRYPTION_KEY_NAME = 'brahmand_secure_storage_key';
 let cachedKey: string | null = null;
 
-// Generate a random 256-bit hexadecimal key
+// Generate a random 256-bit hexadecimal key using a CSPRNG
 const generateKey = (): string => {
-  const salt = Math.random().toString(36).substring(2, 15) + Date.now().toString();
-  return CryptoJS.SHA256(salt).toString();
+  // Use CryptoJS random bytes generation instead of Math.random
+  return CryptoJS.lib.WordArray.random(32).toString();
 };
 
 const getEncryptionKey = async (): Promise<string> => {
