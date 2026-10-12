@@ -560,6 +560,12 @@ export const NAVRATRI_DAY_NOTIFICATIONS: NavratriDayNotification[] = [
     body: 'माँ सिद्धिदात्री की महिमा और नवरात्रि के अंतिम दिन के महत्व को ब्रह्मांड के Festival टैब पर जानें।',
     actionText: 'Explore Festival',
   },
+  {
+    day: 10,
+    title: 'विजयदशमी / दशहरा की हार्दिक शुभकामनाएं! 🏹🪔',
+    body: 'अधर्म पर धर्म और बुराई पर अच्छाई की विजय—दशहरे का पावन पर्व, रावण दहन और शस्त्र पूजा का महत्व जानें।',
+    actionText: 'Explore Festival',
+  },
 ];
 
 /**

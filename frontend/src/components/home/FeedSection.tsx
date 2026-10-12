@@ -97,8 +97,9 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       if (!isActive) return;
 
       let videos: any[] = [];
-      let images: any[] = [];
-      let commCards: any[] = [];
+      // Find top official Brahmand post if present at position 0 of raw feed
+      let topOfficialPost: any = null;
+      let nonTopOfficialPostsCount = 0;
 
       // Single pass for filtering and splitting (O(N))
       for (let i = 0; i < rawFeedPosts.length; i++) {
@@ -112,6 +113,23 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         if (uid) {
           const uidStr = String(uid);
           if (blockedUserSet.has(uidStr) || blockedByMeUserSet.has(uidStr)) {
+            continue;
+          }
+        }
+
+        const isOfficialOrBrahmand = Boolean(
+          post?.is_official === true ||
+          String(post?.username || '').toLowerCase() === 'brahmand'
+        );
+
+        // If this is the very first official post and it's near/at the top, reserve it for position 0
+        if (isOfficialOrBrahmand) {
+          if (!topOfficialPost && i === 0) {
+            topOfficialPost = post;
+            continue;
+          } else {
+            // "sirf first post hi brahmand show hona chahiy next nhi dusre user ka hona chahiye"
+            // Drop any additional Brahmand posts so subsequent posts are only from other users
             continue;
           }
         }
@@ -146,6 +164,10 @@ const FeedSection: React.FC<FeedSectionProps> = ({
       }
 
       const arranged: any[] = [];
+      if (topOfficialPost) {
+        arranged.push(topOfficialPost);
+      }
+
       let videoIndex = 0;
       let imageIndex = 0;
       let alternate = 0;

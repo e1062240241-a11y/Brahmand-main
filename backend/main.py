@@ -4526,8 +4526,11 @@ async def get_posts_feed(
                     f"official_post_injected: post_id={top_official_cand.get('id')}, "
                     f"user_id={top_official_cand.get('user_id')}, position=0"
                 )
-                # Remaining pool excludes the top post placed at #0
-                remaining_pool = [p for p in author_capped_batch if p.get('id') != top_official_cand.get('id')]
+                # Remaining pool excludes the top post placed at #0 and any other official posts
+                remaining_pool = [
+                    p for p in author_capped_batch
+                    if p.get('id') != top_official_cand.get('id') and not _is_official_post_obj(p)
+                ]
             else:
                 remaining_pool = list(author_capped_batch)
         else:
@@ -4751,7 +4754,8 @@ async def get_posts_feed(
         if enable_official_priority:
             official_tab_posts = [p for p in combined_tab_posts if _is_official_cand(p)]
             other_tab_posts = [p for p in combined_tab_posts if not _is_official_cand(p)]
-            paged_posts = official_tab_posts + other_tab_posts
+            # Sirf first post hi official Brahmand post ho, baaki non-official posts
+            paged_posts = (official_tab_posts[:1] if official_tab_posts else []) + other_tab_posts
         else:
             paged_posts = combined_tab_posts
 

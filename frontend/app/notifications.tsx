@@ -398,7 +398,15 @@ export default function NotificationsScreen() {
     if (typeKey.includes('astrology') || typeKey.includes('horoscope') || typeKey.includes('kundli') || actionKey.includes('astrology') || actionKey.includes('horoscope') || actionKey.includes('kundli')) {
       return '/astrology';
     }
-    if (typeKey.includes('festival') || actionKey.includes('festival')) {
+    const titleKey = String(item?.title || '').toLowerCase();
+    if (
+      typeKey.includes('festival') ||
+      typeKey.includes('navratri') ||
+      actionKey.includes('festival') ||
+      actionKey.includes('navratri') ||
+      titleKey.includes('नवरात्रि') ||
+      titleKey.includes('navratri')
+    ) {
       return '/festivals';
     }
     if (typeKey.includes('chat') || typeKey.includes('dm') || typeKey.includes('message') || actionKey.includes('chat') || actionKey.includes('dm') || actionKey.includes('message')) {

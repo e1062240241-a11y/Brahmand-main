@@ -289,9 +289,9 @@ export async function syncFestivalReminders(festivals: any[]) {
       const festivalDate = new Date(`${festDateStr}T00:00:00`);
       if (isNaN(festivalDate.getTime())) continue;
 
-      // Skip past festivals (for Navratri, festival spans 9 days)
+      // Skip past festivals (for Navratri, festival spans 10 days including Dussehra)
       const isNav = (festivalId || '').toLowerCase().includes('navratri') || (festival.name || festival.festival_name || '').toLowerCase().includes('navratri');
-      const festivalEnd = new Date(festivalDate.getTime() + (isNav ? 9 * 24 * 60 * 60 * 1000 : 0));
+      const festivalEnd = new Date(festivalDate.getTime() + (isNav ? 10 * 24 * 60 * 60 * 1000 : 0));
       festivalEnd.setHours(23, 59, 59, 999);
       if (now > festivalEnd) {
         if (reminders[festivalId]) {
