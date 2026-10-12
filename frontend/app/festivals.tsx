@@ -538,7 +538,7 @@ const FestivalPage: React.FC = () => {
 
               <View style={styles.navDurgaIconBox}>
                 <Image
-                  source={require('../assets/images/maa_durga_icon.png')}
+                  source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/maa_durga_icon.webp' }}
                   style={styles.navDurgaIconImg}
                   contentFit="contain"
                   cachePolicy="memory-disk"
@@ -598,10 +598,7 @@ const FestivalPage: React.FC = () => {
 
           {/* Notification Button in Top-Right Corner */}
           <TouchableOpacity
-            style={[
-              styles.cornerNotificationButton,
-              allRemindersEnabled && styles.cornerNotificationButtonActive,
-            ]}
+            style={styles.cornerNotificationButton}
             onPress={handleToggleAll}
             accessible={true}
             accessibilityRole="button"
@@ -666,9 +663,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
-  },
-  cornerNotificationButtonActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   listContent: {
     paddingHorizontal: 20,
