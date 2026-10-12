@@ -195,7 +195,12 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -214,7 +219,11 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               onChangeText={handleSearch}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => handleSearch('')}>
+              <TouchableOpacity
+                onPress={() => handleSearch('')}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search query"
+              >
                 <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
             )}
@@ -229,6 +238,8 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                   key={index}
                   style={styles.suggestionItem}
                   onPress={() => handleSelectSearchResult(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select location: ${item.display_name}`}
                 >
                   <Ionicons name="location-outline" size={18} color={COLORS.primary} style={{ marginRight: SPACING.sm }} />
                   <Text style={styles.suggestionText} numberOfLines={2}>
@@ -284,6 +295,9 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             style={[styles.confirmButton, loading && styles.disabledButton]}
             onPress={handleConfirm}
             disabled={loading || !mapRegion}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm Selected Location"
+            accessibilityState={{ disabled: loading || !mapRegion, busy: loading }}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#FFF" />
