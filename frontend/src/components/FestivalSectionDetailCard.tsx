@@ -7,12 +7,16 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { SPACING, BORDER_RADIUS } from '../constants/theme';
 import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
+
+// ponytail: local bundle, upload to BunnyCDN /audio/karwachauth.mp3 if size matters
+const KARVA_CHAUTH_AUDIO = require('../../assets/audio/karwachauth.mp3');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -92,6 +96,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
   if (section === 'Story') {
     const festivalImg = getFestivalImage(festival);
     const lowerName = festivalName.toLowerCase();
+    const isKarvaChauth = lowerName.includes('karva') || lowerName.includes('karwa');
     const isNagPanchami = lowerName.includes('nag') || lowerName.includes('panchami');
     const isHariyaliTeej = lowerName.includes('hariyali');
     const isKajariTeej = lowerName.includes('kajari') || lowerName.includes('badi teej') || lowerName.includes('satudi');
@@ -105,7 +110,66 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
     const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
 
-    const heroImageSource = isHariyaliTeej
+    // Sacred Audio Story Narration & Ambient Katha Stream (All verified 200 OK BunnyCDN endpoints)
+    const storyAudioSource = isKarvaChauth
+      ? KARVA_CHAUTH_AUDIO
+      : isShivratri
+      ? 'https://brahmandfeed23.b-cdn.net/audio/final_om_namah_shivaay.mp4'
+      : isJanmashtami
+      ? 'https://brahmandfeed23.b-cdn.net/audio/krishna_jaap.mp4'
+      : 'https://brahmandfeed23.b-cdn.net/audio/gayatri_mantra.m4a';
+
+    const audioPlayer = useAudioPlayer(storyAudioSource, { keepAudioSessionActive: true });
+    const playerStatus = useAudioPlayerStatus(audioPlayer);
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    // Synchronize play state with native player status safely
+    useEffect(() => {
+      if (playerStatus) {
+        setIsPlaying(Boolean(playerStatus.playing));
+      }
+    }, [playerStatus]);
+
+    // Configure audio mode and ensure cleanup on unmount
+    useEffect(() => {
+      setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+      }).catch(() => {});
+
+      if (audioPlayer) {
+        audioPlayer.volume = 1.0;
+      }
+
+      return () => {
+        if (audioPlayer) {
+          try {
+            audioPlayer.pause();
+          } catch (_e) {}
+        }
+      };
+    }, [audioPlayer]);
+
+    const toggleAudio = () => {
+      if (!audioPlayer) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      try {
+        if (audioPlayer.playing) {
+          audioPlayer.pause();
+          setIsPlaying(false);
+        } else {
+          audioPlayer.volume = 1.0;
+          audioPlayer.play();
+          setIsPlaying(true);
+        }
+      } catch (err) {
+        console.warn('Audio playback toggle error:', err);
+      }
+    };
+
+    const heroImageSource = isKarvaChauth
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/karva_chauth.webp' }
+      : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/hariyali_teej_story_hero.webp' }
       : isKajariTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/kajari_teej_story_hero.webp' }
@@ -127,7 +191,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/maha_shivratri_story_hero.webp' }
       : festivalImg;
 
-    const chapter1ImageSource = isHariyaliTeej
+    const chapter1ImageSource = isKarvaChauth
+      ? heroImageSource
+      : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/parvati_longing_chapter1.webp' }
       : isKajariTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/kajari_teej_story_hero.webp' }
@@ -176,7 +242,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
     const dynamicChapters = [
       {
         id: 0,
-        title: isHariyaliTeej
+        title: isKarvaChauth
+          ? 'Queen Veervati'
+          : isHariyaliTeej
           ? 'The Longing'
           : isKajariTeej
           ? 'Neem Mata Vrat'
@@ -198,7 +266,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Tandava & Lingam'
           : 'Sacred Origin',
         icon: isJanmashtami ? 'leaf' : 'leaf',
-        content: isHariyaliTeej
+        content: isKarvaChauth
+          ? 'Queen Veervati, the only beloved sister among seven caring brothers, visited her parents\' home on Karva Chauth. Adhering to the sacred vow of fasting for her husband\'s longevity, she went the entire day without food or water, waiting devotedly for the moonrise.'
+          : isHariyaliTeej
           ? 'Long ago, Goddess Parvati desired Lord Shiva as her divine consort. Shiva, immersed in deep samadhi on Mount Kailash, remained detached. Parvati realized that only supreme devotion could awaken his grace.'
           : isKajariTeej
           ? 'Kajari Teej (Badi Teej) falls in Bhadrapada month during dark monsoon clouds (Kajari). Legend narrates the tale of a poor Brahmin family who had no food for Teej fast. The young son risked his life at midnight to fetch Sattu (roasted flour dough) for his mother’s Neem Mata worship.'
@@ -223,7 +293,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       },
       {
         id: 1,
-        title: isHariyaliTeej
+        title: isKarvaChauth
+          ? 'Brotherly Deceit'
+          : isHariyaliTeej
           ? 'Tapasya'
           : isKajariTeej
           ? 'Sacred Sattu'
@@ -245,7 +317,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Shiva-Parvati Marriage'
           : 'Divine Penance',
         icon: isJanmashtami ? 'drop' : 'flame',
-        content: isHariyaliTeej
+        content: isKarvaChauth
+          ? 'Distressed seeing their sister faint from extreme hunger and thirst, the brothers lit a massive fire behind a distant Pipal tree and placed a round sieve in front of it, tricking Veervati into believing the glowing flame was the rising full moon.'
+          : isHariyaliTeej
           ? 'Goddess Parvati embarked on severe austerities spanning 108 lifetimes across rugged mountain caves and dense Shravan forests. Renouncing all comfort, she meditated amidst scorching heat, torrential monsoon rains, and freezing snows.'
           : isKajariTeej
           ? 'When caught by temple guards, the poor Brahmin lad explained his mother’s holy vow to worship Neem Mata and break fast only with Sattu. Touched by his filial piety and devotion, the King rewarded the family with golden vessels and sattu for lifetime.'
@@ -270,7 +344,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       },
       {
         id: 2,
-        title: isHariyaliTeej
+        title: isKarvaChauth
+          ? 'Parvati\'s Grace'
+          : isHariyaliTeej
           ? 'Divine Reunion'
           : isKajariTeej
           ? 'Moonlight Offering'
@@ -292,7 +368,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Neelkanth Poison'
           : 'Cosmic Event',
         icon: 'om',
-        content: isHariyaliTeej
+        content: isKarvaChauth
+          ? 'As she swallowed the first morsel of food, news arrived that her husband, the king, had suddenly fallen critically ill. Realizing her fast was broken under a false moon, she wept inconsolably and prayed with pure devotion. Goddess Parvati appeared, advising her to undertake the fast again with unwavering sanctity.'
+          : isHariyaliTeej
           ? 'Moved by her unyielding love, Lord Shiva manifested before her on the third day (Tritiya) of Shravan. He accepted Parvati as his eternal divine consort, filling the universe with cosmic celebration and monsoon blooms.'
           : isKajariTeej
           ? 'On Kajari Teej evening, married women worship Neem tree branches decorated with cucumber and lamps, offering Arghya (water libation) to the rising Moon after spotting its divine glow through a sieve.'
@@ -317,7 +395,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       },
       {
         id: 3,
-        title: isHariyaliTeej
+        title: isKarvaChauth
+          ? 'The Sacred Sieve'
+          : isHariyaliTeej
           ? 'Blessings'
           : isKajariTeej
           ? 'Marital Grace'
@@ -339,7 +419,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Maha Abhishekam'
           : 'Spiritual Grace',
         icon: isJanmashtami ? 'gear' : 'flower',
-        content: isHariyaliTeej
+        content: isKarvaChauth
+          ? 'Veervati observed the fast following all strict traditions. At night, married women gather in festive circles for the Karva Chauth Katha ritual, rotating earthen thalis while singing verses of auspiciousness before offering Arghya water to the moon through a decorative chalni (sieve).'
+          : isHariyaliTeej
           ? 'Goddess Parvati decreed that any woman observing fasts, wearing festive green bangles, and offering prayers on this holy day will be blessed with lifelong marital harmony, prosperity, and joy.'
           : isKajariTeej
           ? 'Women observe strict Nirjala fast (without water) for the longevity of their husbands and family prosperity, breaking their fast by eating special Sattu laddus after moonrise.'
@@ -364,7 +446,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       },
       {
         id: 4,
-        title: isHariyaliTeej
+        title: isKarvaChauth
+          ? 'Sargi & Blessings'
+          : isHariyaliTeej
           ? 'Celebration'
           : isKajariTeej
           ? 'Kajari Song & Jhula'
@@ -386,12 +470,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Peace & Moksha'
           : 'Festive Joy',
         icon: 'star',
-        content: isHariyaliTeej
+        content: isKarvaChauth
+          ? 'Her husband was restored to full health by divine grace. Today, women commence the fast at dawn with Sargi gifted by mothers-in-law, adorn exquisite red attire and henna, and break the fast by receiving water from their husbands, celebrating eternal love.'
+          : isHariyaliTeej
           ? 'Women gather in courtyards wearing green and red attire, apply intricate mehndi, swing on flower-decked jhulas, sing Teej folk songs, and share traditional sweets like Ghevar.'
           : isKajariTeej
           ? 'Villages across Rajasthan, UP, and MP resonate with soulful Kajari folk songs describing monsoon rains, swings, and devotion to Goddess Parvati under starry skies.'
           : isNagPanchami
-          ? 'Families draw snake figures with turmeric paste at doorstep entrances, cook sweet dishes, and offer prayers in Shiva temples across the nation during Shravan month.'
+          ? 'Families draw snake figures with turmeric paste at doorstep entrances, cook sweet dishes, and offer prayers in Shiva temples across nation during Shravan month.'
           : isOnam
           ? 'Kerala comes alive with traditional Pulikali tiger dances, Kathakali performances, folk music, and vibrant village festivities honoring King Mahabali.'
           : isRakshaBandhan
@@ -414,7 +500,9 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
     const chapters = dynamicChapters;
     const currentChapter = chapters[activeTab] || chapters[0];
 
-    const subtitleText = isHariyaliTeej 
+    const subtitleText = isKarvaChauth
+      ? 'The Sacred Katha of Queen Veervati & Moon Worship'
+      : isHariyaliTeej 
       ? 'The Divine Union of Shiva & Parvati'
       : isKajariTeej
       ? 'Neem Mata Vrat, Sattu Offerings & Moon Worship'
@@ -516,7 +604,36 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
             tint="dark"
             style={styles.journeyCardOverlay}
           >
-            <Text style={styles.journeyCardHeading}>Journey</Text>
+            <View style={styles.journeyHeaderRow}>
+              <Text style={styles.journeyCardHeading}>Journey</Text>
+              {storyAudioSource ? (
+                <TouchableOpacity
+                  style={[
+                    styles.audioControlButton,
+                    isPlaying && styles.audioControlButtonActive,
+                  ]}
+                  onPress={toggleAudio}
+                  activeOpacity={0.75}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying ? 'Pause Katha audio' : 'Listen to Katha audio'}
+                >
+                  <Ionicons
+                    name={isPlaying ? 'pause' : 'volume-medium'}
+                    size={14}
+                    color={isPlaying ? '#030712' : '#F6D269'}
+                  />
+                  <Text
+                    style={[
+                      styles.audioControlText,
+                      isPlaying && styles.audioControlTextActive,
+                    ]}
+                  >
+                    {isPlaying ? 'Pause Katha' : 'Listen Katha'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
 
             <View style={styles.journeyTabsRow}>
               {chapters.map((ch, idx) => {
@@ -1100,6 +1217,12 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 10,
   },
+  journeyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   journeyCardHeading: {
     fontSize: 17,
     fontWeight: '700',
@@ -1109,9 +1232,33 @@ const styles = StyleSheet.create({
       android: 'sans-serif-medium',
       default: 'System',
     }),
-    marginBottom: 12,
     marginLeft: 2,
     letterSpacing: -0.2,
+  },
+  audioControlButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(246, 210, 105, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(246, 210, 105, 0.35)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+  },
+  audioControlButtonActive: {
+    backgroundColor: '#F6D269',
+    borderColor: '#F6D269',
+  },
+  audioControlText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F6D269',
+    letterSpacing: 0.2,
+  },
+  audioControlTextActive: {
+    color: '#030712',
+    fontWeight: '700',
   },
   journeyTabsRow: {
     flexDirection: 'row',

@@ -913,7 +913,7 @@ export default function VendorScreen() {
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
                   placeholder={localT('searchRequests')}
-                  containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 48, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 48 }}
+                  containerStyle={Platform.OS === 'android' ? { marginHorizontal: 20, height: 52, elevation: 0, shadowOpacity: 0 } : { marginHorizontal: 20, height: 52 }}
                 />
               </Animated.View>
             </Animated.View>

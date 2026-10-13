@@ -433,13 +433,18 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     festivalName.toLowerCase().includes('durga') ||
     (festival.id && String(festival.id).toLowerCase().includes('navratri'));
 
+  const isKarvaChauthFestival =
+    festivalName.toLowerCase().includes('karva') ||
+    festivalName.toLowerCase().includes('karwa') ||
+    (festival.id && String(festival.id).toLowerCase().includes('karva'));
+
   const sections = [
     { title: 'Story', value: rawStory },
     { title: 'About', value: rawAbout },
     ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
     { title: 'Importance', value: rawImportance },
     { title: 'Puja Vidhi', value: rawPujaVidhi },
-    { title: 'Mantra', value: rawMantra },
+    ...(!isKarvaChauthFestival ? [{ title: 'Mantra', value: rawMantra }] : []),
     { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
   ].filter((s) => Boolean(s.value));
 
