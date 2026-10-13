@@ -13746,13 +13746,14 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
 async def get_vendor_review_queue(
     status: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
-    """Admin: list vendor review queue snapshots."""
-    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug_admin.log')
-    with open(log_path, 'a') as f:
-        f.write(f"\n--- API CALL: get_vendor_review_queue status={status} limit={limit} ---\n")
-    
+    """Admin: list vendor review queue snapshots with offset pagination."""
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     db, _ = await _ensure_admin_user(token_data)
 
     filters = []
@@ -13761,30 +13762,21 @@ async def get_vendor_review_queue(
 
     records = []
     try:
-        with open(log_path, 'a') as f:
-            f.write("Attempting query with ordering...\n")
         records = await db.query_documents(
             'vendor_admin_reviews',
             filters=filters,
             order_by='updated_at',
             order_direction='DESCENDING',
-            limit=limit,
+            limit=fetch_limit,
         )
-        with open(log_path, 'a') as f:
-            f.write(f"Ordered query success: {len(records)} records found.\n")
     except Exception as exc:
-        with open(log_path, 'a') as f:
-            f.write(f"Ordered query failed: {exc}\nAttempting fallback query...\n")
+        logger.warning(f"Ordered query for vendor_admin_reviews failed, using bounded fallback: {exc}")
         try:
             records = await db.query_documents(
                 'vendor_admin_reviews',
                 filters=filters,
+                limit=fetch_limit,
             )
-            with open(log_path, 'a') as f:
-                f.write(f"Fallback query fetched {len(records)} records. Types of updated_at:\n")
-                for r in records:
-                    up_at = r.get('updated_at')
-                    f.write(f"  ID: {r.get('vendor_id') or r.get('id')} - updated_at: {up_at} ({type(up_at)})\n")
             
             # Helper to get sorting key safely
             def get_sort_key(item):
@@ -13796,12 +13788,11 @@ async def get_vendor_review_queue(
                 return str(val)
                 
             records.sort(key=get_sort_key, reverse=True)
-            records = records[:max(1, limit)]
-            with open(log_path, 'a') as f:
-                f.write("Fallback sorting succeeded.\n")
         except Exception as fallback_exc:
-            with open(log_path, 'a') as f:
-                f.write(f"Fallback query or sort failed: {fallback_exc}\n")
+            logger.error(f"Fallback query or sort failed for vendor_admin_reviews: {fallback_exc}")
+
+    # Slice records according to pagination parameters
+    records = records[safe_offset : safe_offset + safe_limit]
 
     # Batch fetch users for vendor records missing contact info to fix N+1 query
     owner_ids_to_fetch = set()
