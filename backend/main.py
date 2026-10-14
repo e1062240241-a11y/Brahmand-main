@@ -2987,19 +2987,53 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     return {'message': 'User unblocked successfully', 'user_id': user_id}
 
 @api_router.get('/user/blocked')
-async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
-    """Fetch the list of users blocked by the current user"""
+async def get_blocked_users_endpoint(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Fetch the list of users blocked by the current user with offset-based pagination.
+
+    Architectural fix: Enforces DB-level candidate limit bounds (safe_offset + safe_limit)
+    and order_by='created_at' DESC on user_blocks queries. This prevents O(N_blocks) reads
+    and memory allocation when users accumulate large blocked lists.
+    """
     db = await get_db()
     current_user_id = token_data['user_id']
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     try:
-        # Query blocks where blockerUid is the current user
-        blocks = await db.query_documents('user_blocks', filters=[('blockerUid', '==', current_user_id)])
+        try:
+            blocks = await db.query_documents(
+                'user_blocks',
+                filters=[('blockerUid', '==', current_user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(f"Firestore composite index missing for user_blocks blockerUid + created_at, falling back to un-ordered query: {query_err}")
+                blocks = await db.query_documents(
+                    'user_blocks',
+                    filters=[('blockerUid', '==', current_user_id)],
+                    limit=fetch_limit
+                )
+            else:
+                raise query_err
+
+        paged_blocks = blocks[safe_offset : safe_offset + safe_limit]
         blocked_users = []
-        blocked_uids = [b.get('blockedUid') for b in blocks if b.get('blockedUid')]
+        blocked_uids = [b.get('blockedUid') for b in paged_blocks if b.get('blockedUid')]
+
         if blocked_uids:
             user_docs = await db.get_documents_batch('users', blocked_uids)
             user_map = {u['id']: u for u in user_docs if u}
-            for b in blocks:
+            for b in paged_blocks:
                 blocked_uid = b.get('blockedUid')
                 if blocked_uid:
                     user_doc = user_map.get(blocked_uid)
