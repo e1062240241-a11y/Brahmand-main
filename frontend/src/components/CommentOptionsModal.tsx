@@ -17,13 +17,22 @@ interface CommentOptionsModalProps {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
+const RIPPLE_DESTRUCTIVE = { color: 'rgba(229, 57, 53, 0.12)', borderless: false };
+const RIPPLE_NORMAL = { color: 'rgba(0, 0, 0, 0.08)', borderless: false };
+const CLOSE_HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
+
+// Varnish fix: Replaced unsafe Animated.Value instantiation inside useRef, extracted inline style allocations & ripple configs to StyleSheet/constants, and wrapped component in React.memo to prevent unnecessary re-renders when parent states trigger updates.
+export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = React.memo(({
   visible,
   onClose,
   options,
 }) => {
   const insets = useSafeAreaInsets();
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const animatedValueRef = useRef<Animated.Value | null>(null);
+  if (!animatedValueRef.current) {
+    animatedValueRef.current = new Animated.Value(0);
+  }
+  const animatedValue = animatedValueRef.current;
 
   useEffect(() => {
     if (visible) {
@@ -39,7 +48,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, animatedValue]);
 
   if (!visible) return null;
 
@@ -53,23 +62,27 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
     outputRange: [SCREEN_HEIGHT, 0],
   });
 
+  const sheetPaddingBottom = Platform.OS === 'android'
+    ? Math.max(insets.bottom + 16, 28)
+    : Math.max(insets.bottom, 16);
+
   return (
-    <View style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}>
+    <View style={styles.rootContainer}>
       <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       
       <View style={styles.keyboardAvoidingContainer} pointerEvents="box-none">
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <Pressable style={styles.dismissArea} onPress={onClose} />
         
-        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 16, 28) : Math.max(insets.bottom, 16) }]}>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: sheetPaddingBottom }]}>
           {/* Grab Handle */}
           <View style={styles.handleBar} />
 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Comment Options</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close options" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close options" hitSlop={CLOSE_HIT_SLOP}>
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
@@ -90,12 +103,9 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                   accessibilityLabel={option.label}
                   style={({ pressed }) => [
                     styles.optionRow,
-                    pressed && { backgroundColor: isDestructive ? 'rgba(229, 57, 53, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
+                    pressed && (isDestructive ? styles.optionRowPressedDestructive : styles.optionRowPressedNormal),
                   ]}
-                  android_ripple={{
-                    color: isDestructive ? 'rgba(229, 57, 53, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                    borderless: false,
-                  }}
+                  android_ripple={isDestructive ? RIPPLE_DESTRUCTIVE : RIPPLE_NORMAL}
                   onPress={() => {
                     onClose();
                     // Small delay to let close animation start
@@ -119,9 +129,24 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
       </View>
     </View>
   );
-};
+});
+
+CommentOptionsModal.displayName = 'CommentOptionsModal';
 
 const styles = StyleSheet.create({
+  rootContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+  },
+  dismissArea: {
+    flex: 1,
+  },
+  optionRowPressedDestructive: {
+    backgroundColor: 'rgba(229, 57, 53, 0.08)',
+  },
+  optionRowPressedNormal: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
