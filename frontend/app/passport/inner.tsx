@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore, sanitizeUserProfile } from '../../src/store/authStore';
 import { usePassportStore } from '../../src/store/passportStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import { getUserProfile } from '../../src/services/api';
@@ -33,6 +34,8 @@ function PassportInnerScreen({
   observedBadges?: any[];
 }) {
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const totalJaap = usePassportStore((state) => state.total_jaap);
@@ -261,40 +264,50 @@ function PassportInnerScreen({
         </View>
 
         {/* ── Spiritual Record Card ── */}
+        {/* 🧡 Engagement: Localized Spiritual Record labels to Devanagari Hindi when active language is Hindi */}
+        {/* Lever: Reframing + Mother Tongue Connection (मातृभाषा) + Devotional Record */}
+        {/* Why: "आध्यात्मिक कीर्तिमान" and "प्राप्त सम्मान" resonate deeply with Sanatan spiritual pride and achievement. */}
+        {/* UI: Text-only change, zero structural layout additions. */}
         <View style={styles.spiritualRecordCard}>
-          <Text style={styles.recordTitle}>STIRITUAL RECORD</Text>
+          <Text style={styles.recordTitle}>{isHindi ? 'आध्यात्मिक कीर्तिमान' : 'SPIRITUAL RECORD'}</Text>
 
           <View style={styles.recordGrid}>
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Total Journeys</Text>
+              <Text style={styles.recordLabel}>{isHindi ? 'कुल यात्राएं' : 'Total Journeys'}</Text>
               <Text style={styles.recordValue}>{journeysCount}</Text>
             </View>
 
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>{"Jaap Count's"}</Text>
+              <Text style={styles.recordLabel}>{isHindi ? 'जाप संख्या' : "Jaap Count's"}</Text>
               <Text style={styles.recordValue}>{jaapCount}</Text>
             </View>
 
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Earned Badges</Text>
+              <Text style={styles.recordLabel}>{isHindi ? 'प्राप्त सम्मान' : 'Earned Badges'}</Text>
               <Text style={styles.recordValue}>{badgesCount}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Action Buttons ── */}
+        {/* 🧡 Engagement: Reframed Passport action CTAs to Devanagari Hindi */}
+        {/* Lever: Reframing + Proximity to Continuation */}
+        {/* Why: "यात्रा समयरेखा" and "+ नई यात्रा दर्ज करें" encourage ongoing spiritual logging. */}
+        {/* UI: Text-only change, zero structural modifications. */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.8}
             onPress={() => router.push('/passport/timeline' as any)}
           >
-            <Text style={styles.primaryButtonText} numberOfLines={1}>Passport Timeline</Text>
-            <Ionicons name="arrow-forward" size={16} color="#000" style={{ marginLeft: 8 }} />
+            <Text style={styles.primaryButtonText} numberOfLines={1}>
+              {isHindi ? 'यात्रा समयरेखा ➔' : 'Passport Timeline'}
+            </Text>
+            {!isHindi && <Ionicons name="arrow-forward" size={16} color="#000" style={{ marginLeft: 8 }} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -303,7 +316,9 @@ function PassportInnerScreen({
             onPress={() => router.push('/passport/journey/new' as any)}
           >
             <Ionicons name="add-circle-outline" size={18} color="#000" style={{ marginRight: 6 }} />
-            <Text style={styles.secondaryButtonText}>Log a New Journey</Text>
+            <Text style={styles.secondaryButtonText}>
+              {isHindi ? 'नई यात्रा दर्ज करें' : 'Log a New Journey'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
