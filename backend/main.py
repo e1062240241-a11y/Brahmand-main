@@ -10968,13 +10968,16 @@ async def backfill_official_posts(
                 posts_to_update.append(pid)
 
     if not is_dry_run:
-        for uid in users_to_update:
-            await db.update_document('users', uid, {'is_official': True})
-            from utils.cache import cache_manager
-            await cache_manager.invalidate_user(uid)
+        from utils.cache import cache_manager
 
-        for pid in posts_to_update:
-            await db.update_document('posts', pid, {'is_official': True})
+        if users_to_update:
+            user_updates = [(uid, {'is_official': True}) for uid in users_to_update]
+            await db.batch_update_documents('users', user_updates)
+            await asyncio.gather(*(cache_manager.invalidate_user(uid) for uid in users_to_update))
+
+        if posts_to_update:
+            post_updates = [(pid, {'is_official': True}) for pid in posts_to_update]
+            await db.batch_update_documents('posts', post_updates)
 
         # Refresh feed pools to pick up updated official posts
         try:
@@ -11024,20 +11027,26 @@ async def admin_set_user_official(
     if old_status and not new_status:
         # Cascade revoke across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': False})
-                cascaded_posts_count += 1
+                post_updates.append((pid, {'is_official': False}))
+        if post_updates:
+            await db.batch_update_documents('posts', post_updates)
+            cascaded_posts_count = len(post_updates)
         logger.info(f"Cascaded official status revocation for user {user_id}: updated {cascaded_posts_count} posts to is_official=False")
     elif not old_status and new_status:
         # Cascade grant across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and not is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': True})
-                cascaded_posts_count += 1
+                post_updates.append((pid, {'is_official': True}))
+        if post_updates:
+            await db.batch_update_documents('posts', post_updates)
+            cascaded_posts_count = len(post_updates)
         logger.info(f"Cascaded official status grant for user {user_id}: updated {cascaded_posts_count} posts to is_official=True")
 
     # Refresh feed candidate pools
