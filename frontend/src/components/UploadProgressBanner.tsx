@@ -86,6 +86,8 @@ export const UploadProgressBanner = () => {
 
   return (
     <Animated.View
+      accessibilityLiveRegion="polite"
+      accessibilityRole={status === 'success' || status === 'error' ? 'alert' : 'none'}
       style={[
         styles.container,
         {
