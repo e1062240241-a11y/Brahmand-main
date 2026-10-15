@@ -39,7 +39,7 @@ export interface SadhanaStreakCardProps {
  */
 export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
   function SadhanaStreakCard({ onPressChant }) {
-    const { language } = useTranslation();
+    const { language, t } = useTranslation();
     const router = useRouter();
     const isHindi = language === 'hi';
 
@@ -273,6 +273,8 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
           <Pressable
             onPress={handleCardPress}
             style={({ pressed }) => [styles.outerContainer, pressed && styles.cardPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('sadhanaSankalpaCard')}
           >
             <LinearGradient
               colors={['#FFF8F0', '#FFF1E0']}
