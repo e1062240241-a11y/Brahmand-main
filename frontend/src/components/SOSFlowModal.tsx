@@ -513,8 +513,8 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
             {step === 4 && renderStep4()}
             
             {loading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#FF0000" />
+              <View style={styles.loadingOverlay} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="large" color="#FF0000" accessibilityLabel="Processing SOS request" />
               </View>
             )}
           </View>
