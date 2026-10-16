@@ -548,7 +548,7 @@ class FirestoreDB:
         await self._run_sync(_increment)
         await self._cache.delete(f"{collection}:{doc_id}")
 
-    async def batch_update_documents(self, collection: str, updates: List[tuple]) -> None:
+    async def batch_update_documents(self, collection: str, updates: List[tuple], batch_size: int = 400) -> None:
         """Update multiple documents in a collection using a batch. updates is a list of (doc_id, data_dict) tuples"""
         if not updates:
             return
@@ -565,14 +565,16 @@ class FirestoreDB:
             return
 
         def _batch():
-            batch = self.client.batch()
             coll_ref = self.client.collection(collection)
-            for doc_id, data in updates:
-                data_copy = dict(data)
-                data_copy['updated_at'] = now
-                doc_ref = coll_ref.document(doc_id)
-                batch.update(doc_ref, data_copy)
-            batch.commit()
+            for i in range(0, len(updates), batch_size):
+                chunk = updates[i:i + batch_size]
+                batch = self.client.batch()
+                for doc_id, data in chunk:
+                    data_copy = dict(data)
+                    data_copy['updated_at'] = now
+                    doc_ref = coll_ref.document(doc_id)
+                    batch.update(doc_ref, data_copy)
+                batch.commit()
 
         await self._run_sync(_batch)
         for doc_id, _ in updates:
