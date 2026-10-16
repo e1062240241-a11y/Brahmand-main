@@ -75,7 +75,11 @@ export const translations = {
     
     // Jaap Screen
     communalJaap: 'Communal Jaap',
-    dailyTarget: 'Daily Target',
+    // 🧡 Engagement: Reframed transactional label "Daily Target" to devotional vow "Daily Sankalpa 🙏"
+    // Lever: Reframing + Sanskara/Sankalpa (Culture/Vow over Corporate Target)
+    // Why: "Sankalpa" frames daily returning as a sacred spiritual intention rather than a work target.
+    // UI: Text-only change.
+    dailyTarget: 'Daily Sankalpa 🙏',
     jaapCounter: 'Jaap Counter',
     completed: 'Completed',
     totalJaapCount: 'Total Jaap Count',
@@ -370,7 +374,11 @@ export const translations = {
     
     // Jaap Screen
     communalJaap: 'सामूहिक जाप',
-    dailyTarget: 'दैनिक लक्ष्य',
+    // 🧡 Engagement: Reframed transactional label "दैनिक लक्ष्य" to devotional vow "दैनिक संकल्प 🙏"
+    // Lever: Reframing + Sanskara/Sankalpa (Culture/Vow over Corporate Target)
+    // Why: "संकल्प" frames daily returning as a sacred spiritual intention rather than a work target.
+    // UI: Text-only change.
+    dailyTarget: 'दैनिक संकल्प 🙏',
     jaapCounter: 'जाप काउंटर',
     totalJaapCount: 'कुल जाप संख्या',
     liveJaapRooms: 'लाइव जाप रूम',
