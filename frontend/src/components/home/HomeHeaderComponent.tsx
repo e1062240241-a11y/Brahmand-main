@@ -1,6 +1,5 @@
 import { Avatar } from '../Avatar';
 import HomeFeedTabs from '../HomeFeedTabs';
-import UiverseNotifyButton from '../UiverseNotifyButton';
 import { FONTS } from '../../constants/theme';
 import { formatTime } from '../../features/live-mantra/schedule';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,16 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { VideoView as ExpoVideoView } from 'expo-video';
 import { useSafeVideoPlayer, isPlayerValid } from '../SafeVideoView';
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, navratriBannerImage, maaDurgaIcon } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, shivaImage, navratriBannerImage, maaDurgaIcon } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { NavratriPetals } from './NavratriPetals';
-import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,

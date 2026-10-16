@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
+import { formatDateIST, formatTimeIST } from '../src/utils/dateUtils';
 import React from 'react';
 import {
   View,
@@ -11,11 +11,10 @@ import {
   Animated,
   Image,
   Dimensions,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../src/services/api';
