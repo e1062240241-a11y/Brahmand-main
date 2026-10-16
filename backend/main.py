@@ -1750,10 +1750,48 @@ async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_
     return {"message": "Logout successful"}
 
 @api_router.get("/admin/anonymous-users")
-async def get_admin_anonymous_users(token_data: dict = Depends(verify_token)):
+async def get_admin_anonymous_users(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get list of anonymous user accounts with offset-based pagination and DB-level bounds (Admin only).
+    Prevents O(N_anonymous) document reads and memory spikes at scale.
+    """
     db, _ = await _ensure_admin_user(token_data)
-    anonymous_users = await db.query_documents('users', [('anonymous_account', '==', True)])
-    return {"users": anonymous_users}
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        anonymous_users = await db.query_documents(
+            'users',
+            filters=[('anonymous_account', '==', True)],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(
+                f"Firestore composite index missing for users anonymous_account + created_at, falling back to un-ordered query: {query_err}"
+            )
+            anonymous_users = await db.query_documents(
+                'users',
+                filters=[('anonymous_account', '==', True)],
+                limit=fetch_limit * 3 + 10
+            )
+        else:
+            raise query_err
+
+    anonymous_users.sort(
+        key=lambda u: str(u.get('created_at') or ''),
+        reverse=True
+    )
+
+    paged_users = anonymous_users[safe_offset : safe_offset + safe_limit]
+    return {"users": paged_users}
 
 @api_router.post("/admin/anonymous-users/{user_id}/disable")
 async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(verify_token)):

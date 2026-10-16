@@ -49,6 +49,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
+- `/admin/anonymous-users` — unpaginated query across all anonymous users — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
