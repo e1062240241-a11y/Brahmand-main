@@ -13,13 +13,12 @@ import {
   TouchableWithoutFeedback
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verifyFirebaseToken } from '../../src/services/api';
-import { getCurrentUserToken, verifyFirebaseOTP, sendFirebaseOTP } from '../../src/services/firebase/authService';
+import { verifyFirebaseOTP, sendFirebaseOTP } from '../../src/services/firebase/authService';
 import { isAnonymousPhone } from '../../src/services/firebase/config';
 import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING } from '../../src/constants/theme';
+import { SPACING } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
 
