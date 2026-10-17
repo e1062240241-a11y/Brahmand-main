@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import {View,
+import React, { useState, useCallback } from 'react';
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -10,7 +11,8 @@ import {View,
   ActivityIndicator,
   Modal,
   FlatList,
-  Dimensions} from 'react-native';
+  Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +41,16 @@ const HELP_TYPES = [
 const AGE_GROUPS = ['60-70', '70-80', '80+'];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
 
+interface GeocodedLocation {
+  display_name?: string;
+  name?: string;
+  value?: string;
+  label?: string;
+  isCustom?: boolean;
+  latitude?: number;
+  longitude?: number;
+}
+
 export default function SeniorCitizenRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
@@ -53,27 +65,25 @@ export default function SeniorCitizenRequestScreen() {
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<any>(null);
+  const [selectedLocation, setSelectedLocation] = useState<GeocodedLocation | null>(null);
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'help' | 'age' | 'contact' | null>(null);
 
-
-
-  const openModal = (type: 'help' | 'age' | 'contact') => {
+  const openModal = useCallback((type: 'help' | 'age' | 'contact') => {
     setModalType(type);
     setModalVisible(true);
-  };
+  }, []);
 
-  const handleSelectOption = (option: string) => {
+  const handleSelectOption = useCallback((option: string) => {
     if (modalType === 'help') setHelpType(option);
     if (modalType === 'age') setAgeGroup(option);
     if (modalType === 'contact') setContactPref(option);
     setModalVisible(false);
-  };
+  }, [modalType]);
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     if (!helpType) return Alert.alert('Error', 'Please select the type of help needed');
     if (!location) return Alert.alert('Error', 'Please provide a location');
     if (!details.trim()) return Alert.alert('Error', 'Please provide details about the situation');
@@ -81,24 +91,33 @@ export default function SeniorCitizenRequestScreen() {
 
     setIsSubmitting(true);
     try {
+      const urgencyLevelMap: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        urgent: 'critical',
+      };
+      const urgencyKey = urgency.toLowerCase();
+      const mappedUrgency = urgencyLevelMap[urgencyKey] || 'medium';
+
       await createCommunityRequest({
         community_id: params.community_id,
         request_type: 'help',
         title: `Senior Support: ${helpType}`,
         description: `${details}\nAge Group: ${ageGroup}`,
         contact_number: contactPref,
-        urgency_level: urgency.toLowerCase() as any,
+        urgency_level: mappedUrgency,
         location: location,
         support_needed: 'Senior Care',
       });
 
       Alert.alert('Success', 'Request posted!', [{ text: 'OK', onPress: () => router.push('/(tabs)/profile') }]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       Alert.alert('Error', parseApiError(error));
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [helpType, location, details, contactPref, params.community_id, ageGroup, urgency, router]);
 
   const renderModalContent = () => {
     let options: string[] = [];
@@ -259,14 +278,14 @@ export default function SeniorCitizenRequestScreen() {
                   {isSubmitting ? <ActivityIndicator color="#FFF" /> : (
                     <>
                       <Text style={styles.continueButtonText}>Post Request</Text>
-                      <Ionicons name="arrow-forward" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                      <Ionicons name="arrow-forward" size={18} color="#FFF" style={styles.arrowIcon} />
                     </>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
               
               <Text style={styles.bottomDisclaimer}>Your request will be visible to nearby volunteers</Text>
-              <View style={{ height: 40 }} />
+              <View style={styles.bottomSpacer} />
             </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -348,4 +367,6 @@ const styles = StyleSheet.create({
   optionItemSelected: { backgroundColor: '#FFF4EE' },
   optionText: { fontSize: 16, color: '#444', fontFamily: FONTS.regular },
   optionTextSelected: { color: '#F25C05', fontFamily: FONTS.bold },
+  arrowIcon: { marginLeft: 8 },
+  bottomSpacer: { height: 40 },
 });
