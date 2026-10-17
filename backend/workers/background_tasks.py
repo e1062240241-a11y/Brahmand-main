@@ -155,11 +155,15 @@ async def update_community_stats():
     db = FirestoreDB(client)
     communities = await db.query_documents('communities')
     
+    updates = []
     for community in communities:
         cid = community.get('id')
         if not cid:
             continue
         member_count = len(community.get("members", []))
-        await db.update_document('communities', cid, {"member_count": member_count})
+        updates.append((cid, {"member_count": member_count}))
+
+    for i in range(0, len(updates), 400):
+        await db.batch_update_documents('communities', updates[i:i + 400])
     
     logger.info(f"Updated stats for {len(communities)} communities")
