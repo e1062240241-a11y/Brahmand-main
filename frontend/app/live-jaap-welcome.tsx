@@ -152,7 +152,7 @@ interface StatusBannerProps {
   t: (key: string) => string;
 }
 
-const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: StatusBannerProps) => {
+const StatusBanner = React.memo(function StatusBanner({ mantraType, isHanuman, isOtherLiveJaap, t }: StatusBannerProps) {
   const [now, setNow] = useState(new Date());
 
   const hanumanStatus = getCurrentHanumanStatus(now);
@@ -177,8 +177,13 @@ const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: 
           <View style={styles.activeBannerInner}>
             <View style={styles.liveDotRing} />
             <Text style={styles.statusTextActive}>
+              {/* 🧡 Engagement: Reframed transactional completion status "सत्र समाप्त (अगले सत्र की प्रतीक्षा)"
+                  to devotional offering "सत्र पूर्ण • साधना समर्पित 🙏".
+                  Lever: Reframing + Devotion over Productivity
+                  Why: "साधना समर्पित" elevates session completion into a sacred offering (bhavna), leaving a spiritual impression on the user.
+                  UI: Text-only change, zero UI or visual components added. */}
               {hanumanStatus.isCompleted
-                ? (t('language') === 'hi' ? 'सत्र समाप्त (अगले सत्र की प्रतीक्षा)' : 'Session Completed (Waiting for next)')
+                ? (t('language') === 'hi' ? 'सत्र पूर्ण • साधना समर्पित 🙏' : 'Session Completed • Sadhana Offered 🙏')
                 : t('language') === 'hi'
                   ? `${hanumanStatus.sessionName === 'Morning' ? 'सुबह का' : hanumanStatus.sessionName === 'Afternoon' ? 'दोपहर का' : hanumanStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • राउंड ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} (कुल राउंड ${hanumanStatus.roundOfDay}/51)`
                   : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
