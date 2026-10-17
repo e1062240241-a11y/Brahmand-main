@@ -119,7 +119,7 @@ export const SPECIAL_TEMPLE_DATA: Record<string, {
     ],
     description: 'Mahakaleshwar Jyotirling (Mahakal Mandir) in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti.',
     guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti.',
-    youtubeUrl: 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
+    youtubeUrl: 'https://youtu.be/wVE3ZBzBJpM?si=yg5c1Na1WiDUyFNi',
   },
   'Kashi Vishwanath Temple – Varanasi': {
     aliases: ['kashi vishwanath', 'vishwanath temple varanasi', 'golden temple of kashi'],

@@ -48,6 +48,22 @@ import { AboutTempleStory } from '../../src/components/AboutTempleStory';
 const isWeb = Platform.OS === 'web';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const MAHAKALESHWAR_TEMPLE_KEY = 'Mahakaleshwar Temple – Ujjain';
+const MAHAKALESHWAR_VIDEO_URL = 'https://youtu.be/wVE3ZBzBJpM?si=yg5c1Na1WiDUyFNi';
+const MAHAKALESHWAR_VIDEO_ID = getYoutubeVideoId(MAHAKALESHWAR_VIDEO_URL);
+const MAHAKALESHWAR_EMBED_URL = MAHAKALESHWAR_VIDEO_ID
+  ? `https://www.youtube.com/embed/${MAHAKALESHWAR_VIDEO_ID}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1`
+  : MAHAKALESHWAR_VIDEO_URL;
+const MAHAKALESHWAR_AUTOPLAY_EMBED_URL = MAHAKALESHWAR_VIDEO_ID
+  ? `${MAHAKALESHWAR_EMBED_URL}&autoplay=1`
+  : MAHAKALESHWAR_VIDEO_URL;
+const MAHAKALESHWAR_THUMBNAIL_URL = MAHAKALESHWAR_VIDEO_ID
+  ? `https://i.ytimg.com/vi/${MAHAKALESHWAR_VIDEO_ID}/maxresdefault.jpg`
+  : null;
+const MAHAKALESHWAR_THUMBNAIL_FALLBACK_URL = MAHAKALESHWAR_VIDEO_ID
+  ? `https://i.ytimg.com/vi/${MAHAKALESHWAR_VIDEO_ID}/hqdefault.jpg`
+  : null;
+
 const mapBackendResponseToFrontend = (backendData: any) => {
   if (!backendData) return null;
 
@@ -157,6 +173,33 @@ export default function TempleDetailScreen() {
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
+  const isMahakaleshwarTemple = templeKey === MAHAKALESHWAR_TEMPLE_KEY;
+  const [isMahakaleshwarVideoPlaying, setIsMahakaleshwarVideoPlaying] = useState(false);
+  const [mahakaleshwarThumbnailStage, setMahakaleshwarThumbnailStage] = useState(0);
+
+  useEffect(() => {
+    setIsMahakaleshwarVideoPlaying(false);
+    setMahakaleshwarThumbnailStage(0);
+  }, [resolvedTempleId]);
+
+  const mahakaleshwarVideoContent = useMemo(() => {
+    if (!isMahakaleshwarTemple || !isMahakaleshwarVideoPlaying) return null;
+
+    return (
+      <WebView
+        source={{ uri: MAHAKALESHWAR_AUTOPLAY_EMBED_URL }}
+        originWhitelist={['*']}
+        style={styles.youtubeFrame}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsFullscreenVideo
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        setBuiltInZoomControls={false}
+        scrollEnabled={false}
+      />
+    );
+  }, [isMahakaleshwarTemple, isMahakaleshwarVideoPlaying]);
 
   useEffect(() => {
     if (autoplayAarti === 'true' && resolvedYoutubeUrl) {
@@ -445,6 +488,16 @@ export default function TempleDetailScreen() {
     temple_id: temple?.temple_id || temple?.templeId || resolvedTempleId,
     name: temple?.name || displayName,
   }), [temple, resolvedTempleId, displayName]);
+
+  const mahakaleshwarThumbnailSource = useMemo(() => {
+    if (mahakaleshwarThumbnailStage === 0 && MAHAKALESHWAR_THUMBNAIL_URL) {
+      return { uri: MAHAKALESHWAR_THUMBNAIL_URL };
+    }
+    if (mahakaleshwarThumbnailStage <= 1 && MAHAKALESHWAR_THUMBNAIL_FALLBACK_URL) {
+      return { uri: MAHAKALESHWAR_THUMBNAIL_FALLBACK_URL };
+    }
+    return templeImageSource;
+  }, [mahakaleshwarThumbnailStage, templeImageSource]);
 
   const templeImages: any[] = (Array.isArray(temple?.images) && temple.images.length > 0)
     ? temple.images
@@ -1231,30 +1284,72 @@ export default function TempleDetailScreen() {
               return (
                 <View style={styles.infoCard}>
                   {/* 1. HERO SECTION */}
-                  <TouchableOpacity
-                    style={styles.heroImageContainer}
-                    activeOpacity={0.9}
-                    onPress={() => {
-                      setActiveGalleryIndex(0);
-                      setGalleryModalVisible(true);
-                    }}
-                  >
-                    <ExpoImage
-                      source={templeImageSource}
-                      style={styles.heroImage}
-                      contentFit="cover"
-                      contentPosition="top"
-                      transition={200}
-                    />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.45)']}
-                      style={styles.heroImageOverlay}
-                    />
-                    <View style={styles.expandImageBadge}>
-                      <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
-                      <Text style={styles.expandImageBadgeText}>Tap to view photo</Text>
+                  {isMahakaleshwarTemple ? (
+                    <View style={styles.heroImageContainer}>
+                      {isMahakaleshwarVideoPlaying ? (
+                        isWeb ? (
+                          <iframe
+                            title="Mahakaleshwar Darshan"
+                            src={MAHAKALESHWAR_AUTOPLAY_EMBED_URL}
+                            style={styles.heroImage}
+                            frameBorder="0"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            allowFullScreen
+                          />
+                        ) : (
+                          mahakaleshwarVideoContent
+                        )
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.heroImage}
+                          activeOpacity={0.9}
+                          onPress={() => setIsMahakaleshwarVideoPlaying(true)}
+                        >
+                          <ExpoImage
+                            source={mahakaleshwarThumbnailSource}
+                            style={styles.heroImage}
+                            contentFit="cover"
+                            contentPosition="center"
+                            transition={200}
+                            onError={() => setMahakaleshwarThumbnailStage((prev) => (prev < 2 ? prev + 1 : prev))}
+                          />
+                          <View style={styles.heroVideoShade} pointerEvents="none" />
+                          <View style={styles.heroVideoPlayButton} pointerEvents="none">
+                            <Ionicons name="play" size={26} color="#FFFFFF" />
+                          </View>
+                          <View style={styles.expandImageBadge} pointerEvents="none">
+                            <Ionicons name="logo-youtube" size={12} color="#FFFFFF" />
+                            <Text style={styles.expandImageBadgeText}>Tap to play video</Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.heroImageContainer}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setActiveGalleryIndex(0);
+                        setGalleryModalVisible(true);
+                      }}
+                    >
+                      <ExpoImage
+                        source={templeImageSource}
+                        style={styles.heroImage}
+                        contentFit="cover"
+                        contentPosition="top"
+                        transition={200}
+                      />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.45)']}
+                        style={styles.heroImageOverlay}
+                      />
+                      <View style={styles.expandImageBadge}>
+                        <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
+                        <Text style={styles.expandImageBadgeText}>Tap to view photo</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
 
                   {/* Floating Action Share FAB (Overlapping Hero & Content) */}
                   <TouchableOpacity
@@ -1800,6 +1895,26 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 60,
+  },
+  heroVideoShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+  },
+  heroVideoPlayButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -32,
+    marginLeft: -32,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 3,
   },
   expandImageBadge: {
     position: 'absolute',
