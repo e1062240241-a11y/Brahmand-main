@@ -193,6 +193,9 @@ export default function EntryAnimationScreen() {
               style={styles.checkbox}
               onPress={() => setAgreed(!agreed)}
               activeOpacity={0.8}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreed }}
+              accessibilityLabel="Agree to Terms of Condition and Privacy Policy"
             >
               {agreed ? <CheckedCheckboxIcon /> : <UncheckedCheckboxIcon />}
             </TouchableOpacity>
