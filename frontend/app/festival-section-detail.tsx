@@ -391,6 +391,7 @@ const FestivalSectionDetailPage = () => {
 
         {isStorySection ? (
           <FestivalSectionDetailCard
+            key={`story-${decodeURIComponent(section)}`}
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
@@ -402,6 +403,7 @@ const FestivalSectionDetailPage = () => {
             bounces={false}
           >
             <FestivalSectionDetailCard
+              key={`detail-${decodeURIComponent(section)}`}
               festival={festival}
               section={decodeURIComponent(section)}
               onBack={() => router.back()}

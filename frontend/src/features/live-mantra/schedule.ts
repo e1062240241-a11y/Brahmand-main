@@ -339,10 +339,17 @@ export const KRISHNA_SESSIONS: OtherJaapSession[] = [
   { name: 'Evening', startHour: 19, startMin: 0, endHour: 23, endMin: 0 },
 ];
 
+export const RAM_SESSIONS: OtherJaapSession[] = [
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 10, endMin: 0 },
+  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 16, endMin: 0 },
+  { name: 'Evening', startHour: 18, startMin: 0, endHour: 22, endMin: 0 },
+];
+
 const MANTRA_SESSIONS_MAP: Record<string, OtherJaapSession[]> = {
   gayatri: GAYATRI_SESSIONS,
   shiva: SHIVA_SESSIONS,
   krishna: KRISHNA_SESSIONS,
+  ram: RAM_SESSIONS,
 };
 
 export const getSessionsForMantra = (mantraType?: string): OtherJaapSession[] => {
@@ -508,6 +515,7 @@ export default {
   GAYATRI_SESSIONS,
   SHIVA_SESSIONS,
   KRISHNA_SESSIONS,
+  RAM_SESSIONS,
   getSessionsForMantra,
   getSynchronizedIndex
 };

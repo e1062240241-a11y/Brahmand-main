@@ -18,6 +18,13 @@ import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
 // ponytail: local bundle, upload to BunnyCDN /audio/karwachauth.mp3 if size matters
 const KARVA_CHAUTH_AUDIO = require('../../assets/audio/karwachauth.mp3');
 
+// Local Karwa Chauth story artwork arranged in exact order of upload
+const KARWA_CHAUTH_IMG_1 = require('../../assets/images/festivals/karwa_chauth_brothers_feast.jpg');
+const KARWA_CHAUTH_IMG_2 = require('../../assets/images/festivals/karwa_chauth_puja.jpg');
+const KARWA_CHAUTH_IMG_3 = require('../../assets/images/festivals/karwa_chauth_fainting.jpg');
+const KARWA_CHAUTH_IMG_4 = require('../../assets/images/festivals/karwa_chauth_sieve_tree.jpg');
+const KARWA_CHAUTH_IMG_5 = require('../../assets/images/festivals/karwa_chauth_moon_sighting.jpg');
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface FestivalSectionDetailCardProps {
@@ -168,7 +175,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
     };
 
     const heroImageSource = isKarvaChauth
-      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/karva_chauth.webp' }
+      ? KARWA_CHAUTH_IMG_1
       : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/hariyali_teej_story_hero.webp' }
       : isKajariTeej
@@ -192,7 +199,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       : festivalImg;
 
     const chapter1ImageSource = isKarvaChauth
-      ? heroImageSource
+      ? KARWA_CHAUTH_IMG_1
       : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/parvati_longing_chapter1.webp' }
       : isKajariTeej
@@ -340,7 +347,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           : isShivratri
           ? 'Maha Shivratri is also celebrated as the holy wedding night of Lord Shiva and Goddess Parvati, symbolizing the eternal union of Purusha and Prakriti.'
           : sentences.slice(2, 4).join(' ') || storyText,
-        image: heroImageSource,
+        image: isKarvaChauth ? KARWA_CHAUTH_IMG_2 : heroImageSource,
       },
       {
         id: 2,
@@ -391,7 +398,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           : isShivratri
           ? 'During Samudra Manthan, Shiva held the deadly Halahala poison in his throat to save creation, earning the name Neelkanth.'
           : sentences.slice(4, 6).join(' ') || storyText,
-        image: heroImageSource,
+        image: isKarvaChauth ? KARWA_CHAUTH_IMG_3 : heroImageSource,
       },
       {
         id: 3,
@@ -442,7 +449,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           : isShivratri
           ? 'Devotees observe all-night vigil (Jagran), performing continuous Abhishekam on Shivling with milk, honey, Ganga water, and Belpatra leaves.'
           : sentences.slice(6, 8).join(' ') || storyText,
-        image: heroImageSource,
+        image: isKarvaChauth ? KARWA_CHAUTH_IMG_4 : heroImageSource,
       },
       {
         id: 4,
@@ -493,12 +500,46 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           : isShivratri
           ? 'Devotees break fast after sunrise, blessed with inner peace, liberation (Moksha), and removal of past karmic burdens.'
           : sentences.slice(8).join(' ') || storyText,
-        image: heroImageSource,
+        image: isKarvaChauth ? KARWA_CHAUTH_IMG_5 : heroImageSource,
       },
     ];
 
     const chapters = dynamicChapters;
     const currentChapter = chapters[activeTab] || chapters[0];
+
+    // ponytail: equal-split sync, real timestamps file if katha timing drifts
+    const suppressAutoRef = useRef(false);
+    const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => {
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    }, []);
+    const handleChapterPress = (idx: number) => {
+      Haptics.selectionAsync().catch(() => {});
+      setActiveTab(idx);
+      try {
+        const dur = playerStatus?.duration || audioPlayer?.duration || 0;
+        if (dur > 0 && audioPlayer && typeof (audioPlayer as any).seekTo === 'function') {
+          suppressAutoRef.current = true;
+          if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+          Promise.resolve((audioPlayer as any).seekTo((idx / chapters.length) * dur)).catch(() => {});
+          suppressTimerRef.current = setTimeout(() => { suppressAutoRef.current = false; }, 800);
+        }
+      } catch (_e) {}
+    };
+
+    // Auto-switch tab as audio plays
+    const audioTime = playerStatus?.currentTime ?? 0;
+    const audioDur = playerStatus?.duration ?? 0;
+    const audioPlaying = playerStatus?.playing ?? false;
+    const chapterCount = chapters.length;
+    useEffect(() => {
+      if (suppressAutoRef.current || !audioPlaying || !audioDur) return;
+      const idx = Math.min(
+        chapterCount - 1,
+        Math.floor((audioTime / audioDur) * chapterCount)
+      );
+      setActiveTab((prev) => (prev === idx ? prev : idx));
+    }, [audioTime, audioPlaying, audioDur, chapterCount]);
 
     const subtitleText = isKarvaChauth
       ? 'The Sacred Katha of Queen Veervati & Moon Worship'
@@ -651,10 +692,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
                     )}
                     <TouchableOpacity
                       style={styles.journeyTabItem}
-                      onPress={() => {
-                        Haptics.selectionAsync().catch(() => {});
-                        setActiveTab(idx);
-                      }}
+                      onPress={() => handleChapterPress(idx)}
                       activeOpacity={0.8}
                       accessible={true}
                       accessibilityRole="button"

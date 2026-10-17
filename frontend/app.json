@@ -147,7 +147,8 @@
           "ios": {
             "deploymentTarget": "16.4",
             "useFrameworks": "static",
-            "buildReactNativeFromSource": true
+            "buildReactNativeFromSource": true,
+            "usePrecompiledModules": false
           },
           "android": {
             "compileSdkVersion": 36,

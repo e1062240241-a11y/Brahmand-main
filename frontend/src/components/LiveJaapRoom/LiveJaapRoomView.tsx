@@ -66,6 +66,10 @@ hanuman: {
     text: 'ॐ\u00A0नमः\u00A0शिवाय',
     bg: { uri: 'https://brahmandfeed23.b-cdn.net/assets/shiva_jaap_card_v2.webp' },
   },
+  ram: {
+    text: 'श्री राम जय राम जय जय राम श्री राम जय राम जय जय राम श्री राम जय राम जय जय राम',
+    bg: require('../../../assets/images/festivals/ram_jaap_card.webp'),
+  },
   mrityunjaya: {
     text: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्',
     bg: { uri: 'https://brahmandfeed23.b-cdn.net/assets/jaap_hero_shiva_final.webp' },
@@ -363,7 +367,7 @@ export default function LiveJaapRoomView() {
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
-  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa' || mantraType === 'ram');
 
   const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
 
@@ -579,7 +583,7 @@ export default function LiveJaapRoomView() {
       audioRef.current = audio;
       
       const handleTimeUpdate = () => {
-        if (mantraType === 'shani_chalisa') return;
+        if (mantraType === 'shani_chalisa' || mantraType === 'ram') return;
         const newTime = audio.currentTime;
         const elapsed = mantraType === 'gayatri' ? (newTime - 2.0 + 29.276) % 29.276 : newTime;
         setCurrentTimeState(elapsed);
@@ -648,7 +652,7 @@ export default function LiveJaapRoomView() {
       
       const playAudio = async () => {
         try {
-          if (mantraType === 'shani_chalisa') {
+          if (mantraType === 'shani_chalisa' || mantraType === 'ram') {
             audio.pause();
             return;
           }
@@ -691,7 +695,7 @@ export default function LiveJaapRoomView() {
   // Handle dynamic volume changes on Web without reloading the audio
   useEffect(() => {
     if (Platform.OS === 'web' && audioRef.current) {
-      if (mantraType === 'shani_chalisa') {
+      if (mantraType === 'shani_chalisa' || mantraType === 'ram') {
         audioRef.current.volume = 0;
         audioRef.current.pause();
         return;
@@ -726,7 +730,7 @@ export default function LiveJaapRoomView() {
     let initialSynced = false;
     const syncTimer = setInterval(() => {
       const audio = audioRef.current;
-      if (!audio || mantraType === 'shani_chalisa') return;
+      if (!audio || mantraType === 'shani_chalisa' || mantraType === 'ram') return;
       
       if (mantraType === 'hanuman') {
         const status = getCurrentHanumanStatus(new Date());
@@ -913,7 +917,7 @@ export default function LiveJaapRoomView() {
 
   // Synchronized progress calculation for other live jaaps
   useEffect(() => {
-    if (mantraType === 'hanuman' || mantraType === 'shani_chalisa') return;
+    if (mantraType === 'hanuman' || mantraType === 'shani_chalisa' || mantraType === 'ram') return;
     if (isSessionActive) {
       const time = currentTimeState || 0;
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
@@ -923,7 +927,7 @@ export default function LiveJaapRoomView() {
   }, [mantraType, isSessionActive, WORDS, currentTimeState]);
 
   useEffect(() => {
-    if (mantraType === 'hanuman' || (isSessionActive && mantraType !== 'shani_chalisa')) return;
+    if (mantraType === 'hanuman' || (isSessionActive && mantraType !== 'shani_chalisa' && mantraType !== 'ram')) return;
 
     let timer: any;
     const isHanuman = mantraType === 'hanuman';
@@ -931,11 +935,18 @@ export default function LiveJaapRoomView() {
       timer = setTimeout(() => {
         setIsHolding(false);
         setCurrentIndex(0);
-        if (mantraType === 'shani_chalisa') {
+        if (mantraType === 'shani_chalisa' || mantraType === 'ram') {
           setPersonalCount(prev => {
             const next = prev + 1;
             AsyncStorage.setItem(countKeyRef.current, next.toString());
             usePassportStore.getState().addJaap(1, mantraType);
+            if (next % 108 === 0) {
+              const readableMantra = mantraType === 'ram' ? 'Shri Ram Jaap' : 'Shani Chalisa';
+              usePassportStore.getState().awardBadge(
+                `${readableMantra} Mala Completed`,
+                `Completed 1 full Mala (108 chants) of ${readableMantra}.`
+              );
+            }
             return next;
           });
         }
@@ -1045,8 +1056,12 @@ export default function LiveJaapRoomView() {
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
           <View style={styles.titleContainerNew}>
-            <Text style={styles.titleNew}>{roomTitle || (t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa')}</Text>
-            <Text style={styles.subtitleNew}>{t('language') === 'hi' ? 'लाइव सामूहिक जाप' : 'LIVE COLLECTIVE JAAP'}</Text>
+            <Text style={styles.titleNew}>{roomTitle || (t('language') === 'hi' ? 'श्री राम जाप' : 'Shri Ram Jaap')}</Text>
+            <Text style={styles.subtitleNew}>
+              {mantraType === 'ram' 
+                ? (t('language') === 'hi' ? '🏹 विजयादशमी स्पेशल • लाइव जाप' : '🏹 VIJAYADASHAMI SPECIAL • LIVE')
+                : (t('language') === 'hi' ? 'लाइव सामूहिक जाप' : 'LIVE COLLECTIVE JAAP')}
+            </Text>
           </View>
           <View style={styles.countPillNew}>
             <Text style={styles.countLabelNew}>

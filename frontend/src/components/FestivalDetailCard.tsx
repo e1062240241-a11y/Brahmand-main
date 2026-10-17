@@ -476,7 +476,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const daysRemaining = calculateDaysRemaining(festival.date || '2026-08-15');
   const festivalImgAsset = getFestivalImage(festival);
 
-  const completedCount = visitedSections.length;
+  const completedCount = visitedSections.filter((v) => sections.some((s) => s.title === v)).length;
   const totalCount = sections.length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 

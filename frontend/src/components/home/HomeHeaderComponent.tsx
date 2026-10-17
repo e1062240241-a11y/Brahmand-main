@@ -18,6 +18,15 @@ import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, navratri
 import { ActionCardsRow } from './ActionCardsRow';
 import { NavratriPetals } from './NavratriPetals';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
+import { DussehraHeaderExperience } from './DussehraHeaderExperience';
+import { AnimatedBowArrow } from './AnimatedBowArrow';
+
+const toranGarlandImage = require('../../../assets/images/toran_garland.png');
+const dussehraBgImage = require('../../../assets/images/festivals/dussehra_banner.png');
+const shriRamBowImage = require('../../../assets/images/festivals/shri_ram_bow.png');
+const dussehraLotusImage = require('../../../assets/images/festivals/dussehra_lotus_clean.png');
+const leafCornerImage = require('../../../assets/images/festivals/dussehra_leaf_corner.png');
+const leafBranchImage = require('../../../assets/images/festivals/dussehra_leaf_branch.png');
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
@@ -433,35 +442,42 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         };
     }, [achPlayer, isFocused, videoError, activeBannerIndex, isHanumanActive]);
     return (
-        <View style={{ paddingTop: 4 }}>
+        <View style={{ paddingTop: 0 }}>
             <NavratriPetals />
+
+            {/* Festive Marigold Toran Arch */}
+            <View
+                pointerEvents="none"
+                style={{
+                    width: '100%',
+                    height: 44,
+                    overflow: 'hidden',
+                    alignItems: 'center',
+                    justifyContent: 'flex-start',
+                    marginTop: -6,
+                    marginBottom: -8,
+                }}
+            >
+                <Image
+                    source={toranGarlandImage}
+                    style={{
+                        width: '88%',
+                        height: 52,
+                        top: -4,
+                    }}
+                    resizeMode="contain"
+                />
+            </View>
 
             {/* Feed loading state is now handled inside FeedSection */}
             <View>
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={{
-                                    width: Platform.OS === 'android' ? 48 : 56,
-                                    height: Platform.OS === 'android' ? 48 : 56,
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                }}
+                            <AnimatedBowArrow
+                                size={Platform.OS === 'android' ? 54 : 60}
                                 onPress={() => router.push('/(tabs)/profile')}
-                                accessibilityRole="button"
-                                accessibilityLabel="View your profile"
-                            >
-                                <Image
-                                    source={maaDurgaIcon}
-                                    style={{
-                                        width: '100%',
-                                        height: '100%',
-                                    }}
-                                    resizeMode="contain"
-                                />
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         <View style={{
@@ -535,6 +551,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             </Pressable>
                         </View>
                     </View>
+
 
                     {searchActive ? (
                         <View style={styles.searchPanel}>
@@ -919,9 +936,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Banner 1: Shubh Shardiya Navratri (1st Preference) */}
+                            {/* Banner 1: Dussehra / Vijayadashami */}
                             <Pressable
-                                key="navratri_banner"
+                                key="dussehra_banner"
                                 onPress={() => {
                                     try {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -932,7 +949,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
                                 style={{
                                     width: screenWidth - 40,
-                                    height: Platform.OS === 'ios' ? 185 : 160,
+                                    height: Platform.OS === 'ios' ? 195 : 175,
                                     borderRadius: 16,
                                     overflow: 'hidden',
                                     alignSelf: 'center',
@@ -940,12 +957,166 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     backgroundColor: '#000',
                                 }}
                             >
-                                <Image
-                                    source={navratriBannerImage}
+                                <ExpoImage
+                                    source={dussehraBgImage}
                                     style={{ width: '100%', height: '100%' }}
-                                    resizeMode="cover"
+                                    contentFit="cover"
                                 />
-                                {/* Centered Explore button without AI icon with touch ripple */}
+
+                                {/* Decorative Leaf Corner (Top-Right) */}
+                                <View
+                                    pointerEvents="none"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        right: 0,
+                                        width: 76,
+                                        height: 78,
+                                        zIndex: 4,
+                                    }}
+                                >
+                                    <ExpoImage
+                                        source={leafCornerImage}
+                                        style={{ width: '100%', height: '100%' }}
+                                        contentFit="contain"
+                                        contentPosition="top right"
+                                    />
+                                </View>
+
+                                {/* Decorative Leaf Branch (Top-Left) */}
+                                <View
+                                    pointerEvents="none"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        width: 50,
+                                        height: 86,
+                                        zIndex: 4,
+                                    }}
+                                >
+                                    <ExpoImage
+                                        source={leafBranchImage}
+                                        style={{ width: '100%', height: '100%' }}
+                                        contentFit="contain"
+                                        contentPosition="top left"
+                                    />
+                                </View>
+
+                                {/* Lord Rama cutout positioned on the left aiming bow & arrow */}
+                                <View
+                                    pointerEvents="none"
+                                    style={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        bottom: 0,
+                                        width: (Platform.OS === 'ios' ? 195 : 175) * 0.72,
+                                        height: (Platform.OS === 'ios' ? 195 : 175) * 0.98,
+                                        zIndex: 3,
+                                    }}
+                                >
+                                    <ExpoImage
+                                        source={shriRamBowImage}
+                                        style={{ width: '100%', height: '100%' }}
+                                        contentFit="contain"
+                                        contentPosition="bottom left"
+                                    />
+                                </View>
+
+                                {/* Festivities & Attractive Typography positioned on right (shifted slightly left) */}
+                                <View
+                                    pointerEvents="none"
+                                    style={{
+                                        position: 'absolute',
+                                        top: 12,
+                                        left: (Platform.OS === 'ios' ? 195 : 175) * 0.62,
+                                        right: 22,
+                                        alignItems: 'center',
+                                        zIndex: 2,
+                                    }}
+                                >
+                                    {/* Main Headline: विजयादशमी */}
+                                    <Text
+                                        style={{
+                                            fontSize: 24,
+                                            fontWeight: '900',
+                                            color: '#651E07',
+                                            letterSpacing: 1,
+                                            fontFamily: 'System',
+                                            textShadowColor: 'rgba(255, 255, 255, 0.95)',
+                                            textShadowOffset: { width: 0, height: 1.5 },
+                                            textShadowRadius: 4,
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        विजयादशमी
+                                    </Text>
+
+                                    {/* Subtitle: की हार्दिक शुभकामनाएं */}
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: '800',
+                                            color: '#8A2C08',
+                                            letterSpacing: 0.5,
+                                            fontFamily: 'System',
+                                            textShadowColor: 'rgba(255, 255, 255, 0.9)',
+                                            textShadowOffset: { width: 0, height: 1 },
+                                            textShadowRadius: 2,
+                                            marginTop: 2,
+                                            marginBottom: 2,
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        की हार्दिक शुभकामनाएं
+                                    </Text>
+
+                                    {/* Elegant Gold/Terracotta Divider */}
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginVertical: 3 }}>
+                                        <View style={{ width: 16, height: 1, backgroundColor: 'rgba(138, 44, 8, 0.4)' }} />
+                                        <Text style={{ fontSize: 9, color: '#B45309' }}>✦</Text>
+                                        <View style={{ width: 16, height: 1, backgroundColor: 'rgba(138, 44, 8, 0.4)' }} />
+                                    </View>
+
+                                    {/* Poetic Message */}
+                                    <Text
+                                        style={{
+                                            fontSize: 10,
+                                            fontWeight: '700',
+                                            color: '#3B1A0A',
+                                            lineHeight: 13.5,
+                                            fontFamily: 'System',
+                                            textAlign: 'center',
+                                            textShadowColor: 'rgba(255, 255, 255, 0.9)',
+                                            textShadowOffset: { width: 0, height: 1 },
+                                            textShadowRadius: 2,
+                                        }}
+                                    >
+                                        हर अन्याय पर सत्य की विजय हो,{'\n'}
+                                        हर अंधेरे पर प्रकाश की विजय हो,{'\n'}
+                                        यही है विजयादशमी का संदेश।
+                                    </Text>
+
+                                    {/* Jai Shri Ram */}
+                                    <Text
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: '900',
+                                            color: '#C2410C',
+                                            letterSpacing: 0.8,
+                                            marginTop: 3,
+                                            fontFamily: 'System',
+                                            textAlign: 'center',
+                                            textShadowColor: 'rgba(255, 255, 255, 0.95)',
+                                            textShadowOffset: { width: 0, height: 1 },
+                                            textShadowRadius: 2,
+                                        }}
+                                    >
+                                        || जय श्री राम ||
+                                    </Text>
+                                </View>
+
+                                {/* Restored Festival Explore Button */}
                                 <LinearGradient
                                     colors={['transparent', 'rgba(0,0,0,0.45)']}
                                     style={{
@@ -953,12 +1124,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         left: 0,
                                         right: 0,
                                         bottom: 0,
-                                        height: 58,
+                                        height: 54,
                                         flexDirection: 'row',
                                         justifyContent: 'center',
                                         alignItems: 'center',
                                         paddingHorizontal: 14,
-                                        paddingBottom: 8,
+                                        paddingBottom: 6,
+                                        zIndex: 5,
                                     }}
                                     pointerEvents="box-none"
                                 >
@@ -994,12 +1166,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             style={({ pressed }) => [
                                                 {
                                                     backgroundColor: '#FF5100',
-                                                    height: 34,
+                                                    height: 32,
                                                     paddingHorizontal: 18,
                                                     flexDirection: 'row',
                                                     alignItems: 'center',
                                                     gap: 6,
-                                                    borderRadius: 17,
+                                                    borderRadius: 16,
                                                     borderWidth: 1,
                                                     borderColor: 'rgba(255, 255, 255, 0.45)',
                                                     opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1,
@@ -1009,13 +1181,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                         >
                                             <Text style={{
                                                 color: '#FFF',
-                                                fontSize: 13,
-                                                fontWeight: '700',
+                                                fontSize: 12.5,
+                                                fontWeight: '800',
                                                 letterSpacing: 0.3,
                                             }}>
-                                                {t('language') === 'hi' ? 'नवरात्रि दर्शन' : 'Explore Festival'}
+                                                {t('language') === 'hi' ? 'दशहरा दर्शन' : 'Explore Festival'}
                                             </Text>
-                                            <Ionicons name="chevron-forward" size={14} color="#FFF" />
+                                            <Ionicons name="chevron-forward" size={13} color="#FFF" />
                                         </Pressable>
                                     </View>
                                 </LinearGradient>

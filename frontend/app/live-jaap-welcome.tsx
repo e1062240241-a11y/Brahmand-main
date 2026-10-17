@@ -101,6 +101,10 @@ const getTranslatedTitle = (title: string): string => {
     'Om Namah\nShivaya': 'ॐ नमः शिवाय',
     'Gayatri Mantra': 'गायत्री मंत्र',
     'Gayatri\nMantra': 'गायत्री मंत्र',
+    'Shri Ram Jaap': 'श्री राम जाप',
+    'Shri Ram\nJaap': 'श्री राम जाप',
+    'Ram Jaap': 'श्री राम जाप',
+    'Ram\nJaap': 'श्री राम जाप',
     'Ganesh Mantra': 'गणेश मंत्र',
     'Ganesh\nMantra': 'गणेश मंत्र',
     'Laxmi Mantra': 'लक्ष्मी मंत्र',
@@ -120,6 +124,7 @@ const MANTRA_PREVIEW: Record<string, string> = {
   hanuman: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि बरनऊँ रघुबर बिमल जसु जो दायकु फल चारि बुद्धिहीन तनु जानिके सुमिरौं पवन-कुमार बल बुधि बिद्या देहु मोहिं हरहु कलेस बिकार...',
   krishna: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे । हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे...',
   shiva: 'ॐ नमः शिवाय । ॐ नमः शिवाय । ॐ नमः शिवाय । ॐ नमः शिवाय । ॐ नमः शिवाय...',
+  ram: 'श्री राम जय राम जय जय राम । श्री राम जय राम जय जय राम । श्री राम जय राम जय जय राम...',
   mrityunjaya: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात् । ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्...',
   kedarnath: 'जय केदार उदार शंकर, मन हरत छवि आपकी । ध्यान धरत सुर-नर-मुनि सब, जय हो केदारनाथ की ॥ जय शिव ओंकारा, जय हर शिव ओंकारा, ब्रह्मा विष्णु सदाशिव अर्द्धांगी धारा ॥ ॐ जय केदारनाथ देवा...',
   ganesh: 'वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ । निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥',
@@ -132,6 +137,7 @@ const MANTRA_PREVIEW_EN: Record<string, string> = {
   hanuman: 'Shree Guru Charan Saroj Raj, Nij Manu Mukur Sudhaari. Barnau Raghuvar Bimal Jasu, Jo Dayaku Phal Chaari...',
   krishna: 'Hare Krishna Hare Krishna Krishna Krishna Hare Hare, Hare Rama Hare Rama Rama Rama Hare Hare.',
   shiva: 'Om Namah Shivaya | Om Namah Shivaya | Om Namah Shivaya | Om Namah Shivaya...',
+  ram: 'Shri Ram Jai Ram Jai Jai Ram | Shri Ram Jai Ram Jai Jai Ram | Shri Ram Jai Ram Jai Jai Ram...',
   mrityunjaya: 'Om Tryambakam Yajaamahe Sugandhim Pushtivardhanam | Urvaarukamiva Bandhanaan Mrityormukshiiya Maamrutaat |',
   kedarnath: 'Jai Kedarnath Udar Shankar, Man Harat Chhavi Aapki. Dhyan Dharat Sur-Nar-Muni Sab, Jai Ho Kedarnath Ki...',
   ganesh: 'Vakratunda Mahakaya Surya Koti Samaprabha | Nirvighnam Kuru Me Deva Sarva Karyeshu Sarvada ||',
@@ -257,7 +263,7 @@ export default function LiveJaapWelcomeScreen() {
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
-  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ram' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
 
   // Live Sadhana Sankalpa Diya & Streak state
   const dailyHanuman = usePassportStore((state) => state.daily_hanuman_count) || {};
@@ -333,6 +339,32 @@ export default function LiveJaapWelcomeScreen() {
           <View style={styles.headerContainer}>
              <Text style={styles.welcomeText}>{t('language') === 'hi' ? 'स्वागत है' : 'Welcome to'}</Text>
              <Text style={styles.liveJaapText}>{t('language') === 'hi' ? getTranslatedTitle(title || 'Hanuman Chalisa') : (title || 'Hanuman Chalisa')}</Text>
+             {mantraType === 'ram' && (
+               <View style={{ marginTop: 6, marginBottom: 2 }}>
+                 <LinearGradient
+                   colors={['#FF6B00', '#D32F2F']}
+                   start={{ x: 0, y: 0 }}
+                   end={{ x: 1, y: 0 }}
+                   style={{
+                     paddingHorizontal: 12,
+                     paddingVertical: 4,
+                     borderRadius: 12,
+                     alignSelf: 'center',
+                     borderWidth: 0.8,
+                     borderColor: 'rgba(255, 255, 255, 0.6)',
+                     shadowColor: '#D32F2F',
+                     shadowOffset: { width: 0, height: 2 },
+                     shadowOpacity: 0.25,
+                     shadowRadius: 4,
+                     elevation: 2,
+                   }}
+                 >
+                   <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.4 }}>
+                     {t('language') === 'hi' ? '🏹 विजयादशमी महापर्व स्पेशल 🚩' : '🏹 Vijayadashami Mahaparv Special 🚩'}
+                   </Text>
+                 </LinearGradient>
+               </View>
+             )}
              <View style={styles.ornateDivider}>
                <Text style={styles.lotusIcon}>🪷</Text>
              </View>
@@ -467,7 +499,7 @@ export default function LiveJaapWelcomeScreen() {
                     initialMic: 'false',
                     mantraType: mantraType || 'hanuman',
                     title: title || 'Hanuman Chalisa',
-                    hasAudio: 'true',
+                    hasAudio: mantraType === 'ram' ? 'false' : 'true',
                     hasText: 'true',
                     fromHome: fromHome || 'false'
                   }

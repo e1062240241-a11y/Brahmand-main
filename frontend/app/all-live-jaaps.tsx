@@ -63,16 +63,26 @@ const getMantraRoomName = (id: string) => {
   if (id === '2') return 'jaap_krishna';
   if (id === '3') return 'jaap_shiva';
   if (id === '4') return 'jaap_gayatri';
-  if (id === '5') return 'jaap_ganesh';
-  if (id === '6') return 'jaap_laxmi';
-  if (id === '7') return 'jaap_krishna';
-  return 'jaap_gayatri';
+  if (id === '5' || id === 'ram') return 'jaap_ram';
+  if (id === '6') return 'jaap_ganesh';
+  if (id === '7') return 'jaap_laxmi';
+  return 'jaap_ram';
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 40) / 2;
 
 const LIVE_JAAPS = [
+  {
+    id: '5',
+    title: 'Shri Ram\nJaap',
+    devotees: '7.8K',
+    mantraType: 'ram',
+    image: require('../assets/images/festivals/ram_jaap_card.webp'),
+    slok: 'श्री राम जय राम जय जय राम...',
+    color: '#E65100',
+    tag: 'विजयादशमी स्पेशल',
+  },
   {
     id: '1',
     title: 'Hanuman\nChalisa',
@@ -117,7 +127,7 @@ export default function AllLiveJaapsScreen() {
   const [now, setNow] = React.useState(new Date());
   const [activeCounts, setActiveCounts] = React.useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
-    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
+    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ram', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
       initial[room] = Math.floor(Math.random() * 17) + 2;
     });
     return initial;
@@ -133,7 +143,7 @@ export default function AllLiveJaapsScreen() {
     const fetchActiveCounts = async () => {
       try {
         const response = await api.get('/jaap/active-count', {
-          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
+          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ram,jaap_ganesh,jaap_laxmi' }
         });
         if (active && response && response.data) {
           const sanitizedData: Record<string, number> = {};
@@ -153,7 +163,7 @@ export default function AllLiveJaapsScreen() {
 
     // Listen for real-time room count updates via WebSockets without HTTP polling
     socketService.connect().then(() => {
-      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
+      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ram', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
         socketService.joinRoom(rName);
       });
     }).catch(err => console.warn('Socket connect failed on all-live-jaaps:', err));
@@ -239,7 +249,7 @@ export default function AllLiveJaapsScreen() {
         {LIVE_JAAPS.map((jaap) => {
           const isHanuman = jaap.mantraType === 'hanuman';
           const isKedarnath = jaap.mantraType === 'kedarnath';
-          const isOtherLiveJaap = !isHanuman && !isKedarnath && (jaap.mantraType === 'gayatri' || jaap.mantraType === 'krishna' || jaap.mantraType === 'shiva' || jaap.mantraType === 'ganesh' || jaap.mantraType === 'laxmi' || jaap.mantraType === 'mrityunjaya');
+          const isOtherLiveJaap = !isHanuman && !isKedarnath && (jaap.mantraType === 'gayatri' || jaap.mantraType === 'krishna' || jaap.mantraType === 'shiva' || jaap.mantraType === 'ram' || jaap.mantraType === 'ganesh' || jaap.mantraType === 'laxmi' || jaap.mantraType === 'mrityunjaya');
 
           let showLive = true;
           let liveLabel = 'LIVE';
@@ -295,8 +305,23 @@ export default function AllLiveJaapsScreen() {
                 colors={['transparent', 'rgba(0,0,0,0.92)']}
                 style={styles.cardOverlay}
               >
+                {jaap.id === '5' && (
+                  <View style={styles.festiveTagContainer}>
+                    <LinearGradient
+                      colors={['#FF5100', '#D32F2F']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.festiveTagGradient}
+                    >
+                      <Text style={{ fontSize: 9, marginRight: 2 }}>🏹</Text>
+                      <Text style={styles.festiveTagText} numberOfLines={1}>
+                        {t('language') === 'hi' ? 'विजयादशमी स्पेशल' : 'Vijayadashami Special'}
+                      </Text>
+                    </LinearGradient>
+                  </View>
+                )}
                 {/* Top badges */}
-                <View style={styles.cardTop}>
+                <View style={[styles.cardTop, jaap.id === '5' && { marginTop: 16 }]}>
                   <View style={[styles.liveBadge, (!showLive) && styles.mockupScheduledBadge, { maxWidth: showLive ? '65%' : '100%', paddingHorizontal: 10 }]}>
                     <Ionicons name={showLive ? "radio" : "time-outline"} size={10} color="#FFF" style={{ marginRight: 4 }} />
                     <Text style={[styles.liveBadgeText, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit>{liveLabel}</Text>
@@ -319,9 +344,9 @@ export default function AllLiveJaapsScreen() {
                       if (jaap.id === '2') return 'हरे कृष्ण\nजाप';
                       if (jaap.id === '3') return 'ओम् नमः\nशिवाय';
                       if (jaap.id === '4') return 'गायत्री\nमंत्र';
-                      if (jaap.id === '5') return 'गणेश\nमंत्र';
-                      if (jaap.id === '6') return 'लक्ष्मी\nमंत्र';
-                      if (jaap.id === '7') return 'कृष्ण\nजाप';
+                      if (jaap.id === '5') return 'श्री राम\nजाप';
+                      if (jaap.id === '6') return 'गणेश\nमंत्र';
+                      if (jaap.id === '7') return 'लक्ष्मी\nमंत्र';
                       return jaap.title;
                     })() : jaap.title}
                   </Text>
@@ -462,6 +487,34 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'absolute',
+  },
+  festiveTagContainer: {
+    position: 'absolute',
+    top: -1,
+    left: 10,
+    right: 10,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  festiveTagGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    shadowColor: '#FF3B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  festiveTagText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: 'Inter_800ExtraBold',
+    letterSpacing: 0.3,
   },
   cardOverlay: {
     flex: 1,

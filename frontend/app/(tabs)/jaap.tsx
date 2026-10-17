@@ -60,6 +60,14 @@ if (Platform.OS === 'android' && !(global as any).nativeFabricUIManager && !(glo
 
 const LIVE_JAAPS = [
   {
+    id: '5',
+    title: 'Shri Ram\nJaap',
+    devotees: '7.8K',
+    image: require('../../assets/images/festivals/ram_jaap_card.webp'),
+    slok: 'श्री राम जय राम जय जय राम...',
+    tag: 'विजयादशमी स्पेशल',
+  },
+  {
     id: '1',
     title: 'Hanuman\nChalisa',
     devotees: '9.6K',
@@ -97,10 +105,10 @@ const getMantraRoomName = (id: string) => {
   if (id === '2') return 'jaap_krishna';
   if (id === '3') return 'jaap_shiva';
   if (id === '4') return 'jaap_gayatri';
-  if (id === '5') return 'jaap_ganesh';
-  if (id === '6') return 'jaap_laxmi';
-  if (id === '7') return 'jaap_krishna';
-  return 'jaap_gayatri';
+  if (id === '5' || id === 'ram') return 'jaap_ram';
+  if (id === '6') return 'jaap_ganesh';
+  if (id === '7') return 'jaap_laxmi';
+  return 'jaap_ram';
 };
 
 export default function JaapLandingScreen() {
@@ -138,7 +146,7 @@ export default function JaapLandingScreen() {
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
-    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
+    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ram', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
       initial[room] = Math.floor(Math.random() * 17) + 2;
     });
     return initial;
@@ -152,7 +160,7 @@ export default function JaapLandingScreen() {
       if (AppState.currentState !== 'active') return;
       try {
         const response = await api.get('/jaap/active-count', {
-          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
+          params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ram,jaap_ganesh,jaap_laxmi' }
         });
         if (active && response && response.data) {
           const sanitizedData: Record<string, number> = {};
@@ -172,7 +180,7 @@ export default function JaapLandingScreen() {
 
     // Listen for real-time room active counts via WebSockets without HTTP polling
     socketService.connect().then(() => {
-      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
+      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ram', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
         socketService.joinRoom(rName);
       });
     }).catch(err => console.warn('Socket connect failed on Jaap tab:', err));
@@ -228,6 +236,8 @@ export default function JaapLandingScreen() {
     return () => subscription.remove();
   }, [isFocused]);
 
+  // Auto-scroll for More Live Jaaps paused as requested
+  /*
   useEffect(() => {
     if (!isFocused || !appActive) return;
     const maxOffset = CARD_WIDTH * (LIVE_JAAPS.length - 2);
@@ -242,6 +252,7 @@ export default function JaapLandingScreen() {
     }, 4000);
     return () => clearInterval(autoScroll);
   }, [isFocused, appActive]);
+  */
 
   const fetchTemplesData = async () => {
     try {
@@ -542,7 +553,7 @@ export default function JaapLandingScreen() {
                     }
                   }
                 } else if (isOtherLiveJaap) {
-                  const mType = jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
+                  const mType = jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ram' : jaap.id === '6' ? 'ganesh' : jaap.id === '7' ? 'laxmi' : 'krishna';
                   const otherStatus = getCurrentOtherJaapStatus(now, mType);
                   showLive = otherStatus.isActive;
                   if (otherStatus.isActive) {
@@ -568,15 +579,20 @@ export default function JaapLandingScreen() {
                   else if (jaap.id === '2') translatedTitle = 'हरे कृष्णा\nजाप';
                   else if (jaap.id === '3') translatedTitle = 'ॐ नमः\nशिवाय';
                   else if (jaap.id === '4') translatedTitle = 'गायत्री\nमंत्र';
-                  else if (jaap.id === '5') translatedTitle = 'गणेश\nमंत्र';
-                  else if (jaap.id === '6') translatedTitle = 'लक्ष्मी\nमंत्र';
-                  else if (jaap.id === '7') translatedTitle = 'कृष्णा\nजाप';
+                  else if (jaap.id === '5') translatedTitle = 'श्री राम\nजाप';
+                  else if (jaap.id === '6') translatedTitle = 'गणेश\nमंत्र';
+                  else if (jaap.id === '7') translatedTitle = 'लक्ष्मी\nमंत्र';
                 }
+
+                const festiveTag = jaap.id === '5'
+                  ? (t('language') === 'hi' ? 'विजयादशमी स्पेशल 🏹' : 'Vijayadashami Special 🏹')
+                  : undefined;
 
                 return (
                   <LiveJaapCard
                     key={jaap.id}
                     jaap={jaap}
+                    tag={festiveTag}
                     showLive={showLive}
                     liveLabel={liveLabel}
                     activeCount={activeCounts[getMantraRoomName(jaap.id)] || 0}
@@ -586,7 +602,7 @@ export default function JaapLandingScreen() {
                       router.push({
                         pathname: '/live-jaap-welcome',
                         params: {
-                          mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                          mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ram' : jaap.id === '6' ? 'ganesh' : jaap.id === '7' ? 'laxmi' : 'krishna',
                           title: jaap.title.replace('\n', ' ')
                         }
                       });

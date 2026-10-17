@@ -24,6 +24,7 @@ interface LiveJaapCardProps {
     slok?: string;
     image: ImageSourcePropType;
     initialListeners?: number;
+    tag?: string;
   };
   showLive: boolean;
   liveLabel: string;
@@ -31,6 +32,7 @@ interface LiveJaapCardProps {
   translatedTitle: string;
   joinText: string;
   onJoin: () => void;
+  tag?: string;
 }
 
 // Varnish fix: Replaced inline styles with StyleSheet, added displayName, and replaced 'any' with ImageSourcePropType
@@ -42,6 +44,7 @@ export const LiveJaapCard = React.memo(({
   translatedTitle,
   joinText,
   onJoin,
+  tag,
 }: LiveJaapCardProps) => {
   return (
     <View style={styles.jaapCardContainer}>
@@ -51,8 +54,23 @@ export const LiveJaapCard = React.memo(({
         resizeMode="cover"
         fadeDuration={0}
       />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.jaapCardOverlayExact}>
-        <View style={styles.jaapCardTopRow}>
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.jaapCardOverlayExact}>
+        {(tag || jaap.tag) && (
+          <View style={styles.festiveTagContainer}>
+            <LinearGradient
+              colors={['#FF5100', '#D32F2F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.festiveTagGradient}
+            >
+              <Text style={styles.festiveTagBow}>🏹</Text>
+              <Text style={styles.festiveTagText} numberOfLines={1}>
+                {tag || jaap.tag}
+              </Text>
+            </LinearGradient>
+          </View>
+        )}
+        <View style={[styles.jaapCardTopRow, (tag || jaap.tag) && { marginTop: 16 }]}>
           <View style={[styles.exactLiveBadge, (!showLive) && styles.mockupScheduledBadge, showLive ? styles.liveBadgeMaxLive : styles.liveBadgeMaxScheduled]}>
             <Ionicons name={showLive ? "radio" : "time-outline"} size={10} color="#FFF" style={styles.badgeIcon} />
             <Text style={[styles.exactLiveText, styles.liveTextShrink]} numberOfLines={1} adjustsFontSizeToFit>{liveLabel}</Text>
@@ -135,6 +153,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3.5,
+  },
+  festiveTagContainer: {
+    position: 'absolute',
+    top: -1,
+    left: 8,
+    right: 8,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  festiveTagGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    shadowColor: '#FF3B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  festiveTagBow: {
+    fontSize: 8.5,
+  },
+  festiveTagText: {
+    color: '#FFF',
+    fontSize: 8.5,
+    fontWeight: '900',
+    letterSpacing: 0.3,
   },
   jaapCardOverlayExact: {
     flex: 1,
