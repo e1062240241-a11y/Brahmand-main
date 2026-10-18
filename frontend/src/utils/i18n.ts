@@ -325,7 +325,11 @@ export const translations = {
     allChats: 'All Chats',
     groupChats: 'Group Chats',
     findPeopleGroups: 'Find people, groups',
-    noGroupChatsYet: 'No group chats yet',
+    // 🧡 Engagement: Reframed empty group chat state "No group chats yet" to devotional satsang community invitation "No satsang groups yet — create the first group! 🙏"
+    // Lever: Reframing + Social Proof / Satsang (Collectiveness over Individuality)
+    // Why: Framing group messaging as a "satsang group" encourages devotees to initiate spiritual gatherings rather than seeing a cold, empty feature state.
+    // UI: Text-only change via i18n, zero UI elements or components added.
+    noGroupChatsYet: 'No satsang groups yet — create the first group! 🙏',
     startConversation: 'Start a conversation',
   },
   hi: {
@@ -625,7 +629,11 @@ export const translations = {
     allChats: 'सभी चैट',
     groupChats: 'ग्रुप चैट',
     findPeopleGroups: 'लोग, ग्रुप खोजें',
-    noGroupChatsYet: 'अभी तक कोई ग्रुप चैट नहीं है',
+    // 🧡 Engagement: Reframed empty group chat state "अभी तक कोई ग्रुप चैट नहीं है" to devotional satsang community invitation "अभी कोई सत्संग समूह नहीं है — पहला समूह बनाएं! 🙏"
+    // Lever: Reframing + Social Proof / Satsang (Collectiveness over Individuality)
+    // Why: Framing group messaging as a "सत्संग समूह" encourages devotees to initiate spiritual gatherings rather than seeing a cold, empty feature state.
+    // UI: Text-only change via i18n, zero UI elements or components added.
+    noGroupChatsYet: 'अभी कोई सत्संग समूह नहीं है — पहला समूह बनाएं! 🙏',
     startConversation: 'बातचीत शुरू करें',
   },
 };
