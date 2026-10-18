@@ -65,7 +65,12 @@ const ChevronWave = () => {
   );
 };
 
-export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps) {
+/**
+ * 🎨 Varnish Code Quality & Re-render Fix:
+ * Wrapped `SwipeButton` in `React.memo` to prevent unnecessary re-renders when parent screens re-render.
+ * Re-renders on gesture/swipe components restart JS-driven animations or re-create gesture handlers unnecessarily.
+ */
+export default React.memo(function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps) {
   const circleWidth = 50;
   const padding = 4;
 
@@ -348,7 +353,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
       </Animated.View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
