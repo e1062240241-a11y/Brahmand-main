@@ -565,14 +565,17 @@ class FirestoreDB:
             return
 
         def _batch():
-            batch = self.client.batch()
             coll_ref = self.client.collection(collection)
-            for doc_id, data in updates:
-                data_copy = dict(data)
-                data_copy['updated_at'] = now
-                doc_ref = coll_ref.document(doc_id)
-                batch.update(doc_ref, data_copy)
-            batch.commit()
+            chunk_size = 400
+            for i in range(0, len(updates), chunk_size):
+                chunk = updates[i:i + chunk_size]
+                batch = self.client.batch()
+                for doc_id, data in chunk:
+                    data_copy = dict(data)
+                    data_copy['updated_at'] = now
+                    doc_ref = coll_ref.document(doc_id)
+                    batch.update(doc_ref, data_copy)
+                batch.commit()
 
         await self._run_sync(_batch)
         for doc_id, _ in updates:
