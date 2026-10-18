@@ -31,3 +31,7 @@
 **Vulnerability:** A denial-of-service (DoS) vulnerability existed in `backend/routes/katha_routes.py` because `secrets.compare_digest(key, ADMIN_SECRET_KEY)` was used on raw strings. Python's `secrets.compare_digest` strictly requires ASCII-only strings. Supplying non-ASCII payloads (like emojis or special characters) triggered a `TypeError`, causing the endpoint to crash with an unhandled 500 Internal Server Error.
 **Learning:** Security fixes must themselves be safe from edge cases. While `secrets.compare_digest` prevents timing attacks, it has strict type and charset constraints on raw strings that can be weaponized to crash the application.
 **Prevention:** Never use `secrets.compare_digest` on raw strings. Always fall through to byte-encoded comparison (e.g., `key.encode('utf-8')`) which flawlessly handles all byte inputs and prevents decoding/charset crashes.
+## 2024-05-24 - Fix Insecure Random Number Generation in `secureStorage.ts`
+**Vulnerability:** Weak, predictable random number generation using `Math.random()` and `Date.now()` was used to generate encryption keys for `secureStorage`.
+**Learning:** React Native's `Math.random()` is not cryptographically secure, and combined with `Date.now()`, produces easily guessable salts/keys. It's crucial to use a CSPRNG for any security-sensitive operations.
+**Prevention:** Always use a secure library like `CryptoJS` (e.g., `CryptoJS.lib.WordArray.random(bytes)`) or `react-native-get-random-values` for generating salts, keys, or tokens in React Native environments.
