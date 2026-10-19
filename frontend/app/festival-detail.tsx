@@ -142,10 +142,23 @@ const FestivalDetailPage: React.FC = () => {
       }
 
       if (enabled) {
-        Alert.alert(
-          'Reminder Set',
-          'You will be notified 1 day before the festival at 9:00 AM and 9:00 PM local time.'
-        );
+        const isDussehra =
+          targetId.toLowerCase().includes('dussehra') ||
+          targetName.toLowerCase().includes('dussehra') ||
+          targetName.toLowerCase().includes('vijaya') ||
+          (festival?.festival_name || '').toLowerCase().includes('dussehra');
+
+        if (isDussehra) {
+          Alert.alert(
+            '🌿 विजयादशमी व शमी पत्र रिमाइंडर सेट!',
+            'आपको विजयादशमी की पूर्व संध्या और पावन पर्व पर "सोनं घ्या, सोन्यासारखे राहा!" सुवर्ण शमी पत्र साझा करने की सूचना मिलेगी।'
+          );
+        } else {
+          Alert.alert(
+            'Reminder Set',
+            'You will be notified 1 day before the festival at 9:00 AM and 9:00 PM local time.'
+          );
+        }
       } else {
         Alert.alert('Reminder Removed', 'Notifications for this festival have been cancelled.');
       }

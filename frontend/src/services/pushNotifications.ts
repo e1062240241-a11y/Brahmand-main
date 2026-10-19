@@ -520,3 +520,61 @@ export async function scheduleShravanKatha15MinReminder() {
     return null;
   }
 }
+
+/**
+ * Schedule or immediately trigger Dussehra Virtual Shami Leaf push notification
+ * ("सोनं घ्या, सोन्यासारखे राहा!")
+ */
+export async function scheduleDussehraShamiLeafNotification(options?: { immediate?: boolean; delaySeconds?: number }) {
+  if (Platform.OS === 'web') return null;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+
+    const soundFile = __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell');
+    const delay = options?.immediate ? 1 : (options?.delaySeconds ?? 5);
+    const identifier = 'shami_leaf_festival_annual';
+
+    // Deduplication: cancel any existing scheduled shami notification first
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch (_) {}
+
+    const notifId = await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: '🌿 सोनं घ्या, सोन्यासारखे राहा! शुभ विजयादशमी',
+        body: 'विजयादशमी की हार्दिक शुभकामनाएं! अपने परिजनों संग पवित्र सुवर्ण शमी पत्र (Virtual Shami Leaf) साझा करें।',
+        data: {
+          type: 'festival_reminder',
+          subType: 'shami_leaf',
+          festivalId: 'dussehra',
+          route: '/festival-detail',
+          target: 'shami_leaf',
+        },
+        sound: soundFile,
+        priority: Notifications.AndroidNotificationPriority?.HIGH,
+      },
+      trigger: {
+        type: 'timeInterval',
+        seconds: Math.max(1, delay),
+        channelId: 'default_v4',
+      } as any,
+    });
+
+    console.log(`[Push] Dussehra Shami Leaf notification scheduled (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule Dussehra Shami Leaf notification:', e);
+    return null;
+  }
+}
+
