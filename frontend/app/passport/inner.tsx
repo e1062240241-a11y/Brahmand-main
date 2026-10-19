@@ -21,6 +21,7 @@ import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 const { width: windowWidth } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(windowWidth - 32, 361);
@@ -42,6 +43,8 @@ function PassportInnerScreen({
   const libraryProgresses = useLibraryStore((state) => state.progresses) || {};
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const personalityData = usePersonalityStore((state) => state.data);
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
 
   const [localUser, setLocalUser] = React.useState<any>(
     Platform.OS === 'android' ? sanitizeUserProfile(user) : user
@@ -261,26 +264,38 @@ function PassportInnerScreen({
         </View>
 
         {/* ── Spiritual Record Card ── */}
+        {/* 🧡 Engagement: Reframed hardcoded English spiritual record labels & fixed typo ("STIRITUAL") into devotional Hindi copy with English fallback.
+            Lever: Reframing + Mother Tongue Connection + Devotion
+            Why: "आध्यात्मिक विवरण" and "प्राप्त सम्मान" give users a sense of sacred accomplishment in their mother tongue.
+            UI: Text-only copy change, zero visual or structural component modifications. */}
         <View style={styles.spiritualRecordCard}>
-          <Text style={styles.recordTitle}>STIRITUAL RECORD</Text>
+          <Text style={styles.recordTitle}>
+            {isHindi ? 'आध्यात्मिक विवरण' : 'SPIRITUAL RECORD'}
+          </Text>
 
           <View style={styles.recordGrid}>
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Total Journeys</Text>
+              <Text style={styles.recordLabel}>
+                {isHindi ? 'कुल यात्राएं' : 'Total Journeys'}
+              </Text>
               <Text style={styles.recordValue}>{journeysCount}</Text>
             </View>
 
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>{"Jaap Count's"}</Text>
+              <Text style={styles.recordLabel}>
+                {isHindi ? 'कुल जाप' : 'Jaap Count'}
+              </Text>
               <Text style={styles.recordValue}>{jaapCount}</Text>
             </View>
 
             <View style={styles.recordDivider} />
 
             <View style={styles.recordCol}>
-              <Text style={styles.recordLabel}>Earned Badges</Text>
+              <Text style={styles.recordLabel}>
+                {isHindi ? 'प्राप्त सम्मान' : 'Earned Badges'}
+              </Text>
               <Text style={styles.recordValue}>{badgesCount}</Text>
             </View>
           </View>
@@ -293,7 +308,9 @@ function PassportInnerScreen({
             activeOpacity={0.8}
             onPress={() => router.push('/passport/timeline' as any)}
           >
-            <Text style={styles.primaryButtonText} numberOfLines={1}>Passport Timeline</Text>
+            <Text style={styles.primaryButtonText} numberOfLines={1}>
+              {isHindi ? 'यात्रा समयरेखा ➔' : 'Passport Timeline'}
+            </Text>
             <Ionicons name="arrow-forward" size={16} color="#000" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
 
@@ -303,7 +320,9 @@ function PassportInnerScreen({
             onPress={() => router.push('/passport/journey/new' as any)}
           >
             <Ionicons name="add-circle-outline" size={18} color="#000" style={{ marginRight: 6 }} />
-            <Text style={styles.secondaryButtonText}>Log a New Journey</Text>
+            <Text style={styles.secondaryButtonText}>
+              {isHindi ? 'नई यात्रा दर्ज करें ✨' : 'Log a New Journey'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
