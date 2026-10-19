@@ -44,6 +44,7 @@ export const translations = {
     community: 'Community',
     temple: 'Temple',
     service: 'Service',
+    sadhanaSankalpaCard: 'Sadhana Sankalpa Card',
     
     // Profile Screen / Settings
     account: 'Account',
@@ -340,6 +341,7 @@ export const translations = {
     community: 'समुदाय',
     temple: 'मंदिर',
     service: 'सेवा',
+    sadhanaSankalpaCard: 'साधना संकल्प कार्ड',
     
     // Profile Screen / Settings
     account: 'खाता',
