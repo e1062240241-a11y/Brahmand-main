@@ -1,3 +1,3 @@
-## 2024-05-19 - Adding accessibility to dynamic modal states
-**Learning:** In React Native, `ActivityIndicator` and dynamic modal state changes (like moving from a form to a loading state to a success state) are often entirely silent to screen readers by default.
-**Action:** Always add an `accessibilityLabel` to `ActivityIndicator` components. For dynamically rendering success/error views within a modal, apply `accessibilityLiveRegion="polite"` and `accessibilityRole="alert"` to the parent container to force screen readers to announce the state change correctly.
+## 2024-05-24 - Accessibility labels with i18n
+**Learning:** Hardcoded translation labels using conditional logic (e.g. `t('language') === 'hi' ? '...' : '...'`) inside component tags is an i18n anti-pattern.
+**Action:** Always add proper translation keys to the corresponding language dictionaries in `frontend/src/utils/i18n.ts` and use `t('keyName')`. When adding ARIA labels to React Native, standard i18n dictionary lookup guarantees the label correctly adapts to the user's language preference.
