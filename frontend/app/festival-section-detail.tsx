@@ -9,6 +9,7 @@ import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
+import { ShamiLeafWishCard } from '../src/components/ShamiLeafWishCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
 import { shareFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
@@ -91,6 +92,7 @@ const FestivalSectionDetailPage = () => {
   const [isSharing, setIsSharing] = useState<boolean>(false);
 
   const catalogRef = useRef<any>(null);
+  const leafWishRef = useRef<any>(null);
   const loadingAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -104,7 +106,7 @@ const FestivalSectionDetailPage = () => {
 
   const buttonWidth = loadingAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [126, 38],
+    outputRange: [92, 38],
   });
 
   const buttonPadding = loadingAnim.interpolate({
@@ -199,12 +201,14 @@ const FestivalSectionDetailPage = () => {
       const festivalName = (festival.festival_name || festival.name || festival.title || 'Sacred Festival').toUpperCase();
 
       let imageUri: string | null = null;
-      if (catalogRef.current) {
+      // Capture the pure Shami Leaf Wish Card (only the leaf with inscribed blessings, nothing outside)
+      const targetRef = leafWishRef.current ? leafWishRef : catalogRef;
+      if (targetRef && targetRef.current) {
         // Allow brief delay for view mounting & rendering
-        await new Promise((res) => setTimeout(res, 300));
-        const captureResult = await safeCaptureRef(catalogRef, {
+        await new Promise((res) => setTimeout(res, 350));
+        const captureResult = await safeCaptureRef(targetRef, {
           format: 'png',
-          quality: 0.95,
+          quality: 0.98,
           result: 'tmpfile',
         });
         imageUri = captureResult.uri;
@@ -224,7 +228,7 @@ const FestivalSectionDetailPage = () => {
       }
 
       const webUrl = getTrackedBrahmandUrl(festivalName, targetApp === 'whatsapp' ? 'whatsapp_status' : 'whatsapp_share');
-      const message = `✨ Explore *${festivalName}* on Brahmand! ✨\n\nDiscover the profound divine story, rituals, and sacred significance:\n${webUrl}`;
+      const message = `🌿 *विजयादशमी की हार्दिक शुभकामनाएं* 🌿\n\n✨ "सोनं घ्या, सोन्यासारखे राहा!" ✨\n\n🍃 *Share virtual Shami leaves with your loved ones & spread divine blessings!* 🍃\n\nDiscover the profound divine story, rituals & sacred significance on Brahmand:\n${webUrl}`;
 
       const shareResult = await safeShareFile(imageUri, {
         mimeType: 'image/png',
@@ -265,7 +269,7 @@ const FestivalSectionDetailPage = () => {
 
   const renderContent = () => (
     <SafeAreaView edges={isStorySection ? [] : ['top']} style={{ flex: 1 }}>
-      {/* Hidden Master Catalog Card for Screenshot/Capture */}
+      {/* Hidden Leaf Wish Card & Catalog Card for Screenshot/Capture */}
       <View
         style={{
           position: 'absolute',
@@ -276,6 +280,15 @@ const FestivalSectionDetailPage = () => {
         }}
         pointerEvents="none"
       >
+        {/* Pure Shami Leaf Wish Card (captured for sharing) */}
+        <View collapsable={false} style={{ width: 527, height: 544, backgroundColor: 'transparent' }}>
+          <ShamiLeafWishCard
+            ref={leafWishRef}
+            festival={festival}
+          />
+        </View>
+
+        {/* Master Catalog Card fallback */}
         <View
           collapsable={false}
           style={{ width: 480, height: 853, backgroundColor: '#0F0818' }}
@@ -326,16 +339,16 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          {/* Share as PDF Button - Only in 1st (story) section */}
+          {/* Share Button - Only in 1st (story) section */}
           {decodedSection === 'Story' ? (
             <TouchableOpacity 
-              onPress={handleSharePdf}
+              onPress={() => handleShareImage('generic')}
               activeOpacity={0.8}
               disabled={isSharing}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel="Share as PDF"
+              accessibilityLabel="Share Festival Card"
             >
               <Animated.View
                 style={[
@@ -358,12 +371,12 @@ const FestivalSectionDetailPage = () => {
                   pointerEvents={isSharing ? 'none' : 'auto'}
                 >
                   <Ionicons
-                    name="document-text-outline"
+                    name="share-social-outline"
                     size={17}
                     color="#111827"
                   />
                   <Text numberOfLines={1} style={[styles.sharePdfText, styles.storySharePdfText]}>
-                    Share as PDF
+                    Share
                   </Text>
                 </Animated.View>
 
@@ -395,6 +408,7 @@ const FestivalSectionDetailPage = () => {
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
+            onShareImage={() => handleShareImage('generic')}
           />
         ) : (
           <ScrollView
@@ -407,6 +421,7 @@ const FestivalSectionDetailPage = () => {
               festival={festival}
               section={decodeURIComponent(section)}
               onBack={() => router.back()}
+              onShareImage={() => handleShareImage('generic')}
             />
           </ScrollView>
         )}

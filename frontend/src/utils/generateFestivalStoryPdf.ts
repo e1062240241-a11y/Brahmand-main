@@ -564,6 +564,35 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
     };
   }
 
+  if (lower.includes('dussehra') || lower.includes('dasara') || lower.includes('vijayadashami')) {
+    return {
+      name: 'Dussehra',
+      hindiName: 'VIJAYADASHAMI',
+      devanagariRoman: 'VIJAYADASHAMI',
+      primaryAccent: rgb(0.85, 0.22, 0.08), // Sacred Saffron Vermilion #D93815
+      secondaryAccent: rgb(0.18, 0.48, 0.22), // Shami Leaf Emerald Green #2E7D38
+      gold: antiqueGold,
+      cream: creamBg,
+      charcoal: deepCharcoal,
+      heroGradientTop: rgb(0.55, 0.12, 0.08),
+      heroGradientBottom: rgb(0.88, 0.38, 0.10),
+      date: dateFromData || '20TH OCTOBER 2026',
+      tithi: 'ASHWIN SHUKLA DASHAMI',
+      greeting: 'May the sacred triumph of Dharma over Adharma bless your life with supreme victory, boundless valor, prosperity, and peace.',
+      deity: 'Lord Sri Rama & Maa Durga',
+      tradition: 'Ravan Dahan, Shami Puja & Gold Leaf Exchange',
+      subtitle: 'Triumph of Lord Rama over Ravana & Goddess Durga Victory - Ashwin',
+      chapters: [
+        { id: 1, title: 'The Divine Genesis', icon: 'lotus', content: 'On the sacred tenth day of Ashwin Shukla Paksha, Lord Sri Rama vanquished the ten-headed demon king Ravana after intense prayers to Maa Durga.' },
+        { id: 2, title: 'The Divine Resolve', icon: 'diya', content: 'Pandavas retrieved their divine celestial weapons concealed within the sacred Shami tree after completing their Agnyatvas to defend Dharma.' },
+        { id: 3, title: 'The Celestial Triumph', icon: 'star', content: 'Maa Durga defeated demon Mahishasura on Vijayadashami, restoring eternal balance, righteousness, and cosmic harmony across the three worlds.' },
+        { id: 4, title: 'The Grace of Blessings', icon: 'anjali', content: 'Devotees perform sacred Shami Puja, exchange golden Shami / Apta leaves with elders, and seek divine blessings for triumph and prosperity.' },
+        { id: 5, title: 'The Joyous Heritage', icon: 'flower', content: 'Giant effigies of Ravana are burned amidst resounding chants of Jai Shree Ram, marking the eternal destruction of ego, greed, and injustice.' },
+      ],
+      blessing: 'Dharmo Rakshati Rakshitah - Dharma protects those who protect Dharma. May the auspicious grace of this festival bring peace, prosperity, good health, and enlightenment to you and your family.',
+    };
+  }
+
   // Default: Ganesh Chaturthi (Universal)
   return {
     name: festivalName || 'Ganesh Chaturthi',
@@ -712,6 +741,22 @@ export async function loadPdfFonts(doc: PDFDocument) {
     console.warn('[PDF] Brahmand logo embedding fallback:', logoErr);
   }
 
+  let shamiLeafImage: any = null;
+  try {
+    const leafAsset = Asset.fromModule(require('../../assets/images/festivals/shami_leaf.png'));
+    await leafAsset.downloadAsync();
+    const leafUri = leafAsset.localUri || leafAsset.uri;
+    if (leafUri) {
+      const base64 = await FileSystem.readAsStringAsync(leafUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = decodeBase64ToUint8(base64);
+      shamiLeafImage = await doc.embedPng(bytes);
+    }
+  } catch (leafErr) {
+    console.warn('[PDF] Shami leaf embedding fallback:', leafErr);
+  }
+
   return {
     fontCinzel,
     fontRozha,
@@ -723,6 +768,7 @@ export async function loadPdfFonts(doc: PDFDocument) {
     fontHelveticaBold,
     displayFont,
     brahmandLogo,
+    shamiLeafImage,
   };
 }
 
@@ -923,7 +969,7 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage } = fonts;
   const brandFont = fontCinzel || displayFont;
 
   // Dynamic Royal Theme Palette (adapts to festival/day color)
@@ -1110,6 +1156,44 @@ export async function renderDynamicFestivalPage1(
   drawCornerFan(pageWidth - 14, pageHeight - 14, -1, -1, colCrimson, colPeachDeep, colTerracotta); // TR
   drawCornerFan(14, 14, 1, 1, colTerracotta, colSage, colAmber); // BL
   drawCornerFan(pageWidth - 14, 14, -1, 1, colTerracotta, colAmber, colCrimson); // BR
+
+  // Sacred Shami/Apta leaf motif accents in corners for festive sharing
+  if (shamiLeafImage) {
+    const leafW = 34;
+    const leafH = 35;
+    // Top-Left corner leaf
+    page1.drawImage(shamiLeafImage, {
+      x: 18,
+      y: pageHeight - 18 - leafH,
+      width: leafW,
+      height: leafH,
+      opacity: 0.92,
+    });
+    // Top-Right corner leaf
+    page1.drawImage(shamiLeafImage, {
+      x: pageWidth - 18 - leafW,
+      y: pageHeight - 18 - leafH,
+      width: leafW,
+      height: leafH,
+      opacity: 0.92,
+    });
+    // Bottom-Left corner leaf
+    page1.drawImage(shamiLeafImage, {
+      x: 18,
+      y: 18,
+      width: leafW,
+      height: leafH,
+      opacity: 0.88,
+    });
+    // Bottom-Right corner leaf
+    page1.drawImage(shamiLeafImage, {
+      x: pageWidth - 18 - leafW,
+      y: 18,
+      width: leafW,
+      height: leafH,
+      opacity: 0.88,
+    });
+  }
 
   // -------------------------------------------------------------
   // CONTENT STACK
@@ -1336,6 +1420,19 @@ export async function renderDynamicFestivalPage1(
   const bCardX = (pageWidth - bCardW) / 2;
   const bCardY = curY - bCardH;
 
+  // Render Shami leaf behind the blessing card so wishes are offered upon the sacred leaf
+  if (shamiLeafImage) {
+    const leafCardW = Math.min(bCardW * 0.72, 320);
+    const leafCardH = leafCardW * (542 / 523);
+    page1.drawImage(shamiLeafImage, {
+      x: cx - leafCardW / 2,
+      y: bCardY + (bCardH - leafCardH) / 2,
+      width: leafCardW,
+      height: leafCardH,
+      opacity: 0.28,
+    });
+  }
+
   page1.drawRectangle({
     x: bCardX,
     y: bCardY,
@@ -1344,6 +1441,7 @@ export async function renderDynamicFestivalPage1(
     color: rgb(0.992, 0.965, 0.93),
     borderColor: colPeachDeep,
     borderWidth: 0.6,
+    opacity: 0.88,
   });
 
   page1.drawLine({
@@ -1595,7 +1693,7 @@ export async function renderDynamicFestivalPage2(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
+  const { fontCinzel, fontPoppins, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage } = fonts;
   const brandFont = fontCinzel || displayFont;
 
   // Dynamic Royal Theme Palette (adapts to festival/day color)
@@ -1763,6 +1861,44 @@ export async function renderDynamicFestivalPage2(
   drawCornerFanP2(pageWidth - 14, pageHeight - 14, -1, -1, colCrimson, colPeachDeep, colTerracotta);
   drawCornerFanP2(14, 14, 1, 1, colTerracotta, colSage, colAmber);
   drawCornerFanP2(pageWidth - 14, 14, -1, 1, colTerracotta, colAmber, colCrimson);
+
+  // Sacred Shami/Apta leaf motif accents in corners for festive sharing
+  if (shamiLeafImage) {
+    const leafW = 34;
+    const leafH = 35;
+    // Top-Left corner leaf
+    page2.drawImage(shamiLeafImage, {
+      x: 18,
+      y: pageHeight - 18 - leafH,
+      width: leafW,
+      height: leafH,
+      opacity: 0.92,
+    });
+    // Top-Right corner leaf
+    page2.drawImage(shamiLeafImage, {
+      x: pageWidth - 18 - leafW,
+      y: pageHeight - 18 - leafH,
+      width: leafW,
+      height: leafH,
+      opacity: 0.92,
+    });
+    // Bottom-Left corner leaf
+    page2.drawImage(shamiLeafImage, {
+      x: 18,
+      y: 18,
+      width: leafW,
+      height: leafH,
+      opacity: 0.88,
+    });
+    // Bottom-Right corner leaf
+    page2.drawImage(shamiLeafImage, {
+      x: pageWidth - 18 - leafW,
+      y: 18,
+      width: leafW,
+      height: leafH,
+      opacity: 0.88,
+    });
+  }
 
   // 4. BRAND HEADER (Logo + BRAHMAND in Cinzel)
   let curY = pageHeight - 40;
