@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet, Image as RNImage, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ShamiLeafWishCardProps {
   festival: any;
@@ -87,6 +88,26 @@ export const ShamiLeafWishCard = forwardRef<View, ShamiLeafWishCardProps>(
             <Text style={styles.sloganText}>
               ॥ जय श्री राम ॥
             </Text>
+          </View>
+
+          {/* App Download & Store Availability Badge */}
+          <View style={styles.appStoreBadge}>
+            <View style={styles.appStoreHeaderRow}>
+              <Ionicons name="sparkles" size={12} color="#D97706" />
+              <Text style={styles.appStoreTitle}>Download Brahmand App</Text>
+              <Ionicons name="sparkles" size={12} color="#D97706" />
+            </View>
+            <View style={styles.storePlatformsRow}>
+              <View style={styles.platformPill}>
+                <Ionicons name="logo-google-playstore" size={14} color="#15803D" />
+                <Text style={styles.platformText}>Google Play</Text>
+              </View>
+              <Text style={styles.platformDivider}>•</Text>
+              <View style={styles.platformPill}>
+                <Ionicons name="logo-apple" size={15} color="#0F172A" />
+                <Text style={styles.platformText}>App Store</Text>
+              </View>
+            </View>
           </View>
 
           {/* Devotional Footer */}
@@ -305,21 +326,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sloganPill: {
-    marginTop: 6,
-    paddingHorizontal: 22,
-    paddingVertical: 5,
-    borderRadius: 18,
+    marginTop: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 4,
+    borderRadius: 16,
     backgroundColor: '#7C2D12',
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: '#FEF08A',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.38,
-    shadowRadius: 3.5,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 3,
   },
   sloganText: {
-    fontSize: 16,
+    fontSize: 14.5,
     fontWeight: '900',
     color: '#FFFBEB',
     letterSpacing: 1.5,
@@ -328,12 +349,62 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2.5,
   },
+  appStoreBadge: {
+    marginTop: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1.4,
+    borderColor: '#D97706',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  appStoreHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 3,
+  },
+  appStoreTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#78350F',
+    letterSpacing: 0.6,
+  },
+  storePlatformsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+  },
+  platformPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4.5,
+  },
+  platformText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.2,
+  },
+  platformDivider: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '900',
+  },
   footerNote: {
     fontSize: 10,
     fontWeight: '800',
     color: '#FEF9C3',
     letterSpacing: 0.8,
-    marginTop: 5,
+    marginTop: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.98)',
     textShadowOffset: { width: 0, height: 1.2 },
     textShadowRadius: 3,
