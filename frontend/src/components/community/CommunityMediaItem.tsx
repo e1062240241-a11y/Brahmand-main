@@ -4,26 +4,45 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  StyleProp,
+  ImageStyle,
+  ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+export interface MediaObject {
+  uri?: string;
+  type?: string;
+  media_type?: string;
+  mediaType?: string;
+}
+
 export interface CommunityMediaItemProps {
-  media: string | any;
-  style: any;
+  media: string | MediaObject | ImageSourcePropType;
+  style: StyleProp<ImageStyle>;
   onPress?: (origin?: { x: number; y: number; width: number; height: number } | null) => void;
   isActive?: boolean;
 }
 
+/**
+ * CommunityMediaItem
+ *
+ * 🎨 Varnish Code Quality & Re-render Optimization:
+ * 1. Replaced `media: string | any` and `style: any` with strict `MediaObject` and `StyleProp<ImageStyle>` interfaces.
+ * 2. Replaced inline style object `{ backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }`
+ *    and runtime `StyleSheet.flatten` calls with `localStyles.videoContainer` static StyleSheet rule to eliminate per-render allocations.
+ * 3. Added `fadeDuration={0}` to RN Image to prevent image flashing on Android during re-renders.
+ */
 export const CommunityMediaItem = React.memo(({
   media,
   style,
   onPress,
   isActive = true,
 }: CommunityMediaItemProps) => {
-  const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
+  const mediaUrl = typeof media === 'string' ? media : (typeof media === 'object' && media !== null && 'uri' in media ? (media as MediaObject).uri || '' : '');
   const isVideo = (
     (typeof media === 'object' && media !== null && (
-      String(media.type || media.media_type || media.mediaType || '').toLowerCase().startsWith('video')
+      String((media as MediaObject).type || (media as MediaObject).media_type || (media as MediaObject).mediaType || '').toLowerCase().startsWith('video')
     )) || (
       typeof mediaUrl === 'string' && (
         /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
@@ -40,9 +59,9 @@ export const CommunityMediaItem = React.memo(({
 
   const handlePress = React.useCallback(() => {
     if (!onPress) return;
-    const node = containerRef.current as any;
-    if (node?.measureInWindow) {
-      node.measureInWindow((x: number, y: number, width: number, height: number) => {
+    const node = containerRef.current;
+    if (node && 'measureInWindow' in node && typeof (node as any).measureInWindow === 'function') {
+      (node as any).measureInWindow((x: number, y: number, width: number, height: number) => {
         if (width > 0 && height > 0) {
           onPress({ x, y, width, height });
         } else {
@@ -59,23 +78,34 @@ export const CommunityMediaItem = React.memo(({
 
   if (isVideo) {
     return (
-      <Wrapper ref={containerRef} {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+      <Wrapper ref={containerRef} {...wrapperProps} style={[style, localStyles.videoContainer]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
       </Wrapper>
     );
   }
 
+  const imageSource: ImageSourcePropType = typeof media === 'string' ? { uri: media } : (media as ImageSourcePropType);
+
   return (
     <Wrapper ref={containerRef} {...wrapperProps}>
       <Image
-        source={typeof media === 'string' ? { uri: media } : media}
+        source={imageSource}
         style={style}
         resizeMode="cover"
+        fadeDuration={0}
       />
     </Wrapper>
   );
 });
 
 CommunityMediaItem.displayName = 'CommunityMediaItem';
+
+const localStyles = StyleSheet.create({
+  videoContainer: {
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default CommunityMediaItem;
