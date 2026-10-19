@@ -30,6 +30,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { loadMahabharataBook } from '../../src/services/mahabharata-service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,8 +69,11 @@ export default function MahabharataPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-    const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
+
   const { updateProgress, getBookProgress, setLastRead, toggleBookmark } = useLibraryStore();
   
   const progress = getBookProgress(BOOK_ID);
@@ -534,7 +538,13 @@ export default function MahabharataPage() {
             
             <ScrollView style={styles.modalScroll}>
               {bookmarks.length === 0 ? (
-                <Text style={styles.emptyBookmarks}>No bookmarks saved yet.</Text>
+                /* 🧡 Engagement: Reframed transactional empty state "No bookmarks saved yet" to devotional Swadhyaya bookmarking
+                   Lever: Reframing + Devotion / Swadhyaya
+                   Why: Cold "No bookmarks saved yet" feels like an empty database query; sacred invitation encourages bookmarking inspiring verses during reading.
+                   UI: Text-only change, no new visual elements. */
+                <Text style={styles.emptyBookmarks}>
+                  {isHindi ? 'अभी तक कोई श्लोक सहेजा नहीं गया है ✨' : 'No saved bookmarks yet.'}
+                </Text>
               ) : (
                 bookmarks.map((bm, idx) => (
                   <TouchableOpacity 
