@@ -13,7 +13,13 @@ interface ButtonProps {
   textStyle?: TextStyle;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+/**
+ * Varnish performance fixes:
+ * 1. Wrapped component in `React.memo` to eliminate unnecessary button re-renders during parent screen state changes.
+ * 2. Removed inline object creation `{ opacity: 0.8 }` inside `Pressable` style callback and moved it to `styles.pressed` in `StyleSheet.create`.
+ * 3. Removed runtime `StyleSheet.flatten` array wrapper to avoid unnecessary object allocations during press/render cycles.
+ */
+export const Button: React.FC<ButtonProps> = React.memo(({
   title,
   onPress,
   variant = 'primary',
@@ -35,15 +41,15 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      style={({ pressed }) => StyleSheet.flatten([
+      style={({ pressed }) => [
         styles.button,
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
         variant === 'outline' && styles.outline,
         disabled && styles.disabled,
-        pressed && !disabled && !loading && { opacity: 0.8 },
+        pressed && !disabled && !loading && styles.pressed,
         style,
-      ])}
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
       android_ripple={{
@@ -58,7 +64,7 @@ export const Button: React.FC<ButtonProps> = ({
       )}
     </Pressable>
   );
-};
+});
 
 const styles = StyleSheet.create({
   button: {
@@ -68,6 +74,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
+  },
+  pressed: {
+    opacity: 0.8,
   },
   primary: {
     backgroundColor: COLORS.primary,
