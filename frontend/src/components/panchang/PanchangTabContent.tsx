@@ -28,13 +28,14 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
   language,
   onNavigateToTemples,
 }) => {
+  const isHindi = language === 'hi';
   const advanced: AdvancedPanchangData | undefined =
     payload?.sources?.advanced_panchang || payload?.sources?.panchang_advanced;
 
   if (!advanced && !payload?.overview?.length) {
     return (
       <Text style={styles.emptyText}>
-        {language === 'hi'
+        {isHindi
           ? 'इस तिथि के लिए पंचांग उपलब्ध नहीं है। कृपया अन्य तिथि चुनें ✨'
           : 'Panchang is not available for this date. Please select another date ✨'}
       </Text>
@@ -43,8 +44,14 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
 
   return (
     <View style={styles.tabContent}>
+      {/* 🧡 Engagement: Localized Panchang section headers and labels to native Devanagari Hindi when language === 'hi'. */}
+      {/* Lever: Reframing + Contextual Framing (Sanatan Calendar / Tithi) + Mother Tongue Connection */}
+      {/* Why: Reading Panchang section headers in native Hindi ('पंचांग विवरण', 'सूर्योदय व चंद्रोदय', 'अशुभ काल', 'दिन/रात्रि चौघड़िया', 'शुभ/अशुभ') creates authentic cultural immersion and emotional resonance for Sanatan users consulting daily tithi/muhurta. */}
+      {/* UI: Text-only change, zero structural or visual component modifications. */}
       {/* Panchang Details */}
-      <Text style={styles.sectionHeader}>Panchang Details</Text>
+      <Text style={styles.sectionHeader}>
+        {isHindi ? 'पंचांग विवरण' : 'Panchang Details'}
+      </Text>
       <View style={styles.card}>
         {overview.map((item: OverviewItem, idx: number) => (
           <View key={`${item.label}-${idx}`} style={{ alignSelf: 'stretch' }}>
@@ -58,7 +65,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
       </View>
 
       {/* Sun & Moon Times */}
-      <Text style={styles.sectionHeader}>Sun & Moon Times</Text>
+      <Text style={styles.sectionHeader}>
+        {isHindi ? 'सूर्योदय व चंद्रोदय समय' : 'Sun & Moon Times'}
+      </Text>
       <View style={[styles.card, { paddingHorizontal: 0, paddingVertical: 0, overflow: 'hidden' }]}>
         <View style={styles.sunMoonGrid}>
           <View style={styles.sunMoonItem}>
@@ -70,7 +79,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
               />
             </View>
             <View style={styles.sunMoonMeta}>
-              <Text style={styles.sunMoonLabel}>SUNRISE</Text>
+              <Text style={styles.sunMoonLabel}>
+                {isHindi ? 'सूर्योदय' : 'SUNRISE'}
+              </Text>
               <Text style={styles.sunMoonValue}>
                 {formatTimeValue(advanced?.sunrise) || '05:45 AM'}
               </Text>
@@ -86,7 +97,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
               />
             </View>
             <View style={styles.sunMoonMeta}>
-              <Text style={styles.sunMoonLabel}>SUNSET</Text>
+              <Text style={styles.sunMoonLabel}>
+                {isHindi ? 'सूर्यास्त' : 'SUNSET'}
+              </Text>
               <Text style={styles.sunMoonValue}>
                 {formatTimeValue(advanced?.sunset) || '06:30 PM'}
               </Text>
@@ -102,7 +115,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
               />
             </View>
             <View style={styles.sunMoonMeta}>
-              <Text style={styles.sunMoonLabel}>MOONRISE</Text>
+              <Text style={styles.sunMoonLabel}>
+                {isHindi ? 'चंद्रोदय' : 'MOONRISE'}
+              </Text>
               <Text style={styles.sunMoonValue}>
                 {formatTimeValue(advanced?.moonrise) || '07:15 PM'}
               </Text>
@@ -118,7 +133,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
               />
             </View>
             <View style={styles.sunMoonMeta}>
-              <Text style={styles.sunMoonLabel}>MOONSET</Text>
+              <Text style={styles.sunMoonLabel}>
+                {isHindi ? 'चंद्रास्त' : 'MOONSET'}
+              </Text>
               <Text style={styles.sunMoonValue}>
                 {formatTimeValue(advanced?.moonset) || '05:30 AM'}
               </Text>
@@ -132,34 +149,50 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
         <View style={styles.alertIconBox}>
           <Ionicons name="warning" size={14} color="#BA1A1A" />
         </View>
-        <Text style={styles.sectionHeaderAlert}>Inauspicious Times</Text>
+        <Text style={styles.sectionHeaderAlert}>
+          {isHindi ? 'अशुभ काल (अशुभ समय)' : 'Inauspicious Times'}
+        </Text>
       </View>
 
       <View style={styles.card}>
         <View style={styles.inauspiciousRow}>
-          <Text style={styles.inauspiciousLabel}>Rahu Kaal</Text>
+          <Text style={styles.inauspiciousLabel}>
+            {isHindi ? 'राहु काल' : 'Rahu Kaal'}
+          </Text>
           <Text style={styles.inauspiciousValue}>
             {advanced?.rahu_kaal || '09:00 AM - 10:30 AM'}
           </Text>
         </View>
         <View style={styles.infoDivider} />
         <View style={styles.inauspiciousRow}>
-          <Text style={styles.inauspiciousLabel}>Gulika Kaal</Text>
+          <Text style={styles.inauspiciousLabel}>
+            {isHindi ? 'गुलीक काल' : 'Gulika Kaal'}
+          </Text>
           <Text style={styles.inauspiciousValue}>
             {advanced?.gulika_kaal || '06:00 AM - 07:30 AM'}
           </Text>
         </View>
         <View style={styles.infoDivider} />
         <View style={styles.inauspiciousRow}>
-          <Text style={styles.inauspiciousLabel}>Yamaganda</Text>
+          <Text style={styles.inauspiciousLabel}>
+            {isHindi ? 'यमगण्ड' : 'Yamaganda'}
+          </Text>
           <Text style={styles.inauspiciousValue}>
             {advanced?.yamaganda || '01:00 PM - 03:00 PM'}
           </Text>
         </View>
       </View>
 
-      {/* Day Choghadiya Section */}
-      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>Day Choghadiya</Text>
+      {/* Day / Night Choghadiya Section */}
+      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>
+        {isHindi
+          ? choghadiyaMode === 'day'
+            ? 'दिन चौघड़िया'
+            : 'रात्रि चौघड़िया'
+          : choghadiyaMode === 'day'
+          ? 'Day Choghadiya'
+          : 'Night Choghadiya'}
+      </Text>
       <View style={styles.choghadiyaGrid}>
         {activeChoghadiyaList.map((m: ChoghadiyaItem, idx: number) => (
           <View key={`${choghadiyaMode}-${idx}`} style={styles.choghadiyaCard}>
@@ -180,7 +213,7 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
                     : styles.choghadiyaBadgeTextBad
                 }
               >
-                {m.is_good ? 'Good' : 'Bad'}
+                {m.is_good ? (isHindi ? 'शुभ' : 'Good') : (isHindi ? 'अशुभ' : 'Bad')}
               </Text>
             </View>
           </View>
