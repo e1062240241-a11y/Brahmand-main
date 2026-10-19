@@ -4,3 +4,6 @@
 ## 2025-02-27 - Replace sequential db operations with asyncio.gather in location community joins
 **Learning:** Sequential `await db.add_member_to_community` operations in a `for` loop (e.g. joining 3+ location communities during signups or location changes) create significant N+1 I/O latency.
 **Action:** Replace `for` loops containing independent I/O database calls with `asyncio.gather(..., return_exceptions=True)`. Process the results safely using `zip(items, results)` to log individual exceptions without crashing the batch.
+## 2025-02-27 - Batch update community stats to avoid N+1 queries
+**Learning:** Sequential `await db.update_document` operations inside a for-loop over queried collections (like updating community member counts) create significant N+1 I/O latency, leading to performance bottlenecks in background tasks.
+**Action:** Replace these sequential updates by aggregating changes into an `updates` list and executing them via `await db.batch_update_documents(collection, updates[i:i + 400])` chunked to stay under Firestore limits.
