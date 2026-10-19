@@ -95,7 +95,11 @@ export const UploadProgressBanner = () => {
         },
       ]}
     >
-      <View style={styles.card}>
+      <View
+        style={styles.card}
+        accessibilityLiveRegion="polite"
+        accessibilityRole={(status === 'success' || status === 'error') ? 'alert' : undefined}
+      >
         <View style={styles.contentRow}>
           <View style={styles.iconContainer}>
             {status === 'success' ? (
@@ -103,7 +107,11 @@ export const UploadProgressBanner = () => {
             ) : status === 'error' ? (
               <Ionicons name="alert-circle" size={24} color={COLORS.error} />
             ) : isCompressing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <ActivityIndicator
+                size="small"
+                color={COLORS.primary}
+                accessibilityLabel={t('processingMedia')}
+              />
             ) : (
               <Ionicons
                 name={mediaType === 'video' ? 'videocam' : 'image'}
