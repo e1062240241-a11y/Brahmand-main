@@ -8112,15 +8112,17 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
                         detail=f"Request denied. You can send another request after {retry_after_dt.isoformat()}"
                     )
 
-                await db.update_document('chats', chat_id, {
+                update_payload = {
                     'request_status': 'pending',
                     'request_by': sender_id,
                     'request_retry_after': None,
                     'request_updated_at': now,
                     'last_message': (message.content or "")[:100],
                     'updated_at': now,
-                })
-                chat = await db.get_document('chats', chat_id)
+                }
+                await db.update_document('chats', chat_id, update_payload)
+                # ⚡ Bolt Optimization: Avoid redundant db.get_document fetch by updating in-memory
+                chat.update(update_payload)
                 request_status = 'pending'
                 request_by = sender_id
             else:
