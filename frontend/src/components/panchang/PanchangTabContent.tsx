@@ -188,13 +188,19 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
       </View>
 
       {/* Cross-Feature Connection: Nearby Temples */}
+      {/* 🧡 Engagement: Reframed transactional search ("Nearby Temples" / "आस-पास के मंदिर देखें")
+          to devotional pilgrimage invitation ("पावन मंदिर दर्शन करें" / "Auspicious Mandir Darshan").
+          Lever: Reframing + Contextual Framing (Panchang / Sanatan Calendar)
+          Why: Connecting auspicious Panchang timing to sacred temple darshan elevates a simple location search
+               into an active spiritual ritual (pavitra darshan/pujan).
+          UI: Text-only change, zero structural or visual component modifications. */}
       <TouchableOpacity
         style={styles.templeBannerCard}
         onPress={onNavigateToTemples}
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel={
-          language === 'hi' ? 'आस-पास के मंदिर देखें' : 'Explore Nearby Temples'
+          language === 'hi' ? 'पावन मंदिर दर्शन करें' : 'Auspicious Mandir Darshan'
         }
       >
         <View style={styles.templeBannerIconBox}>
@@ -202,12 +208,12 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
         </View>
         <View style={styles.templeBannerContent}>
           <Text style={styles.templeBannerTitle}>
-            {language === 'hi' ? 'आस-पास के मंदिर देखें →' : 'Nearby Temples →'}
+            {language === 'hi' ? 'पावन मंदिर दर्शन करें →' : 'Auspicious Mandir Darshan →'}
           </Text>
           <Text style={styles.templeBannerDesc}>
             {language === 'hi'
-              ? 'शुभ दर्शन और प्रार्थना के लिए अपने पास के पवित्र मंदिर खोजें।'
-              : 'Find sacred mandirs near you for auspicious darshan and prayers.'}
+              ? 'आज के शुभ मुहूर्त में निकटतम पवित्र धाम व मंदिर में दर्शन-पूजन करें 🙏'
+              : 'Connect with nearby sacred mandirs for auspicious darshan and prayers 🙏'}
           </Text>
         </View>
       </TouchableOpacity>
