@@ -271,6 +271,9 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
           {...panResponder.panHandlers}
         >
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isHindi ? "साधना संकल्प कार्ड" : "Sadhana Sankalpa Card"}
+            accessibilityHint={isHindi ? "जाप कक्ष खोलने के लिए टैप करें" : "Tap to open chanting room"}
             onPress={handleCardPress}
             style={({ pressed }) => [styles.outerContainer, pressed && styles.cardPressed]}
           >
