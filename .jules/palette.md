@@ -1,3 +1,3 @@
-## 2024-05-19 - Adding accessibility to dynamic modal states
-**Learning:** In React Native, `ActivityIndicator` and dynamic modal state changes (like moving from a form to a loading state to a success state) are often entirely silent to screen readers by default.
-**Action:** Always add an `accessibilityLabel` to `ActivityIndicator` components. For dynamically rendering success/error views within a modal, apply `accessibilityLiveRegion="polite"` and `accessibilityRole="alert"` to the parent container to force screen readers to announce the state change correctly.
+## 2024-05-24 - Interactive Element Accessibility in Modals
+**Learning:** React Native modals often contain nested generic `TouchableOpacity` elements for actions like "close", "clear search", and "confirm" that lack intrinsic semantic meaning for screen readers. Providing an explicit `accessibilityRole="button"` along with an `accessibilityLabel` is required to ensure these controls are properly announced to assistive technologies.
+**Action:** When adding or reviewing interactive controls (especially icon-only buttons or custom list items) within modals or overlays, always explicitly define `accessibilityRole` and an descriptive `accessibilityLabel`.
