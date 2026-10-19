@@ -49,6 +49,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
+- `/admin/vendors/review-queue` — unpaginated query across vendor_admin_reviews collection — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -145,3 +146,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-24 - Offset-based pagination & DB query bounds for GET /admin/reports
 **Learning:** `GET /admin/reports` fetched user content reports across two collections (`reports` and `moderation_reports`) without an `offset` parameter, preventing admin clients from paginating past the first page. Furthermore, fallback queries fetched unpaginated full collections into Python memory when index constraints triggered ($O(N_{\text{total\_reports}})$ reads).
 **Action:** Introduced `offset: int = 0` query parameter to `get_reports` in `backend/main.py`, bounded candidate query fetches for both collections to `fetch_limit = safe_offset + safe_limit`, applied `fetch_limit` to fallback query slices, and sliced the merged sorted dataset using `[safe_offset : safe_offset + safe_limit]` prior to user profile resolution.
+
+## 2026-09-25 - Offset-based pagination & DB query bounds for GET /admin/vendors/review-queue
+**Learning:** `GET /admin/vendors/review-queue` previously fetched review queue snapshots without `offset` pagination parameters, preventing admin clients from paginating past the first page. Furthermore, fallback queries fetched unpaginated full collections when index constraints triggered ($O(N_{\text{vendor\_reviews}})$ reads).
+**Action:** Introduced `offset: int = 0` query parameter to `get_vendor_review_queue` in `backend/main.py`, bounded candidate query fetches to `fetch_limit = safe_offset + safe_limit` for both primary ordered and fallback unordered queries, and sliced the sorted records using `[safe_offset : safe_offset + safe_limit]` prior to batch user phone resolution.
