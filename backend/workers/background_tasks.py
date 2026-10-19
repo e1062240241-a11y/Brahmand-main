@@ -155,11 +155,19 @@ async def update_community_stats():
     db = FirestoreDB(client)
     communities = await db.query_documents('communities')
     
+    # ⚡ Bolt Optimization: Replaced N+1 sequential await db.update_document
+    # calls with chunked batch_update_documents for O(N/400) DB roundtrips.
+    updates = []
     for community in communities:
         cid = community.get('id')
         if not cid:
             continue
         member_count = len(community.get("members", []))
-        await db.update_document('communities', cid, {"member_count": member_count})
+        updates.append((cid, {"member_count": member_count}))
+
+    chunk_size = 400
+    for i in range(0, len(updates), chunk_size):
+        chunk = updates[i:i + chunk_size]
+        await db.batch_update_documents('communities', chunk)
     
     logger.info(f"Updated stats for {len(communities)} communities")

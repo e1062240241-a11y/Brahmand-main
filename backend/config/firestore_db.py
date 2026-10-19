@@ -561,7 +561,12 @@ class FirestoreDB:
                     data_copy = fast_copy(data)
                     data_copy['updated_at'] = now.isoformat() + 'Z'
                     coll[doc_id].update(data_copy)
-                    await self._cache.delete(f"{collection}:{doc_id}")
+            # ⚡ Bolt Optimization: Replace sequential cache deletions with concurrent execution
+            if updates:
+                results = await asyncio.gather(*(self._cache.delete(f"{collection}:{doc_id}") for doc_id, _ in updates), return_exceptions=True)
+                for res in results:
+                    if isinstance(res, Exception):
+                        logger.error(f"Cache deletion failed during batch mock update: {res}")
             return
 
         def _batch():
@@ -575,8 +580,12 @@ class FirestoreDB:
             batch.commit()
 
         await self._run_sync(_batch)
-        for doc_id, _ in updates:
-            await self._cache.delete(f"{collection}:{doc_id}")
+        # ⚡ Bolt Optimization: Replace sequential cache deletions with concurrent execution
+        if updates:
+            results = await asyncio.gather(*(self._cache.delete(f"{collection}:{doc_id}") for doc_id, _ in updates), return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.error(f"Cache deletion failed during batch update: {res}")
     
 
     async def batch_delete_documents(self, collection: str, doc_ids: List[str], batch_size: int = 500) -> int:
