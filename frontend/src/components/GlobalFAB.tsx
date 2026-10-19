@@ -30,7 +30,43 @@ import LocationService from '../services/location';
 import { useAuthStore } from '../store/authStore';
 import { socketService } from '../services/socket';
 
-export function GlobalFAB() {
+const RAW_MENU_ITEMS = [
+  { label: 'Festival', key: 'festival', icon: 'calendar-outline' as const, route: '/festivals' },
+  { label: 'Kundli', key: 'kundli', icon: 'planet-outline' as const, route: '/astrology' },
+  { label: 'Brahmand\nPassport', key: 'brahmandPassport', icon: 'compass-outline' as const, route: '/passport' },
+  { label: 'My Krishn', key: 'myKrishna', icon: 'heart-outline' as const, route: '/my-krishna' },
+  { label: 'Panchang', key: 'panchang', icon: 'today-outline' as const, route: '/panchang' },
+  { label: 'Brahmand\nLibrary', key: 'brahmandLibrary', icon: 'library-outline' as const, route: '/library' },
+];
+
+const ITEM_SIZE = 70;
+const ITEM_RADIUS = 35;
+const RADIUS = 112;
+const CENTER_X = 180 - ITEM_SIZE / 2;
+const CENTER_Y = 180 - ITEM_SIZE / 2 - 10;
+const TOTAL_ITEMS = RAW_MENU_ITEMS.length;
+const ANGLE_STEP = (2 * Math.PI) / TOTAL_ITEMS;
+const START_ANGLE = -Math.PI / 2;
+
+/** Precomputed circular menu layout coordinates to eliminate render-time trigonometric allocations */
+const FAB_MENU_ITEMS = RAW_MENU_ITEMS.map((item, index) => {
+  const angle = START_ANGLE + index * ANGLE_STEP;
+  return {
+    ...item,
+    left: CENTER_X + RADIUS * Math.cos(angle) - 15,
+    top: CENTER_Y + RADIUS * Math.sin(angle),
+  };
+});
+
+/**
+ * GlobalFAB Component
+ *
+ * 🎨 Varnish Optimization:
+ * 1. Wrapped in React.memo to prevent unnecessary re-renders on route/parent state updates.
+ * 2. Precomputed circular menu items array and positions (FAB_MENU_ITEMS) at module level.
+ * 3. Moved inline style objects into StyleSheet.create to avoid object allocations during render/press cycles.
+ */
+function GlobalFABComponent() {
   const { width: windowWidth } = useWindowDimensions();
   const scaleFactor = Platform.OS === 'android' ? Math.min(1, (windowWidth * 0.95) / 360) : 1;
 
@@ -482,35 +518,15 @@ export function GlobalFAB() {
             >
 
                 {/* Menu items arranged in a circle */}
-                {[
-                  { label: 'Festival', key: 'festival', icon: 'calendar-outline' as const, route: '/festivals' },
-                  { label: 'Kundli', key: 'kundli', icon: 'planet-outline' as const, route: '/astrology' },
-                  { label: 'Brahmand\nPassport', key: 'brahmandPassport', icon: 'compass-outline' as const, route: '/passport' },
-                  { label: 'My Krishn', key: 'myKrishna', icon: 'heart-outline' as const, route: '/my-krishna' },
-                  { label: 'Panchang', key: 'panchang', icon: 'today-outline' as const, route: '/panchang' },
-                  { label: 'Brahmand\nLibrary', key: 'brahmandLibrary', icon: 'library-outline' as const, route: '/library' },
-                ].map((item, index) => {
-                  // Position items in a circle (6 items, starting from top)
-                  const totalItems = 6;
-                  const angleStep = (2 * Math.PI) / totalItems;
-                  const startAngle = -Math.PI / 2; // Start from top
-                  const angle = startAngle + index * angleStep;
-                  const radius = 112;
-                  const itemSize = 70;
-                  const itemRadius = 35;
-                  const centerX = 180 - itemSize / 2;
-                  const centerY = 180 - itemSize / 2 - 10;
-                  const x = centerX + radius * Math.cos(angle);
-                  const y = centerY + radius * Math.sin(angle);
-
+                {FAB_MENU_ITEMS.map((item, index) => {
                   return (
                     <Animated.View
                       key={item.key}
                       style={[
                         fabStyles.menuItem,
                         {
-                          left: x - 15,
-                          top: y,
+                          left: item.left,
+                          top: item.top,
                           transform: [{ scale: fabItemAnims[index] }],
                           opacity: (activeSOS || nearbySOSAlerts.length > 0) ? 0.35 : fabItemAnims[index],
                         },
@@ -529,27 +545,27 @@ export function GlobalFAB() {
                       >
                         <ImageBackground 
                           source={require('../../assets/images/tab-bar/back.webp')} 
-                          style={{ width: itemSize, height: itemSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemRadius, overflow: 'hidden' }} 
-                          imageStyle={{ borderRadius: itemRadius, resizeMode: 'cover' }}
+                          style={fabStyles.menuItemImageBg}
+                          imageStyle={fabStyles.itemRadiusStyle}
                         >
                           {item.key === 'myKrishna' ? (
-                            <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.webp')} style={{ width: 48, height: 48 }} contentFit="contain" />
+                            <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.webp')} style={fabStyles.icon48} contentFit="contain" />
                           ) : item.key === 'festival' ? (
-                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_festival_icon_2.webp' }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_festival_icon_2.webp' }} style={fabStyles.icon36} resizeMode="contain" />
                           ) : item.key === 'kundli' ? (
-                            <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.webp')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                            <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.webp')} style={fabStyles.icon36} resizeMode="contain" />
                           ) : item.key === 'brahmandPassport' ? (
-                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_passport_icon.webp' }} style={{ width: 48, height: 48 }} resizeMode="contain" />
+                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/custom_passport_icon.webp' }} style={fabStyles.icon48} resizeMode="contain" />
                           ) : item.key === 'panchang' ? (
-                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/panchang_icon_3.webp' }} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/panchang_icon_3.webp' }} style={fabStyles.icon34} resizeMode="contain" />
                           ) : item.key === 'brahmandLibrary' ? (
-                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/library_icon_3.webp' }} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                            <Image source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/library_icon_3.webp' }} style={fabStyles.icon34} resizeMode="contain" />
                           ) : (
                             <Ionicons name={item.icon as any} size={28} color="#FFF" />
                           )}
                         </ImageBackground>
                       </TouchableOpacity>
-                      <Text style={[fabStyles.menuItemLabel, (activeSOS || nearbySOSAlerts.length > 0) && { color: '#FFF' }]}>
+                      <Text style={[fabStyles.menuItemLabel, (activeSOS || nearbySOSAlerts.length > 0) && fabStyles.textWhite]}>
                         {t(item.key)}
                       </Text>
                     </Animated.View>
@@ -614,12 +630,12 @@ export function GlobalFAB() {
                       <View style={fabStyles.victimRow}>
                         <View style={fabStyles.victimAvatarBox}>
                           {nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo ? (
-                            <Image source={{ uri: nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                          <Image source={{ uri: nearbySOSAlerts[0].creator_image || nearbySOSAlerts[0].user_photo }} style={fabStyles.victimAvatarImage} />
                           ) : (
                             <Ionicons name="person" size={30} color="#DDD" />
                           )}
                         </View>
-                        <View style={{ flex: 1 }}>
+                      <View style={fabStyles.flex1}>
                           <Text style={fabStyles.victimName}>{nearbySOSAlerts[0].creator_name || nearbySOSAlerts[0].user_name || 'Unknown'}</Text>
                           <View style={fabStyles.victimTypeRow}>
                             <MaterialCommunityIcons name="medical-bag" size={14} color="#D32F2F" />
@@ -640,7 +656,7 @@ export function GlobalFAB() {
                     <View style={fabStyles.responderActionRow}>
                       {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
                         <TouchableOpacity
-                          style={[fabStyles.responderBtn, { backgroundColor: '#388E3C' }]}
+                          style={[fabStyles.responderBtn, fabStyles.responderBtnSuccess]}
                           disabled={true}
                         >
                           <Ionicons name="checkmark-circle" size={22} color="#FFF" />
@@ -648,7 +664,7 @@ export function GlobalFAB() {
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
-                          style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
+                          style={[fabStyles.responderBtn, fabStyles.responderBtnSuccess, isResponding && fabStyles.opacity7]}
                           onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
                           disabled={isResponding}
                         >
@@ -663,7 +679,7 @@ export function GlobalFAB() {
                         </TouchableOpacity>
                       )}
                       <TouchableOpacity
-                        style={[fabStyles.responderBtn, { backgroundColor: '#FF9800' }]}
+                        style={[fabStyles.responderBtn, fabStyles.responderBtnWarning]}
                         onPress={() => {
                           const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
                           if (!phone) { Alert.alert('Not Available', 'Phone number not provided.'); return; }
@@ -675,7 +691,7 @@ export function GlobalFAB() {
                       </TouchableOpacity>
                       {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
                         <TouchableOpacity
-                          style={[fabStyles.responderBtn, { backgroundColor: '#D32F2F' }]}
+                          style={[fabStyles.responderBtn, fabStyles.responderBtnDanger]}
                           onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
                         >
                           <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
@@ -683,7 +699,7 @@ export function GlobalFAB() {
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
-                          style={[fabStyles.responderBtn, { backgroundColor: '#2196F3' }]}
+                          style={[fabStyles.responderBtn, fabStyles.responderBtnInfo]}
                           onPress={() => {
                             const s = nearbySOSAlerts[0];
                             if (s?.latitude && s?.longitude) {
@@ -747,7 +763,7 @@ export function GlobalFAB() {
         {...panResponder.panHandlers}
       >
         <TouchableOpacity
-          style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+          style={fabStyles.fabTouchableWrapper}
           activeOpacity={0.85}
           onPress={toggleFab}
           accessibilityRole="button"
@@ -769,7 +785,66 @@ export function GlobalFAB() {
   );
 }
 
+export const GlobalFAB = React.memo(GlobalFABComponent);
+GlobalFAB.displayName = 'GlobalFAB';
+
 const fabStyles = StyleSheet.create({
+  menuItemImageBg: {
+    width: ITEM_SIZE,
+    height: ITEM_SIZE,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: ITEM_RADIUS,
+    overflow: 'hidden',
+  },
+  itemRadiusStyle: {
+    borderRadius: ITEM_RADIUS,
+    resizeMode: 'cover',
+  },
+  icon48: {
+    width: 48,
+    height: 48,
+  },
+  icon36: {
+    width: 36,
+    height: 36,
+  },
+  icon34: {
+    width: 34,
+    height: 34,
+  },
+  textWhite: {
+    color: '#FFF',
+  },
+  flex1: {
+    flex: 1,
+  },
+  opacity7: {
+    opacity: 0.7,
+  },
+  victimAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  responderBtnSuccess: {
+    backgroundColor: '#388E3C',
+  },
+  responderBtnWarning: {
+    backgroundColor: '#FF9800',
+  },
+  responderBtnDanger: {
+    backgroundColor: '#D32F2F',
+  },
+  responderBtnInfo: {
+    backgroundColor: '#2196F3',
+  },
+  fabTouchableWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   overlay: {
     position: 'absolute',
     top: 0,
