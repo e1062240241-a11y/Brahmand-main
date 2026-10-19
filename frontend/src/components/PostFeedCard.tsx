@@ -7,15 +7,13 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  SafeAreaView,
-  Dimensions,
   Platform,
-  ScrollView,
   useWindowDimensions,
   Animated,
   TextInput,
   AppState,
+  GestureResponderEvent,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused } from 'expo-router';
@@ -26,33 +24,77 @@ import { OmSpinner } from './CustomRefreshControl';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
 import NativeVideoPlayer from './NativeVideoPlayer';
-import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
+import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
 import { useOptionalTabBar } from '../contexts/TabBarContext';
 import { useAuthStore } from '../store/authStore';
 
-const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 const QUICK_EMOJIS = ['✨', '🙏', '🕉️', '🌸', '🚩', '📿'];
 
 
 
+export interface PostItem {
+  id?: string | number;
+  user_id?: string | number;
+  username?: string;
+  user_photo?: string;
+  is_verified?: boolean;
+  category?: string;
+  created_at?: string;
+  createdAt?: string;
+  createdAtUtc?: string;
+  filter_name?: string;
+  media_width?: number | string;
+  media_height?: number | string;
+  media_url?: string;
+  mediaUrl?: string;
+  image_url?: string;
+  imageUrl?: string;
+  image?: string;
+  thumbnail_url?: string;
+  thumbnailUrl?: string;
+  media_type?: string;
+  mediaType?: string;
+  type?: string;
+  crop_offset_x?: number;
+  crop_offset_y?: number;
+  original_width?: number;
+  original_height?: number;
+  liked_by_me?: boolean;
+  likes_count?: number | string;
+  comments_count?: number | string;
+  views_count?: number | string;
+  caption?: string;
+  metadata?: {
+    filter_name?: string;
+    width?: number | string;
+    height?: number | string;
+    thumbnail_url?: string;
+    thumbnailUrl?: string;
+    crop_offset_x?: number;
+    crop_offset_y?: number;
+    original_width?: number;
+    original_height?: number;
+  };
+}
+
 type PostFeedCardProps = {
   distanceFromActive?: number;
-  post: any;
-  onLike?: (post: any) => void;
-  onComment?: (post: any) => void;
-  onShare?: (post: any) => void;
-  onRepost?: (post: any) => void;
-  onEdit?: (post: any) => void;
+  post: PostItem;
+  onLike?: (post: PostItem) => void;
+  onComment?: (post: PostItem) => void;
+  onShare?: (post: PostItem) => void;
+  onRepost?: (post: PostItem) => void;
+  onEdit?: (post: PostItem) => void;
   onHashtagPress?: (hashtag: string) => void;
-  onUserPress?: (post: any) => void;
-  onPostMenuPress?: (post: any) => void;
+  onUserPress?: (post: PostItem) => void;
+  onPostMenuPress?: (post: PostItem) => void;
   postMenuType?: 'delete' | 'report';
   isActive?: boolean;
   isFocused?: boolean;
-  onLayout?: (event: any) => void;
+  onLayout?: (event: LayoutChangeEvent) => void;
   theme?: 'light' | 'dark';
   openCommentsOnCaptionPress?: boolean;
   isBlackBackground?: boolean;
@@ -63,13 +105,6 @@ type PostFeedCardProps = {
   onCancelEdit?: () => void;
   onSaveEdit?: () => void;
   isSavingEdit?: boolean;
-};
-
-const formatTime = (raw: any) => {
-  if (!raw) return 'now';
-  const date = new Date(raw);
-  if (isNaN(date.getTime())) return 'now';
-  return formatDateTimeIST(date);
 };
 
 const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMention: boolean }[] => {
@@ -163,7 +198,7 @@ const PostFeedCardComponent = ({
     } else {
       showTabBar?.();
     }
-  }, [isFullscreen]);
+  }, [isFullscreen, hideTabBar, showTabBar]);
   const [mediaLoading, setMediaLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -171,38 +206,41 @@ const PostFeedCardComponent = ({
   const h = Number(post?.media_height || post?.metadata?.height);
   const initialRawRatio = (w && h) ? (w / h) : null;
 
+  const [prevInitialRawRatio, setPrevInitialRawRatio] = useState(initialRawRatio);
   const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const hasLoadedOnceRef = useRef(false);
+  const prevPostIdRef = useRef(post?.id);
 
-  useEffect(() => {
-    if (isActive && isFocused && !hasLoadedOnceRef.current) {
-      hasLoadedOnceRef.current = true;
-      setShouldLoadVideo(true);
-    }
-
-    // Unmount if scrolled far away
-    if (distanceFromActive > 3) {
-      setShouldLoadVideo(false);
-      setIsVideoReady(false);
-      hasLoadedOnceRef.current = false; // Reset so it reloads if scrolled back
-    }
-  }, [isActive, isFocused, distanceFromActive]);
-
-  useEffect(() => {
-    hasLoadedOnceRef.current = false;
-    setShouldLoadVideo(false);
-    setIsVideoReady(false);
-    setMediaLoading(true);
-  }, [post?.id]);
-
-  useEffect(() => {
+  if (initialRawRatio !== prevInitialRawRatio) {
+    setPrevInitialRawRatio(initialRawRatio);
     if (initialRawRatio) {
       setDynamicRatio(initialRawRatio);
     }
-  }, [initialRawRatio]);
+  }
+
+  useEffect(() => {
+    if (post?.id !== prevPostIdRef.current) {
+      prevPostIdRef.current = post?.id;
+      hasLoadedOnceRef.current = false;
+      setIsVideoReady(false);
+      setMediaLoading(true);
+    }
+
+    if (isActive && isFocused && !hasLoadedOnceRef.current) {
+      hasLoadedOnceRef.current = true;
+      setShouldLoadVideo(true);
+    } else if (distanceFromActive > 3) {
+      const timer = setTimeout(() => {
+        setShouldLoadVideo(false);
+        setIsVideoReady(false);
+        hasLoadedOnceRef.current = false;
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, isFocused, distanceFromActive, post?.id]);
 
   const rawMediaUrl =
     post?.media_url ||
@@ -221,15 +259,27 @@ const PostFeedCardComponent = ({
     mediaUrl = mediaUrl.replace('http://', 'https://');
   }
 
+  const [prevMediaUrl, setPrevMediaUrl] = useState(mediaUrl);
   const [imageUri, setImageUri] = useState(mediaUrl);
+
+  const [prevPosterUrl, setPrevPosterUrl] = useState(posterUrl);
   const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
+
+  if (mediaUrl !== prevMediaUrl) {
+    setPrevMediaUrl(mediaUrl);
+    setImageUri(mediaUrl);
+  }
+
+  if (posterUrl !== prevPosterUrl) {
+    setPrevPosterUrl(posterUrl);
+    setVideoPosterUrl(posterUrl);
+  }
+
   const [showFallback, setShowFallback] = useState(Platform.OS !== 'android');
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      if (mediaUrl) {
-        setShowFallback(false);
-      } else {
+      if (!mediaUrl) {
         const timer = setTimeout(() => {
           setShowFallback(true);
         }, 1500);
@@ -238,18 +288,10 @@ const PostFeedCardComponent = ({
     }
   }, [mediaUrl]);
 
-  useEffect(() => {
-    setImageUri(mediaUrl);
-  }, [mediaUrl]);
-
-  useEffect(() => {
-    setVideoPosterUrl(posterUrl);
-  }, [posterUrl]);
-
   // ponytail: removed 1MB preload fetch — caused iOS overheating. web preloads fine via <video preload>
 
 
-  const handleImageError = (e: any) => {
+  const handleImageError = (e: unknown) => {
     if (imageUri && imageUri.includes('b-cdn.net')) {
       const urlParts = imageUri.split('b-cdn.net/');
       if (urlParts.length > 1) {
@@ -343,12 +385,6 @@ const PostFeedCardComponent = ({
   }, []);
 
   const shouldPlay = Boolean(isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active');
-
-  useEffect(() => {
-    if (appState !== 'active') {
-      setIsVideoReady(false);
-    }
-  }, [appState]);
   const videoRef = useRef<any>(null);
 
   useEffect(() => {
@@ -358,21 +394,19 @@ const PostFeedCardComponent = ({
   }, [isMuted]);
 
   useEffect(() => {
-    let timer: any;
-    if (mediaLoading) {
-      // Shorter delay to make it responsive but avoid flickering
-      timer = setTimeout(() => setShowSpinner(true), 400);
-    } else {
-      setShowSpinner(false);
+    if (!mediaLoading) {
+      const timer = setTimeout(() => setShowSpinner(false), 0);
+      return () => clearTimeout(timer);
     }
+    const timer = setTimeout(() => setShowSpinner(true), 400);
     return () => clearTimeout(timer);
   }, [mediaLoading]);
 
   useEffect(() => {
     if (Platform.OS === 'web' && videoRef.current) {
       if (shouldPlay) {
-        videoRef.current.play().catch((e: any) => {
-          console.warn('[PostFeedCard] Web Video Play Error:', e);
+        videoRef.current.play().catch((err: unknown) => {
+          console.warn('[PostFeedCard] Web Video Play Error:', err);
         });
       } else {
         videoRef.current.pause();
@@ -382,11 +416,12 @@ const PostFeedCardComponent = ({
 
   // Clean up player on unmount
   useEffect(() => {
+    const currentVideo = videoRef.current;
     return () => {
-      if (Platform.OS === 'web' && videoRef.current) {
+      if (Platform.OS === 'web' && currentVideo) {
         try {
-          videoRef.current.pause();
-        } catch (e) { }
+          currentVideo.pause();
+        } catch { }
       }
     };
   }, []);
@@ -396,8 +431,8 @@ const PostFeedCardComponent = ({
     if (isActive && !prevIsActive.current && post?.id) {
       setIsPausedByUser(false);
       try {
-        import('../services/api').then(m => m.viewPost(post.id)).catch(() => { });
-      } catch (e) { }
+        import('../services/api').then(m => m.viewPost(String(post.id))).catch(() => { });
+      } catch { }
     }
     prevIsActive.current = isActive;
   }, [isActive, post.id]);
@@ -482,7 +517,7 @@ const PostFeedCardComponent = ({
     }
   };
 
-  const handleTouchStart = (e: any) => {
+  const handleTouchStart = (e: GestureResponderEvent) => {
     touchStartX.current = e.nativeEvent.pageX;
     touchStartY.current = e.nativeEvent.pageY;
     touchStartTime.current = Date.now();
@@ -496,7 +531,7 @@ const PostFeedCardComponent = ({
     swipeDetected.current = false;
   };
 
-  const handleTouchEnd = (e: any) => {
+  const handleTouchEnd = (e: GestureResponderEvent) => {
     const deltaX = e.nativeEvent.pageX - touchStartX.current;
     const deltaY = e.nativeEvent.pageY - touchStartY.current;
 
@@ -514,7 +549,7 @@ const PostFeedCardComponent = ({
     }
   };
 
-  const handleMediaPress = (e?: any) => {
+  const handleMediaPress = (e?: GestureResponderEvent) => {
     if (swipeDetected.current) return;
 
     // Ignore scroll/finger drift touches — they shouldn't trigger tap actions
@@ -549,11 +584,10 @@ const PostFeedCardComponent = ({
   const viewsCount = Number(post?.views_count || 0);
   const captionText = String(post?.caption || '').trim();
 
-  const { captionWords, collapsedCaption, isLongCaption } = useMemo(() => {
+  const { collapsedCaption, isLongCaption } = useMemo(() => {
     const words = captionText.split(/\s+/).filter(Boolean);
     const collapsed = words.slice(0, 4).join(' ') + (words.length > 4 ? '...' : '');
     return {
-      captionWords: words,
       collapsedCaption: collapsed,
       isLongCaption: words.length > 4
     };
@@ -578,7 +612,7 @@ const PostFeedCardComponent = ({
   }, [router]);
 
   return (
-    <View style={[styles.card, isBlackBackground && { backgroundColor: '#000' }]} onLayout={onLayout}>
+    <View style={[styles.card, isBlackBackground && styles.blackBgContainer]} onLayout={onLayout}>
       {/* Header */}
       {isEditing ? (
         <View style={styles.editHeaderRow}>
@@ -608,7 +642,7 @@ const PostFeedCardComponent = ({
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
+        <View style={[styles.headerRow, isFirstReel && styles.firstReelHeaderRow]}>
           <TouchableOpacity
             style={styles.userPressWrap}
             onPress={() => onUserPress?.(post)}
@@ -726,7 +760,7 @@ const PostFeedCardComponent = ({
       )}
 
       {/* Media */}
-      <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
+      <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight }, theme === 'light' ? styles.mediaWrapLight : styles.mediaWrapDark]}>
         {mediaUrl ? (
           isVideo ? (
             <View style={[styles.videoContainer, { overflow: 'hidden' }]}>
@@ -757,10 +791,10 @@ const PostFeedCardComponent = ({
                         if (ratio && !isNaN(ratio)) setDynamicRatio(ratio);
                       }
                     }}
-                    onError={(e) => {
+                    onError={(err) => {
                       setMediaLoading(false);
                       setMediaError('Video failed to load');
-                      console.warn('[PostFeedCard] Web Video Load Error:', e);
+                      console.warn('[PostFeedCard] Web Video Load Error:', err);
                     }}
                     style={cropStyle ? { ...cropStyle, objectFit: 'cover', ...getFilterStyle(filterName) } : { width: '100%', height: '100%', objectFit: 'cover', ...getFilterStyle(filterName) } as any}
                     poster={posterUrl || undefined}
@@ -846,7 +880,7 @@ const PostFeedCardComponent = ({
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
                 transition={0}
-                recyclingKey={post.id}
+                recyclingKey={post.id !== undefined ? String(post.id) : undefined}
                 onLoadStart={() => setMediaLoading(true)}
                 onLoad={(e) => {
                   setMediaLoading(false);
@@ -1395,6 +1429,20 @@ const styles = StyleSheet.create({
   },
   captionSegmentLight: {
     color: '#222',
+  },
+  blackBgContainer: {
+    backgroundColor: '#000',
+  },
+  firstReelHeaderRow: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  mediaWrapLight: {
+    backgroundColor: '#F5F5F5',
+  },
+  mediaWrapDark: {
+    backgroundColor: '#111111',
   },
 });
 
