@@ -119,7 +119,13 @@ const PostFeedCardComponent = ({
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
-  const menuAnim = useMemo(() => new Animated.Value(0), []);
+  // Varnish fix: Lazy useRef initialization guarantees Animated.Value reference persistence
+  // across render passes without relying on unsafe React 19 useMemo allocations.
+  const menuAnimRef = useRef<Animated.Value | null>(null);
+  if (!menuAnimRef.current) {
+    menuAnimRef.current = new Animated.Value(0);
+  }
+  const menuAnim = menuAnimRef.current;
 
   const openMenu = useCallback(() => {
     setMenuVisible(true);
