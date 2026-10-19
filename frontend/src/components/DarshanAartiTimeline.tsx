@@ -14,21 +14,25 @@ interface DarshanAartiTimelineProps {
   vipInfoText?: string;
 }
 
-export const DarshanAartiTimeline: React.FC<DarshanAartiTimelineProps> = ({
-  openingTime = '4:00 AM',
-  closingTime = '9:00 PM',
-  generalDarshanText,
-  aartis,
-  vipInfoText,
-}) => {
-  return (
-    <DarshanAartiSchedule
-      openingTime={openingTime}
-      closingTime={closingTime}
-      generalDarshanText={generalDarshanText}
-      aartis={aartis}
-      vipInfoText={vipInfoText}
-    />
-  );
-};
+export const DarshanAartiTimeline: React.FC<DarshanAartiTimelineProps> = React.memo(
+  function DarshanAartiTimeline({
+    openingTime = '4:00 AM',
+    closingTime = '9:00 PM',
+    generalDarshanText,
+    aartis,
+    vipInfoText,
+  }) {
+    return (
+      <DarshanAartiSchedule
+        openingTime={openingTime}
+        closingTime={closingTime}
+        generalDarshanText={generalDarshanText}
+        aartis={aartis}
+        vipInfoText={vipInfoText}
+      />
+    );
+  }
+);
+
+DarshanAartiTimeline.displayName = 'DarshanAartiTimeline';
 
