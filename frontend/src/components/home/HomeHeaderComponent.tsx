@@ -750,10 +750,18 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             displaySubtitle = 'आपके आसपास के सनातनी लोग';
                                         } else if (item.label === 'Panchang') {
                                             displayLabel = 'पंचांग';
-                                            displaySubtitle = 'Plan with\nVedic wisdom';
+                                            // 🧡 Engagement: Reframed English fallback subtitle to devotional/Vedic Hindi copy
+                                            // Lever: Reframing + Contextual Framing (Sanatan Calendar)
+                                            // Why: "शुभ मुहूर्त व तिथि" connects deeper emotionally than English "Plan with Vedic wisdom".
+                                            // UI: Text-only change, no new visual elements added.
+                                            displaySubtitle = 'शुभ मुहूर्त व तिथि\nवैदिक मार्गदर्शन';
                                         } else if (item.label === 'Kundli') {
                                             displayLabel = 'कुंडली';
-                                            displaySubtitle = 'Your birth chart insights';
+                                            // 🧡 Engagement: Reframed English fallback subtitle to devotional Hindi copy
+                                            // Lever: Reframing + Contextual Framing
+                                            // Why: "ग्रह-नक्षत्र व भाग्य" evokes spiritual resonance over plain English "Your birth chart insights".
+                                            // UI: Text-only change, no new visual elements added.
+                                            displaySubtitle = 'ग्रह-नक्षत्र व भाग्य\nकुंडली विश्लेषण';
                                         } else if (item.label === 'Brahmand Passport') {
                                             displayLabel = 'ब्रह्मांड पासपोर्ट';
                                             displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
