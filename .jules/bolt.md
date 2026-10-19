@@ -4,3 +4,6 @@
 ## 2025-02-27 - Replace sequential db operations with asyncio.gather in location community joins
 **Learning:** Sequential `await db.add_member_to_community` operations in a `for` loop (e.g. joining 3+ location communities during signups or location changes) create significant N+1 I/O latency.
 **Action:** Replace `for` loops containing independent I/O database calls with `asyncio.gather(..., return_exceptions=True)`. Process the results safely using `zip(items, results)` to log individual exceptions without crashing the batch.
+## 2025-02-27 - Remove redundant fetch after array_union_update in SOS responders
+**Learning:** In the FastAPI backend, reading a document immediately after modifying it with `db.array_union_update` to get the updated array count causes an unnecessary N+1 query.
+**Action:** Since `array_union_update` simply appends to the target array (or ensures its elements exist), construct the updated state in-memory by doing a `.copy()` on the original document and manually appending the newly added element before calculating array counts or reading other document properties.
