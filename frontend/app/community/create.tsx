@@ -530,7 +530,7 @@ export default function CreateCommunityScreen() {
       </View>
 
       {usersLoading ? (
-        <View style={styles.loadingBox}><ActivityIndicator color="#FF6600" /></View>
+        <View style={styles.loadingBox}><ActivityIndicator color="#FF6600" accessibilityLabel="Loading users" /></View>
       ) : (
         <FlatList
           data={users}
@@ -702,7 +702,7 @@ export default function CreateCommunityScreen() {
         onPress={handleSubmit}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.continueButtonText}>Create Community</Text>}
+        {loading ? <ActivityIndicator color="#FFF" accessibilityLabel="Creating community" /> : <Text style={styles.continueButtonText}>Create Community</Text>}
       </TouchableOpacity>
     </View>
   );

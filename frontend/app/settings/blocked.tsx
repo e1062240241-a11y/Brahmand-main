@@ -150,7 +150,7 @@ export default function BlockedAccountsScreen() {
           accessibilityLabel={`${t('unblock')} ${item.name}`}
         >
           {isUnblocking ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" accessibilityLabel="Unblocking user" />
           ) : (
             <Text style={styles.unblockButtonText}>{t('unblock')}</Text>
           )}
@@ -206,7 +206,7 @@ export default function BlockedAccountsScreen() {
       {/* Content */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.primary} accessibilityLabel="Loading blocked users" />
         </View>
       ) : filteredUsers.length > 0 ? (
         <FlatList
