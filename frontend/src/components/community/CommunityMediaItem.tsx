@@ -4,12 +4,25 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  StyleProp,
+  ViewStyle,
+  ImageStyle,
+  ImageSourcePropType,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+export interface MediaObject {
+  uri?: string;
+  type?: string;
+  media_type?: string;
+  mediaType?: string;
+  [key: string]: unknown;
+}
+
+// Varnish fix: Replaced loose `media: string | any` and `style: any` with strong TypeScript definitions (`MediaObject`, `StyleProp<ImageStyle>`) and extracted video container inline style into StyleSheet.
 export interface CommunityMediaItemProps {
-  media: string | any;
-  style: any;
+  media: string | ImageSourcePropType | MediaObject;
+  style?: StyleProp<ImageStyle>;
   onPress?: (origin?: { x: number; y: number; width: number; height: number } | null) => void;
   isActive?: boolean;
 }
@@ -20,10 +33,11 @@ export const CommunityMediaItem = React.memo(({
   onPress,
   isActive = true,
 }: CommunityMediaItemProps) => {
-  const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
+  const mediaObj = typeof media === 'object' && media !== null ? (media as Record<string, any>) : null;
+  const mediaUrl = typeof media === 'string' ? media : (mediaObj?.uri || '');
   const isVideo = (
-    (typeof media === 'object' && media !== null && (
-      String(media.type || media.media_type || media.mediaType || '').toLowerCase().startsWith('video')
+    (mediaObj !== null && (
+      String(mediaObj.type || mediaObj.media_type || mediaObj.mediaType || '').toLowerCase().startsWith('video')
     )) || (
       typeof mediaUrl === 'string' && (
         /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
@@ -59,7 +73,7 @@ export const CommunityMediaItem = React.memo(({
 
   if (isVideo) {
     return (
-      <Wrapper ref={containerRef} {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+      <Wrapper ref={containerRef} {...wrapperProps} style={[StyleSheet.flatten(style), localStyles.videoContainer]}>
         <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.8)" />
       </Wrapper>
     );
@@ -77,5 +91,13 @@ export const CommunityMediaItem = React.memo(({
 });
 
 CommunityMediaItem.displayName = 'CommunityMediaItem';
+
+const localStyles = StyleSheet.create({
+  videoContainer: {
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default CommunityMediaItem;
