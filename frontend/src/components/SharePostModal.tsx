@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, ActivityIndicator, Image, Alert, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, Image, Alert, Share, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -10,6 +10,7 @@ import { COLORS, SPACING } from '../constants/theme';
 import { getConversations, sendDirectMessage, API_URL } from '../services/api';
 import { Avatar } from './Avatar';
 import { useTranslation } from '../utils/i18n';
+import { OmSpinner } from './CustomRefreshControl';
 
 export default function SharePostModal({ visible, onClose, post, onShareExternal, onCopyLink }: any) {
   const { t } = useTranslation();
@@ -166,7 +167,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           <View style={styles.headerRow}>
             <View style={{ width: 32 }} />
             <Text style={styles.title}>{t('share')}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('close')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={22} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -174,7 +175,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           {/* Users List */}
           <View style={styles.usersSection}>
             {loading ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+              <OmSpinner color={COLORS.primary} style={{ marginTop: 20 }} />
             ) : (
               <FlatList
                 horizontal
@@ -190,7 +191,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (
                         <View style={styles.sharingOverlay}>
-                          <ActivityIndicator color="#fff" size="small" />
+                          <OmSpinner color="#fff" size="small" />
                         </View>
                       )}
                     </TouchableOpacity>
