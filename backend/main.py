@@ -15118,12 +15118,14 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
     
-    # Get updated responder count
-    updated_alert = await db.get_document('sos_alerts', sos_id)
-    responder_count = len((updated_alert or {}).get('responders', []) or [])
+    # ⚡ Bolt Optimization: Avoid redundant fetch by calculating in-memory
+    updated_alert = alert.copy()
+    existing_responders = updated_alert.get('responders', []) or []
+    updated_alert['responders'] = existing_responders + [responder_data]
+    responder_count = len(updated_alert['responders'])
     
     # Send notification to SOS creator with count
-    creator_user_id = (updated_alert or {}).get('user_id')
+    creator_user_id = updated_alert.get('user_id')
     if creator_user_id:
         count_msg = f"{responder_count} {'person is' if responder_count == 1 else 'people are'} on the way to help"
         notification_data = {
