@@ -142,9 +142,10 @@ export default function ContinueReadingPage() {
                   </View>
                 </View>
 
-                {/* 🧡 Engagement: Reframed CTA from transactional "Continue Reading" to devotional "स्वाध्याय निरन्तर रखें" */}
+                {/* 🧡 Engagement: Reframed CTA from transactional "Continue Reading" to devotional "स्वाध्याय निरन्तर रखें" with high-contrast icon matching ORANGE theme */}
                 {/* Lever: Reframing + Habit/Sanskara */}
-                {/* UI: Text-only change, zero layout/visual additions. */}
+                {/* Why: "स्वाध्याय निरन्तर रखें" frames reading as a continuous sacred habit, while ORANGE icon color matches text and provides high contrast on light button background. */}
+                {/* UI: Text and color tuning, zero layout/component additions. */}
                 <TouchableOpacity
                   style={s.continueBtn}
                   onPress={() => handleContinue(book.id)}
@@ -152,7 +153,7 @@ export default function ContinueReadingPage() {
                   accessibilityLabel={isHindi ? 'स्वाध्याय निरन्तर रखें' : 'Continue Sacred Swadhyaya'}
                 >
                   <Text style={s.continueBtnTxt}>{isHindi ? 'स्वाध्याय निरन्तर रखें 📖' : 'Continue Sacred Swadhyaya 📖'}</Text>
-                  <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                  <Ionicons name="arrow-forward" size={16} color={ORANGE} />
                 </TouchableOpacity>
               </View>
             ))}
