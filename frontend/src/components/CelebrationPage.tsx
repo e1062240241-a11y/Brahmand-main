@@ -7,11 +7,24 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  DimensionValue,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../constants/theme';
 
-if (Platform.OS === 'android' && !(global as any).nativeFabricUIManager && !(global as any)._IS_FABRIC && UIManager.setLayoutAnimationEnabledExperimental) {
+interface GlobalFabricCheck {
+  nativeFabricUIManager?: unknown;
+  _IS_FABRIC?: boolean;
+}
+
+const globalEnv = globalThis as unknown as GlobalFabricCheck;
+
+if (
+  Platform.OS === 'android' &&
+  !globalEnv.nativeFabricUIManager &&
+  !globalEnv._IS_FABRIC &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -70,7 +83,14 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
 
 const TABS = ['Rituals', 'Quiz', 'Checklist'] as const;
 
-const TabBar = ({ active, onSelect }: { active: string; onSelect: (tab: string) => void }) => (
+/**
+ * 🎨 Varnish Code Quality & Performance Optimization:
+ * 1. Replaced `any` types on global Fabric checks with strict `GlobalFabricCheck` interface.
+ * 2. Replaced `as any` percentage width assertions with React Native's native `DimensionValue` type.
+ * 3. Wrapped `CelebrationPage` and all child subcomponents (`TabBar`, `RitualsTab`, `QuizTab`, `ChecklistTab`) in `React.memo` to eliminate unnecessary re-renders when parent states change.
+ * 4. Added explicit `displayName` properties for improved React DevTools inspection.
+ */
+const TabBar = React.memo(({ active, onSelect }: { active: string; onSelect: (tab: string) => void }) => (
   <View style={styles.tabBar} accessibilityRole="tablist">
     {TABS.map((tab) => (
       <TouchableOpacity
@@ -86,9 +106,10 @@ const TabBar = ({ active, onSelect }: { active: string; onSelect: (tab: string) 
       </TouchableOpacity>
     ))}
   </View>
-);
+));
+TabBar.displayName = 'TabBar';
 
-const RitualsTab = ({ rituals }: { rituals: Ritual[] }) => {
+const RitualsTab = React.memo(({ rituals }: { rituals: Ritual[] }) => {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toggle = useCallback((id: string) => {
@@ -135,9 +156,10 @@ const RitualsTab = ({ rituals }: { rituals: Ritual[] }) => {
       })}
     </View>
   );
-};
+});
+RitualsTab.displayName = 'RitualsTab';
 
-const QuizTab = ({ question, options, festivalName }: { question: string; options: QuizOption[]; festivalName: string }) => {
+const QuizTab = React.memo(({ question, options, festivalName }: { question: string; options: QuizOption[]; festivalName: string }) => {
   const [selected, setSelected] = useState<string | null>(null);
 
   const handleSelect = useCallback((id: string) => {
@@ -178,22 +200,26 @@ const QuizTab = ({ question, options, festivalName }: { question: string; option
           <Text style={styles.quizResultEmoji}>🙏</Text>
           <Text style={styles.quizResultText}>{resultMessage}</Text>
           <Text style={styles.quizResultSub}>Community Results:</Text>
-          {options.map((opt) => (
-            <View key={opt.id} style={styles.statRow}>
-              <Text style={[styles.statLabel, selected === opt.id && styles.statLabelActive]}>{opt.label}</Text>
-              <View style={styles.statBarBg}>
-                <View style={[styles.statBarFill, { width: `${opt.percentage}%` as any }]} />
+          {options.map((opt) => {
+            const widthPercentage: DimensionValue = `${opt.percentage}%`;
+            return (
+              <View key={opt.id} style={styles.statRow}>
+                <Text style={[styles.statLabel, selected === opt.id && styles.statLabelActive]}>{opt.label}</Text>
+                <View style={styles.statBarBg}>
+                  <View style={[styles.statBarFill, { width: widthPercentage }]} />
+                </View>
+                <Text style={styles.statPercent}>{opt.percentage}%</Text>
               </View>
-              <Text style={styles.statPercent}>{opt.percentage}%</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </View>
   );
-};
+});
+QuizTab.displayName = 'QuizTab';
 
-const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
+const ChecklistTab = React.memo(({ items }: { items: ChecklistItem[] }) => {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const toggle = useCallback((id: string) => {
@@ -210,6 +236,7 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
   }, []);
 
   const progress = Math.round((checked.size / items.length) * 100);
+  const progressPercentage: DimensionValue = `${progress}%`;
 
   return (
     <View>
@@ -218,7 +245,7 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
         <Text style={styles.progressPercent}>{progress}%</Text>
       </View>
       <View style={styles.progressBarBg}>
-        <View style={[styles.progressBarFill, { width: `${progress}%` as any }]} />
+        <View style={[styles.progressBarFill, { width: progressPercentage }]} />
       </View>
       {items.map((item) => {
         const done = checked.has(item.id);
@@ -244,9 +271,10 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
       })}
     </View>
   );
-};
+});
+ChecklistTab.displayName = 'ChecklistTab';
 
-const CelebrationPage = ({
+export const CelebrationPage = React.memo(({
   festivalName,
   rituals = DEFAULT_RITUALS,
   quizQuestion,
@@ -270,7 +298,8 @@ const CelebrationPage = ({
       </View>
     </View>
   );
-};
+});
+CelebrationPage.displayName = 'CelebrationPage';
 
 const styles = StyleSheet.create({
   container: {
