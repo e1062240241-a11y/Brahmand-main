@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BOOK_CACHE_PREFIX = 'book-json-cache:v2';
+const BOOK_CACHE_PREFIX = 'book-json-cache:v4';
 const BOOK_LOAD_TIMEOUT_MS = 10000;
 
 type LoadCachedBookContentOptions<T> = {

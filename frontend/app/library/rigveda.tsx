@@ -435,27 +435,15 @@ export default function RigvedaPage() {
                 </View>
               ) : (
                 verses.slice(0, visibleLimit).map((verse: any, index: number) => (
-                  <View key={verse.verse} style={styles.verseContainer}>
-                    <View style={styles.sanskritWrapper}>
-                      <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.text}</Text>
-                      <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
-                    </View>
-
-                    {(verse.translations?.hindi || verse.translations?.english) ? (
-                      <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-                        <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
-                        {verse.translations.hindi || verse.translations.english}
-                      </Text>
-                    ) : null}
-
-                    {index < verses.length - 1 && (
-                      <View style={styles.dividerContainer}>
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                      </View>
-                    )}
-                  </View>
+                  <VerseCard
+                    key={`verse-${index}`}
+                    verse={verse}
+                    nightMode={nightMode}
+                    index={index}
+                    isLast={index === verses.length - 1}
+                    bookId={BOOK_ID}
+                    chapterNumber={currentChapter}
+                  />
                 ))
               )}
               
