@@ -161,7 +161,7 @@ class FirebaseMessagingService:
             raise ValueError("Not a community member")
         
         # Check verification (state and country groups / subgroups require verification)
-        community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
+        community_doc = locals().get('community') or await db.get_document('communities', community_id)
         is_restricted_group = (subgroup_type in ['state', 'country', 'national']) or ((community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False)
         
         if is_restricted_group and not user.get('is_verified', False):
