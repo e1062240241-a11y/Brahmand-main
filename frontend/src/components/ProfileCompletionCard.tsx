@@ -21,13 +21,18 @@ interface ProfileCompletionCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
+// 🎨 Varnish Code Quality Fix:
+// Memoized ProfileCompletionCard with React.memo to prevent unnecessary parent re-renders.
+// Wrapped handlePress with useCallback to stabilize button callbacks across render passes.
+// Extracted inline style object { width: '100%', marginTop: 20 } into StyleSheet.create (styles.pulseWrapper).
+// Added accessibilityRole="button" and descriptive accessibilityLabel props for screen readers.
+export const ProfileCompletionCard = React.memo(({
   progress = 60,
   onEditProfile,
   onClose,
   autoDismissMs,
   style,
-}) => {
+}: ProfileCompletionCardProps) => {
   const router = useRouter();
 
   // Animations
@@ -94,13 +99,13 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
     };
   }, [progress, progressAnim, sparkleAnim, pulseAnim, autoDismissMs, onClose]);
 
-  const handlePress = () => {
+  const handlePress = React.useCallback(() => {
     if (onEditProfile) {
       onEditProfile();
     } else {
       router.push('/vendor/dashboard');
     }
-  };
+  }, [onEditProfile, router]);
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -122,7 +127,12 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
         <Text style={styles.headerTitle}>Make Your Business Shine</Text>
 
         {onClose && (
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={onClose}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close profile completion card"
+          >
             <Ionicons name="close-circle-outline" size={24} color="#9CA3AF" />
           </TouchableOpacity>
         )}
@@ -159,11 +169,13 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
       </View>
 
       {/* CTA Pulsing Button */}
-      <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%', marginTop: 20 }}>
+      <Animated.View style={[styles.pulseWrapper, { transform: [{ scale: pulseAnim }] }]}>
         <TouchableOpacity
           activeOpacity={0.85}
           style={styles.ctaButtonWrapper}
           onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel="Edit Business Profile"
         >
           <LinearGradient
             colors={['#FF6600', '#F97316']}
@@ -178,7 +190,9 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
       </Animated.View>
     </View>
   );
-};
+});
+
+ProfileCompletionCard.displayName = 'ProfileCompletionCard';
 
 const styles = StyleSheet.create({
   cardContainer: {
@@ -274,6 +288,10 @@ const styles = StyleSheet.create({
   gradientFill: {
     width: '100%',
     height: '100%',
+  },
+  pulseWrapper: {
+    width: '100%',
+    marginTop: 20,
   },
   ctaButtonWrapper: {
     width: '100%',
