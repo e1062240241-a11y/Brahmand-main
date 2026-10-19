@@ -165,6 +165,9 @@ async def record_jaap(
         existing_certs = await asyncio.gather(*(db.get_document('jaap_certificates', cid) for cid in cert_ids_to_check))
         existing_certs_map = {cid: cert for cid, cert in zip(cert_ids_to_check, existing_certs) if cert}
 
+    # ⚡ Bolt Optimization: Batch certificate creation to avoid N+1 database writes
+    create_tasks = []
+
     for tier in ["bronze", "silver", "gold", "diamond"]:
         # 1. Count milestone
         count_threshold = milestone_config["counts"][tier]
@@ -187,7 +190,7 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
+                create_tasks.append(db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True))
                 newly_unlocked.append(cert_data)
 
         # 2. Duration milestone
@@ -211,8 +214,11 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
+                create_tasks.append(db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True))
                 newly_unlocked.append(cert_data)
+
+    if create_tasks:
+        await asyncio.gather(*create_tasks)
 
     return {
         "status": "success",
