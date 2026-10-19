@@ -1,8 +1,6 @@
 import os
-from PIL import Image, ImageDraw, ImageFont
 
 # Let's inspect available fonts
-import glob
 
 def find_font():
     fonts = [
