@@ -185,10 +185,15 @@ const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: 
             </Text>
           </View>
         ) : (
+          /* 🧡 Engagement: Reframed utility timer copy ("अगला लाइव सत्र: सुबह शुरू होने में 01:20:15")
+             into devotional Sankalpa (संकल्प/संस्कार) and Satsang anticipation copy ("अगला लाइव सत्र — संकल्प लें 🚩 (सुबह • 01:20:15 में आरंभ)").
+             Lever: Reframing + Sanskara/Sankalpa (Ritual/Habit over Utility) + Devotional Anticipation
+             Why: "संकल्प लें 🚩" transforms passive waiting into active spiritual commitment and daily ritual habit (संस्कार).
+             UI: Text-only change, zero structural or visual component modifications. */
           <View style={styles.inactiveBannerInner}>
             <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
             <Text style={styles.statusTextInactive}>
-              {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+              {t('language') === 'hi' ? 'अगला लाइव सत्र — संकल्प लें 🚩 (' : 'Next Live Session — Take Sankalpa 🚩 ('}{(() => {
                 const sName = hanumanStatus.nextSessionName;
                 if (t('language') === 'hi') {
                   if (sName === 'Morning') return 'सुबह';
@@ -197,14 +202,14 @@ const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: 
                   if (sName === 'Night') return 'रात';
                 }
                 return sName;
-              })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
+              })()} {t('language') === 'hi' ? '• ' : '• Starts in '}{(() => {
                 if (!hanumanStatus.nextSessionStart) return '';
                 const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
                 const hrs = Math.floor(diffMs / 3600000);
                 const mins = Math.floor((diffMs % 3600000) / 60000);
                 const secs = Math.floor((diffMs % 60000) / 1000);
                 return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-              })()}
+              })()}{t('language') === 'hi' ? ' में आरंभ)' : ')'}
             </Text>
           </View>
         )}
@@ -225,10 +230,14 @@ const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: 
             </Text>
           </View>
         ) : (
+          /* 🧡 Engagement: Reframed utility timer copy into devotional Sankalpa (संकल्प/संस्कार) and Satsang anticipation copy.
+             Lever: Reframing + Sanskara/Sankalpa (Ritual/Habit over Utility) + Devotional Anticipation
+             Why: "संकल्प लें 🚩" transforms passive waiting into active spiritual commitment.
+             UI: Text-only change, zero structural or visual component modifications. */
           <View style={styles.inactiveBannerInner}>
             <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
             <Text style={styles.statusTextInactive}>
-              {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+              {t('language') === 'hi' ? 'अगला लाइव सत्र — संकल्प लें 🚩 (' : 'Next Live Session — Take Sankalpa 🚩 ('}{(() => {
                 const sName = otherStatus.nextSessionName;
                 if (t('language') === 'hi') {
                   if (sName === 'Morning') return 'सुबह का';
@@ -237,14 +246,14 @@ const StatusBanner = React.memo(({ mantraType, isHanuman, isOtherLiveJaap, t }: 
                   if (sName === 'Night') return 'रात का';
                 }
                 return sName ? `${sName} Session` : '';
-              })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Starts in'} {(() => {
+              })()} {t('language') === 'hi' ? '• ' : '• Starts in '}{(() => {
                 if (!otherStatus.nextSessionStart) return '';
                 const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
                 const hrs = Math.floor(diffMs / 3600000);
                 const mins = Math.floor((diffMs % 3600000) / 60000);
                 const secs = Math.floor((diffMs % 60000) / 1000);
                 return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-              })()}
+              })()}{t('language') === 'hi' ? ' में आरंभ)' : ')'}
             </Text>
           </View>
         )}
