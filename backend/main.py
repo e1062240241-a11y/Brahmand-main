@@ -8950,7 +8950,12 @@ async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)
         return {"message": f"Join request sent to {circle['name']}", "circle": circle['name'], "status": "pending"}
 
 @api_router.get("/circles/{circle_id}/requests")
-async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_token)):
+async def get_circle_requests(
+    circle_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
     """Get pending join requests for a circle (admin only)"""
     db = await get_db()
     user_id = token_data["user_id"]
@@ -8962,12 +8967,43 @@ async def get_circle_requests(circle_id: str, token_data: dict = Depends(verify_
     if not _is_circle_admin(circle, user_id):
         raise HTTPException(status_code=403, detail="Only admin can view requests")
     
-    requests = await db.query_documents('circle_requests', filters=[
-        ('circle_id', '==', circle_id),
-        ('status', '==', 'pending')
-    ])
-    
-    return requests
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+
+    # Architectural fix: Enforce DB query bounds (`fetch_limit = safe_offset + safe_limit`)
+    # and offset pagination instead of fetching all pending circle requests.
+    # On large circles with many pending requests at 1 lakh+ users scale,
+    # this prevents O(N) Firestore reads and memory allocation per request.
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        requests = await db.query_documents(
+            'circle_requests',
+            filters=[
+                ('circle_id', '==', circle_id),
+                ('status', '==', 'pending')
+            ],
+            order_by='created_at',
+            order_direction='DESCENDING',
+            limit=fetch_limit
+        )
+    except Exception as query_err:
+        if 'requires an index' in str(query_err) or '400' in str(query_err):
+            logger.warning(
+                f"Firestore composite index missing for circle_requests (circle_id + status), falling back: {query_err}"
+            )
+            requests = await db.query_documents(
+                'circle_requests',
+                filters=[
+                    ('circle_id', '==', circle_id),
+                    ('status', '==', 'pending')
+                ],
+                limit=fetch_limit
+            )
+        else:
+            raise query_err
+
+    return requests[safe_offset:safe_offset + safe_limit]
 
 @api_router.post("/circles/{circle_id}/approve/{request_user_id}")
 async def approve_circle_request(circle_id: str, request_user_id: str, token_data: dict = Depends(verify_token)):
@@ -10968,13 +11004,19 @@ async def backfill_official_posts(
                 posts_to_update.append(pid)
 
     if not is_dry_run:
-        for uid in users_to_update:
-            await db.update_document('users', uid, {'is_official': True})
-            from utils.cache import cache_manager
-            await cache_manager.invalidate_user(uid)
+        from utils.cache import cache_manager
 
-        for pid in posts_to_update:
-            await db.update_document('posts', pid, {'is_official': True})
+        # ⚡ Bolt Optimization: Replace sequential database updates with chunked batch updates
+        for i in range(0, len(users_to_update), 400):
+            chunk = users_to_update[i:i + 400]
+            updates = [(uid, {'is_official': True}) for uid in chunk]
+            await db.batch_update_documents('users', updates)
+            await asyncio.gather(*[cache_manager.invalidate_user(uid) for uid in chunk])
+
+        for i in range(0, len(posts_to_update), 400):
+            chunk = posts_to_update[i:i + 400]
+            updates = [(pid, {'is_official': True}) for pid in chunk]
+            await db.batch_update_documents('posts', updates)
 
         # Refresh feed pools to pick up updated official posts
         try:
@@ -11024,20 +11066,30 @@ async def admin_set_user_official(
     if old_status and not new_status:
         # Cascade revoke across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': False})
+                post_updates.append((pid, {'is_official': False}))
                 cascaded_posts_count += 1
+        # ⚡ Bolt: Replaced sequential DB updates with chunked batch writes for performance
+        if post_updates:
+            for i in range(0, len(post_updates), 400):
+                await db.batch_update_documents('posts', post_updates[i:i+400])
         logger.info(f"Cascaded official status revocation for user {user_id}: updated {cascaded_posts_count} posts to is_official=False")
     elif not old_status and new_status:
         # Cascade grant across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and not is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': True})
+                post_updates.append((pid, {'is_official': True}))
                 cascaded_posts_count += 1
+        # ⚡ Bolt: Replaced sequential DB updates with chunked batch writes for performance
+        if post_updates:
+            for i in range(0, len(post_updates), 400):
+                await db.batch_update_documents('posts', post_updates[i:i+400])
         logger.info(f"Cascaded official status grant for user {user_id}: updated {cascaded_posts_count} posts to is_official=True")
 
     # Refresh feed candidate pools

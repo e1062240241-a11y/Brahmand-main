@@ -24,7 +24,6 @@ import { AnimatedBowArrow } from './AnimatedBowArrow';
 const toranGarlandImage = require('../../../assets/images/toran_garland.png');
 const dussehraBgImage = require('../../../assets/images/festivals/dussehra_banner.png');
 const shriRamBowImage = require('../../../assets/images/festivals/shri_ram_bow.png');
-const dussehraLotusImage = require('../../../assets/images/festivals/dussehra_lotus_clean.png');
 const leafCornerImage = require('../../../assets/images/festivals/dussehra_leaf_corner.png');
 const leafBranchImage = require('../../../assets/images/festivals/dussehra_leaf_branch.png');
 

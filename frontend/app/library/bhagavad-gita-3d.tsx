@@ -12,6 +12,7 @@ import {
   Image,
   Modal,
   AppState,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -85,32 +86,35 @@ const getTranslations = (translations: any) => {
 };
 
 
-const GITA_CHAPTER_NAMES = [
-  'अर्जुनविषादयोग',
-  'सांख्ययोग',
-  'कर्मयोग',
-  'ज्ञानकर्मसंन्यासयोग',
-  'कर्मसंन्यासयोग',
-  'आत्मसंयमयोग',
-  'ज्ञानविज्ञानयोग',
-  'अक्षरब्रह्मयोग',
-  'राजविद्याराजगुह्ययोग',
-  'विभूतियोग',
-  'विश्वरूपदर्शनयोग',
-  'भक्तियोग',
-  'क्षेत्र-क्षेत्रज्ञविभागयोग',
-  'गुणत्रयविभागयोग',
-  'पुरुषोत्तमयोग',
-  'दैवासुरसम्पद्विभागयोग',
-  'श्रद्धात्रयविभागयोग',
-  'मोक्षसंन्यासयोग'
+const GITA_CHAPTERS_META = [
+  { num: 1, nameHi: 'अर्जुनविषादयोग', nameEn: 'Arjuna Vishada Yoga', subtitle: 'The Yoga of Dejection' },
+  { num: 2, nameHi: 'सांख्ययोग', nameEn: 'Sankhya Yoga', subtitle: 'The Yoga of Knowledge' },
+  { num: 3, nameHi: 'कर्मयोग', nameEn: 'Karma Yoga', subtitle: 'The Yoga of Action' },
+  { num: 4, nameHi: 'ज्ञानकर्मसंन्यासयोग', nameEn: 'Jnana Karma Sanyasa Yoga', subtitle: 'The Yoga of Wisdom' },
+  { num: 5, nameHi: 'कर्मसंन्यासयोग', nameEn: 'Karma Sanyasa Yoga', subtitle: 'The Yoga of Renunciation' },
+  { num: 6, nameHi: 'आत्मसंयमयोग', nameEn: 'Dhyana Yoga', subtitle: 'The Yoga of Meditation' },
+  { num: 7, nameHi: 'ज्ञानविज्ञानयोग', nameEn: 'Jnana Vijnana Yoga', subtitle: 'The Yoga of Knowledge and Wisdom' },
+  { num: 8, nameHi: 'अक्षरब्रह्मयोग', nameEn: 'Aksara Brahma Yoga', subtitle: 'The Yoga of the Imperishable Brahman' },
+  { num: 9, nameHi: 'राजविद्याराजगुह्ययोग', nameEn: 'Raja Vidya Raja Guhya Yoga', subtitle: 'The Yoga of Royal Knowledge' },
+  { num: 10, nameHi: 'विभूतियोग', nameEn: 'Vibhuti Yoga', subtitle: 'The Yoga of Divine Glories' },
+  { num: 11, nameHi: 'विश्वरूपदर्शनयोग', nameEn: 'Visvarupa Darsana Yoga', subtitle: 'The Vision of Universal Form' },
+  { num: 12, nameHi: 'भक्तियोग', nameEn: 'Bhakti Yoga', subtitle: 'The Yoga of Devotion' },
+  { num: 13, nameHi: 'क्षेत्र-क्षेत्रज्ञविभागयोग', nameEn: 'Kshetra Kshetrajna Yoga', subtitle: 'The Field & its Knower' },
+  { num: 14, nameHi: 'गुणत्रयविभागयोग', nameEn: 'Gunatraya Vibhaga Yoga', subtitle: 'The Three Gunas of Nature' },
+  { num: 15, nameHi: 'पुरुषोत्तमयोग', nameEn: 'Purushottama Yoga', subtitle: 'The Supreme Divine Being' },
+  { num: 16, nameHi: 'दैवासुरसम्पद्विभागयोग', nameEn: 'Daivasura Sampad Yoga', subtitle: 'Divine and Demonic Natures' },
+  { num: 17, nameHi: 'श्रद्धात्रयविभागयोग', nameEn: 'Sraddhatraya Vibhaga Yoga', subtitle: 'The Threefold Divisions of Faith' },
+  { num: 18, nameHi: 'मोक्षसंन्यासयोग', nameEn: 'Moksha Sanyasa Yoga', subtitle: 'The Yoga of Liberation' }
 ];
+
+const GITA_CHAPTER_NAMES = GITA_CHAPTERS_META.map(m => m.nameHi);
 
 export default function BhagavadGita3DPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-    const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const chapterScrollRef = useRef<ScrollView>(null);
 
   const language = useLanguageStore((state) => state.language);
   const isHindi = language === 'hi';
@@ -125,8 +129,10 @@ export default function BhagavadGita3DPage() {
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
+  const [showChapterIndex, setShowChapterIndex] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [nightMode, setNightMode] = useState(false);
+  const [fontSizeScale, setFontSizeScale] = useState(1.0);
   
   const [contentHeight, setContentHeight] = useState(0);
   const [layoutHeight, setLayoutHeight] = useState(0);
@@ -138,10 +144,10 @@ export default function BhagavadGita3DPage() {
   const [initialScrollRestored, setInitialScrollRestored] = useState(false);
   const [visibleLimit, setVisibleLimit] = useState(50);
   
-  const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
+  const isChapterBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
   const handleToggleBookmark = () => {
-    const title = GITA_CHAPTER_NAMES[currentChapter - 1] || `अध्याय ${currentChapter}`;
+    const title = GITA_CHAPTERS_META[currentChapter - 1]?.nameHi || `अध्याय ${currentChapter}`;
     toggleBookmark(BOOK_ID, currentChapter, 0, title);
   };
 
@@ -187,6 +193,8 @@ export default function BhagavadGita3DPage() {
     pendingProgressRef.current = null;
   };
 
+  const currentMeta = GITA_CHAPTERS_META[currentChapter - 1] || GITA_CHAPTERS_META[0];
+
   const handleChapterChange = (chNum: number) => {
     commitProgress();
     setCurrentChapter(chNum);
@@ -194,6 +202,21 @@ export default function BhagavadGita3DPage() {
     setInitialScrollRestored(false);
     setVisibleLimit(50);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+
+    // Scroll chapter selector tab into view smoothly
+    if (chapterScrollRef.current) {
+      const approxTabW = 120;
+      chapterScrollRef.current.scrollTo({ x: Math.max(0, (chNum - 1) * approxTabW - 80), animated: true });
+    }
+  };
+
+  // Cycle font sizes: Normal (1.0) -> Large (1.15) -> Compact (0.9)
+  const cycleFontSize = () => {
+    setFontSizeScale(prev => {
+      if (prev === 1.0) return 1.15;
+      if (prev === 1.15) return 0.9;
+      return 1.0;
+    });
   };
 
   // Fetch chapter data from Backend with prefetching and memory cleanup
@@ -364,7 +387,7 @@ export default function BhagavadGita3DPage() {
 
           {/* Opening Header */}
           <View style={[styles.header, { position: 'absolute', top: insets.top + 10, left: 0, right: 0 }]}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backBtnCover} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={24} color="#5C250A" />
             </TouchableOpacity>
           </View>
@@ -387,93 +410,119 @@ export default function BhagavadGita3DPage() {
           </View>
         </LinearGradient>
       ) : (
-        <View style={{ flex: 1 }}>
-          <ImageBackground source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/clean_parchment_bg.webp' }} style={styles.root}>
-            {/* Unified Sticky Header */}
-            <View style={{
-              backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)',
-              borderBottomWidth: 1,
-              borderBottomColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.15)',
-              zIndex: 20,
-            }}>
-              {/* Sticky Top Header Container */}
-              <View style={[styles.stickyTopHeader, { 
-                paddingTop: insets.top + 4,
-                backgroundColor: 'transparent',
-              }]}>
-                {/* Back Button */}
-                <TouchableOpacity 
-                  style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
-                  onPress={() => router.back()}
+        <View style={{ flex: 1, backgroundColor: nightMode ? '#140E0C' : '#F6EBDD' }}>
+          {/* ── Top Header and Navigation ── */}
+          <View
+            style={[
+              styles.navHeaderContainer,
+              { paddingTop: insets.top + 4 },
+              nightMode && styles.navHeaderContainerNight,
+            ]}
+          >
+            {/* Top Row: Back, Centered Title, Subtitle, Actions */}
+            <View style={styles.headerRow}>
+              <TouchableOpacity
+                style={[styles.compactBackBtn, nightMode && styles.compactBackBtnNight]}
+                onPress={() => router.back()}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Ionicons name="chevron-back" size={22} color={nightMode ? '#E8D5C4' : '#743B27'} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.titleColumn}
+                activeOpacity={0.8}
+                onPress={() => setShowChapterIndex(true)}
+              >
+                <Text style={[styles.mainScriptureTitle, nightMode && styles.mainScriptureTitleNight]}>
+                  श्रीमद्भगवद्गीता
+                </Text>
+                <Text style={[styles.subChapterSubtitle, nightMode && styles.subChapterSubtitleNight]}>
+                  {`अध्याय ${currentChapter} · ${currentMeta.nameHi}`}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.headerRightActions}>
+                {/* Table of Contents Icon */}
+                <TouchableOpacity
+                  style={[styles.headerIconBtn, nightMode && styles.headerIconBtnNight]}
+                  onPress={() => setShowChapterIndex(true)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="chevron-back" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
+                  <Ionicons name="list-outline" size={20} color={nightMode ? '#E8D5C4' : '#743B27'} />
                 </TouchableOpacity>
 
-                {/* Title Header sticky in center */}
-                <View style={styles.stickyChapterTitle}>
-                  <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* श्रीमद्भगवद्गीता *</Text>
-                  <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* {GITA_CHAPTER_NAMES[currentChapter - 1]} *</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {/* View All Bookmarks Button */}
-                  <TouchableOpacity 
-                    style={[styles.iconBtnWrapper, { marginRight: 8 }, nightMode && styles.iconBtnWrapperNight]} 
-                    onPress={() => setShowBookmarksMenu(true)}
-                  >
-                    <Ionicons name="list" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
-                  </TouchableOpacity>
-
-                  {/* Bookmark Button */}
-                  <TouchableOpacity 
-                    style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
-                    onPress={handleToggleBookmark}
-                  >
-                    <Image 
-                      source={isBookmarked ? bookmarkIconFilledImage : bookmarkIconImage} 
-                      style={{
-                        width: 26, 
-                        height: 26, 
-                        tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
-                        opacity: isBookmarked ? 1 : 0.7
-                      }} 
-                    />
-                  </TouchableOpacity>
-                </View>
+                {/* Bookmark Chapter Icon */}
+                <TouchableOpacity
+                  style={[styles.headerIconBtn, nightMode && styles.headerIconBtnNight]}
+                  onPress={handleToggleBookmark}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={isChapterBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    size={20}
+                    color={isChapterBookmarked ? '#C6A16B' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  />
+                </TouchableOpacity>
               </View>
-
-              {/* Sticky Chapter Navigator */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[styles.chapterNavContainer, { marginBottom: 0 }]}
-              >
-                {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
-                  <TouchableOpacity
-                    key={chNum}
-                    style={[
-                      styles.chapterTab,
-                      nightMode && styles.chapterTabNight,
-                      currentChapter === chNum && (nightMode ? styles.chapterTabActiveNight : styles.chapterTabActive)
-                    ]}
-                    onPress={() => handleChapterChange(chNum)}
-                  >
-                    <Text style={[
-                      styles.chapterTabText,
-                      nightMode && styles.textNightMuted,
-                      currentChapter === chNum && (nightMode ? styles.textNight : styles.chapterTabTextActive)
-                    ]}>
-                      {GITA_CHAPTER_NAMES[chNum - 1]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
             </View>
 
+            {/* Horizontally Scrollable Chapter Selector */}
+            <ScrollView
+              ref={chapterScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chapterSelectorRow}
+            >
+              {GITA_CHAPTERS_META.map((meta) => {
+                const isActive = currentChapter === meta.num;
+                return (
+                  <TouchableOpacity
+                    key={meta.num}
+                    style={[
+                      styles.chapterPill,
+                      isActive && styles.chapterPillActive,
+                      nightMode && styles.chapterPillNight,
+                      isActive && nightMode && styles.chapterPillActiveNight,
+                    ]}
+                    onPress={() => handleChapterChange(meta.num)}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={[
+                        styles.chapterPillNumber,
+                        isActive && styles.chapterPillNumberActive,
+                        nightMode && styles.chapterPillNumberNight,
+                        isActive && nightMode && styles.chapterPillNumberActiveNight,
+                      ]}
+                    >
+                      {convertToHindiNumerals(meta.num)}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.chapterPillText,
+                        isActive && styles.chapterPillTextActive,
+                        nightMode && styles.chapterPillTextNight,
+                        isActive && nightMode && styles.chapterPillTextActiveNight,
+                      ]}
+                    >
+                      {meta.nameHi}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* ── Main Scrollable Reading Area ── */}
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + 90 },
+            ]}
             onScroll={handleScroll}
             onScrollEndDrag={commitProgress}
             onMomentumScrollEnd={commitProgress}
@@ -481,138 +530,311 @@ export default function BhagavadGita3DPage() {
             onContentSizeChange={(_, h) => setContentHeight(h)}
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
           >
-            <View style={styles.pageContent}>
-              {/* Subtitle */}
-              <View style={styles.chapterSubHeader}>
-                <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>
-                  {verses.length > 0 ? `कुल श्लोक: ${convertToHindiNumerals(totalVerses || verses.length)}` : ''}
+            {/* Chapter Intro Banner */}
+            <View style={styles.chapterIntroBanner}>
+              <View style={styles.introOrnamentRow}>
+                <View style={[styles.introLine, nightMode && styles.introLineNight]} />
+                <Text style={[styles.introOmText, nightMode && styles.introOmTextNight]}>ॐ</Text>
+                <View style={[styles.introLine, nightMode && styles.introLineNight]} />
+              </View>
+              <Text style={[styles.introChapterNumber, nightMode && styles.introChapterNumberNight]}>
+                अथ {currentMeta.nameHi}
+              </Text>
+              <Text style={[styles.introSubtitle, nightMode && styles.introSubtitleNight]}>
+                {currentMeta.subtitle} • {convertToHindiNumerals(totalVerses || verses.length)} श्लोक
+              </Text>
+            </View>
+
+            {/* Verses List */}
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                  पवित्र श्लोक प्रस्तुत हो रहे हैं... ✨
                 </Text>
               </View>
-
-              {/* Verses */}
-              {loading ? (
-                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    पाठ्य सामग्री लोड हो रही है...
-                  </Text>
-                </View>
-              ) : verses.length === 0 ? (
-                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    इस अध्याय की सामग्री अभी उपलब्ध नहीं है
-                  </Text>
-                </View>
-              ) : (
-                verses.slice(0, visibleLimit).map((verse: any, index: number) => (
-                  <VerseCard
-                    key={`verse-${index}`}
-                    verse={verse}
-                    nightMode={nightMode}
-                    index={index}
-                    isLast={index === verses.length - 1}
-                    bookId="bhagvad-geeta"
-                  />
-                ))
-            )}
-              
-              {/* Bottom Chapter Navigation */}
-              <View style={styles.bottomNavContainer}>
-                {currentChapter > 1 ? (
-                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter - 1)}>
-                    <Ionicons name="arrow-back" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
-                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>पिछला अध्याय</Text>
-                  </TouchableOpacity>
-                ) : <View style={{ width: 100 }} />}
-                
-                {currentChapter < TOTAL_CHAPTERS ? (
-                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter + 1)}>
-                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>अगला अध्याय</Text>
-                    <Ionicons name="arrow-forward" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
-                  </TouchableOpacity>
-                ) : <View style={{ width: 100 }} />}
+            ) : verses.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                  इस अध्याय की सामग्री उपलब्ध नहीं है।
+                </Text>
               </View>
-              
-              <View style={styles.bottomPadding} />
+            ) : (
+              verses.slice(0, visibleLimit).map((verse: any, index: number) => (
+                <VerseCard
+                  key={`verse-${currentChapter}-${verse.verse || index}`}
+                  verse={verse}
+                  nightMode={nightMode}
+                  index={index}
+                  isLast={index === verses.length - 1}
+                  bookId={BOOK_ID}
+                  chapterNumber={currentChapter}
+                  fontSizeScale={fontSizeScale}
+                  isBookmarked={bookmarks.some(b => b.chapter === currentChapter && b.scrollY === verse.verse)}
+                  onToggleBookmark={() => {
+                    const title = `${currentMeta.nameHi} · श्लोक ${verse.verse}`;
+                    toggleBookmark(BOOK_ID, currentChapter, Number(verse.verse) || 0, title);
+                  }}
+                />
+              ))
+            )}
+
+            {/* Chapter Footer Navigation */}
+            <View style={styles.chapterFooterNav}>
+              {currentChapter > 1 ? (
+                <TouchableOpacity
+                  style={[styles.footerNavButton, nightMode && styles.footerNavButtonNight]}
+                  onPress={() => handleChapterChange(currentChapter - 1)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="arrow-back" size={16} color={nightMode ? '#C6A16B' : '#743B27'} />
+                  <Text style={[styles.footerNavText, nightMode && styles.footerNavTextNight]}>
+                    पिछला अध्याय
+                  </Text>
+                </TouchableOpacity>
+              ) : <View style={{ width: 120 }} />}
+
+              {currentChapter < TOTAL_CHAPTERS ? (
+                <TouchableOpacity
+                  style={[styles.footerNavButton, nightMode && styles.footerNavButtonNight]}
+                  onPress={() => handleChapterChange(currentChapter + 1)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.footerNavText, nightMode && styles.footerNavTextNight]}>
+                    अगला अध्याय
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color={nightMode ? '#C6A16B' : '#743B27'} />
+                </TouchableOpacity>
+              ) : <View style={{ width: 120 }} />}
             </View>
           </ScrollView>
 
-          {/* Fixed Bottom Bar */}
-          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)', borderTopColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.1)' }]}>
-            <View style={styles.bottomBarContent}>
-              <TouchableOpacity onPress={() => setNightMode(!nightMode)} style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight, { width: 36, height: 36 }]}>
-                <Ionicons name={nightMode ? "sunny" : "moon"} size={18} color={nightMode ? "#FFD5B8" : "#5C250A"} />
+          {/* ── Slim, Organized Bottom Reading Toolbar ── */}
+          <View
+            style={[
+              styles.bottomToolbar,
+              { paddingBottom: insets.bottom + 8 },
+              nightMode && styles.bottomToolbarNight,
+            ]}
+          >
+            {/* Subtle Progress Line */}
+            <View
+              style={styles.progressLineTrack}
+              onLayout={(e) => setProgressTrackWidth(e.nativeEvent.layout.width)}
+            >
+              <View
+                style={[
+                  styles.progressLineFill,
+                  { width: `${scrollProgress}%` },
+                  nightMode && styles.progressLineFillNight,
+                ]}
+              />
+            </View>
+
+            {/* Toolbar Content Row */}
+            <View style={styles.toolbarContent}>
+              {/* Previous Chapter */}
+              <TouchableOpacity
+                style={[
+                  styles.toolbarBtn,
+                  currentChapter <= 1 && styles.toolbarBtnDisabled,
+                  nightMode && styles.toolbarBtnNight,
+                ]}
+                disabled={currentChapter <= 1}
+                onPress={() => handleChapterChange(currentChapter - 1)}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={18}
+                  color={currentChapter <= 1 ? '#C4B49A' : (nightMode ? '#E8D5C4' : '#743B27')}
+                />
               </TouchableOpacity>
-              
-              <View style={styles.sliderWrapper}>
-                <Text style={[styles.pageIndicatorText, nightMode && styles.textNight]}>
-                  पृष्ठ {convertToHindiNumerals(Math.max(1, Math.min(Math.ceil(contentHeight / (layoutHeight || 1)), Math.ceil((scrollProgress / 100) * Math.max(1, Math.ceil(contentHeight / (layoutHeight || 1)) - 1)) + 1)))}
+
+              {/* Reading Progress Indicator */}
+              <TouchableOpacity
+                style={styles.progressCenterBadge}
+                onPress={() => setShowChapterIndex(true)}
+              >
+                <Text style={[styles.progressNumberText, nightMode && styles.progressNumberTextNight]}>
+                  {`अध्याय ${convertToHindiNumerals(currentChapter)} / १८`}
                 </Text>
-                <TouchableOpacity 
-                  activeOpacity={1}
-                  style={styles.bottomProgressBarContainer}
-                  onLayout={(e) => setProgressTrackWidth(e.nativeEvent.layout.width)}
-                  onPress={(e) => {
-                    if (progressTrackWidth > 0 && contentHeight > 0 && layoutHeight > 0) {
-                      const ratio = e.nativeEvent.locationX / progressTrackWidth;
-                      const scrollableHeight = contentHeight - layoutHeight;
-                      if (scrollableHeight > 0) {
-                        const targetY = ratio * scrollableHeight;
-                        scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
-                      }
-                    }
-                  }}
-                >
-                  <View style={[styles.bottomProgressBarTrack, { backgroundColor: nightMode ? 'rgba(255, 213, 184, 0.2)' : 'rgba(140, 58, 0, 0.1)' }]} pointerEvents="none" />
-                  <View style={[styles.bottomProgressBarFill, { width: `${scrollProgress}%`, backgroundColor: nightMode ? '#FFD5B8' : '#8C3A00' }]} pointerEvents="none" />
-                  <View style={[styles.progressThumb, { left: `${scrollProgress}%`, backgroundColor: nightMode ? '#FFD5B8' : '#8C3A00' }]} pointerEvents="none" />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={{ width: 36 }} />
+                <Text style={[styles.progressPercentSub, nightMode && styles.progressPercentSubNight]}>
+                  {`${Math.round(scrollProgress)}% पूर्ण`}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Next Chapter */}
+              <TouchableOpacity
+                style={[
+                  styles.toolbarBtn,
+                  currentChapter >= TOTAL_CHAPTERS && styles.toolbarBtnDisabled,
+                  nightMode && styles.toolbarBtnNight,
+                ]}
+                disabled={currentChapter >= TOTAL_CHAPTERS}
+                onPress={() => handleChapterChange(currentChapter + 1)}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={currentChapter >= TOTAL_CHAPTERS ? '#C4B49A' : (nightMode ? '#E8D5C4' : '#743B27')}
+                />
+              </TouchableOpacity>
+
+              <View style={styles.toolbarDivider} />
+
+              {/* Text Size Control */}
+              <TouchableOpacity
+                style={[styles.toolbarBtn, nightMode && styles.toolbarBtnNight]}
+                onPress={cycleFontSize}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="text-outline" size={17} color={nightMode ? '#C6A16B' : '#743B27'} />
+                <Text style={[styles.fontSizeLabel, nightMode && styles.fontSizeLabelNight]}>
+                  {fontSizeScale === 1.15 ? 'L' : fontSizeScale === 0.9 ? 'S' : 'M'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Day / Night Theme Toggle */}
+              <TouchableOpacity
+                style={[styles.toolbarBtn, nightMode && styles.toolbarBtnNight]}
+                onPress={() => setNightMode(!nightMode)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={nightMode ? 'sunny' : 'moon-outline'}
+                  size={18}
+                  color={nightMode ? '#FFDBB5' : '#743B27'}
+                />
+              </TouchableOpacity>
+
+              {/* Saved Bookmarks Modal Trigger */}
+              <TouchableOpacity
+                style={[styles.toolbarBtn, nightMode && styles.toolbarBtnNight]}
+                onPress={() => setShowBookmarksMenu(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name="bookmarks-outline"
+                  size={18}
+                  color={nightMode ? '#E8D5C4' : '#743B27'}
+                />
+              </TouchableOpacity>
             </View>
           </View>
-          </ImageBackground>
         </View>
       )}
 
-      {/* Bookmarks Modal */}
-      <Modal visible={showBookmarksMenu} transparent animationType="slide">
+      {/* ── Chapter Index / Table of Contents Modal ── */}
+      <Modal visible={showChapterIndex} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, nightMode && styles.modalContentNight]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {isHindi ? 'सहेजे गए पृष्ठ / चिह्न' : 'Saved Bookmarks'}
-              </Text>
-              <TouchableOpacity onPress={() => setShowBookmarksMenu(false)}>
-                <Ionicons name="close" size={24} color="#5C250A" />
+              <View>
+                <Text style={[styles.modalTitle, nightMode && styles.modalTitleNight]}>
+                  अध्याय सूची (अनुक्रमणिका)
+                </Text>
+                <Text style={[styles.modalSubtitle, nightMode && styles.modalSubtitleNight]}>
+                  श्रीमद्भगवद्गीता के १८ अध्याय
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowChapterIndex(false)} style={styles.closeModalBtn}>
+                <Ionicons name="close" size={22} color={nightMode ? '#E8D5C4' : '#743B27'} />
               </TouchableOpacity>
             </View>
-            
-            <ScrollView style={styles.modalScroll}>
-              {bookmarks.length === 0 ? (
-                <Text style={styles.emptyBookmarks}>
-                  {isHindi ? 'अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨' : 'No bookmarks saved yet.'}
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {GITA_CHAPTERS_META.map((meta) => {
+                const isCurrent = meta.num === currentChapter;
+                return (
+                  <TouchableOpacity
+                    key={meta.num}
+                    style={[
+                      styles.chapterIndexItem,
+                      isCurrent && styles.chapterIndexItemActive,
+                      nightMode && styles.chapterIndexItemNight,
+                      isCurrent && nightMode && styles.chapterIndexItemActiveNight,
+                    ]}
+                    onPress={() => {
+                      setShowChapterIndex(false);
+                      handleChapterChange(meta.num);
+                    }}
+                  >
+                    <View style={[styles.chapterNumberCircle, isCurrent && styles.chapterNumberCircleActive]}>
+                      <Text style={[styles.chapterNumberCircleText, isCurrent && styles.chapterNumberCircleTextActive]}>
+                        {convertToHindiNumerals(meta.num)}
+                      </Text>
+                    </View>
+                    <View style={styles.chapterIndexMeta}>
+                      <Text style={[styles.chapterIndexNameHi, nightMode && styles.chapterIndexNameHiNight]}>
+                        {meta.nameHi}
+                      </Text>
+                      <Text style={[styles.chapterIndexNameEn, nightMode && styles.chapterIndexNameEnNight]}>
+                        {meta.nameEn} • {meta.subtitle}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={isCurrent ? '#C6A16B' : (nightMode ? '#665749' : '#C2B4A3')}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Saved Bookmarks Modal ── */}
+      <Modal visible={showBookmarksMenu} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, nightMode && styles.modalContentNight]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, nightMode && styles.modalTitleNight]}>
+                  {isHindi ? 'सहेजे गए श्लोक एवं अध्याय' : 'Saved Bookmarks'}
                 </Text>
+                <Text style={[styles.modalSubtitle, nightMode && styles.modalSubtitleNight]}>
+                  स्वाध्याय के लिए सुरक्षित किए गए संदर्भ
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowBookmarksMenu(false)} style={styles.closeModalBtn}>
+                <Ionicons name="close" size={22} color={nightMode ? '#E8D5C4' : '#743B27'} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {bookmarks.length === 0 ? (
+                <View style={styles.emptyBookmarksWrapper}>
+                  <Ionicons name="bookmark-outline" size={44} color="#C6A16B" style={{ opacity: 0.6 }} />
+                  <Text style={[styles.emptyBookmarks, nightMode && styles.emptyBookmarksNight]}>
+                    {isHindi ? 'अभी तक कोई श्लोक सहेजा नहीं गया है।' : 'No bookmarks saved yet.'}
+                  </Text>
+                  <Text style={[styles.emptyBookmarksSub, nightMode && styles.emptyBookmarksSubNight]}>
+                    किसी भी श्लोक के पास दिए गए चिह्न पर स्पर्श करके सहेजें।
+                  </Text>
+                </View>
               ) : (
                 bookmarks.map((bm, idx) => (
-                  <TouchableOpacity 
-                    key={idx} 
-                    style={styles.bookmarkItem}
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.bookmarkItem, nightMode && styles.bookmarkItemNight]}
                     onPress={() => {
                       setShowBookmarksMenu(false);
                       handleChapterChange(bm.chapter);
-                      setTimeout(() => {
-                        scrollViewRef.current?.scrollTo({ y: bm.scrollY, animated: true });
-                      }, 400);
                     }}
                   >
-                    <View>
-                      <Text style={styles.bookmarkItemTitle}>{bm.title}</Text>
-                      <Text style={styles.bookmarkItemSub}>
-                        {isHindi ? `अध्याय ${bm.chapter}` : `Chapter ${bm.chapter}`}
-                      </Text>
+                    <View style={styles.bookmarkItemLeft}>
+                      <Ionicons name="bookmark" size={20} color="#C6A16B" />
+                      <View style={{ marginLeft: 12 }}>
+                        <Text style={[styles.bookmarkItemTitle, nightMode && styles.bookmarkItemTitleNight]}>
+                          {bm.title || `अध्याय ${bm.chapter}`}
+                        </Text>
+                        <Text style={[styles.bookmarkItemSub, nightMode && styles.bookmarkItemSubNight]}>
+                          {`अध्याय ${convertToHindiNumerals(bm.chapter)}`}
+                        </Text>
+                      </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#8C3A00" />
+                    <Ionicons name="chevron-forward" size={18} color="#C6A16B" />
                   </TouchableOpacity>
                 ))
               )}
@@ -627,368 +849,565 @@ export default function BhagavadGita3DPage() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFEEE5',
+    backgroundColor: '#F6EBDD', // Warm ivory
   },
+  rootNight: {
+    backgroundColor: '#140E0C',
+  },
+
+  /* 3D Cover Screen */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingBottom: 14,
+    paddingHorizontal: 20,
     zIndex: 10,
   },
-  backBtn: {
+  backBtnCover: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  stickyTopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    zIndex: 20,
-    backgroundColor: 'rgba(234, 209, 163, 0.9)', // Match parchment background slightly translucent
-  },
-  iconBtnWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconBtnWrapperNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  stickyChapterTitle: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  headerText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111111',
-    lineHeight: 20,
+  glowBackground: {
+    position: 'absolute',
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_WIDTH * 0.9,
+    borderRadius: SCREEN_WIDTH * 0.45,
+    backgroundColor: 'rgba(198, 161, 107, 0.15)', // Muted gold divine glow
+    alignSelf: 'center',
+    top: SCREEN_HEIGHT * 0.18,
   },
   contentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 80,
+    paddingBottom: 60,
+  },
+  bookTouchArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bookImage: {
-    width: SCREEN_WIDTH * 0.85,
-    height: SCREEN_HEIGHT * 0.65,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    shadowOffset: { width: 10, height: 20 },
+    width: SCREEN_WIDTH * 0.82,
+    height: SCREEN_HEIGHT * 0.58,
   },
   instructionBadge: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 50,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 243, 235, 0.85)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(38, 20, 10, 0.85)',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#FFD5B8',
-    shadowColor: '#B85D19',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: 'rgba(198, 161, 107, 0.4)',
   },
   instructionText: {
-    color: '#B85D19',
-    fontSize: 14,
+    color: '#EBD7B6',
+    fontSize: 13.5,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  /* Manuscript Reading UI Styles */
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 60,
+
+  /* Navigation Header */
+  navHeaderContainer: {
+    backgroundColor: '#F6EBDD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3D4BC', // Clean divider
+    zIndex: 20,
   },
-  pageContent: {
-    flex: 1,
+  navHeaderContainerNight: {
+    backgroundColor: '#1A1210',
+    borderBottomColor: 'rgba(227, 212, 188, 0.15)',
   },
-  chapterNavContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    marginBottom: 24,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  compactBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(116, 59, 39, 0.08)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  chapterTab: {
-    paddingHorizontal: 16,
+  compactBackBtnNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  titleColumn: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  mainScriptureTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#743B27', // Temple brown
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    letterSpacing: 0.2,
+  },
+  mainScriptureTitleNight: {
+    color: '#F4ECE0',
+  },
+  subChapterSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#796858',
+    marginTop: 2,
+  },
+  subChapterSubtitleNight: {
+    color: '#C6A16B',
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(116, 59, 39, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  headerIconBtnNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+
+  /* Horizontal Chapter Selector */
+  chapterSelectorRow: {
+    paddingHorizontal: 14,
     paddingVertical: 8,
+    alignItems: 'center',
+  },
+  chapterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     marginRight: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(140, 58, 0, 0.05)',
+    backgroundColor: '#FFFCF6',
     borderWidth: 1,
-    borderColor: 'rgba(140, 58, 0, 0.2)',
+    borderColor: '#E3D4BC',
   },
-  chapterTabActive: {
-    backgroundColor: 'rgba(140, 58, 0, 0.15)',
-    borderColor: '#8C3A00',
+  chapterPillActive: {
+    backgroundColor: 'rgba(198, 161, 107, 0.22)',
+    borderColor: '#743B27',
   },
-  chapterTabNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+  chapterPillNight: {
+    backgroundColor: '#261D19',
+    borderColor: 'rgba(227, 212, 188, 0.15)',
   },
-  chapterTabActiveNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderColor: '#EBD7B6',
+  chapterPillActiveNight: {
+    backgroundColor: 'rgba(198, 161, 107, 0.3)',
+    borderColor: '#C6A16B',
   },
-  chapterTabText: {
-    color: '#8C5A3C',
+  chapterPillNumber: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#796858',
+    marginRight: 5,
+  },
+  chapterPillNumberActive: {
+    color: '#743B27',
+  },
+  chapterPillNumberNight: {
+    color: '#A8927F',
+  },
+  chapterPillNumberActiveNight: {
+    color: '#F4ECE0',
+  },
+  chapterPillText: {
+    fontSize: 13,
     fontWeight: '600',
-    fontSize: 14,
+    color: '#796858',
   },
-  chapterTabTextActive: {
-    color: '#5C250A',
+  chapterPillTextActive: {
+    color: '#743B27',
     fontWeight: '700',
   },
-  textNight: {
-    color: '#EBD7B6',
+  chapterPillTextNight: {
+    color: '#A8927F',
   },
-  textNightLight: {
-    color: '#FFD5B8',
+  chapterPillTextActiveNight: {
+    color: '#F4ECE0',
+    fontWeight: '700',
   },
-  textNightMuted: {
-    color: '#C4B49A',
+
+  /* Scrollable Reading Content */
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
   },
-  chapterSubHeader: {
+  chapterIntroBanner: {
     alignItems: 'center',
-    marginBottom: 40,
+    paddingVertical: 20,
+    marginBottom: 10,
   },
-  subHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#691F0A',
-    marginTop: 8,
-  },
-  verseContainer: {
-    marginBottom: 24,
-  },
-  sanskritWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginBottom: 16,
-    position: 'relative',
-  },
-  sanskritText: {
-    fontSize: 17,
-    lineHeight: 28,
-    color: '#691F0A',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  sanskritVerseNumber: {
-    fontSize: 16,
-    color: '#691F0A',
-    fontWeight: '600',
-    marginLeft: 12,
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-  },
-  hindiText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#3B3B3B',
-    textAlign: 'justify',
-  },
-  hindiVerseNumber: {
-    fontSize: 15,
-    color: '#691F0A',
-    fontWeight: '600',
-  },
-  dividerContainer: {
+  introOrnamentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 24,
+    marginBottom: 8,
   },
-  dividerLine: {
-    width: 40,
+  introLine: {
+    width: 36,
     height: 1,
-    backgroundColor: '#8C5A3C',
+    backgroundColor: '#C6A16B',
+    opacity: 0.6,
   },
-  dividerDot: {
-    width: 6,
-    height: 6,
-    backgroundColor: '#8C5A3C',
+  introLineNight: {
+    backgroundColor: 'rgba(198, 161, 107, 0.3)',
+  },
+  introOmText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#743B27',
     marginHorizontal: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
-  bottomPadding: {
-    height: 60,
+  introOmTextNight: {
+    color: '#C6A16B',
   },
-  bottomNavContainer: {
+  introChapterNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#743B27',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  introChapterNumberNight: {
+    color: '#F4ECE0',
+  },
+  introSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#796858',
+  },
+  introSubtitleNight: {
+    color: '#A8927F',
+  },
+
+  /* Loading State */
+  loadingContainer: {
+    paddingVertical: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#743B27',
+  },
+  loadingTextNight: {
+    color: '#C6A16B',
+  },
+
+  /* Chapter Footer Navigation */
+  chapterFooterNav: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
-    paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 20,
   },
-  bottomNavBtn: {
+  footerNavButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: 'rgba(140, 58, 0, 0.08)',
-    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#FFFCF6',
     borderWidth: 1,
-    borderColor: 'rgba(140, 58, 0, 0.2)',
+    borderColor: '#E3D4BC',
   },
-  bottomNavBtnNight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+  footerNavButtonNight: {
+    backgroundColor: '#261D19',
+    borderColor: 'rgba(227, 212, 188, 0.15)',
   },
-  bottomNavText: {
-    color: '#691F0A',
+  footerNavText: {
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
-    marginHorizontal: 8,
+    color: '#743B27',
+    marginHorizontal: 6,
   },
+  footerNavTextNight: {
+    color: '#C6A16B',
+  },
+
+  /* Slim Bottom Reading Toolbar */
+  bottomToolbar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(246, 235, 221, 0.96)',
+    borderTopWidth: 1,
+    borderTopColor: '#E3D4BC',
+    zIndex: 30,
+  },
+  bottomToolbarNight: {
+    backgroundColor: 'rgba(20, 14, 12, 0.96)',
+    borderTopColor: 'rgba(227, 212, 188, 0.12)',
+  },
+  progressLineTrack: {
+    height: 3,
+    backgroundColor: 'rgba(116, 59, 39, 0.1)',
+    width: '100%',
+  },
+  progressLineFill: {
+    height: '100%',
+    backgroundColor: '#C6A16B', // Muted gold
+  },
+  progressLineFillNight: {
+    backgroundColor: '#C6A16B',
+  },
+  toolbarContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  toolbarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(116, 59, 39, 0.06)',
+  },
+  toolbarBtnNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  toolbarBtnDisabled: {
+    opacity: 0.35,
+  },
+  progressCenterBadge: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  progressNumberText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  progressNumberTextNight: {
+    color: '#F4ECE0',
+  },
+  progressPercentSub: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    color: '#796858',
+    marginTop: 1,
+  },
+  progressPercentSubNight: {
+    color: '#C6A16B',
+  },
+  toolbarDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E3D4BC',
+    marginHorizontal: 4,
+  },
+  fontSizeLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#743B27',
+    marginLeft: 2,
+  },
+  fontSizeLabelNight: {
+    color: '#C6A16B',
+  },
+
+  /* Modals */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFEEE5',
+    backgroundColor: '#F6EBDD',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: '60%',
+    height: '75%',
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -5 },
-    elevation: 20,
+  },
+  modalContentNight: {
+    backgroundColor: '#1E1613',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(140, 58, 0, 0.1)',
+    borderBottomColor: '#E3D4BC',
+    marginBottom: 14,
+  },
+  closeModalBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(116, 59, 39, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#5C250A',
+    color: '#743B27',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+  },
+  modalTitleNight: {
+    color: '#F4ECE0',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#796858',
+    marginTop: 2,
+  },
+  modalSubtitleNight: {
+    color: '#C6A16B',
   },
   modalScroll: {
     flex: 1,
   },
+
+  /* Chapter Index Items */
+  chapterIndexItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFCF6',
+    borderRadius: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E3D4BC',
+  },
+  chapterIndexItemActive: {
+    backgroundColor: 'rgba(198, 161, 107, 0.18)',
+    borderColor: '#743B27',
+  },
+  chapterIndexItemNight: {
+    backgroundColor: '#261D19',
+    borderColor: 'rgba(227, 212, 188, 0.12)',
+  },
+  chapterIndexItemActiveNight: {
+    backgroundColor: 'rgba(198, 161, 107, 0.25)',
+    borderColor: '#C6A16B',
+  },
+  chapterNumberCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(116, 59, 39, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chapterNumberCircleActive: {
+    backgroundColor: '#743B27',
+  },
+  chapterNumberCircleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  chapterNumberCircleTextActive: {
+    color: '#FFFFFF',
+  },
+  chapterIndexMeta: {
+    flex: 1,
+  },
+  chapterIndexNameHi: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#743B27',
+    marginBottom: 2,
+  },
+  chapterIndexNameHiNight: {
+    color: '#F4ECE0',
+  },
+  chapterIndexNameEn: {
+    fontSize: 12,
+    color: '#796858',
+  },
+  chapterIndexNameEnNight: {
+    color: '#A8927F',
+  },
+
+  /* Bookmarks Items */
+  emptyBookmarksWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
   emptyBookmarks: {
-    textAlign: 'center',
-    color: '#A09B93',
-    marginTop: 40,
     fontSize: 16,
+    fontWeight: '700',
+    color: '#743B27',
+    marginTop: 14,
+  },
+  emptyBookmarksNight: {
+    color: '#F4ECE0',
+  },
+  emptyBookmarksSub: {
+    fontSize: 13,
+    color: '#796858',
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 24,
+  },
+  emptyBookmarksSubNight: {
+    color: '#A8927F',
   },
   bookmarkItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFCF9',
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#8C3A00',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#FFFCF6',
+    borderRadius: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(140, 58, 0, 0.05)',
+    borderColor: '#E3D4BC',
   },
-  bookmarkItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3A281E',
-    marginBottom: 4,
+  bookmarkItemNight: {
+    backgroundColor: '#261D19',
+    borderColor: 'rgba(227, 212, 188, 0.12)',
   },
-  bookmarkItemSub: {
-    fontSize: 14,
-    color: '#8C5A3C',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    borderTopWidth: 1,
-    zIndex: 20,
-    paddingTop: 12,
-  },
-  bottomBarContent: {
+  bookmarkItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  bottomProgressBarContainer: {
-    height: 30,
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  bottomProgressBarTrack: {
-    height: 4,
-    borderRadius: 2,
-    width: '100%',
-    position: 'absolute',
-    top: 13,
-  },
-  bottomProgressBarFill: {
-    height: 4,
-    borderRadius: 2,
-    position: 'absolute',
-    left: 0,
-    top: 13,
-  },
-  progressThumb: {
-    position: 'absolute',
-    top: 7,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginLeft: -8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  sliderWrapper: {
     flex: 1,
-    marginHorizontal: 16,
-    justifyContent: 'center',
   },
-  pageIndicatorText: {
-    position: 'absolute',
-    top: -16,
-    width: '100%',
-    textAlign: 'center',
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#691F0A',
-    opacity: 0.8,
+  bookmarkItemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  bookmarkItemTitleNight: {
+    color: '#F4ECE0',
+  },
+  bookmarkItemSub: {
+    fontSize: 12,
+    color: '#796858',
+    marginTop: 2,
+  },
+  bookmarkItemSubNight: {
+    color: '#C6A16B',
   },
 });
