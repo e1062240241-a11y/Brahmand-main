@@ -10099,6 +10099,8 @@ async def sync_legacy_kyc_data_in_db():
                 vendor_by_owner[owner_id] = v
                 
         synced_count = 0
+        all_user_updates = []
+        all_vendor_updates = []
         for u in (users or []):
             u_id = u.get('id')
             if not u_id:
@@ -10143,10 +10145,19 @@ async def sync_legacy_kyc_data_in_db():
                     updates['kyc_role'] = 'vendor'
 
             if updates:
-                await db.update_document('users', u_id, updates)
+                all_user_updates.append((u_id, updates))
                 synced_count += 1
             if v_updates and v:
-                await db.update_document('vendors', v['id'], v_updates)
+                all_vendor_updates.append((v['id'], v_updates))
+
+        # ⚡ Bolt Optimization: Replace sequential database updates with chunked batch updates to avoid N+1 writes
+        if all_user_updates:
+            for i in range(0, len(all_user_updates), 400):
+                await db.batch_update_documents('users', all_user_updates[i:i + 400])
+
+        if all_vendor_updates:
+            for i in range(0, len(all_vendor_updates), 400):
+                await db.batch_update_documents('vendors', all_vendor_updates[i:i + 400])
 
         logger.info(f"[Legacy KYC Sync] Successfully synchronized {synced_count} records.")
         return synced_count
