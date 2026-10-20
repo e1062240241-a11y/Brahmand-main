@@ -4,7 +4,6 @@ Midnight Runner: Waits until 00:01 IST (14 Oct 2026) and then executes post_kush
 """
 import time
 import subprocess
-import sys
 import logging
 from datetime import datetime
 from pathlib import Path
