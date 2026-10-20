@@ -11004,13 +11004,19 @@ async def backfill_official_posts(
                 posts_to_update.append(pid)
 
     if not is_dry_run:
-        for uid in users_to_update:
-            await db.update_document('users', uid, {'is_official': True})
-            from utils.cache import cache_manager
-            await cache_manager.invalidate_user(uid)
+        from utils.cache import cache_manager
 
-        for pid in posts_to_update:
-            await db.update_document('posts', pid, {'is_official': True})
+        # ⚡ Bolt Optimization: Replace sequential database updates with chunked batch updates
+        for i in range(0, len(users_to_update), 400):
+            chunk = users_to_update[i:i + 400]
+            updates = [(uid, {'is_official': True}) for uid in chunk]
+            await db.batch_update_documents('users', updates)
+            await asyncio.gather(*[cache_manager.invalidate_user(uid) for uid in chunk])
+
+        for i in range(0, len(posts_to_update), 400):
+            chunk = posts_to_update[i:i + 400]
+            updates = [(pid, {'is_official': True}) for pid in chunk]
+            await db.batch_update_documents('posts', updates)
 
         # Refresh feed pools to pick up updated official posts
         try:
