@@ -223,7 +223,8 @@
         {
           "style": "light"
         }
-      ]
+      ],
+      "./plugins/withRemovedPermissions.js"
     ],
     "experiments": {
       "typedRoutes": true
