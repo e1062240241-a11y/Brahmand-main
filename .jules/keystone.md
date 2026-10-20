@@ -49,6 +49,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/admin/personality-verifications` — unpaginated query across all personality verifications — FIXED
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
+- `/circles/{circle_id}/requests` — unpaginated query across all circle join requests — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -149,3 +150,6 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-25 - Atomic Edge Document Tracking for Temple Follows
 **Learning:** `TempleService.follow_temple` mutated the `followers` array directly on `temple` documents. Popular temples with tens of thousands of followers risk hitting Firestore's 1MB document size limit and cause race conditions during concurrent follow actions.
 **Action:** Migrated temple follow relationship management to $O(1)$ edge documents in `temple_follows` (`{user_id}_{temple_id}`) with atomic `follower_count` increments, completely eliminating `followers` array mutations on `temple` documents. Updated `get_temples`, `get_nearby_temples`, and `get_temple` to batch fetch edge documents via `db.get_documents_batch('temple_follows', edge_ids)` to determine `is_following` status cleanly without N+1 queries or reading full arrays.
+## 2026-09-25 - Offset-based pagination & DB query bounds for GET /circles/{circle_id}/requests
+**Learning:** `GET /circles/{circle_id}/requests` previously fetched all pending join requests for a circle without limit or offset query parameters ($O(N_{\text{requests}})$ reads). On large circles with high request volume at 1 lakh+ scale, this resulted in unbounded database reads, high memory usage, and request latency.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_circle_requests` in `backend/main.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering and index exception fallback logic, and sliced response payloads accordingly.

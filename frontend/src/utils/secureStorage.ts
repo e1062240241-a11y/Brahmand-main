@@ -16,8 +16,7 @@ let cachedKey: string | null = null;
 
 // Generate a random 256-bit hexadecimal key
 const generateKey = (): string => {
-  const salt = Math.random().toString(36).substring(2, 15) + Date.now().toString();
-  return CryptoJS.SHA256(salt).toString();
+  return CryptoJS.lib.WordArray.random(32).toString();
 };
 
 const getEncryptionKey = async (): Promise<string> => {

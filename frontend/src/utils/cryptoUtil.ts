@@ -2,6 +2,8 @@ import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import { secureStorage } from './secureStorage';
 
+import CryptoJS from 'crypto-js';
+
 // Polyfill PRNG for tweetnacl in React Native / Expo environment
 if (typeof nacl.setPRNG === 'function') {
   nacl.setPRNG((x, n) => {
@@ -10,7 +12,12 @@ if (typeof nacl.setPRNG === 'function') {
       global.crypto.getRandomValues(bytes);
       for (let i = 0; i < n; i++) x[i] = bytes[i];
     } else {
-      for (let i = 0; i < n; i++) x[i] = Math.floor(Math.random() * 256);
+      const words = CryptoJS.lib.WordArray.random(n).words;
+      const bytes = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        bytes[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+      }
+      for (let i = 0; i < n; i++) x[i] = bytes[i];
     }
   });
 }
