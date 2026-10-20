@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Dimensions, Easing, View } from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 // ponytail: date-gated petals, delete after 2026-10-21. Auto-stops after ~15s.
 const START = new Date('2026-10-10T00:00:00').getTime();
@@ -23,8 +23,28 @@ interface Spec {
   spin: string;
 }
 
-function Petal({ spec }: { spec: Spec }) {
-  const [fall] = React.useState(() => new Animated.Value(0));
+// Generate petal specs outside component scope to avoid calling impure Math.random during render
+function generatePetalSpecs(): Spec[] {
+  const count = SCREEN_WIDTH < 380 ? 14 : 20;
+  return Array.from({ length: count }, () => ({
+    left: Math.random() * (SCREEN_WIDTH - 16),
+    size: 7 + Math.random() * 6,
+    color: COLORS[(Math.random() * COLORS.length) | 0],
+    delay: Math.random() * 4000,
+    duration: 6000 + Math.random() * 5000,
+    drift: 8 + Math.random() * 14,
+    spin: `${180 + Math.random() * 360}deg`,
+  }));
+}
+
+// React.memo prevents unnecessary re-renders of individual petals on parent state changes
+const Petal = React.memo(function Petal({ spec }: { spec: Spec }) {
+  // Use lazy useRef initialization instead of useState for Animated.Value to avoid React 19 memoization drops
+  const fallRef = React.useRef<Animated.Value | null>(null);
+  if (!fallRef.current) {
+    fallRef.current = new Animated.Value(0);
+  }
+  const fall = fallRef.current;
 
   React.useEffect(() => {
     const anim = Animated.timing(fall, {
@@ -47,13 +67,13 @@ function Petal({ spec }: { spec: Spec }) {
 
   return (
     <Animated.View
-      style={{
-        position: 'absolute',
-        left: spec.left,
-        top: 0,
-        opacity: 0.9,
-        transform: [{ translateY }, { translateX }, { rotate }],
-      }}
+      style={[
+        styles.petalContainer,
+        {
+          left: spec.left,
+          transform: [{ translateY }, { translateX }, { rotate }],
+        },
+      ]}
     >
       <View
         style={{
@@ -65,22 +85,17 @@ function Petal({ spec }: { spec: Spec }) {
       />
     </Animated.View>
   );
-}
+});
 
 export const NavratriPetals = React.memo(function NavratriPetals() {
   const [done, setDone] = React.useState(false);
-  const specs = React.useMemo<Spec[]>(() => {
-    const count = SCREEN_WIDTH < 380 ? 14 : 20;
-    return Array.from({ length: count }, () => ({
-      left: Math.random() * (SCREEN_WIDTH - 16),
-      size: 7 + Math.random() * 6,
-      color: COLORS[(Math.random() * COLORS.length) | 0],
-      delay: Math.random() * 4000,
-      duration: 6000 + Math.random() * 5000,
-      drift: 8 + Math.random() * 14,
-      spin: `${180 + Math.random() * 360}deg`,
-    }));
-  }, []);
+
+  // Lazy useRef initialization ensures specs are created once on mount without invoking impure Math.random in render
+  const specsRef = React.useRef<Spec[] | null>(null);
+  if (!specsRef.current) {
+    specsRef.current = generatePetalSpecs();
+  }
+  const specs = specsRef.current;
 
   React.useEffect(() => {
     const t = setTimeout(() => setDone(true), 15000);
@@ -90,22 +105,28 @@ export const NavratriPetals = React.memo(function NavratriPetals() {
   if (!isNavratriActive() || done) return null;
 
   return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: AREA_H,
-        overflow: 'hidden',
-        zIndex: 999,
-        elevation: 999,
-      }}
-    >
+    <View pointerEvents="none" style={styles.overlayArea}>
       {specs.map((spec, i) => (
         <Petal key={i} spec={spec} />
       ))}
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  overlayArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: AREA_H,
+    overflow: 'hidden',
+    zIndex: 999,
+    elevation: 999,
+  },
+  petalContainer: {
+    position: 'absolute',
+    top: 0,
+    opacity: 0.9,
+  },
 });
