@@ -11066,20 +11066,30 @@ async def admin_set_user_official(
     if old_status and not new_status:
         # Cascade revoke across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': False})
+                post_updates.append((pid, {'is_official': False}))
                 cascaded_posts_count += 1
+        # ⚡ Bolt: Replaced sequential DB updates with chunked batch writes for performance
+        if post_updates:
+            for i in range(0, len(post_updates), 400):
+                await db.batch_update_documents('posts', post_updates[i:i+400])
         logger.info(f"Cascaded official status revocation for user {user_id}: updated {cascaded_posts_count} posts to is_official=False")
     elif not old_status and new_status:
         # Cascade grant across all posts belonging to this user
         user_posts = await db.query_documents('posts', filters=[('user_id', '==', user_id)])
+        post_updates = []
         for p in user_posts:
             pid = p.get('id')
             if pid and not is_true_flag(p.get('is_official')):
-                await db.update_document('posts', pid, {'is_official': True})
+                post_updates.append((pid, {'is_official': True}))
                 cascaded_posts_count += 1
+        # ⚡ Bolt: Replaced sequential DB updates with chunked batch writes for performance
+        if post_updates:
+            for i in range(0, len(post_updates), 400):
+                await db.batch_update_documents('posts', post_updates[i:i+400])
         logger.info(f"Cascaded official status grant for user {user_id}: updated {cascaded_posts_count} posts to is_official=True")
 
     # Refresh feed candidate pools
