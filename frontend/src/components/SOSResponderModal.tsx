@@ -146,7 +146,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
               accessibilityState={{ disabled: reporting, busy: reporting }}
             >
               {reporting ? (
-                <ActivityIndicator color="#FF3B30" size="small" style={styles.activityIndicatorMargin} />
+                <ActivityIndicator color="#FF3B30" size="small" style={styles.activityIndicatorMargin} accessibilityLabel="Reporting misuse" />
               ) : (
                 <Ionicons name="flag-outline" size={18} color="#FF3B30" />
               )}
@@ -179,7 +179,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
               accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" size="small" />
+                <ActivityIndicator color="#FFF" size="small" accessibilityLabel="Responding to emergency" />
               ) : (
                 <Text style={styles.respondBtnText}>I'M COMING</Text>
               )}

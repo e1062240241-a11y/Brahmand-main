@@ -653,7 +653,7 @@ export function GlobalFAB() {
                           disabled={isResponding}
                         >
                           {isResponding ? (
-                            <ActivityIndicator color="#FFF" size="small" />
+                            <ActivityIndicator color="#FFF" size="small" accessibilityLabel="Responding to SOS" />
                           ) : (
                             <>
                               <MaterialCommunityIcons name="walk" size={22} color="#FFF" />

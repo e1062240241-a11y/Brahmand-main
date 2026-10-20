@@ -658,7 +658,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
             >
               {phoneSending ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" accessibilityLabel="Sending OTP" />
               ) : (
                 <Text style={styles.otpButtonText}>
                   {phoneOtpStage === 'sent' ? 'Resend OTP' : 'Send OTP'}
@@ -689,7 +689,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
               >
                 {phoneVerifying ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color="#FFFFFF" accessibilityLabel="Verifying OTP" />
                 ) : (
                   <Text style={styles.otpButtonText}>Verify OTP</Text>
                 )}
@@ -766,7 +766,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" accessibilityLabel="Submitting request" />
               ) : (
                 <Text style={styles.submitBtnText}>
                   {requestType === 'Petition' ? 'Create Petition' : 'Post Request'}

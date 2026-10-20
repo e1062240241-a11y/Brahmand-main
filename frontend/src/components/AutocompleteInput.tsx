@@ -329,7 +329,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           />
           
           {loading && (
-            <ActivityIndicator size="small" color={COLORS.primary} style={styles.rightIcon} />
+            <ActivityIndicator size="small" color={COLORS.primary} style={styles.rightIcon} accessibilityLabel="Loading suggestions" />
           )}
           
           {!loading && showChevron && (

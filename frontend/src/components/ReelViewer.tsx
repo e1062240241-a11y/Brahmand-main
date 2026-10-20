@@ -120,7 +120,7 @@ const NativeVideoPlayer = React.memo(({
     />
   ) : (
     <View style={{ width: '100%', height: '100%', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator size="large" color="#fff" />
+      <ActivityIndicator size="large" color="#fff" accessibilityLabel="Loading video" />
     </View>
   );
 
@@ -805,7 +805,7 @@ const ReelVideoItem = React.memo(({
           alignItems: 'center',
           backgroundColor: 'rgba(0,0,0,0.15)',
         }}>
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color="#fff" accessibilityLabel="Loading video" />
         </View>
       )}
 
@@ -2252,13 +2252,13 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             contentContainerStyle={videos.length === 0 ? { flex: 1 } : undefined}
             ListEmptyComponent={
               <View style={{ height: screenSize.height, width: screenSize.width, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#fff" />
+                <ActivityIndicator size="large" color="#fff" accessibilityLabel="Loading videos list" />
               </View>
             }
             ListFooterComponent={
               loading ? (
                 <View style={{ height: screenSize.height, width: screenSize.width, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="large" color="#fff" />
+                  <ActivityIndicator size="large" color="#fff" accessibilityLabel="Loading videos list" />
                 </View>
               ) : null
             }
@@ -2323,7 +2323,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 renderItem={renderCommentItem}
                 ListEmptyComponent={
                   commentsLoading ? (
-                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} accessibilityLabel="Loading comments" />
                   ) : (
                     <View style={{ marginTop: 60, alignItems: 'center' }}>
                       <Ionicons name="chatbubbles-outline" size={48} color="#CCC" />
