@@ -103,7 +103,7 @@ export const UploadProgressBanner = () => {
             ) : status === 'error' ? (
               <Ionicons name="alert-circle" size={24} color={COLORS.error} />
             ) : isCompressing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <ActivityIndicator size="small" color={COLORS.primary} accessibilityLabel="Compressing media" />
             ) : (
               <Ionicons
                 name={mediaType === 'video' ? 'videocam' : 'image'}
