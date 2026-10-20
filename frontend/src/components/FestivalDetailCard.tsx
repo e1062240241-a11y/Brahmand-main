@@ -20,6 +20,39 @@ import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../constants/theme';
 import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
+import { ShamiLeafWishCard } from './ShamiLeafWishCard';
+import { getTrackedBrahmandUrl } from '../utils/generateFestivalStoryPdf';
+import { Share as RNShare } from 'react-native';
+
+const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
+  try {
+    const ViewShot = require('react-native-view-shot');
+    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
+    if (typeof capture === 'function') {
+      const uri = await capture(ref, options);
+      return { uri };
+    }
+    return { uri: null, error: 'captureRef is not a function' };
+  } catch (e: any) {
+    return { uri: null, error: e?.message || String(e) };
+  }
+};
+
+const safeShareFile = async (uri: string, options: any): Promise<{ shared: boolean; error?: string }> => {
+  try {
+    const Sharing = require('expo-sharing');
+    if (Sharing && typeof Sharing.isAvailableAsync === 'function') {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, options);
+        return { shared: true };
+      }
+    }
+    return { shared: false, error: 'expo-sharing not available' };
+  } catch (e: any) {
+    return { shared: false, error: e?.message || String(e) };
+  }
+};
 
 interface RelatedFestival {
   id?: string;
@@ -433,10 +466,70 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     festivalName.toLowerCase().includes('durga') ||
     (festival.id && String(festival.id).toLowerCase().includes('navratri'));
 
+  const isDussehraFestival =
+    festivalName.toLowerCase().includes('dussehra') ||
+    festivalName.toLowerCase().includes('dasara') ||
+    festivalName.toLowerCase().includes('vijaya') ||
+    (festival.id && String(festival.id).toLowerCase().includes('dussehra'));
+
   const isKarvaChauthFestival =
     festivalName.toLowerCase().includes('karva') ||
     festivalName.toLowerCase().includes('karwa') ||
     (festival.id && String(festival.id).toLowerCase().includes('karva'));
+
+  const leafCardRef = useRef<any>(null);
+  const [isSharingLeaf, setIsSharingLeaf] = useState<boolean>(false);
+
+  const handleShareShamiLeaf = async () => {
+    if (isSharingLeaf) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      setIsSharingLeaf(true);
+      const name = (festival.festival_name || festival.name || festival.title || 'Dussehra').toUpperCase();
+
+      let imageUri: string | null = null;
+      if (leafCardRef.current) {
+        await new Promise((res) => setTimeout(res, 350));
+        const captureResult = await safeCaptureRef(leafCardRef, {
+          format: 'png',
+          quality: 0.98,
+          result: 'tmpfile',
+        });
+        imageUri = captureResult.uri;
+      }
+
+      if (!imageUri) {
+        const fallback = getFestivalImage(festival);
+        if (fallback) imageUri = fallback;
+      }
+
+      if (!imageUri) {
+        console.warn('[FestivalDetailCard] Leaf capture failed');
+        return;
+      }
+
+      const webUrl = getTrackedBrahmandUrl(name, 'whatsapp_share');
+      const message = `🌿 *विजयादशमी की हार्दिक शुभकामनाएं* 🌿\n\n✨ "सोनं घ्या, सोन्यासारखे राहा!" ✨\n\n🍃 *Share virtual Shami leaves with your loved ones & spread divine blessings!* 🍃\n\nDiscover the profound divine story, rituals & sacred significance on Brahmand:\n${webUrl}`;
+
+      const shareResult = await safeShareFile(imageUri, {
+        mimeType: 'image/png',
+        dialogTitle: `Share Shami Leaf - ${name}`,
+        UTI: 'public.png',
+        message: message,
+      });
+
+      if (!shareResult.shared && shareResult.error) {
+        await RNShare.share({
+          message: `${message}\n${imageUri}`,
+          title: `Share Shami Leaf`,
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to share Shami leaf from festival detail:', err);
+    } finally {
+      setIsSharingLeaf(false);
+    }
+  };
 
   const sections = [
     { title: 'Story', value: rawStory },
@@ -547,19 +640,98 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
         </Text>
       </LinearGradient>
 
-      {/* Progress Bar */}
-      {totalCount > 0 && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressHeaderRow}>
-            <Text style={styles.progressTitle}>Section Completion Tracker</Text>
-            <Text style={styles.progressCount}>
-              {completedCount} of {totalCount} Explored
-            </Text>
-          </View>
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+      {/* Hidden Leaf Wish Card for Screenshot/Capture */}
+      {isDussehraFestival && (
+        <View
+          style={{
+            position: 'absolute',
+            left: -9999,
+            top: -9999,
+            opacity: 1,
+            zIndex: -1,
+          }}
+          pointerEvents="none"
+        >
+          <View collapsable={false} style={{ width: 527, height: 544, backgroundColor: 'transparent' }}>
+            <ShamiLeafWishCard
+              ref={leafCardRef}
+              festival={festival}
+            />
           </View>
         </View>
+      )}
+
+      {/* For Dussehra: Replaced Section Completion Tracker with Sacred Virtual Shami Leaf Share Banner */}
+      {isDussehraFestival ? (
+        <View style={styles.shamiShareBanner}>
+          <LinearGradient
+            colors={['#FEF9C3', '#FEF08A', '#FDE047']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.shamiShareGradient}
+          >
+            <View style={styles.shamiShareContentRow}>
+              <View style={styles.shamiShareLeafIconWrapper}>
+                <Image
+                  source={require('../../assets/images/festivals/shami_leaf.png')}
+                  style={styles.shamiShareLeafIcon}
+                  contentFit="contain"
+                />
+              </View>
+
+              <View style={styles.shamiShareTextCol}>
+                <View style={styles.shamiSharePill}>
+                  <Text style={styles.shamiSharePillText}>✨ सुवर्ण शमी पत्र ✨</Text>
+                </View>
+                <Text style={styles.shamiShareMainTitle}>सोनं घ्या, सोन्यासारखे राहा!</Text>
+                <Text style={styles.shamiShareTagline}>
+                  🍃 Share virtual Shami leaves with your loved ones & spread divine blessings!
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.shamiShareButton}
+              onPress={handleShareShamiLeaf}
+              disabled={isSharingLeaf}
+              activeOpacity={0.85}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Share Virtual Shami Leaf"
+            >
+              <LinearGradient
+                colors={['#854D0E', '#78350F', '#7C2D12']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.shamiShareButtonGradient}
+              >
+                <Ionicons
+                  name="share-social"
+                  size={18}
+                  color="#FEF08A"
+                />
+                <Text style={styles.shamiShareButtonText}>
+                  {isSharingLeaf ? 'Preparing...' : 'Share Virtual Leaf'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      ) : (
+        /* Progress Bar for Other Festivals */
+        totalCount > 0 && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressHeaderRow}>
+              <Text style={styles.progressTitle}>Section Completion Tracker</Text>
+              <Text style={styles.progressCount}>
+                {completedCount} of {totalCount} Explored
+              </Text>
+            </View>
+            <View style={styles.progressBarTrack}>
+              <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+            </View>
+          </View>
+        )
       )}
 
       {/* Reordered Guide Sections */}
@@ -761,6 +933,102 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#D97706',
     borderRadius: 3,
+  },
+
+  // Dussehra Virtual Shami Leaf Share Banner
+  shamiShareBanner: {
+    marginBottom: 16,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    shadowColor: '#854D0E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  shamiShareGradient: {
+    padding: 16,
+    borderRadius: 18,
+  },
+  shamiShareContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 12,
+  },
+  shamiShareLeafIconWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D97706',
+    shadowColor: '#78350F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  shamiShareLeafIcon: {
+    width: 48,
+    height: 48,
+  },
+  shamiShareTextCol: {
+    flex: 1,
+  },
+  shamiSharePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(120, 53, 15, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  shamiSharePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#78350F',
+    letterSpacing: 0.5,
+  },
+  shamiShareMainTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#78350F',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  shamiShareTagline: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#854D0E',
+    lineHeight: 16.5,
+  },
+  shamiShareButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  shamiShareButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  shamiShareButtonText: {
+    color: '#FFFBEB',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.6,
   },
 
   // Guide Section

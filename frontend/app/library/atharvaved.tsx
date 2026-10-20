@@ -439,7 +439,8 @@ export default function AtharvavedPage() {
                     nightMode={nightMode}
                     index={index}
                     isLast={index === verses.length - 1}
-
+                    bookId={BOOK_ID}
+                    chapterNumber={currentChapter}
                   />
                 ))
               )}

@@ -32,6 +32,7 @@ interface FestivalSectionDetailCardProps {
   section: string;
   onBack: () => void;
   onSharePdf?: () => void;
+  onShareImage?: () => void;
 }
 
 // Function to split raw long text into structured reading sections
@@ -71,7 +72,7 @@ const formatStructuredContent = (text: string, sectionTitle: string) => {
   };
 };
 
-const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: FestivalSectionDetailCardProps) => {
+const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onShareImage }: FestivalSectionDetailCardProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const festivalName = festival.festival_name || festival.name || 'Festival';
@@ -114,17 +115,12 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
 
     const isGaneshChaturthi = lowerName.includes('ganesh') || lowerName.includes('vinayaka') || lowerName.includes('chaturthi');
     const isNavratri = lowerName.includes('navratri') || lowerName.includes('durga') || lowerName.includes('pooja');
+    const isDussehra = lowerName.includes('dussehra') || lowerName.includes('dasara') || lowerName.includes('vijaya');
     const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
 
-    // Sacred Audio Story Narration & Ambient Katha Stream (All verified 200 OK BunnyCDN endpoints)
-    const storyAudioSource = isKarvaChauth
-      ? KARVA_CHAUTH_AUDIO
-      : isShivratri
-      ? 'https://brahmandfeed23.b-cdn.net/audio/final_om_namah_shivaay.mp4'
-      : isJanmashtami
-      ? 'https://brahmandfeed23.b-cdn.net/audio/krishna_jaap.mp4'
-      : 'https://brahmandfeed23.b-cdn.net/audio/gayatri_mantra.m4a';
+    // Audio story narration is only enabled for Karwa Chauth katha
+    const storyAudioSource = isKarvaChauth ? KARVA_CHAUTH_AUDIO : null;
 
     const audioPlayer = useAudioPlayer(storyAudioSource, { keepAudioSessionActive: true });
     const playerStatus = useAudioPlayerStatus(audioPlayer);
@@ -192,6 +188,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/ganesh_chaturthi_story_hero.webp' }
       : isNavratri
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/navratri_story_hero.webp' }
+      : isDussehra
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/dussehra.webp' }
       : isDiwali
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/diwali_story_hero.webp' }
       : isShivratri
@@ -265,6 +263,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Divine Birth'
           : isGaneshChaturthi
           ? 'Divine Manifestation'
+          : isDussehra
+          ? 'Triumph of Lord Rama'
           : isNavratri
           ? 'Cosmic Shakti'
           : isDiwali
@@ -275,6 +275,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
         icon: isJanmashtami ? 'leaf' : 'leaf',
         content: isKarvaChauth
           ? 'Queen Veervati, the only beloved sister among seven caring brothers, visited her parents\' home on Karva Chauth. Adhering to the sacred vow of fasting for her husband\'s longevity, she went the entire day without food or water, waiting devotedly for the moonrise.'
+          : isDussehra
+          ? 'On the tenth day of the epic war in Lanka, Lord Rama defeated the ten-headed demon king Ravana. Before battle, Lord Rama invoked Goddess Durga and recited the Aditya Hridayam stotram, symbolizing the supreme triumph of Dharma (righteousness) over evil.'
           : isHariyaliTeej
           ? 'Long ago, Goddess Parvati desired Lord Shiva as her divine consort. Shiva, immersed in deep samadhi on Mount Kailash, remained detached. Parvati realized that only supreme devotion could awaken his grace.'
           : isKajariTeej
@@ -316,6 +318,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Cosmic Miracle'
           : isGaneshChaturthi
           ? 'Prathama Pujya'
+          : isDussehra
+          ? 'Mahishasura Mardini'
           : isNavratri
           ? '9 Divine Forms'
           : isDiwali
@@ -326,6 +330,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
         icon: isJanmashtami ? 'drop' : 'flame',
         content: isKarvaChauth
           ? 'Distressed seeing their sister faint from extreme hunger and thirst, the brothers lit a massive fire behind a distant Pipal tree and placed a round sieve in front of it, tricking Veervati into believing the glowing flame was the rising full moon.'
+          : isDussehra
+          ? 'Vijayadashami also marks the triumphant victory of Maa Durga over the ferocious buffalo-demon Mahishasura. After a fierce battle lasting nine days and nine nights, the Goddess pierced the demon with her divine trident on the tenth day, liberating the three worlds.'
           : isHariyaliTeej
           ? 'Goddess Parvati embarked on severe austerities spanning 108 lifetimes across rugged mountain caves and dense Shravan forests. Renouncing all comfort, she meditated amidst scorching heat, torrential monsoon rains, and freezing snows.'
           : isKajariTeej
@@ -367,6 +373,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Childhood Leela'
           : isGaneshChaturthi
           ? 'Modak & Wisdom'
+          : isDussehra
+          ? 'Pandavas & Shami Tree'
           : isNavratri
           ? 'Mahishasura Mardini'
           : isDiwali
@@ -377,6 +385,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
         icon: 'om',
         content: isKarvaChauth
           ? 'As she swallowed the first morsel of food, news arrived that her husband, the king, had suddenly fallen critically ill. Realizing her fast was broken under a false moon, she wept inconsolably and prayed with pure devotion. Goddess Parvati appeared, advising her to undertake the fast again with unwavering sanctity.'
+          : isDussehra
+          ? 'In the Mahabharata, the Pandavas concealed their celestial weapons inside the hollow of a sacred Shami tree before starting their one-year incognito exile (Agyatvas). On Vijayadashami, they returned victorious, retrieved their arms undamaged from the Shami tree, and defeated the Kaurava army.'
           : isHariyaliTeej
           ? 'Moved by her unyielding love, Lord Shiva manifested before her on the third day (Tritiya) of Shravan. He accepted Parvati as his eternal divine consort, filling the universe with cosmic celebration and monsoon blooms.'
           : isKajariTeej
@@ -418,6 +428,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Flute & Devotion'
           : isGaneshChaturthi
           ? 'Ganesh Sthapana'
+          : isDussehra
+          ? 'Golden Shami Leaves'
           : isNavratri
           ? 'Garba & Fasting'
           : isDiwali
@@ -428,6 +440,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
         icon: isJanmashtami ? 'gear' : 'flower',
         content: isKarvaChauth
           ? 'Veervati observed the fast following all strict traditions. At night, married women gather in festive circles for the Karva Chauth Katha ritual, rotating earthen thalis while singing verses of auspiciousness before offering Arghya water to the moon through a decorative chalni (sieve).'
+          : isDussehra
+          ? 'On this auspicious day, people worship the sacred Shami (Apta) tree and exchange its leaves as gold ("सोनं घ्या, सोन्यासारखे राहा!"). Legend tells of the young scholar Kautsa, whose teacher guru dakshina was fulfilled by Lord Kubera showering gold coins upon the Shami and Apta trees on Dussehra.'
           : isHariyaliTeej
           ? 'Goddess Parvati decreed that any woman observing fasts, wearing festive green bangles, and offering prayers on this holy day will be blessed with lifelong marital harmony, prosperity, and joy.'
           : isKajariTeej
@@ -469,6 +483,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
           ? 'Dahi Handi'
           : isGaneshChaturthi
           ? 'Visarjan & Joy'
+          : isDussehra
+          ? 'Ramlila & Effigies'
           : isNavratri
           ? 'Kanya Pujan'
           : isDiwali
@@ -479,6 +495,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
         icon: 'star',
         content: isKarvaChauth
           ? 'Her husband was restored to full health by divine grace. Today, women commence the fast at dawn with Sargi gifted by mothers-in-law, adorn exquisite red attire and henna, and break the fast by receiving water from their husbands, celebrating eternal love.'
+          : isDussehra
+          ? 'Grand Ramlila plays conclude with the burning of giant effigies of Ravana, Kumbhakarna, and Meghanada amidst fireworks. Devotees also perform Ayudha Puja (worship of vehicles and tools), greeting elders by gifting Shami leaves with wishes of eternal peace, success, and prosperity.'
           : isHariyaliTeej
           ? 'Women gather in courtyards wearing green and red attire, apply intricate mehndi, swing on flower-decked jhulas, sing Teej folk songs, and share traditional sweets like Ghevar.'
           : isKajariTeej
@@ -559,6 +577,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf }: Fe
       ? 'Manifestation of Ganesha & Wisdom of Modaks'
       : isNavratri
       ? 'Victory of Goddess Durga over Mahishasura'
+      : isDussehra
+      ? 'Triumph of Lord Rama, Mahishasura Vadh & Sacred Shami Puja'
       : isDiwali
       ? 'Return of Lord Rama & Worship of Goddess Lakshmi'
       : isShivratri

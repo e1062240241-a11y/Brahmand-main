@@ -630,10 +630,16 @@ function useNotificationResponseHandler() {
         routeStr === 'festivals' ||
         targetStr === '/festivals' ||
         titleStr.includes('नवरात्रि') ||
-        titleStr.includes('navratri')
+        titleStr.includes('navratri') ||
+        titleStr.includes('शमी') ||
+        titleStr.includes('dussehra') ||
+        titleStr.includes('विजयादशमी')
       ) {
-        const targetRoute = data.route && data.route.startsWith('/') ? data.route : '/festivals';
-        console.log(`[Push] Routing festival/navratri notification tap to ${targetRoute}`);
+        let targetRoute = data.route && data.route.startsWith('/') ? data.route : '/festivals';
+        if (data.festivalId && (targetRoute === '/festival-detail' || targetRoute === '/festival')) {
+          targetRoute = `${targetRoute}?id=${encodeURIComponent(data.festivalId)}&name=${encodeURIComponent(data.festivalId)}`;
+        }
+        console.log(`[Push] Routing festival/shami notification tap to ${targetRoute}`);
         navigateOrQueue(targetRoute);
         return;
       }

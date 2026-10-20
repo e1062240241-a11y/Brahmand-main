@@ -15,35 +15,64 @@ const HINDI_KEYS = [
 ] as const;
 
 const ENGLISH_KEYS = [
+  'swami sivananda', 'Swami Sivananda',
+  'shri purohit swami', 'Shri Purohit Swami',
+  'dr. s. sankaranarayan', 'Dr. S. Sankaranarayan',
+  'english', 'English',
   'swami adidevananda', 'Swami Adidevananda',
   'swami gambirananda', 'Swami Gambirananda',
-  'swami sivananda', 'Swami Sivananda',
-  'dr. s. sankaranarayan', 'Dr. S. Sankaranarayan',
-  'shri purohit swami', 'Shri Purohit Swami',
-  'english', 'English'
 ] as const;
 
 type TranslationRecord = Record<string, unknown> | undefined | null;
 
-const getTejomayanandaTranslation = (translations: TranslationRecord): string => {
+const cleanTranslationText = (raw: string): string => {
+  if (!raw || typeof raw !== 'string') return '';
+  let text = raw.trim();
+  // Strip leading verse references like "।।1.1।।", "1.1.", "1.1", "1.1 - 1.19"
+  text = text.replace(/^(?:।।\s*\d+(?:\.\d+)?\s*।।|\d+\.\d+(?:\s*-\s*\d+\.\d+)?\.?)\s*/, '');
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+};
+
+const getHindiTranslation = (translations: TranslationRecord): string => {
   if (!translations || typeof translations !== 'object') return '';
   for (const key of HINDI_KEYS) {
     const value = (translations as Record<string, unknown>)[key];
-    if (typeof value === 'string' && value.trim().length > 0) return value;
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const cleaned = cleanTranslationText(value);
+      if (cleaned && !cleaned.toLowerCase().includes('did not comment')) return cleaned;
+    }
   }
+  return '';
+};
+
+const getEnglishTranslation = (translations: TranslationRecord): string => {
+  if (!translations || typeof translations !== 'object') return '';
   for (const key of ENGLISH_KEYS) {
     const value = (translations as Record<string, unknown>)[key];
-    if (typeof value === 'string' && value.trim().length > 0) return value;
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const cleaned = cleanTranslationText(value);
+      if (cleaned && !cleaned.toLowerCase().includes('did not comment')) return cleaned;
+    }
   }
   return '';
 };
 
 const normalizeVerse = (verse: any): any => {
   const rawTranslations = verse?.translations;
-  const translation = getTejomayanandaTranslation(rawTranslations);
+  const hindi = getHindiTranslation(rawTranslations);
+  const english = getEnglishTranslation(rawTranslations);
+
   return {
     ...verse,
-    translations: translation ? { 'swami tejomayananda': translation } : {},
+    translations: {
+      ...(typeof rawTranslations === 'object' && rawTranslations ? rawTranslations : {}),
+      hindi: hindi || (typeof rawTranslations?.hindi === 'string' ? rawTranslations.hindi : ''),
+      english: english || (typeof rawTranslations?.english === 'string' ? rawTranslations.english : ''),
+      'swami tejomayananda': hindi,
+      'swami sivananda': english,
+    },
   };
 };
 
