@@ -7,17 +7,36 @@ const BOOK_NAME = 'upanishads';
 const TOTAL_CHAPTERS = 20;
 const PREFETCH_AHEAD = 1;
 
-const normalizeUpanishadVerse = (verse: any): any => ({
-  ...verse,
-  translations: typeof verse?.translations === 'object' && verse?.translations !== null ? verse.translations : {},
+const localUpanishadMap = new Map<string, any>();
+(upanishadsData as any[]).forEach((v) => {
+  if (v?.chapter && v?.verse) {
+    localUpanishadMap.set(`${v.chapter}:${v.verse}`, v);
+  }
 });
+
+const normalizeUpanishadVerse = (verse: any): any => {
+  const localMatch = localUpanishadMap.get(`${verse?.chapter}:${verse?.verse}`);
+  const baseTranslations = typeof verse?.translations === 'object' && verse?.translations !== null ? verse.translations : {};
+  return {
+    ...verse,
+    translations: {
+      ...baseTranslations,
+      ...(localMatch?.translations || {}),
+      hindi: baseTranslations?.hindi || localMatch?.translations?.hindi || '',
+      english: baseTranslations?.english || localMatch?.translations?.english || '',
+    },
+  };
+};
 
 const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
 const fetchUpanishadsChapter = async (num: number) => {
   try {
     const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
-    if (res.ok) return res.json();
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
   } catch {}
   const localVerses = (upanishadsData as any[]).filter((v) => v?.chapter === num);
   if (localVerses.length) {

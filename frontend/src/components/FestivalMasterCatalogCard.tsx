@@ -156,13 +156,36 @@ export const FestivalMasterCatalogCard = forwardRef<View, FestivalMasterCatalogC
 
           {/* A. PARCHMENT CARD 1: DUAL-COLUMN BLESSINGS & GREETING */}
           <View style={styles.parchmentCard}>
+            {/* Sacred Shami / Apta leaf centered behind wishes */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: 0.38,
+              }}
+            >
+              <RNImage
+                source={require('../../assets/images/festivals/shami_leaf.png')}
+                style={{ width: 230, height: 238 }}
+                resizeMode="contain"
+              />
+            </View>
+
             {/* Top Row: Dual Columns */}
             <View style={styles.parchmentDualRow}>
               {/* Left Column: Line art icon + Blessing */}
               <View style={styles.parchmentLeftCol}>
                 <Text style={styles.parchmentSymbolIcon}>🪷</Text>
                 <Text style={styles.parchmentLeftText}>
-                  May the divine light of this auspicious festival fill your home with happiness, your heart with peace, and your life with countless blessings.
+                  {rawName.toLowerCase().includes('dussehra') || rawName.toLowerCase().includes('vijaya')
+                    ? 'हर अन्याय पर सत्य की विजय हो, हर अंधेरे पर प्रकाश की विजय हो। Shami Patra ke sath mangalmay shubhkamnayein!'
+                    : 'May the divine light of this auspicious festival fill your home with happiness, your heart with peace, and your life with countless blessings.'}
                 </Text>
               </View>
 
@@ -184,7 +207,7 @@ export const FestivalMasterCatalogCard = forwardRef<View, FestivalMasterCatalogC
             {/* Bottom Row: Full Width Deity Blessing Quote */}
             <View style={styles.parchmentBottomRow}>
               <Text style={styles.parchmentBottomQuote}>
-                May {deityName}'s blessings bring love, joy, harmony, good health and prosperity to you and your loved ones.
+                May {deityName}'s blessings bring victory, joy, harmony, good health and prosperity to you and your loved ones.
               </Text>
             </View>
           </View>

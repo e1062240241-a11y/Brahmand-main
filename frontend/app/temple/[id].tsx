@@ -51,8 +51,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAHAKALESHWAR_TEMPLE_KEY = 'Mahakaleshwar Temple – Ujjain';
 const MAHAKALESHWAR_VIDEO_URL = 'https://youtu.be/wVE3ZBzBJpM?si=yg5c1Na1WiDUyFNi';
 const MAHAKALESHWAR_VIDEO_ID = getYoutubeVideoId(MAHAKALESHWAR_VIDEO_URL);
+const MAHAKALESHWAR_PLAYER_ORIGIN = 'https://www.youtube.com';
 const MAHAKALESHWAR_EMBED_URL = MAHAKALESHWAR_VIDEO_ID
-  ? `https://www.youtube.com/embed/${MAHAKALESHWAR_VIDEO_ID}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1`
+  ? `https://www.youtube.com/embed/${MAHAKALESHWAR_VIDEO_ID}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(MAHAKALESHWAR_PLAYER_ORIGIN)}`
   : MAHAKALESHWAR_VIDEO_URL;
 const MAHAKALESHWAR_AUTOPLAY_EMBED_URL = MAHAKALESHWAR_VIDEO_ID
   ? `${MAHAKALESHWAR_EMBED_URL}&autoplay=1`
@@ -63,6 +64,26 @@ const MAHAKALESHWAR_THUMBNAIL_URL = MAHAKALESHWAR_VIDEO_ID
 const MAHAKALESHWAR_THUMBNAIL_FALLBACK_URL = MAHAKALESHWAR_VIDEO_ID
   ? `https://i.ytimg.com/vi/${MAHAKALESHWAR_VIDEO_ID}/hqdefault.jpg`
   : null;
+const MAHAKALESHWAR_PLAYER_HTML = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+      iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="${MAHAKALESHWAR_AUTOPLAY_EMBED_URL}"
+      title="Mahakaleshwar Darshan"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin"
+    ></iframe>
+  </body>
+</html>`;
 
 const mapBackendResponseToFrontend = (backendData: any) => {
   if (!backendData) return null;
@@ -187,16 +208,21 @@ export default function TempleDetailScreen() {
 
     return (
       <WebView
-        source={{ uri: MAHAKALESHWAR_AUTOPLAY_EMBED_URL }}
-        originWhitelist={['*']}
+        source={{
+          html: MAHAKALESHWAR_PLAYER_HTML,
+          baseUrl: MAHAKALESHWAR_PLAYER_ORIGIN,
+        }}
+        originWhitelist={['https://*', 'http://*']}
         style={styles.youtubeFrame}
         javaScriptEnabled
         domStorageEnabled
         allowsFullscreenVideo
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
+        mixedContentMode="always"
         setBuiltInZoomControls={false}
         scrollEnabled={false}
+        userAgent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
       />
     );
   }, [isMahakaleshwarTemple, isMahakaleshwarVideoPlaying]);
@@ -1293,8 +1319,9 @@ export default function TempleDetailScreen() {
                             src={MAHAKALESHWAR_AUTOPLAY_EMBED_URL}
                             style={styles.heroImage}
                             frameBorder="0"
-                            allow="autoplay; encrypted-media; picture-in-picture"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                             allowFullScreen
+                            referrerPolicy="strict-origin-when-cross-origin"
                           />
                         ) : (
                           mahakaleshwarVideoContent

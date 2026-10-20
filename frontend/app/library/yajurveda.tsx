@@ -435,6 +435,7 @@ export default function YajurvedaPage() {
                     index={index}
                     isLast={index === verses.length - 1}
                     bookId="yajurveda"
+                    chapterNumber={currentChapter}
                   />
                 ))
               )}
