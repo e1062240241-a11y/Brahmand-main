@@ -514,7 +514,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
             
             {loading && (
               <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#FF0000" />
+                <ActivityIndicator size="large" color="#FF0000" accessibilityLabel="Loading SOS process" />
               </View>
             )}
           </View>

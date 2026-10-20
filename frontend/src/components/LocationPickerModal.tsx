@@ -220,7 +220,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             )}
           </View>
 
-          {searching && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: SPACING.xs }} />}
+          {searching && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: SPACING.xs }} accessibilityLabel="Searching locations" />}
 
           {searchResults.length > 0 && (
             <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="handled">
@@ -284,9 +284,10 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             style={[styles.confirmButton, loading && styles.disabledButton]}
             onPress={handleConfirm}
             disabled={loading || !mapRegion}
+            accessibilityRole="button"
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#FFF" />
+              <ActivityIndicator size="small" color="#FFF" accessibilityLabel="Confirming location" />
             ) : (
               <Text style={styles.confirmButtonText}>Confirm Selected Location</Text>
             )}

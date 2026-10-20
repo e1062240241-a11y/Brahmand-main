@@ -161,7 +161,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
                 disabled={timer > 0 || sendingOTP || loading}
               >
                 {sendingOTP ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <ActivityIndicator size="small" color={COLORS.primary} accessibilityLabel="Resending OTP" />
                 ) : (
                   <Text style={[styles.resendText, (timer > 0 || loading) && styles.resendTextDisabled]}>
                     {t('language') === 'hi' ? 'OTP पुनः भेजें' : 'Resend OTP'}

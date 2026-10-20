@@ -245,7 +245,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
             accessibilityLabel={`Share ${todayFestivalDayIndex >= 0 ? todayNavdurgaDay.deviName : activeDay.deviName} Navratri guide PDF`}
           >
             {isSharingPdf ? (
-              <ActivityIndicator size="small" color="#7C2D12" />
+              <ActivityIndicator size="small" color="#7C2D12" accessibilityLabel="Sharing PDF" />
             ) : (
               <Ionicons name="share-social-outline" size={22} color="#7C2D12" />
             )}
@@ -510,7 +510,7 @@ export const Navratri9DaysGuide: React.FC<Navratri9DaysGuideProps> = ({
           accessibilityLabel="Share today's devi and color PDF"
         >
           {isSharingPdf ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" accessibilityLabel="Sharing PDF" />
           ) : (
             <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
           )}

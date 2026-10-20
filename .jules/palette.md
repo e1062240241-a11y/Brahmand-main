@@ -1,3 +1,6 @@
-## 2024-05-19 - Adding accessibility to dynamic modal states
-**Learning:** In React Native, `ActivityIndicator` and dynamic modal state changes (like moving from a form to a loading state to a success state) are often entirely silent to screen readers by default.
-**Action:** Always add an `accessibilityLabel` to `ActivityIndicator` components. For dynamically rendering success/error views within a modal, apply `accessibilityLiveRegion="polite"` and `accessibilityRole="alert"` to the parent container to force screen readers to announce the state change correctly.
+## 2024-10-20 - Add ARIA Labels to Loading Spinners
+**Learning:** React Native's `ActivityIndicator` is often completely silent to screen readers by default. When an `ActivityIndicator` dynamically replaces an icon or text during async operations (like uploading or searching), the context is completely lost to visually impaired users unless explicitly labelled.
+**Action:** Always provide an `accessibilityLabel` to `ActivityIndicator` (or custom loading spinners) explaining *what* is loading (e.g., "Compressing media", "Searching locations"), especially when it replaces an interactive element.
+## 2024-10-20 - Global ARIA Label Audit for Spinners
+**Learning:** Even custom, visually apparent loaders (like `ActivityIndicator`) leave screen readers completely silent during critical user journeys (like SOS response, OTP verification, or media uploading) unless explicitly tagged. Without a label, users with visual impairments are left in an anxious, silent state not knowing if their action registered.
+**Action:** When creating new modals, forms, or async buttons, always enforce a strict requirement for `accessibilityLabel` on loading states, describing the precise action occurring (e.g., "Verifying OTP").

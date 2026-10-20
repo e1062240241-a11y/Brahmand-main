@@ -174,7 +174,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           {/* Users List */}
           <View style={styles.usersSection}>
             {loading ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+              <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} accessibilityLabel="Loading conversations" />
             ) : (
               <FlatList
                 horizontal
@@ -190,7 +190,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (
                         <View style={styles.sharingOverlay}>
-                          <ActivityIndicator color="#fff" size="small" />
+                          <ActivityIndicator color="#fff" size="small" accessibilityLabel="Sharing post" />
                         </View>
                       )}
                     </TouchableOpacity>

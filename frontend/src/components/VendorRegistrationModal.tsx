@@ -1105,7 +1105,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFFFFF" accessibilityLabel="Registering business" />
               ) : (
                 <Text style={styles.submitBtnText}>Register Business</Text>
               )}
@@ -1209,7 +1209,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   onPress={handleMapConfirm}
                   disabled={loading}
                 >
-                  {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
+                  {loading ? <ActivityIndicator color="#FFFFFF" accessibilityLabel="Confirming map location" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
                 </TouchableOpacity>
               </View>
             </View>
