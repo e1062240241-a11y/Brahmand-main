@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Dimensions, Easing, View } from 'react-native';
+import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
 
 // ponytail: date-gated petals, delete after 2026-10-21. Auto-stops after ~15s.
 const START = new Date('2026-10-10T00:00:00').getTime();
@@ -14,6 +14,7 @@ const AREA_H = 300;
 const COLORS = ['#FFB703', '#E76F51', '#FF595E', '#F4A261', '#FBBF24'];
 
 interface Spec {
+  id: string;
   left: number;
   size: number;
   color: string;
@@ -23,7 +24,29 @@ interface Spec {
   spin: string;
 }
 
-function Petal({ spec }: { spec: Spec }) {
+/**
+ * Generates random petal specifications outside component render.
+ * Extracted helper prevents React 19 purity violations (`Math.random` inside render/useMemo).
+ */
+function generatePetalSpecs(): Spec[] {
+  const count = SCREEN_WIDTH < 380 ? 14 : 20;
+  return Array.from({ length: count }, (_, i) => ({
+    id: `petal-${i}`,
+    left: Math.random() * (SCREEN_WIDTH - 16),
+    size: 7 + Math.random() * 6,
+    color: COLORS[(Math.random() * COLORS.length) | 0],
+    delay: Math.random() * 4000,
+    duration: 6000 + Math.random() * 5000,
+    drift: 8 + Math.random() * 14,
+    spin: `${180 + Math.random() * 360}deg`,
+  }));
+}
+
+/*
+ * OPT-1: Wrapped Petal in React.memo to prevent re-renders when parent component updates.
+ * OPT-2: Extracted inline style allocations to StyleSheet.create.
+ */
+const Petal = React.memo(function Petal({ spec }: { spec: Spec }) {
   const [fall] = React.useState(() => new Animated.Value(0));
 
   React.useEffect(() => {
@@ -47,13 +70,13 @@ function Petal({ spec }: { spec: Spec }) {
 
   return (
     <Animated.View
-      style={{
-        position: 'absolute',
-        left: spec.left,
-        top: 0,
-        opacity: 0.9,
-        transform: [{ translateY }, { translateX }, { rotate }],
-      }}
+      style={[
+        styles.petalWrapper,
+        {
+          left: spec.left,
+          transform: [{ translateY }, { translateX }, { rotate }],
+        },
+      ]}
     >
       <View
         style={{
@@ -65,22 +88,12 @@ function Petal({ spec }: { spec: Spec }) {
       />
     </Animated.View>
   );
-}
+});
 
 export const NavratriPetals = React.memo(function NavratriPetals() {
   const [done, setDone] = React.useState(false);
-  const specs = React.useMemo<Spec[]>(() => {
-    const count = SCREEN_WIDTH < 380 ? 14 : 20;
-    return Array.from({ length: count }, () => ({
-      left: Math.random() * (SCREEN_WIDTH - 16),
-      size: 7 + Math.random() * 6,
-      color: COLORS[(Math.random() * COLORS.length) | 0],
-      delay: Math.random() * 4000,
-      duration: 6000 + Math.random() * 5000,
-      drift: 8 + Math.random() * 14,
-      spin: `${180 + Math.random() * 360}deg`,
-    }));
-  }, []);
+  // OPT-3: Use lazy useState initializer instead of impure useMemo for initial spec state.
+  const [specs] = React.useState<Spec[]>(generatePetalSpecs);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDone(true), 15000);
@@ -90,22 +103,28 @@ export const NavratriPetals = React.memo(function NavratriPetals() {
   if (!isNavratriActive() || done) return null;
 
   return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: AREA_H,
-        overflow: 'hidden',
-        zIndex: 999,
-        elevation: 999,
-      }}
-    >
-      {specs.map((spec, i) => (
-        <Petal key={i} spec={spec} />
+    <View pointerEvents="none" style={styles.container}>
+      {specs.map((spec) => (
+        <Petal key={spec.id} spec={spec} />
       ))}
     </View>
   );
+});
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: AREA_H,
+    overflow: 'hidden',
+    zIndex: 999,
+    elevation: 999,
+  },
+  petalWrapper: {
+    position: 'absolute',
+    top: 0,
+    opacity: 0.9,
+  },
 });
