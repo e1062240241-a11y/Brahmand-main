@@ -74,16 +74,6 @@ const CARD_WIDTH = (SCREEN_WIDTH - 40) / 2;
 
 const LIVE_JAAPS = [
   {
-    id: '5',
-    title: 'Shri Ram\nJaap',
-    devotees: '7.8K',
-    mantraType: 'ram',
-    image: require('../assets/images/festivals/ram_jaap_card.webp'),
-    slok: 'श्री राम जय राम जय जय राम...',
-    color: '#E65100',
-    tag: 'विजयादशमी स्पेशल',
-  },
-  {
     id: '1',
     title: 'Hanuman\nChalisa',
     devotees: '9.6K',

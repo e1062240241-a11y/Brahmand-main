@@ -60,14 +60,6 @@ if (Platform.OS === 'android' && !(global as any).nativeFabricUIManager && !(glo
 
 const LIVE_JAAPS = [
   {
-    id: '5',
-    title: 'Shri Ram\nJaap',
-    devotees: '7.8K',
-    image: require('../../assets/images/festivals/ram_jaap_card.webp'),
-    slok: 'श्री राम जय राम जय जय राम...',
-    tag: 'विजयादशमी स्पेशल',
-  },
-  {
     id: '1',
     title: 'Hanuman\nChalisa',
     devotees: '9.6K',
