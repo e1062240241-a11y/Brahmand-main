@@ -342,16 +342,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userStr = await secureStorage.getItem('user');
 
       if (token && userStr) {
-        let user = JSON.parse(userStr);
+        let user: any = null;
+        try {
+          user = JSON.parse(userStr);
+        } catch (jsonErr) {
+          console.warn('[Auth] Stored user data is corrupted JSON, removing user key:', jsonErr);
+          await secureStorage.removeItem('user');
+          set({ isLoading: false });
+          return;
+        }
+
         if (Platform.OS === 'android') {
           user = sanitizeUserProfile(user);
         }
         // Restore cached user first so the app is unblocked immediately
         set({ user, token, isAuthenticated: true, isLoading: false });
 
-
-        // Then refresh profile from backend to pick up any birth details
-        // saved in a previous session that may not be in the local cache.
+        // Then refresh profile from backend to pick up any updates
         try {
           const { getProfile, updateProfile } = require('../services/api');
           const reqVer = getNextProfileVersion();
@@ -367,7 +374,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
 
           if (res?.data) {
-
             const updatedUser = Platform.OS === 'android'
               ? mergeUserProfiles(user, res.data)
               : { ...user, ...res.data };
@@ -376,13 +382,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         } catch (profileErr) {
           // Network may be unavailable on startup — use cached data, not fatal.
-          console.warn('[Auth] Could not refresh profile on startup:', profileErr);
+          console.warn('[Auth] Could not refresh profile on startup (offline/temporary error):', profileErr);
         }
       } else {
+        // No stored auth found or incomplete credentials
         set({ isLoading: false });
       }
     } catch (error) {
-      console.error('Error loading auth:', error);
+      console.error('[Auth] Error loading stored auth from secure storage:', error);
+      // On temporary secure store error, do not aggressively wipe or crash
       set({ isLoading: false });
     }
   },

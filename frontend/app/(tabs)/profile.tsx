@@ -448,11 +448,6 @@ export default function ProfileScreen() {
       }
       console.error('Error message:', error?.message);
       setProfile(userRef.current || null);
-      if (error?.response?.status === 401 || error?.response?.status === 502) {
-        console.log('[Profile] auth error, logging out');
-        await logout();
-        router.replace('/');
-      }
     } finally {
       if (requestedUserId === activeUserIdRef.current) {
         setLoading(false);

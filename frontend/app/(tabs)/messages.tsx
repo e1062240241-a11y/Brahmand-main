@@ -194,7 +194,7 @@ function MessagesScreen({
 }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const homeLoc = user?.home_location;
   const hasValidLocation = !!(
     homeLoc &&
@@ -1241,16 +1241,12 @@ function MessagesScreen({
         }
       }
     } catch (error: any) {
-      console.warn('Error fetching data:', error.message || error);
-      if (error.response?.status === 401) {
-        logout();
-        router.replace('/');
-      }
+      console.warn('Error fetching messages data:', error?.message || error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTopTab, logout]);
+  }, [activeTopTab]);
 
   useEffect(() => {
     getAllMutedConversations().then(setMutedConversations);

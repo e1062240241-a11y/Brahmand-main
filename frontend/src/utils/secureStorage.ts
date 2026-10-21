@@ -150,10 +150,17 @@ export const secureStorage = {
           // ignore
         }
 
-        // If decryption failed, return null to prevent JSON parsing crashes.
+      // If decryption failed or data is corrupted, clear corrupted key safely
+        console.warn(`[SecureStorage] Decryption failed or data corrupted for key "${key}". Clearing corrupted key.`);
+        try {
+          await AsyncStorage.removeItem(key);
+        } catch (_) {}
         return null;
       } catch (decryptError) {
         console.warn(`[SecureStorage] Error during decryption of key "${key}":`, decryptError);
+        try {
+          await AsyncStorage.removeItem(key);
+        } catch (_) {}
         return null;
       }
     } catch (error) {
@@ -172,6 +179,41 @@ export const secureStorage = {
       console.error(`[SecureStorage] Failed to remove item for key "${key}":`, error);
     }
   },
+};
+
+/**
+ * Safe helper functions for typed or generic secure storage access.
+ */
+export const getSecureItem = async <T = any>(key: string): Promise<T | null> => {
+  try {
+    const raw = await secureStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return raw as unknown as T;
+    }
+  } catch (error) {
+    console.warn(`[SecureStorage] getSecureItem failed for key "${key}":`, error);
+    return null;
+  }
+};
+
+export const setSecureItem = async (key: string, value: any): Promise<void> => {
+  try {
+    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+    await secureStorage.setItem(key, serialized);
+  } catch (error) {
+    console.warn(`[SecureStorage] setSecureItem failed for key "${key}":`, error);
+  }
+};
+
+export const removeSecureItem = async (key: string): Promise<void> => {
+  try {
+    await secureStorage.removeItem(key);
+  } catch (error) {
+    console.warn(`[SecureStorage] removeSecureItem failed for key "${key}":`, error);
+  }
 };
 
 /**

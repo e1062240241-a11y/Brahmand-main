@@ -535,6 +535,50 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Single-flight refresh token queue state
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    } else {
+      prom.reject(new Error("Token refresh returned empty token"));
+    }
+  });
+  failedQueue = [];
+};
+
+/**
+ * Checks if an Axios error is purely network/connectivity related or server unavailable
+ */
+export const isNetworkOrConnectionError = (error: any): boolean => {
+  if (!error) return false;
+  if (!error.response) return true; // No response from server (ERR_NETWORK, ECONNABORTED, timeout, offline)
+  const code = error.code;
+  if (
+    code === "ERR_NETWORK" ||
+    code === "ECONNABORTED" ||
+    code === "ETIMEDOUT" ||
+    code === "ENOTFOUND" ||
+    code === "ECONNREFUSED"
+  ) {
+    return true;
+  }
+  const msg = (error.message || "").toLowerCase();
+  if (msg.includes("network error") || msg.includes("timeout") || msg.includes("aborted")) {
+    return true;
+  }
+  return false;
+};
+
 // Robust retry on 503 errors and network disconnections
 api.interceptors.response.use(
   (response) => response,
@@ -561,17 +605,41 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // Handle 401 Unauthorized - attempt silent token refresh before logging out
+    // Handle 401 Unauthorized / unauthenticated 403
     if (status === 401 || (status === 403 && error.response?.data?.detail === "Not authenticated")) {
-      const isAuthUrl = /auth\/|login|register|otp/i.test(config?.url || "");
-      const isRefreshUrl = /auth\/token\/refresh/i.test(config?.url || "");
+      const url = config?.url || "";
+      const isAuthUrl = /auth\/(login|send-otp|verify-otp|login-anonymous)/i.test(url);
+      const isRefreshUrl = /auth\/token\/refresh/i.test(url);
 
-      // Don't attempt refresh for auth URLs or if we're already refreshing
-      if (!isAuthUrl && !isRefreshUrl && !config._isRefreshRetry) {
-        try {
-          const oldToken = await secureStorage.getItem("auth_token");
-          if (oldToken) {
-            console.info("[API] 401 received - attempting silent token refresh...");
+      // Never attempt token refresh on login/otp/refresh endpoints or if already retried with fresh token
+      if (!isAuthUrl && !isRefreshUrl && !config?._isRefreshRetry) {
+        if (isRefreshing) {
+          // A refresh is already in-flight: queue this request until single-flight refresh resolves
+          return new Promise<string>((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((newToken) => {
+              config._isRefreshRetry = true;
+              config.headers = config.headers || {};
+              config.headers.Authorization = `Bearer ${newToken}`;
+              return api(config);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        // Start single-flight refresh
+        isRefreshing = true;
+        refreshPromise = (async (): Promise<string | null> => {
+          try {
+            const oldToken = await secureStorage.getItem("auth_token");
+            if (!oldToken) {
+              console.warn("[API] No auth_token found in storage for refresh");
+              return null;
+            }
+
+            console.info("[API] 401 received - initiating single-flight token refresh...");
             const refreshResponse = await axios.post(
               `${API_URL}/api/auth/token/refresh`,
               {},
@@ -581,32 +649,56 @@ api.interceptors.response.use(
               },
             );
 
-            if (refreshResponse.data?.token) {
-              const newToken = refreshResponse.data.token;
+            const newToken = refreshResponse.data?.token || refreshResponse.data?.access_token;
+            if (newToken) {
               await secureStorage.setItem("auth_token", newToken);
-              console.info("[API] Token refreshed successfully, retrying original request...");
-
-              // Retry the original request with the new token
-              config._isRefreshRetry = true;
-              config.headers.Authorization = `Bearer ${newToken}`;
-              return api(config);
+              console.info("[API] Single-flight token refresh succeeded");
+              processQueue(null, newToken);
+              return newToken;
             }
-          }
-        } catch (refreshErr: any) {
-          console.warn(
-            `[API] Token refresh failed (${refreshErr?.response?.status || refreshErr?.message}). Logging out...`,
-          );
-        }
+            processQueue(new Error("Invalid token in refresh response"));
+            return null;
+          } catch (refreshErr: any) {
+            console.warn(
+              `[API] Token refresh attempt failed (${refreshErr?.response?.status || refreshErr?.message})`,
+            );
 
-        // Refresh failed or no token - force logout
-        try {
-          const { useAuthStore } = require("../store/authStore");
-          useAuthStore.getState().logout();
-        } catch (logoutErr) {
-          console.error(
-            `[API] Failed to trigger automatic logout on ${status}:`,
-            logoutErr,
-          );
+            const isNetworkIssue = isNetworkOrConnectionError(refreshErr);
+            const refreshStatus = refreshErr?.response?.status;
+
+            // Reject queued requests with this error
+            processQueue(refreshErr, null);
+
+            // ONLY logout if the server explicitly told us the session/token is invalid (401, 403, 410)
+            // DO NOT logout if internet is down, request timed out, or backend returned 5xx
+            if (!isNetworkIssue && (refreshStatus === 401 || refreshStatus === 403 || refreshStatus === 410)) {
+              console.warn("[API] Refresh token confirmed invalid/expired by backend. Triggering logout.");
+              try {
+                const { useAuthStore } = require("../store/authStore");
+                useAuthStore.getState().logout();
+              } catch (logoutErr) {
+                console.error("[API] Failed to trigger automatic logout on invalid refresh token:", logoutErr);
+              }
+            } else {
+              console.warn(
+                "[API] Refresh failed due to network or server downtime (status: " +
+                  refreshStatus +
+                  "). Preserving user session.",
+              );
+            }
+            return null;
+          } finally {
+            isRefreshing = false;
+            refreshPromise = null;
+          }
+        })();
+
+        const refreshedToken = await refreshPromise;
+        if (refreshedToken) {
+          config._isRefreshRetry = true;
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${refreshedToken}`;
+          return api(config);
         }
       }
     }
