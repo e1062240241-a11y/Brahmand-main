@@ -225,10 +225,15 @@ export default function AllLiveJaapsScreen() {
         end={{ x: 1, y: 0 }}
       >
         <Ionicons name="people" size={18} color="#FF6600" />
+        {/* 🧡 Engagement: Reframed transactional header banner ("जुड़ें 50,000+ भक्त अभी एकसाथ जाप कर रहे हैं")
+            to Satsang-inspired collective devotion ("50,000+ भक्त साथ में जाप साधना में लीन हैं — आप भी जुड़ें").
+            Lever: Social Proof (Satsang Feeling) + Reframing (Bhakti over Transaction)
+            Why: "साधना में लीन हैं" evokes spiritual sanctity and collective belonging, encouraging the user to enter the sacred room.
+            UI: Text-only change, zero structural or visual components added. */}
         <Text style={styles.bannerText}>
           {t('language') === 'hi' 
-            ? <Text>जुड़ें <Text style={styles.bannerBold}>50,000+</Text> भक्त अभी एकसाथ जाप कर रहे हैं</Text>
-            : <Text>Join <Text style={styles.bannerBold}>50,000+</Text> devotees chanting together right now</Text>}
+            ? <Text>🚩 <Text style={styles.bannerBold}>50,000+</Text> भक्त साथ में जाप साधना में लीन हैं — आप भी जुड़ें</Text>
+            : <Text>🚩 <Text style={styles.bannerBold}>50,000+</Text> devotees absorbed in collective chanting — join the satsang</Text>}
         </Text>
       </LinearGradient>
 
