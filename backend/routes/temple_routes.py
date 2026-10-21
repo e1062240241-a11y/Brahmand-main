@@ -82,11 +82,13 @@ async def get_temples(
 async def get_nearby_temples(
     lat: float = 19.0760,
     lng: float = 72.8777,
+    limit: int = 20,
+    offset: int = 0,
     token_data: dict = Depends(optional_verify_token)
 ):
     """Get temples near user's location"""
     user_id = token_data.get("user_id") if token_data else None
-    return await TempleService.get_nearby_temples(lat, lng, user_id)
+    return await TempleService.get_nearby_temples(lat, lng, user_id, limit=limit, offset=offset)
 
 
 @router.get("/{temple_id}")

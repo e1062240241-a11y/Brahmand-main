@@ -129,18 +129,62 @@ class TempleService:
         return result
     
     @staticmethod
+    def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate Haversine distance in kilometers between two geo coordinates."""
+        import math
+        R = 6371.0  # Earth radius in km
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = (
+            math.sin(dlat / 2.0) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlon / 2.0) ** 2
+        )
+        c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+        return R * c
+
+    @staticmethod
     async def get_nearby_temples(
         lat: float = 19.0760,
         lng: float = 72.8777,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        limit: int = 20,
+        offset: int = 0
     ) -> List[Dict[str, Any]]:
-        """Get temples near user's location"""
+        """Get temples near user's location ordered by distance with Haversine calculation and pagination"""
         cached = await cache_manager.get_temples()
         if not cached:
             await TempleService.get_temples()
             cached = await cache_manager.get_temples() or []
-        
-        paginated_items = cached[:20]
+
+        # Architectural fix: Compute exact Haversine distance for all cached temples
+        # and sort by proximity before applying limit and offset bounds.
+        temples_with_dist = []
+        for t in cached:
+            coords = t.get("coords") or {}
+            t_lat = coords.get("latitude") or coords.get("lat") or t.get("latitude") or t.get("lat")
+            t_lng = coords.get("longitude") or coords.get("lng") or t.get("longitude") or t.get("lng")
+
+            dist_km = 0.0
+            if t_lat is not None and t_lng is not None:
+                try:
+                    dist_km = TempleService._haversine_distance(float(lat), float(lng), float(t_lat), float(t_lng))
+                except (ValueError, TypeError):
+                    dist_km = 99999.0
+            else:
+                dist_km = 99999.0
+
+            temples_with_dist.append((dist_km, t))
+
+        # Sort temples by ascending distance
+        temples_with_dist.sort(key=lambda item: item[0])
+
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        paginated_tuples = temples_with_dist[safe_offset : safe_offset + safe_limit]
+        paginated_items = [item[1] for item in paginated_tuples]
+
         following_map = {}
         if user_id and paginated_items:
             db = await TempleService.get_db()
@@ -154,7 +198,7 @@ class TempleService:
                 logger.warning(f"Failed to batch fetch temple_follows edges for nearby temples: {e}")
 
         result = []
-        for t in paginated_items:
+        for dist_km, t in paginated_tuples:
             temple_data = t.copy()
             followers_list = temple_data.pop("followers", [])
             target_key = temple_data.get("temple_id") or temple_data.get("id")
@@ -163,9 +207,13 @@ class TempleService:
             if user_id:
                 is_following = following_map.get(edge_id, False) or (user_id in followers_list)
             temple_data["is_following"] = is_following
-            temple_data["distance"] = "2.5 km"  # Placeholder
+
+            if dist_km < 1.0:
+                temple_data["distance"] = f"{int(dist_km * 1000)} m"
+            else:
+                temple_data["distance"] = f"{dist_km:.1f} km"
             result.append(temple_data)
-        
+
         return result
     
     @staticmethod
