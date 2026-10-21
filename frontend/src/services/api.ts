@@ -682,8 +682,8 @@ api.interceptors.response.use(
             } else {
               console.warn(
                 "[API] Refresh failed due to network or server downtime (status: " +
-                  refreshStatus +
-                  "). Preserving user session.",
+                refreshStatus +
+                "). Preserving user session.",
               );
             }
             return null;
