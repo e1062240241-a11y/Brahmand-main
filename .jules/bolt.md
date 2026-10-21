@@ -8,3 +8,7 @@
 ## 2023-10-19 - Chunked Batch Updates for Database Backfills
 **Learning:** Sequential `await db.update_document` loops with cache invalidation (like during data backfilling for official status) causes severe N+1 database operations and performance bottlenecks.
 **Action:** Replace `await db.update_document` inside loops with chunked (<=400 docs per chunk, due to Firestore limits) `await db.batch_update_documents(collection, updates)`. Concurrently gather any dependent tasks like cache invalidations `await asyncio.gather(*[cache_manager.invalidate_user(uid) for uid in chunk])` per chunk to avoid thread exhaustion.
+
+## 2024-05-30 - [Batch Updates to Avoid N+1 Problem]
+**Learning:** In the background task `update_community_stats`, using sequential `await db.update_document(...)` inside a loop leads to an N+1 query problem, severely impacting performance for large numbers of documents.
+**Action:** Replace sequential queries inside loops with `await db.batch_update_documents(collection, updates)` where `updates` is a list of `(doc_id, data_dict)` tuples to significantly reduce the number of individual database write calls. Ensure `updates` list is populated before executing the batched query.
