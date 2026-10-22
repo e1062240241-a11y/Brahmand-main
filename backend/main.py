@@ -9423,14 +9423,16 @@ async def get_temples(
 async def get_nearby_temples(
     lat: Optional[float] = None,
     lng: Optional[float] = None,
+    limit: int = 20,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
-    """Get temples, optionally filtered by location"""
+    """Get temples, optionally filtered by location and ordered by distance"""
     from services.temple_service import TempleService
     user_id = token_data.get("user_id")
     if lat and lng:
-        return await TempleService.get_nearby_temples(lat=lat, lng=lng, user_id=user_id)
-    return await TempleService.get_temples(user_id)
+        return await TempleService.get_nearby_temples(lat=lat, lng=lng, user_id=user_id, limit=limit, offset=offset)
+    return await TempleService.get_temples(user_id, limit=limit, offset=offset)
 
 @api_router.get("/temples/{temple_id}")
 async def get_temple(temple_id: str, token_data: dict = Depends(verify_token)):
