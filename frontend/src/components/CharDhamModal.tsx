@@ -66,7 +66,12 @@ export const CharDhamModal = React.memo(({
             <Text style={styles.modalTitle}>
               {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
             </Text>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Close modal"
+            >
               <Ionicons name="close-circle" size={24} color="#9CA3AF" />
             </Pressable>
           </View>
@@ -79,6 +84,9 @@ export const CharDhamModal = React.memo(({
             return (
               <Pressable
                 key={item.id}
+                accessibilityRole="radio"
+                accessibilityLabel={title}
+                accessibilityState={{ checked: isSelected }}
                 style={({ pressed }) => [
                   styles.charDhamOptionRow,
                   isSelected && styles.charDhamOptionRowSelected,
