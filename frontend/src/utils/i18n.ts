@@ -167,8 +167,13 @@ export const translations = {
     souls: 'souls',
     personalMalaProgress: 'Personal Mala Progress',
     beads: 'Beads',
-    deepBreath: 'Have a deep breath.',
-    nextJaapStartingSoon: 'Next jaap is starting soon...',
+    // 🧡 Engagement: Reframed break messages from transactional fitness prompts ("Have a deep breath." / "Next jaap is starting soon...")
+    // to peaceful, devotional contemplation and sacred anticipation.
+    // Lever: Reframing + Devotional Framing
+    // Why: "Pause & Breathe in Divine Grace" transforms a break between chants into a moment of divine contemplation and peace (bhavna).
+    // UI: Text-only change, zero structural modifications.
+    deepBreath: 'Pause & Breathe in Divine Grace 🪷',
+    nextJaapStartingSoon: 'Preparing the next sacred chant...',
     remaining: 'remaining',
     line: 'LINE',
     session: 'Session',
@@ -466,8 +471,12 @@ export const translations = {
     souls: 'भक्त',
     personalMalaProgress: 'व्यक्तिगत माला प्रगति',
     beads: 'मनके',
-    deepBreath: 'एक गहरी सांस लें।',
-    nextJaapStartingSoon: 'अगला जाप जल्द ही शुरू हो रहा है...',
+    // 🧡 Engagement: Reframed break messages from transactional prompts ("एक गहरी सांस लें।")
+    // to devotional peace ("विश्राम करें व प्रभु नाम का ध्यान धरें 🪷") and sacred anticipation ("अगले पावन जाप का शुभारंभ हो रहा है...").
+    // Lever: Reframing + Devotional Framing (Bhakti over Productivity)
+    // UI: Text-only change, zero structural modifications.
+    deepBreath: 'विश्राम करें व प्रभु नाम का ध्यान धरें 🪷',
+    nextJaapStartingSoon: 'अगले पावन जाप का शुभारंभ हो रहा है...',
     remaining: 'शेष',
     line: 'पंक्ति',
     session: 'सत्र',
