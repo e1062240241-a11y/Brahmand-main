@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,8 @@ import { getFestivalList } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
+import { shareFestivalStoryPdf } from '../src/utils/generateFestivalStoryPdf';
+import * as Haptics from 'expo-haptics';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -53,6 +56,7 @@ const FestivalDetailPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
+  const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
 
   const isMountedRef = useRef<boolean>(true);
 
@@ -194,6 +198,19 @@ const FestivalDetailPage: React.FC = () => {
     [router, festivalIndex, festival, targetId, targetName]
   );
 
+  const handleSharePdf = useCallback(async () => {
+    if (!festival || isSharingPdf) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      setIsSharingPdf(true);
+      await shareFestivalStoryPdf(festival);
+    } catch (e) {
+      console.warn('Failed to share festival PDF:', e);
+    } finally {
+      setIsSharingPdf(false);
+    }
+  }, [festival, isSharingPdf]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -231,19 +248,36 @@ const FestivalDetailPage: React.FC = () => {
           {festivalTitle}
         </Text>
 
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={handleToggleReminder}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={reminderEnabled ? 'Disable festival reminder' : 'Set festival reminder'}
-        >
-          <Ionicons
-            name={reminderEnabled ? 'notifications' : 'notifications-outline'}
-            size={22}
-            color={reminderEnabled ? COLORS.primary : '#000000'}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerActionBtn}
+            onPress={handleSharePdf}
+            disabled={isSharingPdf}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Share complete festival booklet"
+          >
+            {isSharingPdf ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Ionicons name="share-social-outline" size={22} color="#000000" />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerActionBtn}
+            onPress={handleToggleReminder}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={reminderEnabled ? 'Disable festival reminder' : 'Set festival reminder'}
+          >
+            <Ionicons
+              name={reminderEnabled ? 'notifications' : 'notifications-outline'}
+              size={22}
+              color={reminderEnabled ? COLORS.primary : '#000000'}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Festival Detail Card */}
@@ -306,6 +340,18 @@ const styles = StyleSheet.create({
     padding: SPACING.xs,
     width: 40,
     alignItems: 'flex-start',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionBtn: {
+    padding: SPACING.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 32,
+    minHeight: 32,
   },
   notificationButton: {
     padding: SPACING.xs,

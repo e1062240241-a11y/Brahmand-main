@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Asset } from 'expo-asset';
 import { chariotImage } from '../../../src/constants/chariotBase64';
+import { chariotDataUri } from '../../../src/constants/chariotDataUri';
 
 function CertificateDetailScreen({ observedCertificates = [] }: { observedCertificates?: any[] }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
   const userName = user?.name || 'Arjun Sharma';
   const bookName = certificate.bookName || certificate.book_name || 'BHAGAVAD GITA';
   const formattedDate = formatDateIST(certificate.date || new Date().toISOString());
-  const [chariotUri, setChariotUri] = useState('');
+  const [chariotUri, setChariotUri] = useState(chariotDataUri);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,15 +39,17 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
       try {
         if (Platform.OS === 'web') {
           const resolved = Image.resolveAssetSource(chariotImage);
-          if (!cancelled) setChariotUri(resolved?.uri || '');
+          if (!cancelled && resolved?.uri) setChariotUri(resolved.uri);
           return;
         }
-        const asset = Asset.fromModule(chariotImage);
-        await asset.downloadAsync();
-        if (!cancelled) setChariotUri(asset.localUri || asset.uri || '');
+        // Use embedded base64 data URI directly by default to avoid file:// CORS taint in WebView
+        if (!cancelled && chariotDataUri) {
+          setChariotUri(chariotDataUri);
+        }
       } catch (_e) {
-        const resolved = Image.resolveAssetSource(chariotImage);
-        if (!cancelled) setChariotUri(resolved?.uri || '');
+        if (!cancelled && chariotDataUri) {
+          setChariotUri(chariotDataUri);
+        }
       }
     })();
     return () => {
@@ -125,6 +128,13 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
       z-index: 0;
       object-fit: cover;
       pointer-events: none;
+      opacity: 0.85;
+      display: block;
+    }
+
+    body.pdf-capture .certificate-bg-image {
+      opacity: 0.9 !important;
+      display: block !important;
     }
 
     /* Applied during PDF capture to disable animations and restore visibility */
@@ -779,7 +789,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
       const canvas = await html2canvas(element, {
         scale: scale,
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
         imageTimeout: 15000,

@@ -21,8 +21,8 @@ import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
-import { getTrackedBrahmandUrl } from '../utils/generateFestivalStoryPdf';
-import { Share as RNShare } from 'react-native';
+import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
+import { Share as RNShare, ActivityIndicator } from 'react-native';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   try {
@@ -479,6 +479,20 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
 
   const leafCardRef = useRef<any>(null);
   const [isSharingLeaf, setIsSharingLeaf] = useState<boolean>(false);
+  const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
+
+  const handleShareFestivalPdf = async () => {
+    if (isSharingPdf) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      setIsSharingPdf(true);
+      await shareFestivalStoryPdf(festival);
+    } catch (err) {
+      console.warn('Failed to share festival PDF booklet:', err);
+    } finally {
+      setIsSharingPdf(false);
+    }
+  };
 
   const handleShareShamiLeaf = async () => {
     if (isSharingLeaf) return;
@@ -737,10 +751,31 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       {/* Reordered Guide Sections */}
       <View style={styles.guideSection}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeading}>Festival Guide Topics</Text>
-          {sections.length > 0 && (
-            <Text style={styles.sectionCount}>({sections.length} Topics)</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+            <Text style={styles.sectionHeading}>Festival Guide Topics</Text>
+            {sections.length > 0 && (
+              <Text style={styles.sectionCount}>({sections.length})</Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.shareAllHeaderBtn}
+            onPress={handleShareFestivalPdf}
+            disabled={isSharingPdf}
+            activeOpacity={0.8}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Share all festival topics"
+          >
+            {isSharingPdf ? (
+              <ActivityIndicator size="small" color="#B45309" />
+            ) : (
+              <>
+                <Ionicons name="share-social-outline" size={15} color="#92400E" />
+                <Text style={styles.shareAllHeaderText}>Share All</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {sections.map((section, index) => (
@@ -1045,6 +1080,22 @@ const styles = StyleSheet.create({
     color: '#451A03',
     fontSize: 17,
     fontWeight: '700',
+  },
+  shareAllHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  shareAllHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400E',
   },
   goldBadgeDot: {
     width: 6,

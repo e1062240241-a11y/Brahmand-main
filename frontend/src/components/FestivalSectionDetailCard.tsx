@@ -24,6 +24,7 @@ const KARWA_CHAUTH_IMG_2 = require('../../assets/images/festivals/karwa_chauth_p
 const KARWA_CHAUTH_IMG_3 = require('../../assets/images/festivals/karwa_chauth_fainting.jpg');
 const KARWA_CHAUTH_IMG_4 = require('../../assets/images/festivals/karwa_chauth_sieve_tree.jpg');
 const KARWA_CHAUTH_IMG_5 = require('../../assets/images/festivals/karwa_chauth_moon_sighting.jpg');
+const SHARAD_PURNIMA_IMG = require('../../assets/images/festivals/sharad_purnima_hero.jpg');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -118,6 +119,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     const isDussehra = lowerName.includes('dussehra') || lowerName.includes('dasara') || lowerName.includes('vijaya');
     const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
+    const isSharadPurnima = lowerName.includes('sharad purnima') || lowerName.includes('kojagiri');
 
     // Audio story narration is only enabled for Karwa Chauth katha
     const storyAudioSource = isKarvaChauth ? KARVA_CHAUTH_AUDIO : null;
@@ -172,6 +174,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
 
     const heroImageSource = isKarvaChauth
       ? KARWA_CHAUTH_IMG_1
+      : isSharadPurnima
+      ? SHARAD_PURNIMA_IMG
       : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/hariyali_teej_story_hero.webp' }
       : isKajariTeej

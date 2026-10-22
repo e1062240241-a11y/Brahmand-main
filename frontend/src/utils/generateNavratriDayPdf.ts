@@ -19,7 +19,6 @@ import {
   getFestivalTheme,
   loadPdfFonts,
   renderDynamicFestivalPage1,
-  renderDynamicFestivalPage2,
   cleanTextForPdf,
   wrapText,
   decodeBase64ToUint8,

@@ -339,66 +339,62 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          {/* Share Button - Only in 1st (story) section */}
-          {decodedSection === 'Story' ? (
-            <TouchableOpacity 
-              onPress={() => handleShareImage('generic')}
-              activeOpacity={0.8}
-              disabled={isSharing}
-              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="Share Festival Card"
+          {/* Share Button - Available on detail screen to share full festival booklet & all content */}
+          <TouchableOpacity 
+            onPress={handleSharePdf}
+            activeOpacity={0.8}
+            disabled={isSharing}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Share Festival Katha & All Details"
+          >
+            <Animated.View
+              style={[
+                styles.sharePdfButton, 
+                isStorySection && styles.storySharePdfButton,
+                {
+                  width: buttonWidth,
+                  paddingHorizontal: buttonPadding,
+                  overflow: 'hidden',
+                }
+              ]}
             >
               <Animated.View
                 style={[
-                  styles.sharePdfButton, 
-                  styles.storySharePdfButton,
+                  styles.sharePdfContent,
                   {
-                    width: buttonWidth,
-                    paddingHorizontal: buttonPadding,
-                    overflow: 'hidden',
+                    opacity: contentOpacity,
                   }
                 ]}
+                pointerEvents={isSharing ? 'none' : 'auto'}
               >
-                <Animated.View
-                  style={[
-                    styles.sharePdfContent,
-                    {
-                      opacity: contentOpacity,
-                    }
-                  ]}
-                  pointerEvents={isSharing ? 'none' : 'auto'}
-                >
-                  <Ionicons
-                    name="share-social-outline"
-                    size={17}
-                    color="#111827"
-                  />
-                  <Text numberOfLines={1} style={[styles.sharePdfText, styles.storySharePdfText]}>
-                    Share
-                  </Text>
-                </Animated.View>
-
-                <Animated.View
-                  style={{
-                    position: 'absolute',
-                    opacity: loaderOpacity,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  pointerEvents="none"
-                >
-                  <ActivityIndicator
-                    size="small"
-                    color="#111827"
-                  />
-                </Animated.View>
+                <Ionicons
+                  name="share-social-outline"
+                  size={17}
+                  color={isStorySection ? '#111827' : '#FFFFFF'}
+                />
+                <Text numberOfLines={1} style={[styles.sharePdfText, isStorySection && styles.storySharePdfText]}>
+                  Share
+                </Text>
               </Animated.View>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
+
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  opacity: loaderOpacity,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                pointerEvents="none"
+              >
+                <ActivityIndicator
+                  size="small"
+                  color={isStorySection ? '#111827' : '#FFFFFF'}
+                />
+              </Animated.View>
+            </Animated.View>
+          </TouchableOpacity>
         </View>
         )}
 
@@ -408,7 +404,8 @@ const FestivalSectionDetailPage = () => {
             festival={festival}
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
-            onShareImage={() => handleShareImage('generic')}
+            onSharePdf={handleSharePdf}
+            onShareImage={handleSharePdf}
           />
         ) : (
           <ScrollView
@@ -421,7 +418,8 @@ const FestivalSectionDetailPage = () => {
               festival={festival}
               section={decodeURIComponent(section)}
               onBack={() => router.back()}
-              onShareImage={() => handleShareImage('generic')}
+              onSharePdf={handleSharePdf}
+              onShareImage={handleSharePdf}
             />
           </ScrollView>
         )}

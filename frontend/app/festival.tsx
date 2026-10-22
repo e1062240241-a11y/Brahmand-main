@@ -24,6 +24,7 @@ import { getFestivalList } from '../src/services/api';
 import { getFestivalImage } from '../src/constants/festivalImages';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
+import { shareFestivalStoryPdf } from '../src/utils/generateFestivalStoryPdf';
 import { COLORS, SPACING, FONTS } from '../src/constants/theme';
 import { CustomLoader } from '../src/components/CustomLoader';
 
@@ -133,9 +134,16 @@ const FestivalScreen = () => {
     try {
       setIsSharing(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      await shareFestivalCard(null, festivalData.name);
+      const res = await shareFestivalStoryPdf(festivalData);
+      if (!res.success) {
+        // Fallback to card share if PDF sharing fails
+        await shareFestivalCard(null, festivalData.name);
+      }
     } catch (e) {
       console.warn('Share error', e);
+      try {
+        await shareFestivalCard(null, festivalData.name);
+      } catch {}
     } finally {
       setIsSharing(false);
     }

@@ -1,13 +1,23 @@
 import { ImageSourcePropType } from 'react-native';
 
+export interface PracticalStep {
+  stepNumber: number;
+  action: string;
+  idealTimeWindow?: string;
+  significanceOrNote?: string;
+}
+
 export interface FestivalEvent {
   id: string;
+  festivalId?: string;
   title: string;
   time: string;
+  date?: string;
   location?: string;
   description?: string;
   attendeesCount?: number;
   badge?: string;
+  practicalSteps?: PracticalStep[];
 }
 
 export interface FestivalScheduleItem {
@@ -40,7 +50,16 @@ export interface FestivalData {
   deity?: string;
   tithi?: string;
   shubhMuhurat?: string;
+  venue?: string;
+  city?: string;
   aartiSchedule?: FestivalScheduleItem[];
   kathaStatus?: KathaStatus;
   communityEvents?: FestivalEvent[];
+}
+
+export interface AttributionParams {
+  from: string;
+  uid: string;
+  fest: string;
+  [key: string]: string;
 }
