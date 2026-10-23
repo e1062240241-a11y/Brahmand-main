@@ -227,7 +227,7 @@ const HeroHeader: React.FC<HeroHeaderProps> = React.memo(({
             </>
           ) : (
             <>
-              Your next celebration is here — <Text style={styles.festivalHighlight}>{displayFestival}</Text>. Let's walk through its traditions together. ✨
+              Your next celebration is here — <Text style={styles.festivalHighlight}>{displayFestival}</Text>. Let&apos;s walk through its traditions together. ✨
             </>
           )}
         </Text>
@@ -554,6 +554,30 @@ const FestivalPage: React.FC = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="sparkles" size={38} color="#E65100" style={styles.emptyIcon} />
+              <Text style={styles.emptyTitle}>
+                {isHindi ? 'कोई पर्व सूची उपलब्ध नहीं है ✨' : 'No Festivals Listed Yet ✨'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {isHindi
+                  ? 'दैनिक तिथियों, शुभ मुहूर्त एवं पंचांग की जानकारी के लिए आज का पंचांग देखें।'
+                  : 'Check today’s Panchang for daily tithis, auspicious timings, and planetary positions.'}
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyCtaButton}
+                onPress={() => router.push('/panchang')}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={isHindi ? 'आज का पंचांग देखें' : 'View Today’s Panchang'}
+              >
+                <Text style={styles.emptyCtaText}>
+                  {isHindi ? 'आज का पंचांग देखें →' : "Today's Panchang →"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
       </SafeAreaView>
     </LinearGradient>
@@ -746,6 +770,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 24,
+    marginTop: 8,
+  },
+  emptyIcon: {
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#4B5563',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  emptyCtaButton: {
+    backgroundColor: '#E65100',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+  emptyCtaText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 
