@@ -43,8 +43,14 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
 
   return (
     <View style={styles.tabContent}>
+      {/* 🧡 Engagement: Reframed hardcoded English section titles and Choghadiya badges to devotional/cultural framing. */}
+      {/* Lever: Reframing + Culture over Utility + Mother Tongue */}
+      {/* Why: "पंचांग विवरण", "सूर्य एवं चंद्रमा समय", "शुभ" / "अशुभ" frame time and muhurtas through sacred tradition rather than plain utility. */}
+      {/* UI: Text-only change, zero new components or layout weight added. */}
       {/* Panchang Details */}
-      <Text style={styles.sectionHeader}>Panchang Details</Text>
+      <Text style={styles.sectionHeader}>
+        {language === 'hi' ? 'पंचांग विवरण' : 'Panchang Details'}
+      </Text>
       <View style={styles.card}>
         {overview.map((item: OverviewItem, idx: number) => (
           <View key={`${item.label}-${idx}`} style={{ alignSelf: 'stretch' }}>
@@ -58,7 +64,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
       </View>
 
       {/* Sun & Moon Times */}
-      <Text style={styles.sectionHeader}>Sun & Moon Times</Text>
+      <Text style={styles.sectionHeader}>
+        {language === 'hi' ? 'सूर्य एवं चंद्रमा समय' : 'Sun & Moon Times'}
+      </Text>
       <View style={[styles.card, { paddingHorizontal: 0, paddingVertical: 0, overflow: 'hidden' }]}>
         <View style={styles.sunMoonGrid}>
           <View style={styles.sunMoonItem}>
@@ -132,7 +140,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
         <View style={styles.alertIconBox}>
           <Ionicons name="warning" size={14} color="#BA1A1A" />
         </View>
-        <Text style={styles.sectionHeaderAlert}>Inauspicious Times</Text>
+        <Text style={styles.sectionHeaderAlert}>
+          {language === 'hi' ? 'राहुकाल एवं अशुभ समय' : 'Inauspicious Times'}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -158,8 +168,16 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
         </View>
       </View>
 
-      {/* Day Choghadiya Section */}
-      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>Day Choghadiya</Text>
+      {/* Day/Night Choghadiya Section */}
+      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>
+        {language === 'hi'
+          ? choghadiyaMode === 'day'
+            ? 'दिन चौघड़िया'
+            : 'रात्रि चौघड़िया'
+          : choghadiyaMode === 'day'
+          ? 'Day Choghadiya'
+          : 'Night Choghadiya'}
+      </Text>
       <View style={styles.choghadiyaGrid}>
         {activeChoghadiyaList.map((m: ChoghadiyaItem, idx: number) => (
           <View key={`${choghadiyaMode}-${idx}`} style={styles.choghadiyaCard}>
@@ -180,7 +198,13 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
                     : styles.choghadiyaBadgeTextBad
                 }
               >
-                {m.is_good ? 'Good' : 'Bad'}
+                {m.is_good
+                  ? language === 'hi'
+                    ? 'शुभ'
+                    : 'Auspicious'
+                  : language === 'hi'
+                  ? 'अशुभ'
+                  : 'Inauspicious'}
               </Text>
             </View>
           </View>
