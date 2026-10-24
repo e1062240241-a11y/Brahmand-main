@@ -8685,21 +8685,58 @@ def _is_circle_admin(circle: dict, user_id: str) -> bool:
     return user_id in _circle_admin_ids(circle)
 
 @api_router.get("/circles")
-async def get_circles(token_data: dict = Depends(verify_token)):
-    """Get all circles the user is a member of"""
+async def get_circles(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get all circles the user is a member of with DB query bounds and offset pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     circles = []
     
     try:
-        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
-        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+        # Architectural fix: Limit candidate document fetch at DB level with created_at DESC
+        # ordering to (safe_offset + safe_limit) instead of streaming ALL historical circles.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        try:
+            fetched_circles = await db.query_documents(
+                'circles',
+                filters=[('members', 'array_contains', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(
+                    f"Firestore composite index missing for circles members + created_at, falling back to unindexed query: {query_err}"
+                )
+                fetched_circles = await db.query_documents(
+                    'circles',
+                    filters=[('members', 'array_contains', user_id)],
+                    limit=fetch_limit
+                )
+            else:
+                raise query_err
 
-        if fetched_circles:
-            # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
+        # Secondary fallback sort in memory by created_at DESC
+        fetched_circles.sort(
+            key=lambda x: str(x.get('created_at') or ''),
+            reverse=True
+        )
+
+        paged_circles = fetched_circles[safe_offset : safe_offset + safe_limit]
+
+        if paged_circles:
+            # Pre-collect all member IDs across all paged circles to fetch them in a single batch
             all_member_ids = set()
-            for circle in fetched_circles:
+            for circle in paged_circles:
                 if circle:
                     for member_id in circle.get('members', []):
                         if member_id != user_id:
@@ -8709,7 +8746,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
             users_data = await db.get_documents_batch('users', list(all_member_ids))
             users_by_id = {u['id']: u for u in users_data if u and 'id' in u}
 
-            for circle in fetched_circles:
+            for circle in paged_circles:
                 if circle:
                     # Check if this is a cultural group
                     is_cultural = (
@@ -11013,8 +11050,18 @@ async def backfill_official_posts(
     users_to_update = []
     users_already_official = 0
 
-    for uid in users_to_mark:
-        u_doc = await db.get_document('users', uid)
+    # ⚡ Bolt Optimization: Batch fetch user documents to avoid sequential N+1 queries
+    users_to_mark_list = list(users_to_mark)
+    user_docs = await db.get_documents_batch('users', users_to_mark_list)
+
+    # db.get_documents_batch returns a list of dictionaries with 'id' added
+    # (if not present) from the Firestore document id.
+    # Zip doesn't work if any document wasn't found (since missing ones are omitted from results),
+    # so we map them by ID instead.
+    users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+
+    for uid in users_to_mark_list:
+        u_doc = users_map.get(uid)
         if not u_doc:
             continue
         if not is_true_flag(u_doc.get('is_official')):
@@ -13831,14 +13878,22 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
 async def get_vendor_review_queue(
     status: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
-    """Admin: list vendor review queue snapshots."""
+    """Admin: list vendor review queue snapshots with offset-based pagination."""
     log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug_admin.log')
-    with open(log_path, 'a') as f:
-        f.write(f"\n--- API CALL: get_vendor_review_queue status={status} limit={limit} ---\n")
+    try:
+        with open(log_path, 'a') as f:
+            f.write(f"\n--- API CALL: get_vendor_review_queue status={status} limit={limit} offset={offset} ---\n")
+    except Exception as log_err:
+        logger.warning(f"Failed to write admin debug log: {log_err}")
     
     db, _ = await _ensure_admin_user(token_data)
+
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
 
     filters = []
     if status:
@@ -13846,30 +13901,40 @@ async def get_vendor_review_queue(
 
     records = []
     try:
-        with open(log_path, 'a') as f:
-            f.write("Attempting query with ordering...\n")
-        records = await db.query_documents(
+        try:
+            with open(log_path, 'a') as f:
+                f.write("Attempting query with ordering...\n")
+        except Exception:
+            pass
+
+        # Architectural fix: Limit candidate document fetch at DB layer to safe_offset + safe_limit
+        # to avoid O(N_vendors) reads and memory allocation at 1 lakh+ scale.
+        fetched = await db.query_documents(
             'vendor_admin_reviews',
             filters=filters,
             order_by='updated_at',
             order_direction='DESCENDING',
-            limit=limit,
+            limit=fetch_limit,
         )
-        with open(log_path, 'a') as f:
-            f.write(f"Ordered query success: {len(records)} records found.\n")
-    except Exception as exc:
-        with open(log_path, 'a') as f:
-            f.write(f"Ordered query failed: {exc}\nAttempting fallback query...\n")
+        records = fetched[safe_offset : safe_offset + safe_limit] if fetched else []
         try:
-            records = await db.query_documents(
+            with open(log_path, 'a') as f:
+                f.write(f"Ordered query success: {len(records)} records returned for page.\n")
+        except Exception:
+            pass
+    except Exception as exc:
+        try:
+            with open(log_path, 'a') as f:
+                f.write(f"Ordered query failed: {exc}\nAttempting fallback query...\n")
+        except Exception:
+            pass
+        try:
+            # Fallback query bounded to fetch_limit to avoid full collection scan
+            fetched = await db.query_documents(
                 'vendor_admin_reviews',
                 filters=filters,
+                limit=fetch_limit,
             )
-            with open(log_path, 'a') as f:
-                f.write(f"Fallback query fetched {len(records)} records. Types of updated_at:\n")
-                for r in records:
-                    up_at = r.get('updated_at')
-                    f.write(f"  ID: {r.get('vendor_id') or r.get('id')} - updated_at: {up_at} ({type(up_at)})\n")
             
             # Helper to get sorting key safely
             def get_sort_key(item):
@@ -13880,13 +13945,23 @@ async def get_vendor_review_queue(
                     return val.isoformat()
                 return str(val)
                 
-            records.sort(key=get_sort_key, reverse=True)
-            records = records[:max(1, limit)]
-            with open(log_path, 'a') as f:
-                f.write("Fallback sorting succeeded.\n")
+            if fetched:
+                fetched.sort(key=get_sort_key, reverse=True)
+                records = fetched[safe_offset : safe_offset + safe_limit]
+            else:
+                records = []
+
+            try:
+                with open(log_path, 'a') as f:
+                    f.write("Fallback sorting succeeded.\n")
+            except Exception:
+                pass
         except Exception as fallback_exc:
-            with open(log_path, 'a') as f:
-                f.write(f"Fallback query or sort failed: {fallback_exc}\n")
+            try:
+                with open(log_path, 'a') as f:
+                    f.write(f"Fallback query or sort failed: {fallback_exc}\n")
+            except Exception:
+                pass
 
     # Batch fetch users for vendor records missing contact info to fix N+1 query
     owner_ids_to_fetch = set()

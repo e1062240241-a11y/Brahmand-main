@@ -18,7 +18,6 @@ import { NavdurgaDayDetail } from '../data/navdurgaDaysData';
 import {
   getFestivalTheme,
   loadPdfFonts,
-  renderDynamicFestivalPage1,
   cleanTextForPdf,
   wrapText,
   decodeBase64ToUint8,
@@ -442,7 +441,6 @@ function buildNavdurgaChapters(dayData: NavdurgaDayDetail) {
   }
 
   // Fallback if day is somehow out of 1-9 bounds
-  const kathaText = dayData.katha || '';
   const para1 = 'Tridev ke tej aur alaukik aashirwad se Maa Durga ka divya avatar hua, jinhone adharm ka naash kar dharmi shanti sthaapit ki.';
   const para2 = 'Kadi tapasya aur anany bhakti ke bal par Mata ne sabhi daanavon aur kashton ko parajit kar teeno lokon ko shanti pradaan ki.';
   const para3 = 'Maa ki pawan upasana se hriday ke saare darr, sankat aur chintayein nasht hoti hain, aur aatm-shakti ka sanchar hota hai.';
@@ -548,7 +546,7 @@ export async function generateNavratriDayPdf(dayData: NavdurgaDayDetail): Promis
     if (existing.exists) {
       await FileSystem.deleteAsync(fileUri, { idempotent: true });
     }
-  } catch (_cleanErr) {}
+  } catch {}
 
   await FileSystem.writeAsStringAsync(fileUri, base64Pdf, {
     encoding: FileSystem.EncodingType.Base64,
@@ -688,10 +686,7 @@ async function renderNavratriRoyalPage1(
 
   // Dynamic royal palette
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
-  const colTerracotta = theme.secondaryAccent || rgb(0.769, 0.388, 0.247);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
-  const colPeachDeep = rgb(0.961, 0.710, 0.541);
-  const colSage = rgb(0.541, 0.584, 0.451);
   const colSageDeep = rgb(0.20, 0.28, 0.15);
   const colAmber = theme.gold || rgb(0.878, 0.651, 0.298);
   const colInk = rgb(0.10, 0.07, 0.05);
@@ -1038,7 +1033,7 @@ async function renderNavratriRoyalPage1(
       44 + pfxW + lnkW + 2,
       footY + 13,
     ]);
-  } catch (_e) {}
+  } catch {}
 
   const pageText = 'PAGE 1 OF 2  *  DAILY SANATAN COMMUNITY';
   const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 7);
@@ -1072,10 +1067,7 @@ async function renderNavratriRoyalPage2(
   const brandFont = fontCinzel || displayFont;
 
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
-  const colTerracotta = theme.secondaryAccent || rgb(0.769, 0.388, 0.247);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
-  const colPeachDeep = rgb(0.961, 0.710, 0.541);
-  const colSage = rgb(0.541, 0.584, 0.451);
   const colSageDeep = rgb(0.20, 0.28, 0.15);
   const colAmber = theme.gold || rgb(0.878, 0.651, 0.298);
   const colVintageGold = rgb(0.784, 0.663, 0.494);

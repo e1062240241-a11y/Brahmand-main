@@ -150,16 +150,10 @@ export const VendorCategories = React.memo<VendorCategoriesProps>(({
 }) => {
   const router = useRouter();
 
-  // Stable category key ensures list is only reshuffled when item contents actually change, preserving order stability across parent re-renders
-  const categoriesKey = categories.join(',');
-  const shuffledCategories = useMemo(() => {
-    const list = [...categories];
-    for (let i = list.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [list[i], list[j]] = [list[j], list[i]];
-    }
-    return list;
-  }, [categoriesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep category order stable and predictable based on provided props
+  const sortedCategories = useMemo(() => {
+    return [...categories];
+  }, [categories]);
 
   const handlePress = useCallback((category: string) => {
     if (onCategoryPress) {
@@ -171,7 +165,7 @@ export const VendorCategories = React.memo<VendorCategoriesProps>(({
 
   return (
     <View style={[horizontal ? styles.horizontalContainer : styles.gridContainer, containerStyle]}>
-      {shuffledCategories.map((cat, i) => {
+      {sortedCategories.map((cat, i) => {
         const isActive = activeCategory?.toLowerCase() === cat.toLowerCase();
         return (
           <CategoryItem

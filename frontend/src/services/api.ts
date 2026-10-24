@@ -1,5 +1,6 @@
 import axios from "axios";
 import { encryptMessage, encryptGroupMessage } from '../utils/cryptoUtil';
+import CryptoJS from 'crypto-js';
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
@@ -317,8 +318,11 @@ const ENABLE_WEB_DIRECT_VIDEO_UPLOAD = true; // Also force web to use Bunny dire
 const isVideoMimeType = (value?: string) =>
   (value || "").toLowerCase().startsWith("video/");
 
-const makeUploadId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+const makeUploadId = () => {
+  // Use Cryptographically Secure Pseudo-Random Number Generator (CSPRNG)
+  const randomBytes = CryptoJS.lib.WordArray.random(4).toString();
+  return `${Date.now()}-${randomBytes}`;
+};
 
 type PostUploadFields = {
   caption: string;
