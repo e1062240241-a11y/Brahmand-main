@@ -216,24 +216,24 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
     // Status Chip Text & Styling
     // 🧡 Engagement: Reframed transactional status chip text into devotional Sanskara (संस्कार) and Zeigarnik proximity copy.
     // Lever: Reframing + Proximity to Completion + Sanskara/Habit
-    // Why: "आज का साधना दीप जलाएं 🪔" frames lighting the daily diya as a sacred daily ritual (संस्कार) rather than a task.
-    //      "🪔 बस ${remaining} जाप और" emphasizes closeness to completing the daily mala, urging immediate completion.
+    // Why: "आज का साधना संकल्प लें 🪔" frames starting jaap as a sacred vow (संकल्प) rather than an app task.
+    //      "🪔 बस ${remaining} और — संकल्प पूर्ण करें" emphasizes proximity to completing the mala with devotional urgency.
     // UI: Text-only change, zero structural or visual component modifications.
     let statusChipText = '';
     let statusChipType: 'complete' | 'in_progress' | 'unlit' = 'unlit';
 
     if (isTodayCompleted) {
       statusChipType = 'complete';
-      statusChipText = isHindi ? '✨ आज का दिया जल गया 🙏' : '✨ Today\'s Diya Lit 🙏';
+      statusChipText = isHindi ? '✨ आज का साधना संकल्प पूर्ण 🙏' : '✨ Today\'s Sadhana Complete 🙏';
     } else if (todayCount > 0) {
       statusChipType = 'in_progress';
       const remaining = Math.max(0, 108 - todayCount);
       statusChipText = isHindi
-        ? `🪔 बस ${remaining} जाप बाकी`
-        : `🪔 Just ${remaining} chants left`;
+        ? `🪔 बस ${remaining} और — संकल्प पूर्ण करें`
+        : `🪔 Just ${remaining} more — complete vow`;
     } else {
       statusChipType = 'unlit';
-      statusChipText = isHindi ? 'जाप शुरू करें और दिया जलाएं 🪔' : 'Start Jaap to Light Diya 🪔';
+      statusChipText = isHindi ? 'आज का साधना संकल्प लें 🪔' : 'Take Today\'s Sadhana Vow 🪔';
     }
 
     if (isDismissed) {
