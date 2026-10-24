@@ -91,8 +91,9 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 2,
-        marginTop: Platform.OS === 'android' ? 8 : 0,
+        marginTop: Platform.OS === 'android' ? 6 : 0,
         paddingTop: Platform.OS === 'android' ? 4 : 0,
+        minHeight: Platform.OS === 'android' ? 48 : 52,
     },
     headerLeft: {
         flexDirection: 'row',
@@ -103,12 +104,15 @@ export const styles = StyleSheet.create({
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 0,
+        gap: 8,
     },
     headerIconButton: {
         width: Platform.OS === 'android' ? 36 : 40,
         height: Platform.OS === 'android' ? 36 : 40,
         borderRadius: Platform.OS === 'android' ? 18 : 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderWidth: 0.8,
+        borderColor: 'rgba(255, 255, 255, 0.22)',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',

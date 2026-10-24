@@ -339,62 +339,64 @@ const FestivalSectionDetailPage = () => {
             </Text>
           )}
 
-          {/* Share Button - Available on detail screen to share full festival booklet & all content */}
-          <TouchableOpacity 
-            onPress={handleSharePdf}
-            activeOpacity={0.8}
-            disabled={isSharing}
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Share Festival Katha & All Details"
-          >
-            <Animated.View
-              style={[
-                styles.sharePdfButton, 
-                isStorySection && styles.storySharePdfButton,
-                {
-                  width: buttonWidth,
-                  paddingHorizontal: buttonPadding,
-                  overflow: 'hidden',
-                }
-              ]}
+          {/* Share Button - Only visible in Story section */}
+          {isStorySection && (
+            <TouchableOpacity 
+              onPress={handleSharePdf}
+              activeOpacity={0.8}
+              disabled={isSharing}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Share Festival Katha"
             >
               <Animated.View
                 style={[
-                  styles.sharePdfContent,
+                  styles.sharePdfButton, 
+                  styles.storySharePdfButton,
                   {
-                    opacity: contentOpacity,
+                    width: buttonWidth,
+                    paddingHorizontal: buttonPadding,
+                    overflow: 'hidden',
                   }
                 ]}
-                pointerEvents={isSharing ? 'none' : 'auto'}
               >
-                <Ionicons
-                  name="share-social-outline"
-                  size={17}
-                  color={isStorySection ? '#111827' : '#FFFFFF'}
-                />
-                <Text numberOfLines={1} style={[styles.sharePdfText, isStorySection && styles.storySharePdfText]}>
-                  Share
-                </Text>
-              </Animated.View>
+                <Animated.View
+                  style={[
+                    styles.sharePdfContent,
+                    {
+                      opacity: contentOpacity,
+                    }
+                  ]}
+                  pointerEvents={isSharing ? 'none' : 'auto'}
+                >
+                  <Ionicons
+                    name="share-social-outline"
+                    size={17}
+                    color="#111827"
+                  />
+                  <Text numberOfLines={1} style={[styles.sharePdfText, styles.storySharePdfText]}>
+                    Share
+                  </Text>
+                </Animated.View>
 
-              <Animated.View
-                style={{
-                  position: 'absolute',
-                  opacity: loaderOpacity,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                pointerEvents="none"
-              >
-                <ActivityIndicator
-                  size="small"
-                  color={isStorySection ? '#111827' : '#FFFFFF'}
-                />
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    opacity: loaderOpacity,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  pointerEvents="none"
+                >
+                  <ActivityIndicator
+                    size="small"
+                    color="#111827"
+                  />
+                </Animated.View>
               </Animated.View>
-            </Animated.View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
         )}
 

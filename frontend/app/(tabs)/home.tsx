@@ -28,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter, useIsFocused, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1691,11 +1692,16 @@ export default function HomeScreen() {
   ]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
-          <View style={{ flex: 1 }}>
-            <FeedSection
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <StatusBar style="light" />
+      <LinearGradient
+        colors={['#000000', '#05060A', '#0B0D14', '#121520', '#1C202E', '#32384D', '#D0D6E5', '#FFFFFF']}
+        locations={[0, 0.08, 0.17, 0.28, 0.40, 0.54, 0.74, 1.0]}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      <SafeAreaView style={{ flex: 1 }} edges={['left', 'right']}>
+        <View style={{ flex: 1 }}>
+          <FeedSection
               user={user}
               onLikePost={handleLikePost}
               onOpenComment={handleOpenComment}
@@ -2157,8 +2163,7 @@ export default function HomeScreen() {
               </View>
             </KeyboardAvoidingView>
           </Modal>
-        </LinearGradient>
-      </SafeAreaView >
+      </SafeAreaView>
 
       <LocationPickerModal
         visible={locationPickerVisible}

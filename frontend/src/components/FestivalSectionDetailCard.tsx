@@ -17,6 +17,7 @@ import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
 
 // ponytail: local bundle, upload to BunnyCDN /audio/karwachauth.mp3 if size matters
 const KARVA_CHAUTH_AUDIO = require('../../assets/audio/karwachauth.mp3');
+const SHARAD_PURNIMA_AUDIO = require('../../assets/audio/sharad_purnima.mp3');
 
 // Local Karwa Chauth story artwork arranged in exact order of upload
 const KARWA_CHAUTH_IMG_1 = require('../../assets/images/festivals/karwa_chauth_brothers_feast.jpg');
@@ -119,10 +120,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     const isDussehra = lowerName.includes('dussehra') || lowerName.includes('dasara') || lowerName.includes('vijaya');
     const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
-    const isSharadPurnima = lowerName.includes('sharad purnima') || lowerName.includes('kojagiri');
+    const isSharadPurnima = lowerName.includes('sharad purnima') || lowerName.includes('kojagiri') || lowerName.includes('kojagara');
 
-    // Audio story narration is only enabled for Karwa Chauth katha
-    const storyAudioSource = isKarvaChauth ? KARVA_CHAUTH_AUDIO : null;
+    // Audio story narration enabled for Karwa Chauth and Sharad Purnima katha
+    const storyAudioSource = isKarvaChauth
+      ? KARVA_CHAUTH_AUDIO
+      : isSharadPurnima
+      ? SHARAD_PURNIMA_AUDIO
+      : null;
 
     const audioPlayer = useAudioPlayer(storyAudioSource, { keepAudioSessionActive: true });
     const playerStatus = useAudioPlayerStatus(audioPlayer);
@@ -275,10 +280,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Return to Ayodhya'
           : isShivratri
           ? 'Tandava & Lingam'
+          : isSharadPurnima
+          ? 'ऋषि वालखिल्य एवं वलित'
           : 'Sacred Origin',
         icon: isJanmashtami ? 'leaf' : 'leaf',
         content: isKarvaChauth
           ? 'Queen Veervati, the only beloved sister among seven caring brothers, visited her parents\' home on Karva Chauth. Adhering to the sacred vow of fasting for her husband\'s longevity, she went the entire day without food or water, waiting devotedly for the moonrise.'
+          : isSharadPurnima
+          ? 'ऋषि वालखिल्य के शिष्यों ने उनसे पूछा, “गुरुदेव! कार्तिक मास के उपांग व्रत कौन-से हैं, जिनके करने से कार्तिक का व्रत पूर्ण हो जाता है?” ऋषि वालखिल्य ने कहा, “पुत्रो! आश्विन मास की शुक्ल पक्ष की पूर्णिमा को रात्रि में जागरण करते हुए श्रद्धापूर्वक माता लक्ष्मी की पूजा-अर्चना करनी चाहिए। इस रात भगवान विष्णु के साथ माता लक्ष्मी पृथ्वी पर भ्रमण करती हैं, और जो भक्त उन्हें जागता हुआ मिलता है, उसे वे अपार धन-वैभव का आशीर्वाद देती हैं। इस व्रत की महिमा बताने के लिए मैं वलित नाम के दरिद्र ब्राह्मण की कथा सुनाता हूँ।”\n\nमगध देश में वलित नाम का एक ब्राह्मण रहता था। वह अनेक विद्याओं का ज्ञाता था और नित्य संध्या-स्नान करता था, किंतु आर्थिक रूप से अत्यंत निर्धन था। यदि कोई उसके घर आकर कुछ दान दे जाता, तो वह स्वीकार कर लेता, अन्यथा वह स्वयं किसी से कुछ नहीं माँगता था — उसके लिए माँगना मृत्यु के समान था।'
           : isDussehra
           ? 'On the tenth day of the epic war in Lanka, Lord Rama defeated the ten-headed demon king Ravana. Before battle, Lord Rama invoked Goddess Durga and recited the Aditya Hridayam stotram, symbolizing the supreme triumph of Dharma (righteousness) over evil.'
           : isHariyaliTeej
@@ -330,10 +339,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Lakshmi Pujan'
           : isShivratri
           ? 'Shiva-Parvati Marriage'
+          : isSharadPurnima
+          ? 'पत्नी चंडी एवं श्राद्ध'
           : 'Divine Penance',
         icon: isJanmashtami ? 'drop' : 'flame',
         content: isKarvaChauth
           ? 'Distressed seeing their sister faint from extreme hunger and thirst, the brothers lit a massive fire behind a distant Pipal tree and placed a round sieve in front of it, tricking Veervati into believing the glowing flame was the rising full moon.'
+          : isSharadPurnima
+          ? 'उसकी पत्नी चंडी कलहप्रिय थी। वह प्रतिदिन झगड़ा करती कि उसकी बहनें धनवान घरों में ब्याही हैं और वह एक निर्धन के घर पड़ गई। उसने प्रण ले रखा था कि जब तक वे धनवान नहीं होंगे, वह पति की हर आज्ञा का उल्टा ही करेगी।\n\nएक बार पितृ पक्ष में वलित ने मित्र गणपति की सलाह पर पत्नी से कहा, “परसों मेरे पिता का श्राद्ध है, तुम कोई व्यवस्था मत करना और भोजन के लिए जुआरियों व बुरे चरित्र वालों को बुला लेना।” उल्टा करने की धुन में पत्नी ने उत्तम व्यंजन बनाकर नगर के सर्वश्रेष्ठ ब्राह्मणों को आमंत्रित किया और विधि-विधान से श्राद्ध संपन्न हुआ। किंतु अंत में पिंडदान के बाद जब वलित ने कहा कि वह पिंड गंगा जल में बहाना भूल गई है, तो उल्टे स्वभाव के कारण उसने पिंडों को गंदे कुएँ में फेंक दिया। इस आघात से दुखी वलित घर त्यागकर धर्मा नदी तट पर माता लक्ष्मी की तपस्या में बैठ गया और आश्विन पूर्णिमा आ गई।'
           : isDussehra
           ? 'Vijayadashami also marks the triumphant victory of Maa Durga over the ferocious buffalo-demon Mahishasura. After a fierce battle lasting nine days and nine nights, the Goddess pierced the demon with her divine trident on the tenth day, liberating the three worlds.'
           : isHariyaliTeej
@@ -385,10 +398,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Govardhan & Bhai Dooj'
           : isShivratri
           ? 'Neelkanth Poison'
+          : isSharadPurnima
+          ? 'नाग कन्याएँ एवं चौसर'
           : 'Cosmic Event',
         icon: 'om',
         content: isKarvaChauth
           ? 'As she swallowed the first morsel of food, news arrived that her husband, the king, had suddenly fallen critically ill. Realizing her fast was broken under a false moon, she wept inconsolably and prayed with pure devotion. Goddess Parvati appeared, advising her to undertake the fast again with unwavering sanctity.'
+          : isSharadPurnima
+          ? 'धर्मा नदी के तट पर कालिय नाग वंश की कन्याएँ माता लक्ष्मी को प्रसन्न करने के लिए व्रत कर रही थीं। उन्होंने पंचामृत, रत्न और दर्पण अर्पित कर माता लक्ष्मी का श्रद्धापूर्वक पूजन किया। रात्रि में चौसर खेलने की तैयारी हुई, किंतु चार खिलाड़ियों की आवश्यकता थी और वे तीन ही थीं। उन्होंने नदी तट पर बैठे वलित को चौसर खेलने के लिए आमंत्रित किया।\n\nवलित ने कहा कि चौसर अर्थात जुआ खेलने से लक्ष्मी का क्षय और धर्म का नाश होता है। तब कन्याओं ने बताया कि आश्विन पूर्णिमा की रात माता लक्ष्मी चौसर खेलने से प्रसन्न होती हैं। वे वलित को मंदिर ले गईं, प्रसाद व नारियल-पानी दिया और चौसर का खेल आरंभ हुआ। नाग कन्याओं ने अमूल्य रत्न दाँव पर लगाए, जबकि निर्धन वलित ने पहले लंगोट, फिर जनेऊ, और अंत में अपनी देह भी दाँव पर लगा दी और सब कुछ हारकर खाली हाथ बैठ गया।'
           : isDussehra
           ? 'In the Mahabharata, the Pandavas concealed their celestial weapons inside the hollow of a sacred Shami tree before starting their one-year incognito exile (Agyatvas). On Vijayadashami, they returned victorious, retrieved their arms undamaged from the Shami tree, and defeated the Kaurava army.'
           : isHariyaliTeej
@@ -440,10 +457,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Lighting Diyas'
           : isShivratri
           ? 'Maha Abhishekam'
+          : isSharadPurnima
+          ? 'माँ लक्ष्मी की दिव्य कृपा'
           : 'Spiritual Grace',
         icon: isJanmashtami ? 'gear' : 'flower',
         content: isKarvaChauth
           ? 'Veervati observed the fast following all strict traditions. At night, married women gather in festive circles for the Karva Chauth Katha ritual, rotating earthen thalis while singing verses of auspiciousness before offering Arghya water to the moon through a decorative chalni (sieve).'
+          : isSharadPurnima
+          ? 'मध्यरात्रि में चंद्रमा अपनी सोलह कलाओं से दीप्तिमान था। तभी देवी लक्ष्मी भगवान श्री विष्णु के साथ संसार का भ्रमण करते हुए वहाँ से गुजरीं। उन्होंने देखा कि एक ब्राह्मण कौपीन और यज्ञोपवीत से विहीन होकर घोर चिंता और निराशा में डूबा बैठा है। यह दृश्य देखकर भगवान विष्णु द्रवित हो उठे और उन्होंने लक्ष्मी जी से कहा, “देवि! यह ब्राह्मण आपका भक्त है और आपके इस व्रत का पालन कर रहा है, कृपया इसके कष्टों का निवारण करें।”\n\nमाता लक्ष्मी ने वलित पर अपनी करुणामयी दृष्टि डाली, जिससे उसकी समस्त दरिद्रता तत्काल नष्ट हो गई। लक्ष्मी जी की कृपा से उसका रूप कामदेव के समान तेजस्वी हो गया, हारे हुए रत्न और धन वापस मिल गए। नाग कन्याओं ने उससे गंधर्व विवाह किया और नाना प्रकार के रत्नों के साथ वलित ससम्मान अपने घर लौटा।'
           : isDussehra
           ? 'On this auspicious day, people worship the sacred Shami (Apta) tree and exchange its leaves as gold ("सोनं घ्या, सोन्यासारखे राहा!"). Legend tells of the young scholar Kautsa, whose teacher guru dakshina was fulfilled by Lord Kubera showering gold coins upon the Shami and Apta trees on Dussehra.'
           : isHariyaliTeej
@@ -495,10 +516,14 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Fireworks & Sweets'
           : isShivratri
           ? 'Peace & Moksha'
+          : isSharadPurnima
+          ? 'फलश्रुति एवं कोजागर महिमा'
           : 'Festive Joy',
         icon: 'star',
         content: isKarvaChauth
           ? 'Her husband was restored to full health by divine grace. Today, women commence the fast at dawn with Sargi gifted by mothers-in-law, adorn exquisite red attire and henna, and break the fast by receiving water from their husbands, celebrating eternal love.'
+          : isSharadPurnima
+          ? 'घर लौटकर वलित ने पत्नी का सम्मान किया, जिससे वह भी कलह त्यागकर आज्ञाकारी हो गई।\n\nऋषि वालखिल्य ने कहा, “इसीलिए पुत्रो! आश्विन पूर्णिमा को कोजागर व्रत अवश्य करना चाहिए। रात भर जागरण करते हुए माता लक्ष्मी का भजन-पूजन करें और नारियल-पानी तथा चौसर से उन्हें प्रसन्न करें। जो भक्त इस रात जागता हुआ माता को मिलता है, वह सदा ऐश्वर्य-संपन्न रहता है।”\n\nयह कथा सिखाती है कि जो भक्त श्रद्धा और जागरण के साथ माता लक्ष्मी का स्मरण करता है, उसकी दरिद्रता दूर होती है और घर में धन-धान्य की वृद्धि होती है। हे माता लक्ष्मी! जैसे आपने दरिद्र वलित ब्राह्मण पर कृपा की, वैसे ही इस व्रत कथा को श्रद्धापूर्वक सुनने और पढ़ने वाले सभी भक्तों पर अपनी कृपादृष्टि बनाए रखें। जय माता लक्ष्मी! जय भगवान विष्णु! जय कोजागर व्रत! मंगल कामना — आपका व्रत सफल हो।'
           : isDussehra
           ? 'Grand Ramlila plays conclude with the burning of giant effigies of Ravana, Kumbhakarna, and Meghanada amidst fireworks. Devotees also perform Ayudha Puja (worship of vehicles and tools), greeting elders by gifting Shami leaves with wishes of eternal peace, success, and prosperity.'
           : isHariyaliTeej
@@ -587,6 +612,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       ? 'Return of Lord Rama & Worship of Goddess Lakshmi'
       : isShivratri
       ? 'Anand Tandava & Cosmic Light of Shivling'
+      : isSharadPurnima
+      ? 'ऋषि वालखिल्य प्रोक्त दरिद्र वलित कोजागर व्रत कथा एवं माँ लक्ष्मी कृपा'
       : `Mythology & Divine Origin of ${festivalName}`;
 
     return (
@@ -635,22 +662,30 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
             ]}
           >
             <View style={styles.dropCapStoryRow}>
-              <Text style={styles.dropCapLetter}>
-                {(currentChapter.content || '').charAt(0)}
-              </Text>
-              <Text style={styles.storyBodyText}>
-                <Text style={styles.storyFirstWord}>
-                  {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
-                </Text>{' '}
-                {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
-              </Text>
+              {isSharadPurnima ? (
+                <Text style={[styles.storyBodyText, { fontSize: 16.5, lineHeight: 28, color: '#F3F4F6' }]}>
+                  {currentChapter.content}
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.dropCapLetter}>
+                    {(currentChapter.content || '').charAt(0)}
+                  </Text>
+                  <Text style={styles.storyBodyText}>
+                    <Text style={styles.storyFirstWord}>
+                      {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
+                    </Text>{' '}
+                    {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
+                  </Text>
+                </>
+              )}
             </View>
 
             {/* Next Chapter Preview Peek */}
             {chapters[activeTab + 1] && (
               <View style={styles.nextChapterPeek}>
                 <Text style={styles.nextChapterBlurredText} numberOfLines={3}>
-                  In the next chapter, {chapters[activeTab + 1].content}
+                  {isSharadPurnima ? `अगले अध्याय में: ${chapters[activeTab + 1].content}` : `In the next chapter, ${chapters[activeTab + 1].content}`}
                 </Text>
               </View>
             )}
