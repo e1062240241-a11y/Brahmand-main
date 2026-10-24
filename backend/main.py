@@ -8685,21 +8685,58 @@ def _is_circle_admin(circle: dict, user_id: str) -> bool:
     return user_id in _circle_admin_ids(circle)
 
 @api_router.get("/circles")
-async def get_circles(token_data: dict = Depends(verify_token)):
-    """Get all circles the user is a member of"""
+async def get_circles(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """Get all circles the user is a member of with DB query bounds and offset pagination."""
     db = await get_db()
     user_id = token_data["user_id"]
     
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
     circles = []
     
     try:
-        # ⚡ Bolt Optimization: Use array_contains on circles collection instead of fetching user doc + batch getting circles
-        fetched_circles = await db.query_documents('circles', filters=[('members', 'array_contains', user_id)])
+        # Architectural fix: Limit candidate document fetch at DB level with created_at DESC
+        # ordering to (safe_offset + safe_limit) instead of streaming ALL historical circles.
+        # This prevents O(N) Firestore reads and O(N) memory allocation per request.
+        try:
+            fetched_circles = await db.query_documents(
+                'circles',
+                filters=[('members', 'array_contains', user_id)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(
+                    f"Firestore composite index missing for circles members + created_at, falling back to unindexed query: {query_err}"
+                )
+                fetched_circles = await db.query_documents(
+                    'circles',
+                    filters=[('members', 'array_contains', user_id)],
+                    limit=fetch_limit
+                )
+            else:
+                raise query_err
 
-        if fetched_circles:
-            # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
+        # Secondary fallback sort in memory by created_at DESC
+        fetched_circles.sort(
+            key=lambda x: str(x.get('created_at') or ''),
+            reverse=True
+        )
+
+        paged_circles = fetched_circles[safe_offset : safe_offset + safe_limit]
+
+        if paged_circles:
+            # Pre-collect all member IDs across all paged circles to fetch them in a single batch
             all_member_ids = set()
-            for circle in fetched_circles:
+            for circle in paged_circles:
                 if circle:
                     for member_id in circle.get('members', []):
                         if member_id != user_id:
@@ -8709,7 +8746,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
             users_data = await db.get_documents_batch('users', list(all_member_ids))
             users_by_id = {u['id']: u for u in users_data if u and 'id' in u}
 
-            for circle in fetched_circles:
+            for circle in paged_circles:
                 if circle:
                     # Check if this is a cultural group
                     is_cultural = (
@@ -11013,8 +11050,18 @@ async def backfill_official_posts(
     users_to_update = []
     users_already_official = 0
 
-    for uid in users_to_mark:
-        u_doc = await db.get_document('users', uid)
+    # ⚡ Bolt Optimization: Batch fetch user documents to avoid sequential N+1 queries
+    users_to_mark_list = list(users_to_mark)
+    user_docs = await db.get_documents_batch('users', users_to_mark_list)
+
+    # db.get_documents_batch returns a list of dictionaries with 'id' added
+    # (if not present) from the Firestore document id.
+    # Zip doesn't work if any document wasn't found (since missing ones are omitted from results),
+    # so we map them by ID instead.
+    users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+
+    for uid in users_to_mark_list:
+        u_doc = users_map.get(uid)
         if not u_doc:
             continue
         if not is_true_flag(u_doc.get('is_official')):
