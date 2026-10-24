@@ -50,6 +50,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/messages/community/{community_id}/{subgroup_type}/{message_id}/comments` — unpaginated query across all post_comments — FIXED
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
 - `/circles/{circle_id}/requests` — unpaginated query across all circle join requests — FIXED
+- `/circles` — unpaginated query across all user circles — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
@@ -157,3 +158,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-26 - Haversine Proximity Sorting & Offset Pagination for Nearby Temples
 **Learning:** `GET /temples/nearby` previously returned an un-sorted slice of 20 cached temples (`cached[:20]`), ignored user latitude/longitude, hardcoded a static distance string (`"2.5 km"`), and lacked offset pagination parameters. At 1 lakh+ scale, users across different geographies received incorrect proximity results and could not paginate through nearby temples.
 **Action:** Implemented `_haversine_distance` in `TempleService.get_nearby_temples` to compute exact distance in kilometers from user coordinates, sorted cached temples in ascending proximity order, formatted human-readable distance strings (`m` / `km`), and added `limit` & `offset` query parameters across `TempleService`, `backend/main.py`, and `backend/routes/temple_routes.py`.
+
+## 2026-09-27 - Offset-based pagination & DB query bounds for GET /circles
+**Learning:** `GET /circles` previously fetched all circles where the user was a member without limit or offset query parameters ($O(N_{\text{user\_circles}})$ reads). Furthermore, it collected member IDs across all circles before fetching user profiles, leading to high memory allocation and slow response times for users in many circles at 1 lakh+ scale.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_circles` in `backend/main.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering and index exception fallback logic, and restricted member user profile batch fetches to only the paged circles.
