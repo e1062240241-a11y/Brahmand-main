@@ -236,6 +236,8 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
                     <TouchableOpacity
                         style={[cardStyles.actionBtn, { backgroundColor: '#FF0022', shadowColor: '#FF0022' }]}
                         onPress={onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('view')}
                     >
                         <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
@@ -271,6 +273,8 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
                     <TouchableOpacity
                         style={[cardStyles.actionBtn, { backgroundColor: '#FF9500', shadowColor: '#FF9500' }]}
                         onPress={onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={myVendor ? t('manage') : t('register')}
                     >
                         <Text style={cardStyles.actionBtnText} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                     </TouchableOpacity>
@@ -310,6 +314,8 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
                     <TouchableOpacity
                         style={[cardStyles.actionBtn, { backgroundColor: '#00C781', shadowColor: '#00C781' }]}
                         onPress={onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('view')}
                     >
                         <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
@@ -358,6 +364,8 @@ const AartiCard = React.memo(function AartiCard({
                     <TouchableOpacity
                         style={[cardStyles.actionBtn, { backgroundColor: '#8C36DB', shadowColor: '#8C36DB' }]}
                         onPress={onPress}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('watch')}
                     >
                         <Text style={cardStyles.actionBtnText} numberOfLines={1}>{t('watch')}</Text>
                     </TouchableOpacity>
