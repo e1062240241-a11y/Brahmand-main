@@ -11013,8 +11013,18 @@ async def backfill_official_posts(
     users_to_update = []
     users_already_official = 0
 
-    for uid in users_to_mark:
-        u_doc = await db.get_document('users', uid)
+    # ⚡ Bolt Optimization: Batch fetch user documents to avoid sequential N+1 queries
+    users_to_mark_list = list(users_to_mark)
+    user_docs = await db.get_documents_batch('users', users_to_mark_list)
+
+    # db.get_documents_batch returns a list of dictionaries with 'id' added
+    # (if not present) from the Firestore document id.
+    # Zip doesn't work if any document wasn't found (since missing ones are omitted from results),
+    # so we map them by ID instead.
+    users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+
+    for uid in users_to_mark_list:
+        u_doc = users_map.get(uid)
         if not u_doc:
             continue
         if not is_true_flag(u_doc.get('is_official')):
