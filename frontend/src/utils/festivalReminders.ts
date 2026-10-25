@@ -322,15 +322,22 @@ async function scheduleNotificationsForFestival(
       festivalEnd.setHours(23, 59, 59, 999);
 
       if (now < festivalEnd) {
-        const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
-        const id = await scheduleLocalNotif(
-          `🪔 ${isToday ? 'Today' : 'Tomorrow'} is ${festivalName}!`,
-          `Don't miss out! ${festivalName} ${isToday ? 'is today' : 'begins tomorrow'}.`,
-          notificationData,
-          immediateTrigger,
-          `fest_${festivalId}_immediate_${now.toDateString()}`
-        );
-        if (id) notificationIds.push(id);
+        const dateKey = now.toDateString();
+        const sentKey = `@fest_notif_sent_${festivalId}_${dateKey}`;
+        const alreadySent = await AsyncStorage.getItem(sentKey);
+
+        if (!alreadySent) {
+          await AsyncStorage.setItem(sentKey, 'true');
+          const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+          const id = await scheduleLocalNotif(
+            `🪔 ${isToday ? 'Today' : 'Tomorrow'} is ${festivalName}!`,
+            `Don't miss out! ${festivalName} ${isToday ? 'is today' : 'begins tomorrow'}.`,
+            notificationData,
+            immediateTrigger,
+            `fest_${festivalId}_immediate_${dateKey}`
+          );
+          if (id) notificationIds.push(id);
+        }
       }
     }
   }
