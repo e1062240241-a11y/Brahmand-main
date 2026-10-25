@@ -1,5 +1,9 @@
 # Keystone Architecture Journal
 
+## 2026-09-29 - Offset-based pagination & DB query bounds for GET /communities/discover
+**Learning:** `GET /communities/discover` fetched up to 200 communities hardcoded without accepting `limit` or `offset` query parameters. As the community catalog expands at 1 lakh+ scale, clients could not paginate past the top batch, and querying large static batches caused over-fetching.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) parameters to `GET /communities/discover` in `backend/main.py`, `backend/routes/community_routes.py`, and `backend/services/firebase_community_service.py`, enforced dynamic DB candidate query bounds (`fetch_limit = safe_offset + safe_limit * 3 + 20`), and sliced response payloads accordingly.
+
 ## 2026-09-28 - Offset-based pagination & DB query bounds for GET /admin/anonymous-users
 **Learning:** `GET /admin/anonymous-users` fetched all anonymous user records across the entire database without limit or offset query parameters (`filters=[('anonymous_account', '==', True)]`). As the user base grows to 1 lakh+ users, this endpoint causes unbounded Firestore document reads ($O(N_{\text{anon\_users}})$ reads), high memory consumption in Python, and request timeouts during admin console loads.
 **Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_admin_anonymous_users` in `backend/main.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering and composite index exception fallback logic, and sliced response payloads accordingly.
@@ -56,6 +60,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/circles/{circle_id}/requests` — unpaginated query across all circle join requests — FIXED
 - `/circles` — unpaginated query across all user circles — FIXED
 - `/admin/anonymous-users` — unpaginated scan of all anonymous users in users collection — FIXED
+- `/communities/discover` — hardcoded limit without offset pagination — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
