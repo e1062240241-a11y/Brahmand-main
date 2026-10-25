@@ -1,5 +1,9 @@
 # Keystone Architecture Journal
 
+## 2026-09-28 - Offset-based pagination & DB query bounds for GET /admin/anonymous-users
+**Learning:** `GET /admin/anonymous-users` fetched all anonymous user records across the entire database without limit or offset query parameters (`filters=[('anonymous_account', '==', True)]`). As the user base grows to 1 lakh+ users, this endpoint causes unbounded Firestore document reads ($O(N_{\text{anon\_users}})$ reads), high memory consumption in Python, and request timeouts during admin console loads.
+**Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) query parameters to `get_admin_anonymous_users` in `backend/main.py`, enforced DB-level query bounds (`fetch_limit = safe_offset + safe_limit`) with `created_at` DESC ordering and composite index exception fallback logic, and sliced response payloads accordingly.
+
 ## 2026-09-01 - Add pagination & remove unbounded follower arrays from Temple responses
 **Learning:** Returning full `followers` arrays in temple listing endpoints (`/temples`, `/temples/nearby`) exposes internal user UIDs and causes unbounded payload sizes and O(N) array iteration per temple on every request. Additionally, querying all temples without `limit` and `offset` scales poorly as the temple catalog expands.
 **Action:** Capped and omitted the `followers` array from public temple response objects (retaining `follower_count` and computing `is_following` server-side), introduced default pagination parameters (`limit=50`, `offset=0`), and implemented atomic `follower_count` increments on follow/unfollow operations.
@@ -51,6 +55,7 @@ ENDPOINTS NEEDING PAGINATION:
 - `/admin/reports` — missing offset pagination and unbounded fallback queries — FIXED
 - `/circles/{circle_id}/requests` — unpaginated query across all circle join requests — FIXED
 - `/circles` — unpaginated query across all user circles — FIXED
+- `/admin/anonymous-users` — unpaginated scan of all anonymous users in users collection — FIXED
 
 RACE CONDITIONS:
 - `/temples/{temple_id}/follow` — missing atomic `follower_count` increment — FIXED
