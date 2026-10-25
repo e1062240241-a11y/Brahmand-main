@@ -19,6 +19,7 @@ import {
   DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler, Easing
 } from 'react-native';
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
+import { TopStatusScrim } from '../../src/components/TopStatusScrim';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1592,6 +1593,7 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <View style={styles.container}>
+        <TopStatusScrim colors={['rgba(255, 255, 255, 0.85)', 'rgba(255, 255, 255, 0)']} barStyle="dark-content" />
 
 
 
