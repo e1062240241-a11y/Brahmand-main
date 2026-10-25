@@ -1,11 +1,12 @@
 """Community Routes"""
 import logging
-logger = logging.getLogger(__name__)
-from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, Query
 from models.schemas import CommunityCreate
 from services.firebase_community_service import FirebaseCommunityService as CommunityService
 from middleware.security import verify_token
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/communities", tags=["Communities"])
 
@@ -36,9 +37,17 @@ async def create_community(
 
 
 @router.get("/discover")
-async def discover_communities(token_data: dict = Depends(verify_token)):
-    """Discover popular communities"""
-    return await CommunityService.discover_communities(token_data["user_id"])
+async def discover_communities(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """Discover popular communities with query bounds and offset pagination"""
+    return await CommunityService.discover_communities(
+        user_id=token_data["user_id"],
+        limit=limit,
+        offset=offset
+    )
 
 
 @router.get("/my-creation-requests")

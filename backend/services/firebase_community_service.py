@@ -491,12 +491,21 @@ class FirebaseCommunityService:
         return {"message": "Rules agreed"}
     
     @staticmethod
-    async def discover_communities(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Discover popular communities"""
+    async def discover_communities(
+        user_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Discover popular communities with query bounds and offset pagination."""
         db = await FirebaseCommunityService.get_db()
+        safe_limit = max(1, min(limit, 100))
+        safe_offset = max(0, offset)
+        fetch_limit = safe_offset + safe_limit * 3 + 20
+
         try:
-            # Query communities (up to 200) to sort them in Python
-            communities = await db.query_documents('communities', limit=200)
+            # Architectural fix: Limit DB query candidate bounds to safe_offset + safe_limit * 3 + 20
+            # instead of loading all communities into memory.
+            communities = await db.query_documents('communities', limit=fetch_limit)
         except Exception as e:
             logger.warning(f"Could not fetch communities: {e}")
             communities = []
@@ -522,6 +531,8 @@ class FirebaseCommunityService:
             except Exception as e:
                 logger.warning(f"Could not fetch user communities for is_member flag: {e}")
 
+        paged_communities = communities[safe_offset : safe_offset + safe_limit]
+
         return [{
             "id": c['id'],
             "name": c['name'],
@@ -530,7 +541,7 @@ class FirebaseCommunityService:
             "photo": c.get('photo'),
             "member_count": _get_count(c),
             "is_member": c['id'] in joined_set
-        } for c in communities]
+        } for c in paged_communities]
     
     @staticmethod
     async def get_my_creation_requests(
