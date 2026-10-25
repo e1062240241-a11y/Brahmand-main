@@ -11,7 +11,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Platform,
-} from 'react-native';
+ Share as RNShare, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -25,7 +25,6 @@ import { ShamiLeafWishCard } from './ShamiLeafWishCard';
 import { SharadMoonWishCard } from './SharadMoonWishCard';
 import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
-import { Share as RNShare, ActivityIndicator } from 'react-native';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   try {

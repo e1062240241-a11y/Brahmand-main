@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
-import { Tabs, useRouter, usePathname } from 'expo-router';
+import { Tabs, useRouter, usePathname , ThemeProvider, DefaultTheme } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
 import { TabBarProvider } from '../../src/contexts/TabBarContext';
-import { ThemeProvider, DefaultTheme } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 
 const MyTheme = {

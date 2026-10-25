@@ -29,7 +29,6 @@ import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { FlashList } from '@shopify/flash-list';
-const SafeFlashList = FlashList as any;
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
@@ -57,6 +56,7 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING } from '../../src/constants/theme';
+const SafeFlashList = FlashList as any;
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;
