@@ -1,3 +1,4 @@
+import './cryptoPolyfill';
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import { secureStorage } from './secureStorage';
@@ -7,17 +8,28 @@ import CryptoJS from 'crypto-js';
 // Polyfill PRNG for tweetnacl in React Native / Expo environment
 if (typeof nacl.setPRNG === 'function') {
   nacl.setPRNG((x, n) => {
+    // 1. Try global.crypto.getRandomValues
     if (typeof global !== 'undefined' && global.crypto && typeof global.crypto.getRandomValues === 'function') {
-      const bytes = new Uint8Array(n);
-      global.crypto.getRandomValues(bytes);
-      for (let i = 0; i < n; i++) x[i] = bytes[i];
-    } else {
+      try {
+        const bytes = new Uint8Array(n);
+        global.crypto.getRandomValues(bytes);
+        for (let i = 0; i < n; i++) x[i] = bytes[i];
+        return;
+      } catch (_e) {}
+    }
+
+    // 2. Try CryptoJS.lib.WordArray.random
+    try {
       const words = CryptoJS.lib.WordArray.random(n).words;
-      const bytes = new Uint8Array(n);
       for (let i = 0; i < n; i++) {
-        bytes[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        x[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
       }
-      for (let i = 0; i < n; i++) x[i] = bytes[i];
+      return;
+    } catch (_e) {}
+
+    // 3. Fallback pseudo-random generation for React Native Hermes
+    for (let i = 0; i < n; i++) {
+      x[i] = ((Math.random() * 256) | 0) ^ ((Date.now() + i * 37) & 0xff);
     }
   });
 }

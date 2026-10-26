@@ -28,8 +28,7 @@ import {View,
   Linking,
 } from 'react-native';
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { useIsFocused } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect , useIsFocused } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

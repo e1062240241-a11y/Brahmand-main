@@ -10,6 +10,9 @@ import {
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Platform,
+  Share as RNShare,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +25,6 @@ import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
-import { Share as RNShare, ActivityIndicator } from 'react-native';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   try {

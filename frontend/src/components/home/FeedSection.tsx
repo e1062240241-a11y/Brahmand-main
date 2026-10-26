@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, Animated, Easing } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-const SafeFlashList = FlashList as any;
 import { useIsFocused } from 'expo-router';
 import { OmSpinner, OmRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
@@ -10,6 +9,7 @@ import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
 import { getHomeFeed } from '../../services/api';
 import { useTranslation } from '../../utils/i18n';
+const SafeFlashList = FlashList as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FEED_PAGE_SIZE = 10;

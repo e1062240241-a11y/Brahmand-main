@@ -16,6 +16,36 @@ interface CharDhamModalProps {
   t: (key: string) => string;
 }
 
+// Extracted static options outside render scope to prevent array re-allocations on every render pass.
+const CHAR_DHAM_OPTIONS = [
+  {
+    id: 'all' as const,
+    titleEn: 'All Char Dham',
+    titleHi: 'सभी चार धाम',
+    subtitleEn: '7 Unique Sacred Shrines',
+    subtitleHi: '7 मुख्य पवित्र तीर्थ',
+    count: 7,
+  },
+  {
+    id: 'bada' as const,
+    titleEn: 'Bada Char Dham',
+    titleHi: 'बड़ा चार धाम',
+    subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
+    subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
+    count: 4,
+  },
+  {
+    id: 'chota' as const,
+    titleEn: 'Chota Char Dham',
+    titleHi: 'छोटा चार धाम',
+    subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
+    subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
+    count: 4,
+  },
+];
+
+// Varnish fix: Extracted inline style allocations, added explicit displayName,
+// and added accessibilityRole="radio" / accessibilityState for screen readers.
 export const CharDhamModal = React.memo(({
   visible,
   onClose,
@@ -23,33 +53,6 @@ export const CharDhamModal = React.memo(({
   setCharDhamSubFilter,
   t,
 }: CharDhamModalProps) => {
-  const options = [
-    {
-      id: 'all' as const,
-      titleEn: 'All Char Dham',
-      titleHi: 'सभी चार धाम',
-      subtitleEn: '7 Unique Sacred Shrines',
-      subtitleHi: '7 मुख्य पवित्र तीर्थ',
-      count: 7,
-    },
-    {
-      id: 'bada' as const,
-      titleEn: 'Bada Char Dham',
-      titleHi: 'बड़ा चार धाम',
-      subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
-      subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
-      count: 4,
-    },
-    {
-      id: 'chota' as const,
-      titleEn: 'Chota Char Dham',
-      titleHi: 'छोटा चार धाम',
-      subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
-      subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
-      count: 4,
-    },
-  ];
-
   return (
     <Modal
       visible={visible}
@@ -66,12 +69,12 @@ export const CharDhamModal = React.memo(({
             <Text style={styles.modalTitle}>
               {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
             </Text>
-            <Pressable onPress={onClose} hitSlop={10}>
+            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close modal" accessibilityRole="button">
               <Ionicons name="close-circle" size={24} color="#9CA3AF" />
             </Pressable>
           </View>
 
-          {options.map((item) => {
+          {CHAR_DHAM_OPTIONS.map((item) => {
             const isSelected = charDhamSubFilter === item.id;
             const title = t('language') === 'hi' ? item.titleHi : item.titleEn;
             const subtitle = t('language') === 'hi' ? item.subtitleHi : item.subtitleEn;
@@ -79,18 +82,20 @@ export const CharDhamModal = React.memo(({
             return (
               <Pressable
                 key={item.id}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isSelected }}
                 style={({ pressed }) => [
                   styles.charDhamOptionRow,
                   isSelected && styles.charDhamOptionRowSelected,
-                  pressed && { opacity: 0.85 }
+                  pressed && styles.charDhamOptionRowPressed,
                 ]}
                 onPress={() => {
                   setCharDhamSubFilter(item.id);
                   onClose();
                 }}
               >
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={styles.optionTextContainer}>
+                  <View style={styles.optionHeaderRow}>
                     <Text style={[styles.charDhamOptionTitle, isSelected && styles.charDhamOptionTitleSelected]}>
                       {title}
                     </Text>
@@ -114,6 +119,8 @@ export const CharDhamModal = React.memo(({
     </Modal>
   );
 });
+
+CharDhamModal.displayName = 'CharDhamModal';
 
 const styles = StyleSheet.create({
   modalOverlay: {
@@ -163,6 +170,17 @@ const styles = StyleSheet.create({
   charDhamOptionRowSelected: {
     backgroundColor: '#FFF7ED',
     borderColor: '#FED7AA',
+  },
+  charDhamOptionRowPressed: {
+    opacity: 0.85,
+  },
+  optionTextContainer: {
+    flex: 1,
+  },
+  optionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   charDhamOptionTitle: {
     fontSize: 14,

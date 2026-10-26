@@ -19,6 +19,7 @@ import {
   DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler, Easing
 } from 'react-native';
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
+import { TopStatusScrim } from '../../src/components/TopStatusScrim';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,7 +29,6 @@ import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { FlashList } from '@shopify/flash-list';
-const SafeFlashList = FlashList as any;
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
@@ -56,6 +56,7 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING } from '../../src/constants/theme';
+const SafeFlashList = FlashList as any;
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;
@@ -1592,6 +1593,7 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <View style={styles.container}>
+        <TopStatusScrim colors={['rgba(255, 255, 255, 0.85)', 'rgba(255, 255, 255, 0)']} barStyle="dark-content" />
 
 
 

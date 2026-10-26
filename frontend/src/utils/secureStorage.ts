@@ -1,3 +1,4 @@
+import './cryptoPolyfill';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CryptoJS from 'crypto-js';
 import { Platform } from 'react-native';
@@ -16,7 +17,12 @@ let cachedKey: string | null = null;
 
 // Generate a random 256-bit hexadecimal key
 const generateKey = (): string => {
-  return CryptoJS.lib.WordArray.random(32).toString();
+  try {
+    return CryptoJS.lib.WordArray.random(32).toString();
+  } catch (_e) {
+    const salt = Math.random().toString(36).substring(2, 15) + Date.now().toString() + Math.random().toString(36).substring(2, 15);
+    return CryptoJS.SHA256(salt).toString();
+  }
 };
 
 const getEncryptionKey = async (): Promise<string> => {

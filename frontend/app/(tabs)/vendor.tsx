@@ -114,7 +114,7 @@ interface VendorCardComponentProps {
 // Constants & Module-Level Variables
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList as React.ComponentType<FlashListProps<any>>);
 
 const VSCREEN_WIDTH = Dimensions.get('window').width;

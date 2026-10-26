@@ -3403,7 +3403,7 @@ async function renderFestivalGuideAndQuizPage(
   let rawAboutText = '';
   let rawImportanceText = '';
   let dykFallback = '';
-  let ritualsList: Array<{ title: string; desc: string }> = [];
+  let ritualsList: { title: string; desc: string }[] = [];
 
   try {
     const festivalEnrichments = require('../data/festival-enrichments').default;

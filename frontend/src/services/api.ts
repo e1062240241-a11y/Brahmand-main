@@ -1,3 +1,4 @@
+import '../utils/cryptoPolyfill';
 import axios from "axios";
 import { encryptMessage, encryptGroupMessage } from '../utils/cryptoUtil';
 import CryptoJS from 'crypto-js';
@@ -319,9 +320,13 @@ const isVideoMimeType = (value?: string) =>
   (value || "").toLowerCase().startsWith("video/");
 
 const makeUploadId = () => {
-  // Use Cryptographically Secure Pseudo-Random Number Generator (CSPRNG)
-  const randomBytes = CryptoJS.lib.WordArray.random(4).toString();
-  return `${Date.now()}-${randomBytes}`;
+  // Use Cryptographically Secure Pseudo-Random Number Generator (CSPRNG) with fallback
+  try {
+    const randomBytes = CryptoJS.lib.WordArray.random(4).toString();
+    return `${Date.now()}-${randomBytes}`;
+  } catch (_e) {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+  }
 };
 
 type PostUploadFields = {
@@ -542,10 +547,10 @@ api.interceptors.request.use(async (config) => {
 // Single-flight refresh token queue state
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
