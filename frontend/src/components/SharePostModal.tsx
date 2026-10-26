@@ -18,22 +18,31 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
   const [sharingTo, setSharingTo] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible) {
-      loadConversations();
-    }
-  }, [visible]);
+    if (!visible) return;
 
-  const loadConversations = async () => {
-    setLoading(true);
-    try {
-      const res = await getConversations();
-      setConversations(res.data || []);
-    } catch (e) {
-      console.warn('Failed to load conversations', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    let isMounted = true;
+    const loadConversations = async () => {
+      setLoading(true);
+      try {
+        const res = await getConversations();
+        if (isMounted) setConversations(res.data || []);
+      } catch (e) {
+        console.warn('Failed to load conversations', e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    // Use timeout to prevent synchronous state update in effect warning
+    const timeoutId = setTimeout(() => {
+      if (isMounted) loadConversations();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [visible]);
 
   const getConversationKey = (conversation: any, index: number) => conversation.id || conversation.user?.sl_id || String(index);
 
@@ -166,7 +175,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
           <View style={styles.headerRow}>
             <View style={{ width: 32 }} />
             <Text style={styles.title}>{t('share')}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'बंद करें' : 'Close'}>
               <Ionicons name="close" size={22} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -185,7 +194,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                 renderItem={({ item, index }) => {
                   const itemKey = getConversationKey(item, index);
                   return (
-                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)}>
+                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)} accessibilityRole="button" accessibilityLabel={`Send to ${item.user?.name || 'User'}`}>
                       <Avatar photo={item.user?.photo} size={60} name={item.user?.name} />
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (
