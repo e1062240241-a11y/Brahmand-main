@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { checkSecurityInjection } from '../utils/validation';
+import Constants from 'expo-constants';
 
 
 const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
@@ -169,12 +170,14 @@ if (Platform.OS !== 'web') {
   }
 }
 
+const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.googleMapsApiKey || Constants.expoConfig?.ios?.config?.googleMapsApiKey || Constants.expoConfig?.android?.config?.googleMaps?.apiKey || process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+
 const getWebMapHtml = (lat: number, lng: number) => `
 <!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places"></script>
     <style>
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: sans-serif; }
       #map { width: 100%; height: calc(100% - 70px); }
@@ -1190,7 +1193,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     }
                   }}
                   query={{
-                    key: 'AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs',
+                    key: GOOGLE_MAPS_API_KEY,
                     language: 'en',
                   }}
                   styles={{

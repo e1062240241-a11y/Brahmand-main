@@ -5,13 +5,6 @@ import type {
   VisitorGuideline,
 } from './temples/types';
 
-export type {
-  TempleMatchContext,
-  AuthenticTempleDetails,
-  AuthenticDarshanDetails,
-  VisitorGuideline,
-};
-
 import {
   resolveOfficialWebsiteRule,
   resolveOfficialHelplineRule,
@@ -21,6 +14,13 @@ import {
   resolveVisitorGuidelinesRule,
   resolveAuthenticTempleDetailsRule,
 } from './temples';
+
+export type {
+  TempleMatchContext,
+  AuthenticTempleDetails,
+  AuthenticDarshanDetails,
+  VisitorGuideline,
+};
 
 // -------------------- 1. Official Website --------------------
 

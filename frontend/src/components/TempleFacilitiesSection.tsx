@@ -32,7 +32,7 @@ export interface GuidelineSection {
 }
 
 interface TempleFacilitiesSectionProps {
-  quickGlanceItems?: Array<{ icon: keyof typeof Ionicons.glyphMap; text: string; color?: string }>;
+  quickGlanceItems?: { icon: keyof typeof Ionicons.glyphMap; text: string; color?: string }[];
   amenities?: AmenityTile[];
   guidelines?: GuidelineSection[];
   onAmenityPress?: (amenity: AmenityTile) => void;

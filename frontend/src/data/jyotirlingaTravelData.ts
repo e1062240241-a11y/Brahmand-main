@@ -4,6 +4,8 @@ import JYOTIRLINGA_JSON_DATA from './Nearby_Sacred_Temples_12_Jyotirlingas.json'
 import SHAKTI_PEETHAS_JSON_DATA from './Nearby_Sacred_Temples_Shakti_Peethas.json';
 import HEALING_ASHRAM_JSON_DATA from './Nearby_Sacred_Temples_Healing_Ashram.json';
 
+import TEMPLE_DUMP_DATA from '../constants/templeDataDump.json';
+
 export interface SacredPlaceItem {
   id: string;
   name: string;
@@ -1964,8 +1966,6 @@ export function isHealingTemple(input: any, templeName: string = '', categoryInp
     checkStr.includes('tirupati')
   );
 }
-
-import TEMPLE_DUMP_DATA from '../constants/templeDataDump.json';
 
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radius of the Earth in km

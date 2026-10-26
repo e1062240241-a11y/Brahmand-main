@@ -542,10 +542,10 @@ api.interceptors.request.use(async (config) => {
 // Single-flight refresh token queue state
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
-let failedQueue: Array<{
+let failedQueue: {
   resolve: (token: string) => void;
   reject: (error: unknown) => void;
-}> = [];
+}[] = [];
 
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
