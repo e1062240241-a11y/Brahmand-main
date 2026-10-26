@@ -1,5 +1,9 @@
 # Keystone Architecture Journal
 
+## 2026-09-30 - Eliminating Synchronous Blocking Write & Redundant Operations in /admin/backfill-follow-edges
+**Learning:** In `/admin/backfill-follow-edges`, for each missing follow edge, the migration loop executed an `await db.set_document('user_follows', doc_id, ...)` synchronously before also appending `db.set_document(...)` to `tasks` for subsequent `asyncio.gather`. This caused duplicate writes for every missing edge and blocked the event loop during the initial write, defeating the purpose of asynchronous batch execution.
+**Action:** Removed the redundant synchronous `await db.set_document` call and duplicate `created += 1` increment in `backend/main.py`, ensuring missing edge document writes are queued into `tasks` and executed concurrently in 500-item chunks via `asyncio.gather`.
+
 ## 2026-09-29 - Offset-based pagination & DB query bounds for GET /communities/discover
 **Learning:** `GET /communities/discover` fetched up to 200 communities hardcoded without accepting `limit` or `offset` query parameters. As the community catalog expands at 1 lakh+ scale, clients could not paginate past the top batch, and querying large static batches caused over-fetching.
 **Action:** Introduced `limit` (default 50, capped at 100) and `offset` (default 0) parameters to `GET /communities/discover` in `backend/main.py`, `backend/routes/community_routes.py`, and `backend/services/firebase_community_service.py`, enforced dynamic DB candidate query bounds (`fetch_limit = safe_offset + safe_limit * 3 + 20`), and sliced response payloads accordingly.
