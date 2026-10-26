@@ -10,7 +10,6 @@ import {
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +21,6 @@ import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
-import { SharadMoonWishCard } from './SharadMoonWishCard';
-import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
 import { Share as RNShare, ActivityIndicator } from 'react-native';
 
@@ -475,20 +472,13 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     festivalName.toLowerCase().includes('vijaya') ||
     (festival.id && String(festival.id).toLowerCase().includes('dussehra'));
 
-  const isSharadPurnimaFestival =
-    /sharad\s*purnima|kojagiri|शरद\s*पूर्णिमा|कोजागरी/i.test(festivalName) ||
-    (festival.id && /sharad|purnima|kojagiri/i.test(String(festival.id)));
-
   const isKarvaChauthFestival =
     festivalName.toLowerCase().includes('karva') ||
     festivalName.toLowerCase().includes('karwa') ||
     (festival.id && String(festival.id).toLowerCase().includes('karva'));
 
-  const currentUser = useAuthStore((s) => s.user);
   const leafCardRef = useRef<any>(null);
-  const moonCardRef = useRef<any>(null);
   const [isSharingLeaf, setIsSharingLeaf] = useState<boolean>(false);
-  const [isSharingMoonWish, setIsSharingMoonWish] = useState<boolean>(false);
   const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
 
   const handleShareFestivalPdf = async () => {
@@ -501,106 +491,6 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       console.warn('Failed to share festival PDF booklet:', err);
     } finally {
       setIsSharingPdf(false);
-    }
-  };
-
-  const handleShareSharadMoonWish = async () => {
-    if (isSharingMoonWish) return;
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      setIsSharingMoonWish(true);
-      const name = (festival.festival_name || festival.name || festival.title || 'Sharad Purnima').toUpperCase();
-
-      let imageUri: string | null = null;
-      if (moonCardRef.current) {
-        await new Promise((res) => setTimeout(res, 350));
-        const captureResult = await safeCaptureRef(moonCardRef, {
-          format: 'png',
-          quality: 0.98,
-          result: 'tmpfile',
-        });
-        imageUri = captureResult.uri;
-      }
-
-      if (!imageUri) {
-        const fallback = getFestivalImage(festival);
-        if (fallback) imageUri = fallback;
-      }
-
-      if (!imageUri) {
-        console.warn('[FestivalDetailCard] Moon card capture failed');
-        return;
-      }
-
-      const appStoreUrl = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
-      const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.brahmand.app';
-      const platformAppUrl = Platform.OS === 'ios' ? appStoreUrl : playStoreUrl;
-      const platformLabel = Platform.OS === 'ios' ? 'App Store' : 'Google Play';
-      const shareMessage = `🌸 Download Brahmand App on ${platformLabel} for Daily Darshan, Vedic Panchang & Sanatan Wisdom:\n${platformAppUrl}`;
-
-      let sharedSuccess = false;
-
-      // 1. Try react-native-share (native iOS/Android multi-item share supporting image + text simultaneously)
-      try {
-        const RNShareModule = require('react-native-share');
-        const ShareLib = RNShareModule?.default || RNShareModule;
-        if (ShareLib && typeof ShareLib.open === 'function') {
-          const shareOptions: any = {
-            title: `Sharad Purnima Moon Card - ${name}`,
-            message: shareMessage,
-            url: imageUri.startsWith('file://') ? imageUri : `file://${imageUri}`,
-            type: 'image/png',
-            failOnCancel: false,
-          };
-
-          if (Platform.OS === 'ios') {
-            const formattedUrl = imageUri.startsWith('file://') ? imageUri : `file://${imageUri}`;
-            shareOptions.activityItemSources = [
-              {
-                placeholderItem: { type: 'url', content: formattedUrl },
-                item: { default: { type: 'url', content: formattedUrl } },
-                linkMetadata: {
-                  title: `Sharad Purnima - Brahmand`,
-                },
-              },
-              {
-                placeholderItem: { type: 'text', content: shareMessage },
-                item: { default: { type: 'text', content: shareMessage } },
-              },
-            ];
-          }
-
-          await ShareLib.open(shareOptions);
-          sharedSuccess = true;
-        }
-      } catch (libErr: any) {
-        if (libErr?.message?.includes('User did not share') || libErr?.message?.includes('CANCELLED')) {
-          return;
-        }
-        console.warn('[FestivalDetailCard] react-native-share fallback:', libErr);
-      }
-
-      // 2. Fallback to safeShareFile / RNShare
-      if (!sharedSuccess) {
-        const shareResult = await safeShareFile(imageUri, {
-          mimeType: 'image/png',
-          dialogTitle: `Sharad Purnima Moon Card - ${name}`,
-          UTI: 'public.png',
-          message: shareMessage,
-        });
-
-        if (!shareResult.shared && shareResult.error) {
-          await RNShare.share({
-            url: imageUri,
-            message: shareMessage,
-            title: `Sharad Purnima Moon Wishes`,
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to share Sharad Purnima wish card:', err);
-    } finally {
-      setIsSharingMoonWish(false);
     }
   };
 
@@ -785,28 +675,6 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
         </View>
       )}
 
-      {/* Hidden Sharad Moon Wish Card for Screenshot/Capture */}
-      {isSharadPurnimaFestival && (
-        <View
-          style={{
-            position: 'absolute',
-            left: -9999,
-            top: -9999,
-            opacity: 1,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <View collapsable={false} style={{ width: 580, height: 580, backgroundColor: 'transparent' }}>
-            <SharadMoonWishCard
-              ref={moonCardRef}
-              festival={festival}
-              senderName={currentUser?.name || ''}
-            />
-          </View>
-        </View>
-      )}
-
       {/* For Dussehra: Replaced Section Completion Tracker with Sacred Virtual Shami Leaf Share Banner */}
       {isDussehraFestival ? (
         <View style={styles.shamiShareBanner}>
@@ -889,28 +757,6 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
               <Text style={styles.sectionCount}>({sections.length})</Text>
             )}
           </View>
-
-          {/* If Sharad Purnima: Clean and compact 'शुभकामनाएं भेजें' button */}
-          {isSharadPurnimaFestival && (
-            <TouchableOpacity
-              style={styles.sendWishesHeaderBtn}
-              onPress={handleShareSharadMoonWish}
-              disabled={isSharingMoonWish}
-              activeOpacity={0.8}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel="शुभकामनाएं भेजें"
-            >
-              {isSharingMoonWish ? (
-                <ActivityIndicator size="small" color="#92400E" />
-              ) : (
-                <>
-                  <Text style={styles.sendWishesMoonIcon}>🌕</Text>
-                  <Text style={styles.sendWishesHeaderText}>शुभकामनाएं भेजें</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
 
           <TouchableOpacity
             style={styles.shareAllHeaderBtn}
@@ -1204,33 +1050,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 3,
-  },
-
-  sendWishesHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4.5,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1.2,
-    borderColor: '#F59E0B',
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 14,
-    marginRight: 6,
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sendWishesMoonIcon: {
-    fontSize: 13,
-  },
-  sendWishesHeaderText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#92400E',
-    letterSpacing: 0.2,
   },
   shamiShareButtonGradient: {
     flexDirection: 'row',

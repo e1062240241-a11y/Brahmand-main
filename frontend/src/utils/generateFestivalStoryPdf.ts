@@ -55,6 +55,12 @@ export function isSharadPurnimaThemeCheck(themeOrFestivalName?: string, altName?
   return /sharad\s*purnima|kojagiri|शरद\s*पूर्णिमा|कोजागरी/i.test(combined);
 }
 
+// Check if festival or theme is Karwa Chauth (matching English and Hindi names)
+export function isKarwaChauthThemeCheck(themeOrFestivalName?: string, altName?: string): boolean {
+  const combined = `${themeOrFestivalName || ''} ${altName || ''}`;
+  return /karwa\s*chauth|karva\s*chauth|करवा\s*चौथ/i.test(combined);
+}
+
 // First name of the signed-in user for the page-1 blessing greeting ("" when signed out / unusable)
 export function getPdfPersonalFirstName(): string {
   try {
@@ -1653,6 +1659,22 @@ export async function loadPdfFonts(doc: PDFDocument) {
     console.warn('[PDF] Sharad Purnima background image embedding fallback:', sharadBgErr);
   }
 
+  let karwaChauthBgImage: any = null;
+  try {
+    const karwaBgAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_page_bg.jpg'));
+    await karwaBgAsset.downloadAsync();
+    const bgUri = karwaBgAsset.localUri || karwaBgAsset.uri;
+    if (bgUri) {
+      const base64 = await FileSystem.readAsStringAsync(bgUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = decodeBase64ToUint8(base64);
+      karwaChauthBgImage = await doc.embedJpg(bytes);
+    }
+  } catch (karwaBgErr) {
+    console.warn('[PDF] Karwa Chauth background image embedding fallback:', karwaBgErr);
+  }
+
   return {
     fontCinzel,
     fontRozha,
@@ -1667,6 +1689,7 @@ export async function loadPdfFonts(doc: PDFDocument) {
     brahmandLogo,
     shamiLeafImage,
     sharadPurnimaBgImage,
+    karwaChauthBgImage,
   };
 }
 
@@ -1882,13 +1905,14 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage } = fonts;
   const brandFont = fontCinzel || displayFont;
   const devanagariFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
   const hindiTitleFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
   const hindiBodyFont = fontPoppins || fontHimalaya || fontTimes;
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const panchangInfo = await fetchFestivalPanchangInfo(festival);
 
   // Dynamic Royal Theme Palette (adapts to festival/day color)
@@ -1910,7 +1934,7 @@ export async function renderDynamicFestivalPage1(
   const colInk = rgb(0.10, 0.07, 0.05);            // #1A120D - solid deep black-brown ink
   const colInkSoft = rgb(0.18, 0.13, 0.10);        // #2E211A - crisp dark readable ink
 
-  // 1. Warm Sunrise & Festive Background / Nocturnal Full Moon Sky for Sharad Purnima
+  // 1. Warm Sunrise & Festive Background / Nocturnal Full Moon Sky for Sharad Purnima / Floral Parchment for Karwa Chauth
   if (isSharadPurnimaTheme && sharadPurnimaBgImage) {
     // Full bleed celestial night sky with glowing autumn moon & starry clouds
     page1.drawImage(sharadPurnimaBgImage, {
@@ -1919,6 +1943,15 @@ export async function renderDynamicFestivalPage1(
       width: pageWidth,
       height: pageHeight,
       opacity: 0.98,
+    });
+  } else if (isKarwaChauthTheme && karwaChauthBgImage) {
+    // Full bleed floral parchment background frame for Karwa Chauth
+    page1.drawImage(karwaChauthBgImage, {
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      opacity: 1.0,
     });
   } else {
     page1.drawRectangle({
@@ -1957,6 +1990,9 @@ export async function renderDynamicFestivalPage1(
       borderWidth: 0.8,
       opacity: 0.65,
     });
+  } else if (isKarwaChauthTheme && karwaChauthBgImage) {
+    // Karwa Chauth background image already contains its own authentic floral frame and side lines.
+    // Omit default Navratri toran, dandiya ribbons, and geometric corner fans so it remains clean and stunning.
   } else {
     page1.drawRectangle({
       x: 10,
@@ -2912,6 +2948,7 @@ function drawPageParchmentFrame(
   fonts: any
 ) {
   const isSharad = isSharadPurnimaThemeCheck(theme.name);
+  const isKarwa = isKarwaChauthThemeCheck(theme.name);
   if (isSharad && fonts.sharadPurnimaBgImage) {
     // Same celestial night sky as page 1
     page.drawImage(fonts.sharadPurnimaBgImage, {
@@ -2929,6 +2966,15 @@ function drawPageParchmentFrame(
       borderColor: rgb(0.85, 0.70, 0.40),
       borderWidth: 0.8,
       opacity: 0.65,
+    });
+  } else if (isKarwa && fonts.karwaChauthBgImage) {
+    // Full bleed floral parchment background frame for Karwa Chauth narrative & guide pages
+    page.drawImage(fonts.karwaChauthBgImage, {
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      opacity: 1.0,
     });
   } else {
     // Same warm cream + festive gradient as page 1 for non-Sharad festivals

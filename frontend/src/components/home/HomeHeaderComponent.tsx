@@ -12,16 +12,11 @@ import { VideoView as ExpoVideoView } from 'expo-video';
 import { useSafeVideoPlayer, isPlayerValid } from '../SafeVideoView';
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Animated, AppState, Easing, Image, ImageBackground, Platform, Pressable, ScrollView, StatusBar as RNStatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, SCREEN_WIDTH, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
-import { SharadPurnimaMoonCorner } from './SharadPurnimaMoonCorner';
-import Svg, { Circle, Defs, RadialGradient, Stop, Path, LinearGradient as SvgLinearGradient } from 'react-native-svg';
-
-const sharadPurnimaBannerImage = require('../../../assets/images/festivals/sharad_purnima_banner.jpg');
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
@@ -244,451 +239,6 @@ const StaticBannerCard = ({ source, width, onPress, onPressIn, onPressOut, child
     </Pressable>
 );
 
-interface StarData {
-    top: number;
-    left: any;
-    size: number;
-    group: 1 | 2 | 3 | 4;
-    isDiamond?: boolean;
-    isSparkle?: boolean;
-    color?: string;
-}
-
-// 4-pointed flared diffraction-spike sparkle star
-const SparkleStar = React.memo(function SparkleStar({
-    size,
-    color = '#FFFFFF',
-}: {
-    size: number;
-    color?: string;
-}) {
-    const half = size;
-    return (
-        <Svg width={size * 2} height={size * 2} viewBox={`-${half} -${half} ${size * 2} ${size * 2}`}>
-            <Defs>
-                <RadialGradient id={`spkGlow-${size}`} cx="0" cy="0" r={half} gradientUnits="userSpaceOnUse">
-                    <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-                    <Stop offset="40%" stopColor={color} stopOpacity="0.85" />
-                    <Stop offset="100%" stopColor={color} stopOpacity="0" />
-                </RadialGradient>
-            </Defs>
-            <Path
-                d={`M 0,-${half} Q 0,0 ${half},0 Q 0,0 0,${half} Q 0,0 -${half},0 Q 0,0 0,-${half} Z`}
-                fill={`url(#spkGlow-${size})`}
-            />
-            <Circle cx="0" cy="0" r={Math.max(1.4, size * 0.28)} fill="#FFFFFF" />
-        </Svg>
-    );
-});
-
-const STAR_CATALOG: StarData[] = [
-    // Bleed stars (status bar / Dynamic Island nocturnal canopy)
-    { top: -45, left: '22%', size: 7.5, group: 1, isSparkle: true, color: '#D4E9FF' },
-    { top: -38, left: '58%', size: 3.2, group: 2 },
-    { top: -46, left: '84%', size: 4.8, group: 3, isDiamond: true },
-    { top: -20, left: '42%', size: 2.8, group: 4 },
-    { top: -14, left: '76%', size: 8.0, group: 1, isSparkle: true, color: '#FFFFFF' },
-    { top: -28, left: '92%', size: 2.5, group: 2 },
-
-    // Header title zone stars
-    { top: 8, left: '34%', size: 4.2, group: 2, isDiamond: true },
-    { top: 22, left: '54%', size: 2.8, group: 3 },
-    { top: 10, left: '72%', size: 8.5, group: 1, isSparkle: true, color: '#FFEBB0' },
-    { top: 26, left: '88%', size: 3.5, group: 4 },
-    { top: 40, left: '24%', size: 3.0, group: 2 },
-    { top: 48, left: '66%', size: 4.5, group: 3, isDiamond: true },
-    { top: 58, left: '44%', size: 7.2, group: 1, isSparkle: true, color: '#E2F1FF' },
-    { top: 66, left: '80%', size: 3.2, group: 4 },
-
-    // Mid sky stars (around banners & quick access)
-    { top: 78, left: '16%', size: 3.6, group: 4 },
-    { top: 86, left: '78%', size: 5.2, group: 2, isDiamond: true },
-    { top: 102, left: '32%', size: 2.8, group: 3 },
-    { top: 114, left: '90%', size: 7.8, group: 1, isSparkle: true, color: '#D4E9FF' },
-    { top: 132, left: '50%', size: 3.8, group: 4 },
-    { top: 150, left: '22%', size: 3.0, group: 2 },
-    { top: 168, left: '82%', size: 4.6, group: 3, isDiamond: true },
-    { top: 186, left: '38%', size: 3.2, group: 1 },
-    { top: 210, left: '68%', size: 8.0, group: 4, isSparkle: true, color: '#FFFFFF' },
-    { top: 235, left: '14%', size: 3.5, group: 2 },
-    { top: 258, left: '86%', size: 2.8, group: 3 },
-    { top: 285, left: '46%', size: 4.8, group: 1, isDiamond: true },
-    { top: 310, left: '28%', size: 3.0, group: 4 },
-    { top: 325, left: '74%', size: 3.4, group: 2 },
-];
-
-const CelestialNightCanopy = React.memo(function CelestialNightCanopy({
-    insetsTop = 0,
-}: {
-    insetsTop?: number;
-}) {
-    // 4 native animation drivers for organic, staggered star twinkling (opacity & scale)
-    const twinkle1 = React.useRef(new Animated.Value(0.3)).current;
-    const twinkle2 = React.useRef(new Animated.Value(0.85)).current;
-    const twinkle3 = React.useRef(new Animated.Value(0.2)).current;
-    const twinkle4 = React.useRef(new Animated.Value(0.5)).current;
-
-    // Comet (धूमकेतु) streak animation drivers on app open
-    const cometAnim = React.useRef(new Animated.Value(0)).current;
-    const microMeteorAnim = React.useRef(new Animated.Value(0)).current;
-
-    // Launch comet across the cosmic sky
-    const triggerCosmicComet = React.useCallback(() => {
-        cometAnim.setValue(0);
-        microMeteorAnim.setValue(0);
-
-        // Primary majestic comet
-        Animated.timing(cometAnim, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.bezier(0.22, 0.61, 0.36, 1),
-            useNativeDriver: true,
-        }).start();
-
-        // Secondary subtle fast trailing micro-meteor (offset by 280ms)
-        setTimeout(() => {
-            Animated.timing(microMeteorAnim, {
-                toValue: 1,
-                duration: 1100,
-                easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
-                useNativeDriver: true,
-            }).start();
-        }, 280);
-    }, [cometAnim, microMeteorAnim]);
-
-    React.useEffect(() => {
-        // Star Group 1: Fast sparkle shimmer with breathing scale (1500ms loop)
-        const anim1 = Animated.loop(
-            Animated.sequence([
-                Animated.timing(twinkle1, {
-                    toValue: 1.0,
-                    duration: 1500,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(twinkle1, {
-                    toValue: 0.3,
-                    duration: 1500,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Star Group 2: Mid-paced gentle pulse (2300ms loop)
-        const anim2 = Animated.loop(
-            Animated.sequence([
-                Animated.timing(twinkle2, {
-                    toValue: 0.25,
-                    duration: 2300,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(twinkle2, {
-                    toValue: 1.0,
-                    duration: 2300,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Star Group 3: Slow majestic breathing star (3200ms loop)
-        const anim3 = Animated.loop(
-            Animated.sequence([
-                Animated.timing(twinkle3, {
-                    toValue: 0.95,
-                    duration: 3200,
-                    easing: Easing.inOut(Easing.quad),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(twinkle3, {
-                    toValue: 0.2,
-                    duration: 3200,
-                    easing: Easing.inOut(Easing.quad),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        // Star Group 4: Glittering diamond stars (1900ms loop)
-        const anim4 = Animated.loop(
-            Animated.sequence([
-                Animated.timing(twinkle4, {
-                    toValue: 1.0,
-                    duration: 1900,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(twinkle4, {
-                    toValue: 0.35,
-                    duration: 1900,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-
-        anim1.start();
-        anim2.start();
-        anim3.start();
-        anim4.start();
-
-        // 🌟 Launch Comet when user opens the app (600ms delay after mount)
-        const initialCometTimer = setTimeout(() => {
-            triggerCosmicComet();
-        }, 600);
-
-        // Periodic gentle repeat every 25s for living nocturnal cosmos
-        const periodicInterval = setInterval(() => {
-            triggerCosmicComet();
-        }, 25000);
-
-        return () => {
-            anim1.stop();
-            anim2.stop();
-            anim3.stop();
-            anim4.stop();
-            clearTimeout(initialCometTimer);
-            clearInterval(periodicInterval);
-        };
-    }, [twinkle1, twinkle2, twinkle3, twinkle4, triggerCosmicComet]);
-
-    // Scale interpolations for dynamic twinkling
-    const scale1 = twinkle1.interpolate({ inputRange: [0.3, 1.0], outputRange: [0.75, 1.35] });
-    const scale2 = twinkle2.interpolate({ inputRange: [0.25, 1.0], outputRange: [0.7, 1.4] });
-    const scale3 = twinkle3.interpolate({ inputRange: [0.2, 0.95], outputRange: [0.65, 1.45] });
-    const scale4 = twinkle4.interpolate({ inputRange: [0.35, 1.0], outputRange: [0.75, 1.55] });
-
-    // Primary Comet trajectory & dynamics
-    const cometTranslateX = cometAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-140, SCREEN_WIDTH + 80],
-    });
-    const cometTranslateY = cometAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [10, 155],
-    });
-    const cometOpacity = cometAnim.interpolate({
-        inputRange: [0, 0.08, 0.7, 0.9, 1],
-        outputRange: [0, 1, 0.95, 0.35, 0],
-    });
-    const cometScaleX = cometAnim.interpolate({
-        inputRange: [0, 0.15, 0.75, 1],
-        outputRange: [0.5, 1.3, 1.0, 0.4],
-    });
-
-    // Micro-meteor trajectory & dynamics
-    const microTranslateX = microMeteorAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-100, SCREEN_WIDTH + 60],
-    });
-    const microTranslateY = microMeteorAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [45, 140],
-    });
-    const microOpacity = microMeteorAnim.interpolate({
-        inputRange: [0, 0.1, 0.65, 0.9, 1],
-        outputRange: [0, 0.85, 0.8, 0.2, 0],
-    });
-
-    const totalHeight = 440 + insetsTop;
-    const bleedTop = -(insetsTop + 40);
-
-    return (
-        <View
-            pointerEvents="none"
-            style={{
-                position: 'absolute',
-                top: bleedTop,
-                left: -PAGE_PADDING,
-                right: -PAGE_PADDING,
-                height: totalHeight,
-                zIndex: 0,
-                overflow: 'hidden',
-            }}
-        >
-            {/* Luminous celestial moonlight radiance centered on the corner moon */}
-            <Svg width="100%" height={totalHeight} style={{ position: 'absolute', top: 0, left: 0 }}>
-                <Defs>
-                    <RadialGradient
-                        id="headerMoonAura"
-                        cx={PAGE_PADDING + 22}
-                        cy={insetsTop + 40}
-                        r="290"
-                        gradientUnits="userSpaceOnUse"
-                    >
-                        <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.45" />
-                        <Stop offset="25%" stopColor="#E2F1FF" stopOpacity="0.22" />
-                        <Stop offset="55%" stopColor="#8AB4E2" stopOpacity="0.07" />
-                        <Stop offset="85%" stopColor="#1E2433" stopOpacity="0.01" />
-                        <Stop offset="100%" stopColor="#000000" stopOpacity="0" />
-                    </RadialGradient>
-                </Defs>
-                <Circle cx={PAGE_PADDING + 22} cy={insetsTop + 40} r="290" fill="url(#headerMoonAura)" />
-            </Svg>
-
-            {/* 🌠 Primary Majestic Comet (धूमकेतु) streaking across the night sky */}
-            <Animated.View
-                style={{
-                    position: 'absolute',
-                    top: insetsTop + 25,
-                    left: 0,
-                    width: 140,
-                    height: 32,
-                    opacity: cometOpacity,
-                    transform: [
-                        { translateX: cometTranslateX },
-                        { translateY: cometTranslateY },
-                        { rotate: '18deg' },
-                        { scaleX: cometScaleX },
-                    ],
-                }}
-            >
-                <Svg width={140} height={32} viewBox="0 0 140 32">
-                    <Defs>
-                        <SvgLinearGradient id="cometTailGrad" x1="0%" y1="50%" x2="100%" y2="50%">
-                            <Stop offset="0%" stopColor="#AEE9F7" stopOpacity="0" />
-                            <Stop offset="40%" stopColor="#AEE9F7" stopOpacity="0.2" />
-                            <Stop offset="75%" stopColor="#DDF2FF" stopOpacity="0.75" />
-                            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
-                        </SvgLinearGradient>
-                        <RadialGradient id="cometNucleusAura" cx="126" cy="16" r="14" gradientUnits="userSpaceOnUse">
-                            <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-                            <Stop offset="30%" stopColor="#E0F2FE" stopOpacity="0.95" />
-                            <Stop offset="65%" stopColor="#7DD3FC" stopOpacity="0.5" />
-                            <Stop offset="100%" stopColor="#0284C7" stopOpacity="0" />
-                        </RadialGradient>
-                    </Defs>
-                    {/* Outer luminous tail beam */}
-                    <Path d="M 0 16 L 126 10 L 126 22 Z" fill="url(#cometTailGrad)" opacity={0.35} />
-                    {/* Inner core radiant tail */}
-                    <Path d="M 15 16 L 126 13 L 126 19 Z" fill="url(#cometTailGrad)" />
-                    {/* Coma halo aura */}
-                    <Circle cx="126" cy="16" r="13" fill="url(#cometNucleusAura)" />
-                    {/* Blazing hot nucleus */}
-                    <Circle cx="126" cy="16" r="3.5" fill="#FFFFFF" />
-                    <Circle cx="127" cy="16" r="1.8" fill="#FFFFFF" />
-                </Svg>
-            </Animated.View>
-
-            {/* 🌠 Secondary Trailing Micro-Meteor (उल्का) */}
-            <Animated.View
-                style={{
-                    position: 'absolute',
-                    top: insetsTop + 40,
-                    left: 0,
-                    width: 90,
-                    height: 20,
-                    opacity: microOpacity,
-                    transform: [
-                        { translateX: microTranslateX },
-                        { translateY: microTranslateY },
-                        { rotate: '16deg' },
-                    ],
-                }}
-            >
-                <Svg width={90} height={20} viewBox="0 0 90 20">
-                    <Defs>
-                        <SvgLinearGradient id="microTailGrad" x1="0%" y1="50%" x2="100%" y2="50%">
-                            <Stop offset="0%" stopColor="#93C5FD" stopOpacity="0" />
-                            <Stop offset="60%" stopColor="#BFDBFE" stopOpacity="0.5" />
-                            <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="1" />
-                        </SvgLinearGradient>
-                    </Defs>
-                    <Path d="M 0 10 L 82 8.5 L 82 11.5 Z" fill="url(#microTailGrad)" />
-                    <Circle cx="82" cy="10" r="2.2" fill="#FFFFFF" />
-                </Svg>
-            </Animated.View>
-
-            {/* ✨ Twinkling Animated Celestial Stars with Scale & Opacity */}
-            {STAR_CATALOG.map((star, idx) => {
-                let opacityAnim: Animated.Value;
-                let scaleAnim: Animated.AnimatedInterpolation<number>;
-
-                if (star.group === 1) {
-                    opacityAnim = twinkle1;
-                    scaleAnim = scale1;
-                } else if (star.group === 2) {
-                    opacityAnim = twinkle2;
-                    scaleAnim = scale2;
-                } else if (star.group === 3) {
-                    opacityAnim = twinkle3;
-                    scaleAnim = scale3;
-                } else {
-                    opacityAnim = twinkle4;
-                    scaleAnim = scale4;
-                }
-
-                const starTop = insetsTop + 40 + star.top;
-
-                // 4-pointed diffraction spike sparkle star
-                if (star.isSparkle) {
-                    return (
-                        <Animated.View
-                            key={`sky-star-${idx}`}
-                            style={{
-                                position: 'absolute',
-                                top: starTop - star.size,
-                                left: star.left,
-                                opacity: opacityAnim,
-                                transform: [{ scale: scaleAnim }],
-                            }}
-                        >
-                            <SparkleStar size={star.size} color={star.color} />
-                        </Animated.View>
-                    );
-                }
-
-                // Diamond tilted star
-                if (star.isDiamond) {
-                    return (
-                        <Animated.View
-                            key={`sky-star-${idx}`}
-                            style={{
-                                position: 'absolute',
-                                top: starTop,
-                                left: star.left,
-                                width: star.size,
-                                height: star.size,
-                                backgroundColor: '#FFFFFF',
-                                opacity: opacityAnim,
-                                transform: [{ rotate: '45deg' }, { scale: scaleAnim }],
-                                shadowColor: '#FFFFFF',
-                                shadowOffset: { width: 0, height: 0 },
-                                shadowOpacity: 0.95,
-                                shadowRadius: 3.5,
-                            }}
-                        />
-                    );
-                }
-
-                // Luminous circular star
-                return (
-                    <Animated.View
-                        key={`sky-star-${idx}`}
-                        style={{
-                            position: 'absolute',
-                            top: starTop,
-                            left: star.left,
-                            width: star.size,
-                            height: star.size,
-                            borderRadius: star.size / 2,
-                            backgroundColor: '#FFFFFF',
-                            opacity: opacityAnim,
-                            transform: [{ scale: scaleAnim }],
-                            shadowColor: '#E2F1FF',
-                            shadowOffset: { width: 0, height: 0 },
-                            shadowOpacity: 0.8,
-                            shadowRadius: 3,
-                        }}
-                    />
-                );
-            })}
-        </View>
-    );
-});
-
 export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     user,
     firstName,
@@ -801,8 +351,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     quickAccessItems?: any[];
 }) {
     const router = useRouter();
-    const insets = useSafeAreaInsets();
-    const statusBarHeight = Platform.OS === 'android' ? Math.max(RNStatusBar.currentHeight ?? 0, insets.top) : insets.top;
     const isNavigatingRef = React.useRef(false);
 
     const handleNavigateKatha = React.useCallback(() => {
@@ -853,7 +401,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         const updatePlayback = (appState: string = AppState.currentState) => {
             if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
-            const targetBannerIdx = isHanumanActive ? 1 : -1;
+            const targetBannerIdx = isHanumanActive ? 1 : 0;
             const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === targetBannerIdx;
             if (shouldPlay) {
                 try {
@@ -887,43 +435,43 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         <View style={{ paddingTop: 0 }}>
             {/* Feed loading state is now handled inside FeedSection */}
             <View>
-                <View style={[styles.upperContentWrapper, { paddingTop: statusBarHeight + (Platform.OS === 'android' ? 6 : 2) }]}>
-                    <CelestialNightCanopy insetsTop={statusBarHeight} />
+                <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <SharadPurnimaMoonCorner
-                                size={Platform.OS === 'android' ? 44 : 50}
-                                showBadge={false}
+                            <TouchableOpacity
+                                activeOpacity={0.86}
+                                style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
-                            />
+                                accessibilityRole="button"
+                                accessibilityLabel="View your profile"
+                            >
+                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={{
                             position: 'absolute',
-                            left: 54,
-                            right: 90,
+                            left: 0,
+                            right: 0,
                             top: 0,
                             bottom: 0,
                             justifyContent: 'center',
                             alignItems: 'center',
+                            zIndex: -1,
                         }} pointerEvents="none">
                             <Text
                                 numberOfLines={1}
                                 style={{
-                                    color: '#FFFFFF',
+                                    color: '#000',
                                     textAlign: 'center',
                                     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                    fontSize: Platform.OS === 'android' ? 22 : 26,
-                                    lineHeight: Platform.OS === 'android' ? 32 : undefined,
+                                    fontSize: Platform.OS === 'android' ? 24 : 27,
                                     fontStyle: 'normal',
                                     fontWeight: '400',
                                     letterSpacing: 0.5,
-                                    includeFontPadding: true, // Prevents Android Cinzel font serifs from getting clipped!
-                                    paddingHorizontal: 4,
-                                    paddingVertical: Platform.OS === 'android' ? 4 : 2,
-                                    textShadowColor: 'rgba(255, 255, 255, 0.45)',
-                                    textShadowOffset: { width: 0, height: 1 },
-                                    textShadowRadius: 8,
+                                    includeFontPadding: false,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
                                 }}
                             >
                                 BRAHMAND
@@ -937,7 +485,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     Platform.OS === 'ios' && pressed && { opacity: 0.6 }
                                 ]}
                                 android_ripple={{
-                                    color: 'rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(0, 0, 0, 0.12)',
                                     borderless: true,
                                     foreground: true,
                                     radius: 20,
@@ -947,7 +495,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 accessibilityRole="button"
                                 accessibilityLabel={searchActive ? "Close search" : "Open search"}
                             >
-                                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#FFFFFF" />
+                                <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             </Pressable>
                             <Pressable
                                 style={({ pressed }) => [
@@ -955,7 +503,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     Platform.OS === 'ios' && pressed && { opacity: 0.6 }
                                 ]}
                                 android_ripple={{
-                                    color: 'rgba(255, 255, 255, 0.2)',
+                                    color: 'rgba(0, 0, 0, 0.12)',
                                     borderless: true,
                                     foreground: true,
                                     radius: 20,
@@ -966,7 +514,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 accessibilityLabel="Notifications"
                             >
                                 <View pointerEvents="none">
-                                    <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#FFFFFF" />
+                                    <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                                     {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                                 </View>
                             </Pressable>
@@ -1347,7 +895,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -1357,119 +905,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Banner 1: Sharad Purnima Festival Banner */}
-                            <Pressable
-                                key="sharad_purnima_banner"
-                                onPress={() => {
-                                    try {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    } catch (_e) { }
-                                    router.push('/festivals');
-                                }}
-                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                                style={{
-                                    width: screenWidth - 40,
-                                    height: Platform.OS === 'ios' ? 185 : 160,
-                                    borderRadius: 16,
-                                    overflow: 'hidden',
-                                    alignSelf: 'center',
-                                    marginBottom: 5,
-                                    backgroundColor: '#050D1A',
-                                }}
-                            >
-                                <Image
-                                    source={sharadPurnimaBannerImage}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                    }}
-                                    resizeMode="cover"
-                                />
-
-                                {/* Subtle bottom gradient overlay for explore button */}
-                                <LinearGradient
-                                    colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']}
-                                    style={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        height: 52,
-                                        flexDirection: 'row',
-                                        justifyContent: 'flex-end',
-                                        alignItems: 'center',
-                                        paddingHorizontal: 12,
-                                        paddingBottom: 6,
-                                        zIndex: 5,
-                                    }}
-                                    pointerEvents="box-none"
-                                >
-                                    <View
-                                        style={{
-                                            borderRadius: 16,
-                                            overflow: 'hidden',
-                                            shadowColor: '#000',
-                                            shadowOffset: { width: 0, height: 2 },
-                                            shadowOpacity: 0.35,
-                                            shadowRadius: 3,
-                                            elevation: 3,
-                                        }}
-                                    >
-                                        <Pressable
-                                            android_ripple={{
-                                                color: 'rgba(255, 255, 255, 0.32)',
-                                                borderless: false,
-                                            }}
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                try {
-                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                                } catch (_e) { }
-                                                router.push('/festivals');
-                                            }}
-                                            onPressIn={() => {
-                                                if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                            }}
-                                            onPressOut={() => {
-                                                if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                            }}
-                                            style={({ pressed }) => [
-                                                {
-                                                    backgroundColor: 'rgba(255, 81, 0, 0.92)',
-                                                    height: 30,
-                                                    paddingHorizontal: 14,
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    gap: 5,
-                                                    borderRadius: 15,
-                                                    borderWidth: 1,
-                                                    borderColor: 'rgba(255, 255, 255, 0.45)',
-                                                    opacity: pressed && Platform.OS === 'ios' ? 0.85 : 1,
-                                                    transform: [{ scale: pressed ? 0.96 : 1 }],
-                                                },
-                                            ]}
-                                        >
-                                            <Text style={{
-                                                color: '#FFF',
-                                                fontSize: 12,
-                                                fontWeight: '800',
-                                                letterSpacing: 0.3,
-                                            }}>
-                                                {t('language') === 'hi' ? 'शरद पूर्णिमा दर्शन' : 'Explore Festival'}
-                                            </Text>
-                                            <Ionicons name="chevron-forward" size={13} color="#FFF" />
-                                        </Pressable>
-                                    </View>
-                                </LinearGradient>
-                            </Pressable>
-
-                            {/* Helper components for Banner 2 & Banner 3 */}
+                            {/* Helper components for Banner 1 & Banner 2 */}
                             {(() => {
                                 const renderHanumanBanner = (key: string) => (
                                     <StaticBannerCard
@@ -1824,7 +1260,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1, 2].map((idx) => (
+                            {[0, 1].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
