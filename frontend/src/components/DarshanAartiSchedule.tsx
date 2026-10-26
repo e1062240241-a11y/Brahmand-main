@@ -34,13 +34,16 @@ const DEFAULT_AARTIS: AartiItem[] = [
   { id: 'sandhya', name: 'Sandhya Aarti', time: '6:30 PM', color: '#7C3AED' },
 ];
 
+// Varnish fix: Wrapped AartiRow, HeroTimingCard, and DarshanAartiSchedule in React.memo
+// and extracted inline pressed style object ({ backgroundColor: '#F8FAFC' }) to StyleSheet to prevent re-render allocations.
+
 /* Sub-component for Aarti row with spring press scaling interaction */
 const AartiRow: React.FC<{
   item: AartiItem;
   index: number;
   isLast: boolean;
   accentColor: string;
-}> = ({ item, index, isLast, accentColor }) => {
+}> = React.memo(({ item, index, isLast, accentColor }) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -63,7 +66,7 @@ const AartiRow: React.FC<{
         style={({ pressed }) => [
           styles.aartiItemRow,
           !isLast && styles.aartiBorderBottom,
-          pressed && { backgroundColor: '#F8FAFC' },
+          pressed && styles.aartiItemRowPressed,
         ]}
       >
         <Animated.View style={[styles.aartiRowContent, animatedStyle]}>
@@ -78,10 +81,12 @@ const AartiRow: React.FC<{
       </Pressable>
     </Animated.View>
   );
-};
+});
+
+AartiRow.displayName = 'AartiRow';
 
 /* Sub-component for Hero timing card with subtle press scale & pulse */
-const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = ({
+const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = React.memo(({
   openingTime,
   closingTime,
 }) => {
@@ -97,7 +102,7 @@ const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = (
       -1,
       true
     );
-  }, []);
+  }, [pulse]);
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -147,9 +152,11 @@ const HeroTimingCard: React.FC<{ openingTime: string; closingTime: string }> = (
       </Pressable>
     </Animated.View>
   );
-};
+});
 
-export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
+HeroTimingCard.displayName = 'HeroTimingCard';
+
+export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = React.memo(({
   openingTime = '4:00 AM',
   closingTime = '9:00 PM',
   generalDarshanText,
@@ -215,7 +222,9 @@ export const DarshanAartiSchedule: React.FC<DarshanAartiScheduleProps> = ({
       ) : null}
     </View>
   );
-};
+});
+
+DarshanAartiSchedule.displayName = 'DarshanAartiSchedule';
 
 const styles = StyleSheet.create({
   container: {
@@ -364,6 +373,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: 8,
+  },
+  aartiItemRowPressed: {
+    backgroundColor: '#F8FAFC',
   },
   aartiRowContent: {
     flex: 1,

@@ -1,7 +1,7 @@
 // accessibility: placeholder
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useRouter, useLocalSearchParams , useIsFocused } from 'expo-router';
 import {
   View,
   Text,
@@ -24,7 +24,6 @@ import {
 import { OmSpinner, OmRefreshControl } from '../../src/components/CustomRefreshControl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1750,10 +1750,51 @@ async def logout_user(data: dict = Body(...), token_data: dict = Depends(verify_
     return {"message": "Logout successful"}
 
 @api_router.get("/admin/anonymous-users")
-async def get_admin_anonymous_users(token_data: dict = Depends(verify_token)):
+async def get_admin_anonymous_users(
+    limit: int = 50,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get list of anonymous users with DB-level limit bounds and offset-based pagination.
+    Prevents unbounded full-collection scans on the 'users' collection at 1 lakh+ scale.
+    """
     db, _ = await _ensure_admin_user(token_data)
-    anonymous_users = await db.query_documents('users', [('anonymous_account', '==', True)])
-    return {"users": anonymous_users}
+    safe_limit = max(1, min(limit, 100))
+    safe_offset = max(0, offset)
+    fetch_limit = safe_offset + safe_limit
+
+    try:
+        try:
+            anonymous_users = await db.query_documents(
+                'users',
+                filters=[('anonymous_account', '==', True)],
+                order_by='created_at',
+                order_direction='DESCENDING',
+                limit=fetch_limit
+            )
+        except Exception as query_err:
+            if 'requires an index' in str(query_err) or '400' in str(query_err):
+                logger.warning(
+                    f"Firestore index missing for users anonymous_account + created_at, falling back to un-ordered query: {query_err}"
+                )
+                anonymous_users = await db.query_documents(
+                    'users',
+                    filters=[('anonymous_account', '==', True)],
+                    limit=fetch_limit
+                )
+            else:
+                raise query_err
+
+        anonymous_users.sort(
+            key=lambda x: str(x.get('created_at') or ''),
+            reverse=True
+        )
+        paginated_users = anonymous_users[safe_offset : safe_offset + safe_limit]
+        return {"users": paginated_users}
+    except Exception as e:
+        logger.error(f"Error fetching admin anonymous users: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch anonymous users")
 
 @api_router.post("/admin/anonymous-users/{user_id}/disable")
 async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(verify_token)):
@@ -7380,9 +7421,17 @@ async def join_community_direct(
         raise HTTPException(status_code=500, detail="An internal server error occurred")
 
 @api_router.get("/communities/discover")
-async def discover_communities(token_data: dict = Depends(verify_token)):
-    """Discover popular communities"""
-    return await FirebaseCommunityService.discover_communities(token_data["user_id"])
+async def discover_communities(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    token_data: dict = Depends(verify_token)
+):
+    """Discover popular communities with query bounds and offset pagination"""
+    return await FirebaseCommunityService.discover_communities(
+        user_id=token_data["user_id"],
+        limit=limit,
+        offset=offset
+    )
 
 @api_router.get("/communities/{community_id}")
 async def get_community(community_id: str, token_data: dict = Depends(verify_token)):

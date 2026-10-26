@@ -4,8 +4,6 @@ import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
 import { enableScreens, enableFreeze } from 'react-native-screens';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet, Linking, BackHandler, Platform, LogBox, Alert as RNAlert, AppState } from 'react-native';
-enableScreens(true);
-enableFreeze(true);
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -41,6 +39,8 @@ import * as ExpoLinking from 'expo-linking';
 import { useLanguageStore } from '../src/utils/i18n';
 import { safeNavigate } from '../src/utils/safeNavigation';
 import * as SplashScreen from 'expo-splash-screen';
+enableScreens(true);
+enableFreeze(true);
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
