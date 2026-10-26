@@ -1,3 +1,4 @@
+import '../src/utils/cryptoPolyfill';
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
 import { enableScreens, enableFreeze } from 'react-native-screens';
