@@ -3,6 +3,9 @@ import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native'
 import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
 import { OmSpinner } from './CustomRefreshControl';
 
+const RIPPLE_OUTLINE = { color: 'rgba(255, 107, 0, 0.15)', borderless: false };
+const RIPPLE_DEFAULT = { color: 'rgba(255, 255, 255, 0.2)', borderless: false };
+
 interface ButtonProps {
   title: string;
   onPress: () => void;
@@ -41,15 +44,12 @@ export const Button: React.FC<ButtonProps> = ({
         variant === 'secondary' && styles.secondary,
         variant === 'outline' && styles.outline,
         disabled && styles.disabled,
-        pressed && !disabled && !loading && { opacity: 0.8 },
+        pressed && !disabled && !loading && styles.pressed,
         style,
       ])}
       onPress={onPress}
       disabled={disabled || loading}
-      android_ripple={{
-        color: variant === 'outline' ? 'rgba(255, 107, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)',
-        borderless: false,
-      }}
+      android_ripple={variant === 'outline' ? RIPPLE_OUTLINE : RIPPLE_DEFAULT}
     >
       {loading ? (
         <OmSpinner size="small" color={variant === 'outline' ? COLORS.primary : COLORS.textWhite} />
@@ -82,6 +82,9 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
+  },
+  pressed: {
+    opacity: 0.8,
   },
   text: {
     fontSize: 16,
