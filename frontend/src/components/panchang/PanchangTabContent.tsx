@@ -43,8 +43,14 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
 
   return (
     <View style={styles.tabContent}>
+      {/* 🧡 Engagement: Localized section titles into emotional Devanagari copy for Hindi users */}
+      {/* Lever: Reframing + Mother Tongue Connection (मातृभाषा) */}
+      {/* Why: Reading sacred Panchang details in one's native language deepens cultural intimacy & connection. */}
+      {/* UI: Text-only change, zero UI structure modified. */}
       {/* Panchang Details */}
-      <Text style={styles.sectionHeader}>Panchang Details</Text>
+      <Text style={styles.sectionHeader}>
+        {language === 'hi' ? 'पंचांग विवरण ✨' : 'Panchang Details'}
+      </Text>
       <View style={styles.card}>
         {overview.map((item: OverviewItem, idx: number) => (
           <View key={`${item.label}-${idx}`} style={{ alignSelf: 'stretch' }}>
@@ -58,7 +64,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
       </View>
 
       {/* Sun & Moon Times */}
-      <Text style={styles.sectionHeader}>Sun & Moon Times</Text>
+      <Text style={styles.sectionHeader}>
+        {language === 'hi' ? 'सूर्योदय व चंद्रोदय काल 🌅' : 'Sun & Moon Times'}
+      </Text>
       <View style={[styles.card, { paddingHorizontal: 0, paddingVertical: 0, overflow: 'hidden' }]}>
         <View style={styles.sunMoonGrid}>
           <View style={styles.sunMoonItem}>
@@ -132,7 +140,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
         <View style={styles.alertIconBox}>
           <Ionicons name="warning" size={14} color="#BA1A1A" />
         </View>
-        <Text style={styles.sectionHeaderAlert}>Inauspicious Times</Text>
+        <Text style={styles.sectionHeaderAlert}>
+          {language === 'hi' ? 'अशुभ समय (वर्ज्य काल)' : 'Inauspicious Times'}
+        </Text>
       </View>
 
       <View style={styles.card}>
@@ -159,7 +169,9 @@ export const PanchangTabContent: React.FC<PanchangTabContentProps> = ({
       </View>
 
       {/* Day Choghadiya Section */}
-      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>Day Choghadiya</Text>
+      <Text style={[styles.sectionHeader, { marginTop: 0 }]}>
+        {language === 'hi' ? 'दिन का चौघड़िया (शुभ-अशुभ मुहूर्त)' : 'Day Choghadiya'}
+      </Text>
       <View style={styles.choghadiyaGrid}>
         {activeChoghadiyaList.map((m: ChoghadiyaItem, idx: number) => (
           <View key={`${choghadiyaMode}-${idx}`} style={styles.choghadiyaCard}>
