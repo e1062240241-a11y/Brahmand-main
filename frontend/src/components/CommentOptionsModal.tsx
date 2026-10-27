@@ -17,13 +17,20 @@ interface CommentOptionsModalProps {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
+// Varnish fix: Wrapped CommentOptionsModal in React.memo with displayName, refactored Animated.Value to lazy useRef initialization,
+// extracted inline pressed styles & modal container zIndex to StyleSheet.create to prevent garbage collection pressure,
+// and replaced `any` type casting on Ionicons name with ComponentProps<typeof Ionicons>['name'].
+export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = React.memo(({
   visible,
   onClose,
   options,
 }) => {
   const insets = useSafeAreaInsets();
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const animRef = useRef<Animated.Value | null>(null);
+  if (!animRef.current) {
+    animRef.current = new Animated.Value(0);
+  }
+  const animatedValue = animRef.current;
 
   useEffect(() => {
     if (visible) {
@@ -39,7 +46,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, animatedValue]);
 
   if (!visible) return null;
 
@@ -54,13 +61,13 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
   });
 
   return (
-    <View style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}>
+    <View style={styles.modalContainer}>
       <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       
       <View style={styles.keyboardAvoidingContainer} pointerEvents="box-none">
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <Pressable style={styles.flexFill} onPress={onClose} />
         
         <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 16, 28) : Math.max(insets.bottom, 16) }]}>
           {/* Grab Handle */}
@@ -81,7 +88,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
               const textColor = isDestructive ? '#E53935' : '#333';
               const iconColor = isDestructive ? '#E53935' : (COLORS.primary || '#8C36DB');
               const defaultIcon = isDestructive ? 'ban-outline' : 'alert-circle-outline';
-              const finalIcon = option.icon || defaultIcon;
+              const finalIcon = (option.icon || defaultIcon) as React.ComponentProps<typeof Ionicons>['name'];
 
               return (
                 <Pressable
@@ -90,7 +97,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                   accessibilityLabel={option.label}
                   style={({ pressed }) => [
                     styles.optionRow,
-                    pressed && { backgroundColor: isDestructive ? 'rgba(229, 57, 53, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
+                    pressed && (isDestructive ? styles.optionRowPressedDestructive : styles.optionRowPressedDefault),
                   ]}
                   android_ripple={{
                     color: isDestructive ? 'rgba(229, 57, 53, 0.12)' : 'rgba(0, 0, 0, 0.08)',
@@ -105,7 +112,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                   }}
                 >
                   <View style={styles.iconWrap}>
-                    <Ionicons name={finalIcon as any} size={22} color={iconColor} />
+                    <Ionicons name={finalIcon} size={22} color={iconColor} />
                   </View>
                   <Text style={[styles.optionLabel, { color: textColor }]}>
                     {option.label}
@@ -119,9 +126,18 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
       </View>
     </View>
   );
-};
+});
+
+CommentOptionsModal.displayName = 'CommentOptionsModal';
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+  },
+  flexFill: {
+    flex: 1,
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
@@ -180,6 +196,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     borderWidth: 1,
     borderColor: '#F0F0F0',
+  },
+  optionRowPressedDestructive: {
+    backgroundColor: 'rgba(229, 57, 53, 0.08)',
+  },
+  optionRowPressedDefault: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   iconWrap: {
     marginRight: 12,
