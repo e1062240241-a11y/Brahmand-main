@@ -491,6 +491,20 @@ const festivalEnrichments: Record<string, FestivalEnrichment> = {
     mantra:
       'Women recite the Karva Chauth Vrat Katha (story) and the Karva Chauth mantra. The prayer "Om Jai Shri Ram" and "Om Namah Shivaya" are chanted. The Sargi mantra and prayers for husbands\' longevity are recited during the puja ceremony.',
   },
+  'karwa chauth': {
+    summary:
+      'Karva Chauth is a sacred festival observed by married Hindu women on the fourth day (Chaturthi) of the dark fortnight in the month of Kartik (October-November). Women observe a strict fast from sunrise to moonrise, praying for the long life and prosperity of their husbands. The festival is celebrated with great enthusiasm in North India, particularly in Rajasthan, Uttar Pradesh, Punjab, and Haryana. Women dress in their finest clothes, apply henna, and gather in the evening to break their fast after sighting the moon.',
+    origin:
+      'Karva Chauth has origins linked to the legend of Queen Veervati. According to the Mahabharata, Veervati was a devoted wife who observed a strict fast on Karva Chauth. When she was unable to bear the thirst, her brothers lit a fire on a mountain and told her the moon had risen. She broke her fast, but her husband died. Upon learning the truth, she prayed to Goddess Parvati, who restored her husband\'s life. Another legend connects the festival to the story of Savitri, who brought her husband Satyavan back from death through her devotion.',
+    purpose:
+      'Karva Chauth celebrates the sacred bond of marriage and the devotion of wives to their husbands. The strict fast symbolizes love, sacrifice, and commitment. The festival reinforces the importance of marital fidelity and the spiritual connection between husband and wife. It also serves as a time for women to bond and share their experiences.',
+    importance:
+      'Karva Chauth is one of the most widely observed festivals in North India, particularly among married women. The festival has gained cultural significance beyond its religious origins, with many women observing the fast as a symbol of love and commitment. The festival promotes traditional values and the sanctity of marriage.',
+    celebration:
+      'Celebrations begin before sunrise, when women eat a pre-dawn meal (Sargi) prepared by their mothers-in-law. They then fast without food or water until moonrise. In the evening, women gather at temples or community spaces, dressed in colorful clothes and jewelry. They perform the Karva Chauth puja, listening to the festival\'s story. When the moon rises, women view it through a sieve, break their fast, and share sweets with their families. H gifts and appreciation are exchanged.',
+    mantra:
+      'Women recite the Karva Chauth Vrat Katha (story) and the Karva Chauth mantra. The prayer "Om Jai Shri Ram" and "Om Namah Shivaya" are chanted. The Sargi mantra and prayers for husbands\' longevity are recited during the puja ceremony.',
+  },
 
   'magh bihu': {
     summary:

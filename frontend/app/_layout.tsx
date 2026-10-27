@@ -288,7 +288,8 @@ function isValidAppPath(path: string): boolean {
     '/badges',
     '/live-mantra',
     '/community-request',
-    '/follow-connections'
+    '/follow-connections',
+    '/chand-dikha'
   ];
 
   if (staticPaths.includes(cleanPath)) {

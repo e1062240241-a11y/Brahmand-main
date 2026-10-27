@@ -28,6 +28,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { getFestivalImage } from '../constants/festivalImages';
 import { POPPINS_REGULAR_BASE64, ROZHA_ONE_REGULAR_BASE64, HIMALAYA_TT_REGULAR_BASE64 } from '../constants/devanagariPdfFonts';
 import { useAuthStore } from '../store/authStore';
+import * as Location from 'expo-location';
 import { getPanchang } from '../services/api';
 import { formatTimeValue } from './panchangTimeUtils';
 
@@ -72,7 +73,145 @@ export function getPdfPersonalFirstName(): string {
   }
 }
 
-const MUMBAI_PANCHANG = { lat: 19.076, lng: 72.8777 };
+// Major Indian cities coordinates dictionary for accurate city/state Panchang resolution
+const MAJOR_CITY_COORDS: Record<string, { lat: number; lng: number; city: string; state?: string }> = {
+  delhi: { lat: 28.6139, lng: 77.2090, city: 'Delhi / NCR', state: 'Delhi' },
+  'new delhi': { lat: 28.6139, lng: 77.2090, city: 'Delhi / NCR', state: 'Delhi' },
+  ncr: { lat: 28.6139, lng: 77.2090, city: 'Delhi / NCR', state: 'Delhi' },
+  noida: { lat: 28.5355, lng: 77.3910, city: 'Noida', state: 'Uttar Pradesh' },
+  gurugram: { lat: 28.4595, lng: 77.0266, city: 'Gurugram', state: 'Haryana' },
+  gurgaon: { lat: 28.4595, lng: 77.0266, city: 'Gurugram', state: 'Haryana' },
+  ghaziabad: { lat: 28.6692, lng: 77.4538, city: 'Ghaziabad', state: 'Uttar Pradesh' },
+  faridabad: { lat: 28.4089, lng: 77.3178, city: 'Faridabad', state: 'Haryana' },
+  mumbai: { lat: 19.0760, lng: 72.8777, city: 'Mumbai', state: 'Maharashtra' },
+  pune: { lat: 18.5204, lng: 73.8567, city: 'Pune', state: 'Maharashtra' },
+  nagpur: { lat: 21.1458, lng: 79.0882, city: 'Nagpur', state: 'Maharashtra' },
+  jaipur: { lat: 26.9124, lng: 75.7873, city: 'Jaipur', state: 'Rajasthan' },
+  jodhpur: { lat: 26.2389, lng: 73.0243, city: 'Jodhpur', state: 'Rajasthan' },
+  udaipur: { lat: 24.5854, lng: 73.7125, city: 'Udaipur', state: 'Rajasthan' },
+  kota: { lat: 25.2138, lng: 75.8648, city: 'Kota', state: 'Rajasthan' },
+  lucknow: { lat: 26.8467, lng: 80.9462, city: 'Lucknow', state: 'Uttar Pradesh' },
+  kanpur: { lat: 26.4499, lng: 80.3319, city: 'Kanpur', state: 'Uttar Pradesh' },
+  varanasi: { lat: 25.3176, lng: 82.9739, city: 'Varanasi', state: 'Uttar Pradesh' },
+  agra: { lat: 27.1767, lng: 78.0081, city: 'Agra', state: 'Uttar Pradesh' },
+  prayagraj: { lat: 25.4358, lng: 81.8463, city: 'Prayagraj', state: 'Uttar Pradesh' },
+  allahabad: { lat: 25.4358, lng: 81.8463, city: 'Prayagraj', state: 'Uttar Pradesh' },
+  meerut: { lat: 28.9845, lng: 77.7064, city: 'Meerut', state: 'Uttar Pradesh' },
+  mathura: { lat: 27.4924, lng: 77.6737, city: 'Mathura', state: 'Uttar Pradesh' },
+  ayodhya: { lat: 26.7922, lng: 82.1998, city: 'Ayodhya', state: 'Uttar Pradesh' },
+  chandigarh: { lat: 30.7333, lng: 76.7794, city: 'Chandigarh', state: 'Punjab / Haryana' },
+  ludhiana: { lat: 30.9010, lng: 75.8573, city: 'Ludhiana', state: 'Punjab' },
+  amritsar: { lat: 31.6340, lng: 74.8723, city: 'Amritsar', state: 'Punjab' },
+  jalandhar: { lat: 31.3260, lng: 75.5762, city: 'Jalandhar', state: 'Punjab' },
+  dehradun: { lat: 30.3165, lng: 78.0322, city: 'Dehradun', state: 'Uttarakhand' },
+  haridwar: { lat: 29.9457, lng: 78.1642, city: 'Haridwar', state: 'Uttarakhand' },
+  rishikesh: { lat: 30.0869, lng: 78.2676, city: 'Rishikesh', state: 'Uttarakhand' },
+  shimla: { lat: 31.1048, lng: 77.1734, city: 'Shimla', state: 'Himachal Pradesh' },
+  jammu: { lat: 32.7266, lng: 74.8570, city: 'Jammu', state: 'Jammu & Kashmir' },
+  bhopal: { lat: 23.2599, lng: 77.4126, city: 'Bhopal', state: 'Madhya Pradesh' },
+  indore: { lat: 22.7196, lng: 75.8577, city: 'Indore', state: 'Madhya Pradesh' },
+  gwalior: { lat: 26.2183, lng: 78.1828, city: 'Gwalior', state: 'Madhya Pradesh' },
+  ujjain: { lat: 23.1765, lng: 75.7885, city: 'Ujjain', state: 'Madhya Pradesh' },
+  ahmedabad: { lat: 23.0225, lng: 72.5714, city: 'Ahmedabad', state: 'Gujarat' },
+  surat: { lat: 21.1702, lng: 72.8311, city: 'Surat', state: 'Gujarat' },
+  vadodara: { lat: 22.3072, lng: 73.1812, city: 'Vadodara', state: 'Gujarat' },
+  patna: { lat: 25.5941, lng: 85.1376, city: 'Patna', state: 'Bihar' },
+  ranchi: { lat: 23.3441, lng: 85.3096, city: 'Ranchi', state: 'Jharkhand' },
+  raipur: { lat: 21.2514, lng: 81.6296, city: 'Raipur', state: 'Chhattisgarh' },
+  kolkata: { lat: 22.5726, lng: 88.3639, city: 'Kolkata', state: 'West Bengal' },
+  bengaluru: { lat: 12.9716, lng: 77.5946, city: 'Bengaluru', state: 'Karnataka' },
+  bangalore: { lat: 12.9716, lng: 77.5946, city: 'Bengaluru', state: 'Karnataka' },
+  hyderabad: { lat: 17.3850, lng: 78.4867, city: 'Hyderabad', state: 'Telangana' },
+  chennai: { lat: 13.0827, lng: 80.2707, city: 'Chennai', state: 'Tamil Nadu' },
+};
+
+const MAJOR_STATE_COORDS: Record<string, { lat: number; lng: number; city: string; state: string }> = {
+  delhi: { lat: 28.6139, lng: 77.2090, city: 'Delhi / NCR', state: 'Delhi' },
+  'uttar pradesh': { lat: 26.8467, lng: 80.9462, city: 'Lucknow', state: 'Uttar Pradesh' },
+  rajasthan: { lat: 26.9124, lng: 75.7873, city: 'Jaipur', state: 'Rajasthan' },
+  punjab: { lat: 30.9010, lng: 75.8573, city: 'Ludhiana', state: 'Punjab' },
+  haryana: { lat: 28.4595, lng: 77.0266, city: 'Gurugram', state: 'Haryana' },
+  maharashtra: { lat: 19.0760, lng: 72.8777, city: 'Mumbai', state: 'Maharashtra' },
+  'madhya pradesh': { lat: 22.7196, lng: 75.8577, city: 'Indore', state: 'Madhya Pradesh' },
+  gujarat: { lat: 23.0225, lng: 72.5714, city: 'Ahmedabad', state: 'Gujarat' },
+  bihar: { lat: 25.5941, lng: 85.1376, city: 'Patna', state: 'Bihar' },
+  jharkhand: { lat: 23.3441, lng: 85.3096, city: 'Ranchi', state: 'Jharkhand' },
+  chhattisgarh: { lat: 21.2514, lng: 81.6296, city: 'Raipur', state: 'Chhattisgarh' },
+  uttarakhand: { lat: 30.3165, lng: 78.0322, city: 'Dehradun', state: 'Uttarakhand' },
+  'himachal pradesh': { lat: 31.1048, lng: 77.1734, city: 'Shimla', state: 'Himachal Pradesh' },
+  'west bengal': { lat: 22.5726, lng: 88.3639, city: 'Kolkata', state: 'West Bengal' },
+  karnataka: { lat: 12.9716, lng: 77.5946, city: 'Bengaluru', state: 'Karnataka' },
+  telangana: { lat: 17.3850, lng: 78.4867, city: 'Hyderabad', state: 'Telangana' },
+};
+
+export async function resolveFestivalLocation(): Promise<{ lat: number; lng: number; city?: string; state?: string }> {
+  try {
+    const user = useAuthStore.getState()?.user as any;
+    const homeLoc = user?.home_location || user?.location;
+    let lat = homeLoc?.latitude ?? homeLoc?.lat;
+    let lng = homeLoc?.longitude ?? homeLoc?.lng;
+    let city = homeLoc?.city || homeLoc?.district || homeLoc?.area;
+    let state = homeLoc?.state;
+
+    // If city name exists in profile, map coordinates if missing
+    if (city && (typeof lat !== 'number' || typeof lng !== 'number')) {
+      const cityKey = String(city).toLowerCase().trim();
+      const match = MAJOR_CITY_COORDS[cityKey];
+      if (match) {
+        lat = match.lat;
+        lng = match.lng;
+        if (!state) state = match.state;
+      }
+    }
+
+    // If state name exists in profile, map coordinates if missing
+    if (state && (typeof lat !== 'number' || typeof lng !== 'number')) {
+      const stateKey = String(state).toLowerCase().trim();
+      const match = MAJOR_STATE_COORDS[stateKey];
+      if (match) {
+        lat = match.lat;
+        lng = match.lng;
+        if (!city) city = match.city;
+      }
+    }
+
+    if (typeof lat === 'number' && typeof lng === 'number' && city) {
+      return { lat, lng, city: String(city).trim(), state: state ? String(state).trim() : undefined };
+    }
+
+    // Try device location if available
+    try {
+      const last = await Location.getLastKnownPositionAsync().catch(() => null);
+      const coords = last?.coords;
+      if (coords?.latitude && coords?.longitude) {
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          lat = coords.latitude;
+          lng = coords.longitude;
+        }
+        if (!city) {
+          const rev = await Location.reverseGeocodeAsync({ latitude: coords.latitude, longitude: coords.longitude }).catch(() => null);
+          if (rev && rev[0]) {
+            city = rev[0].city || rev[0].subregion || rev[0].region;
+            state = rev[0].region || rev[0].country;
+          }
+        }
+      }
+    } catch (_e) { }
+
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      return {
+        lat,
+        lng,
+        city: city ? String(city).trim() : undefined,
+        state: state ? String(state).trim() : undefined,
+      };
+    }
+  } catch (_e) { }
+
+  // Default to Delhi / NCR central observance
+  return { lat: 28.6139, lng: 77.2090, city: 'Delhi / NCR', state: 'Delhi' };
+}
+
 const FESTIVAL_MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 
 // "25 October 2026" | "2026-10-25" -> "2026-10-25" (explicit parse, Hermes Date.parse is unreliable for non-ISO)
@@ -103,13 +242,19 @@ export interface FestivalPanchangInfo {
   tithiName?: string;
   tithiEnd?: string;
   tithiStart?: string;
+  bhadra?: string;
+  bhadraEnd?: string;
   moonrise?: string;
   sunrise?: string;
   sunset?: string;
   nakshatra?: string;
+  city?: string;
+  state?: string;
+  sargiTime?: string;
+  pujaMuhurat?: string;
 }
 
-// Tithi end-time + Mumbai moonrise + formatted dates for the festival date (page-1 usefulness strip).
+// Tithi end-time + City/State Moonrise + formatted dates for the festival date (page-1 usefulness strip).
 // Any failure -> graceful fallback; PDF must still render.
 export async function fetchFestivalPanchangInfo(festival: any): Promise<FestivalPanchangInfo | null> {
   try {
@@ -132,8 +277,20 @@ export async function fetchFestivalPanchangInfo(festival: any): Promise<Festival
       }
     }
 
+    // Resolve user's city & state location dynamically
+    const loc = await resolveFestivalLocation();
+    info.city = loc.city;
+    info.state = loc.state;
+
+    // Check if Karwa Chauth to enrich with Sargi & Puja muhurat
+    const isKarwa = isKarwaChauthThemeCheck(festival?.festival_name || festival?.name || festival?.title);
+    if (isKarwa) {
+      info.sargiTime = '04:45 AM - 05:35 AM';
+      info.pujaMuhurat = '05:40 PM - 07:02 PM';
+    }
+
     if (!dateISO) return info;
-    const res: any = await getPanchang({ date_str: dateISO, lat: MUMBAI_PANCHANG.lat, lng: MUMBAI_PANCHANG.lng });
+    const res: any = await getPanchang({ date_str: dateISO, lat: loc.lat, lng: loc.lng });
     const data = res?.data ?? res;
     const adv = data?.sources?.advanced_panchang || data?.sources?.panchang_advanced;
     if (adv) {
@@ -152,6 +309,17 @@ export async function fetchFestivalPanchangInfo(festival: any): Promise<Festival
 
       const tName = adv?.tithi?.details?.tithi_name || adv?.tithi?.name;
       if (tName) info.tithiName = cleanTextForPdf(String(tName));
+
+      const rawKaran = adv?.karan;
+      const kName = String(rawKaran?.details?.karan_name || rawKaran?.name || '');
+      const kSpecial = String(rawKaran?.details?.special || '');
+      if (/vishti|bhadra/i.test(kName) || /bhadra/i.test(kSpecial)) {
+        const rawBhadraEnd = rawKaran?.end_time ?? rawKaran?.end ?? null;
+        if (rawBhadraEnd) {
+          info.bhadraEnd = formatTimeValue(rawBhadraEnd);
+          info.bhadra = `Ends at ${info.bhadraEnd}`;
+        }
+      }
 
       const nakName = adv?.nakshatra?.details?.nak_name || adv?.nakshatra?.name;
       if (nakName) info.nakshatra = cleanTextForPdf(String(nakName));
@@ -1675,6 +1843,22 @@ export async function loadPdfFonts(doc: PDFDocument) {
     console.warn('[PDF] Karwa Chauth background image embedding fallback:', karwaBgErr);
   }
 
+  let karwaChauthWomanImage: any = null;
+  try {
+    const karwaWomanAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_hero.png'));
+    await karwaWomanAsset.downloadAsync();
+    const womanUri = karwaWomanAsset.localUri || karwaWomanAsset.uri;
+    if (womanUri) {
+      const base64 = await FileSystem.readAsStringAsync(womanUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = decodeBase64ToUint8(base64);
+      karwaChauthWomanImage = await doc.embedPng(bytes);
+    }
+  } catch (karwaWomanErr) {
+    console.warn('[PDF] Karwa Chauth woman image embedding fallback:', karwaWomanErr);
+  }
+
   return {
     fontCinzel,
     fontRozha,
@@ -1690,6 +1874,7 @@ export async function loadPdfFonts(doc: PDFDocument) {
     shamiLeafImage,
     sharadPurnimaBgImage,
     karwaChauthBgImage,
+    karwaChauthWomanImage,
   };
 }
 
@@ -1761,6 +1946,21 @@ async function resolveFestivalHeroImage(doc: PDFDocument, theme: FestivalTheme, 
       }
     } catch (err) {
       console.warn('[PDF] Could not embed local Sharad Purnima hero:', err);
+    }
+  }
+
+  // 1c. If Karwa Chauth / Karva Chauth: use high-res Karwa Chauth chalni puja hero image
+  if (lower.includes('karwa') || lower.includes('karva') || /करवा\s*चौथ/i.test(lower)) {
+    try {
+      const karwaAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_hero.jpg'));
+      await karwaAsset.downloadAsync();
+      const uri = karwaAsset.localUri || karwaAsset.uri;
+      if (uri) {
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        return await doc.embedJpg(decodeBase64ToUint8(b64));
+      }
+    } catch (err) {
+      console.warn('[PDF] Could not embed local Karwa Chauth hero:', err);
     }
   }
 
@@ -1905,7 +2105,7 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage, karwaChauthWomanImage } = fonts;
   const brandFont = fontCinzel || displayFont;
   const devanagariFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
   const hindiTitleFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
@@ -2146,6 +2346,17 @@ export async function renderDynamicFestivalPage1(
     });
   }
 
+  // Authentic Chalni & Diya Puja Woman Artwork in Bottom-Left Corner for Karwa Chauth (Enlarged & Positioned in Bottom-Left)
+  if (isKarwaChauthTheme && karwaChauthWomanImage) {
+    const womanDim = 280;
+    page1.drawImage(karwaChauthWomanImage, {
+      x: -35,
+      y: 15,
+      width: womanDim,
+      height: womanDim,
+    });
+  }
+
   // -------------------------------------------------------------
   // CONTENT STACK
   // -------------------------------------------------------------
@@ -2174,7 +2385,7 @@ export async function renderDynamicFestivalPage1(
     y: curY,
     size: brandFontSize,
     font: brandFont,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colCrimson,
+    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : (isKarwaChauthTheme ? rgb(1.0, 0.85, 0.40) : colCrimson),
   });
 
   curY -= (isSharadPurnimaTheme ? 22 : 18);
@@ -2183,21 +2394,21 @@ export async function renderDynamicFestivalPage1(
   const tagW = fontHelveticaBold.widthOfTextAtSize(tagText, 7.5);
   const tagX = (pageWidth - tagW) / 2;
 
-  page1.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
+  page1.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
   page1.drawText(tagText, {
     x: tagX,
     y: curY,
     size: 7.5,
     font: fontHelveticaBold,
-    color: isSharadPurnimaTheme ? rgb(0.92, 0.85, 0.70) : colSageDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.95, 0.88, 0.72) : colSageDeep,
   });
-  page1.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
+  page1.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
 
   curY -= 20;
 
   // 6. HERO MANDALA WITH FESTIVAL DEITY MEDALLION
-  // Omitted for Sharad Purnima so the full moon & celestial nocturnal artwork is completely unobstructed!
-  if (!isSharadPurnimaTheme) {
+  // Omitted for Sharad Purnima and Karwa Chauth so the corner artwork and title remain clean and unobstructed without the circle medallion!
+  if (!isSharadPurnimaTheme && !isKarwaChauthTheme) {
     const mCy = 640;
     const coreR = 78;
 
@@ -2282,8 +2493,8 @@ export async function renderDynamicFestivalPage1(
     // Set lockup starting point cleanly below the medallion
     curY = mCy - coreR - 22;
   } else {
-    // Sharad Purnima: Night sky background, start lockup high and graceful so every section has breathing room
-    curY = 752;
+    // Sharad Purnima & Karwa Chauth: start lockup high and graceful so every section has breathing room
+    curY = isSharadPurnimaTheme ? 752 : 740;
   }
 
   // 7. LOCKUP SECTION (Sender Kicker, Festival Title, Subtitle, Date & Auspicious Panchang Card)
@@ -2295,7 +2506,7 @@ export async function renderDynamicFestivalPage1(
       ? `स्नेह सहित — ${cleanTextForPdf(senderKicker)} की ओर से`
       : `WITH LOVE  —  FROM ${cleanTextForPdf(senderKicker)}`;
     const kFont = isSharadPurnimaTheme ? fontRozha : brandFont;
-    const kSize = isSharadPurnimaTheme ? 13.0 : 11.5;
+    const kSize = isSharadPurnimaTheme ? 14.5 : 13.0;
     const kW = measureTextWidth(kFont, kText, kSize);
     safeDrawText(page1, kText, {
       x: (pageWidth - kW) / 2,
@@ -2303,7 +2514,7 @@ export async function renderDynamicFestivalPage1(
       size: kSize,
       font: kFont,
       fallbackFont: kFont,
-      color: isSharadPurnimaTheme ? rgb(1.0, 0.90, 0.72) : colTerracottaDk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.90, 0.72) : colTerracottaDk,
     });
     // Generous 44pt gap ensuring title cap-height (and matras) never collide with kicker baseline
     curY -= (isSharadPurnimaTheme ? 44 : 36);
@@ -2320,7 +2531,7 @@ export async function renderDynamicFestivalPage1(
     part2 = titleWords.slice(half).join(' ');
   }
 
-  const titleFontSize = isSharadPurnimaTheme ? 31 : (rawTitle.length > 22 ? 22 : (rawTitle.length > 14 ? 25 : 28));
+  const titleFontSize = isSharadPurnimaTheme ? 33 : (rawTitle.length > 22 ? 25 : (rawTitle.length > 14 ? 29 : 33));
   const tFont = isSharadPurnimaTheme ? hindiTitleFont : brandFont;
   const p1W = measureTextWidth(tFont, part1, titleFontSize);
   const p2W = part2 ? measureTextWidth(tFont, part2, titleFontSize) : 0;
@@ -2333,7 +2544,7 @@ export async function renderDynamicFestivalPage1(
     size: titleFontSize,
     font: tFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(0.99, 0.97, 0.93) : colInk,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.97, 0.93) : colInk,
   });
   if (part2) {
     safeDrawText(page1, part2, {
@@ -2342,19 +2553,19 @@ export async function renderDynamicFestivalPage1(
       size: titleFontSize,
       font: tFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(1.0, 0.78, 0.35) : colCrimson,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.38) : colCrimson,
     });
   }
 
   // Generous 38pt gap between main title and subtitle
-  curY -= (isSharadPurnimaTheme ? 38 : 30);
+  curY -= (isSharadPurnimaTheme ? 38 : 32);
 
   // Subtitle / Occasion
   const occSub = isSharadPurnimaTheme
     ? '✦   आश्विन शुक्ल पूर्णिमा · कोजागरी पावन पर्व   ✦'
     : cleanTextForPdf(theme.subtitle || 'SANATAN DHARMA HERITAGE');
   const occFont = isSharadPurnimaTheme ? hindiBodyFont : fontTimesItalic;
-  const occSize = occSub.length > 38 ? 11 : 12;
+  const occSize = occSub.length > 38 ? 12.5 : 14.0;
   const dSubW = measureTextWidth(occFont, occSub, occSize);
   safeDrawText(page1, occSub, {
     x: (pageWidth - dSubW) / 2,
@@ -2362,7 +2573,7 @@ export async function renderDynamicFestivalPage1(
     size: occSize,
     font: occFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(0.97, 0.88, 0.68) : colTerracottaDk,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.88, 0.68) : colTerracottaDk,
   });
 
   // Generous 24pt gap before the Panchang Card
@@ -2372,6 +2583,7 @@ export async function renderDynamicFestivalPage1(
   let row1Text = '';
   let row2Text = '';
   let row3Text = '';
+  let row4Text = '';
 
   if (isSharadPurnimaTheme) {
     // Row 1: Day & Date + Sacred Tithi Name
@@ -2392,6 +2604,25 @@ export async function renderDynamicFestivalPage1(
     } else {
       row3Text = 'कोजागरी महालक्ष्मी पूजा: निशिता काल (मध्यरात्रि)   ·   16 कलाओं से अमृत वर्षा';
     }
+  } else if (isKarwaChauthTheme) {
+    // Row 1: Date & Sacred Chaturthi Tithi
+    const festDate = panchangInfo?.formattedDateEn || cleanTextForPdf(theme.date) || 'THURSDAY, 29 OCTOBER 2026';
+    const tithiEndStr = panchangInfo?.tithiEnd ? `ENDS ${panchangInfo.tithiEnd}` : 'ENDS 01:08 AM';
+    row1Text = `DATE: ${festDate.toUpperCase()}   ·   TITHI: KARTIK CHATURTHI (${tithiEndStr})`;
+
+    // Row 2: Sargi & Puja Muhurat
+    const sargiStr = panchangInfo?.sargiTime || '04:45 AM - 05:35 AM';
+    const pujaStr = panchangInfo?.pujaMuhurat || '05:40 PM - 07:02 PM';
+    row2Text = `SARGI MUHURAT: ${sargiStr}   ·   PUJA MUHURAT: ${pujaStr}`;
+
+    // Row 3: Moonrise for user's city/state & Bhadra Kaal
+    const cityLabel = (panchangInfo?.city || 'DELHI / NCR').toUpperCase();
+    const moonriseTime = panchangInfo?.moonrise || '08:12 PM';
+    const bhadraEndStr = panchangInfo?.bhadraEnd ? `ENDS ${panchangInfo.bhadraEnd}` : 'ENDS 01:07 PM';
+    row3Text = `MOONRISE (${cityLabel}): ${moonriseTime}   ·   BHADRA KAAL: ${bhadraEndStr} (PUJA IS BHADRA-FREE)`;
+
+    // Row 4: Major Cities quick reference
+    row4Text = 'Major Cities: Delhi 08:12 PM · Jaipur 08:22 PM · Lucknow 08:02 PM · Mumbai 08:48 PM · Bengaluru 08:52 PM';
   } else {
     const festDate = panchangInfo?.formattedDateEn || cleanTextForPdf(theme.date) || 'SACRED VEDIC TITHI';
     const festTithi = cleanTextForPdf(theme.tithi) || 'AUSPICIOUS CELEBRATION';
@@ -2406,8 +2637,8 @@ export async function renderDynamicFestivalPage1(
     row3Text = cleanTextForPdf(theme.tradition || 'Sacred Satsang, Puja Vidhi & Auspicious Aarti');
   }
 
-  const panCardW = Math.min(pageWidth - 64, 516);
-  const panCardH = isSharadPurnimaTheme ? 90 : 80;
+  const panCardW = Math.min(pageWidth - 64, 524);
+  const panCardH = isSharadPurnimaTheme ? 96 : (isKarwaChauthTheme ? 118 : 88);
   const panCardX = (pageWidth - panCardW) / 2;
   const panCardY = curY - panCardH;
 
@@ -2417,20 +2648,24 @@ export async function renderDynamicFestivalPage1(
     y: panCardY,
     width: panCardW,
     height: panCardH,
-    color: isSharadPurnimaTheme ? rgb(0.06, 0.10, 0.22) : rgb(0.94, 0.95, 0.91),
-    borderColor: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.45) : colSage,
+    color: isSharadPurnimaTheme
+      ? rgb(0.06, 0.10, 0.22)
+      : isKarwaChauthTheme
+      ? rgb(0.24, 0.04, 0.06)
+      : rgb(0.94, 0.95, 0.91),
+    borderColor: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colSage,
     borderWidth: 1.0,
-    opacity: isSharadPurnimaTheme ? 0.90 : 0.95,
+    opacity: (isSharadPurnimaTheme || isKarwaChauthTheme) ? 0.92 : 0.95,
   });
 
-  if (isSharadPurnimaTheme) {
+  if (isSharadPurnimaTheme || isKarwaChauthTheme) {
     // Regal inner golden frame
     page1.drawRectangle({
       x: panCardX + 3.5,
       y: panCardY + 3.5,
       width: panCardW - 7,
       height: panCardH - 7,
-      borderColor: rgb(0.88, 0.74, 0.45),
+      borderColor: rgb(0.92, 0.78, 0.42),
       borderWidth: 0.4,
       opacity: 0.35,
     });
@@ -2441,7 +2676,7 @@ export async function renderDynamicFestivalPage1(
     ? '✦   पावन तिथि, पंचांग एवं शुभ मुहूर्त   ✦'
     : '✦   SACRED TITHI, PANCHANG & AUSPICIOUS MUHURAT   ✦';
   const panHeadFont = isSharadPurnimaTheme ? hindiBodyFont : brandFont;
-  const panHeadSize = isSharadPurnimaTheme ? 10.2 : 9.5;
+  const panHeadSize = isSharadPurnimaTheme ? 11.5 : 11.0;
   const phW = measureTextWidth(panHeadFont, panHead, panHeadSize);
   const headY = panCardY + panCardH - 18;
 
@@ -2451,7 +2686,7 @@ export async function renderDynamicFestivalPage1(
     size: panHeadSize,
     font: panHeadFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.86, 0.45) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.86, 0.45) : colCrimson,
   });
 
   // Thin golden divider under header
@@ -2460,27 +2695,27 @@ export async function renderDynamicFestivalPage1(
     start: { x: panCardX + 24, y: divY },
     end: { x: panCardX + panCardW - 24, y: divY },
     thickness: 0.5,
-    color: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.45) : colSage,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colSage,
     opacity: 0.45,
   });
 
   // Row 1: Date & Tithi
   const r1Font = isSharadPurnimaTheme ? hindiBodyFont : fontHelveticaBold;
-  const r1Size = isSharadPurnimaTheme ? 11.2 : 9.8;
+  const r1Size = isSharadPurnimaTheme ? 12.0 : 11.2;
   const r1W = measureTextWidth(r1Font, row1Text, r1Size);
-  const r1Y = divY - 16;
+  const r1Y = divY - 17;
   safeDrawText(page1, row1Text, {
     x: (pageWidth - r1W) / 2,
     y: r1Y,
     size: r1Size,
     font: r1Font,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.94, 0.78) : colSageDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.96, 0.90) : colSageDeep,
   });
 
-  // Row 2: Tithi Timings & Moonrise
+  // Row 2: Sargi & Puja Muhurat
   const r2Font = isSharadPurnimaTheme ? hindiBodyFont : fontHelveticaBold;
-  const r2Size = isSharadPurnimaTheme ? 10.0 : 8.8;
+  const r2Size = isSharadPurnimaTheme ? 11.2 : 10.8;
   const r2W = measureTextWidth(r2Font, row2Text, r2Size);
   const r2Y = r1Y - 17;
   safeDrawText(page1, row2Text, {
@@ -2489,22 +2724,38 @@ export async function renderDynamicFestivalPage1(
     size: r2Size,
     font: r2Font,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.48) : colTerracottaDk,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.38) : colTerracottaDk,
   });
 
-  // Row 3: Important Tradition / Shubh Muhurat (Nishita Kaal Lakshmi Puja & 16 Kalas)
+  // Row 3: Moonrise & Bhadra Kaal
   if (row3Text) {
-    const r3Font = isSharadPurnimaTheme ? hindiBodyFont : fontTimesItalic;
-    const r3Size = isSharadPurnimaTheme ? 9.2 : 8.4;
+    const r3Font = (isSharadPurnimaTheme || !isKarwaChauthTheme) ? (isSharadPurnimaTheme ? hindiBodyFont : fontTimesItalic) : fontHelveticaBold;
+    const r3Size = isSharadPurnimaTheme ? 10.5 : (isKarwaChauthTheme ? 10.5 : 9.6);
     const r3W = measureTextWidth(r3Font, row3Text, r3Size);
-    const r3Y = r2Y - 16;
+    const r3Y = r2Y - 17;
     safeDrawText(page1, row3Text, {
       x: (pageWidth - r3W) / 2,
       y: r3Y,
       size: r3Size,
       font: r3Font,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.92, 0.88, 0.76) : colInk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.94, 0.78) : colInk,
+    });
+  }
+
+  // Row 4: Major Cities Quick Reference (for Karwa Chauth)
+  if (row4Text) {
+    const r4Font = fontTimesItalic;
+    const r4Size = 9.5;
+    const r4W = measureTextWidth(r4Font, row4Text, r4Size);
+    const r4Y = r2Y - 34;
+    safeDrawText(page1, row4Text, {
+      x: (pageWidth - r4W) / 2,
+      y: r4Y,
+      size: r4Size,
+      font: r4Font,
+      fallbackFont: fontPoppins,
+      color: rgb(0.92, 0.84, 0.72),
     });
   }
 
@@ -2513,15 +2764,15 @@ export async function renderDynamicFestivalPage1(
   // 8. JEWEL DIVIDER
   const jwWidth = 240;
   const jwX = (pageWidth - jwWidth) / 2;
-  const jwLineCol1 = isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
-  const jwLineCol2 = isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSage;
+  const jwLineCol1 = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
+  const jwLineCol2 = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSage;
   page1.drawLine({ start: { x: jwX, y: curY }, end: { x: cx - 24, y: curY }, thickness: 0.8, color: jwLineCol1, opacity: 0.7 });
   page1.drawLine({ start: { x: cx + 24, y: curY }, end: { x: jwX + jwWidth, y: curY }, thickness: 0.8, color: jwLineCol2, opacity: 0.7 });
 
-  page1.drawRectangle({ x: cx - 4, y: curY - 4, width: 8, height: 8, color: isSharadPurnimaTheme ? rgb(0.98, 0.76, 0.35) : colRose, rotate: degrees(45) });
-  page1.drawCircle({ x: cx, y: curY, size: 2.2, color: isSharadPurnimaTheme ? rgb(1.0, 0.95, 0.80) : colAmber });
-  page1.drawRectangle({ x: cx - 18 - 2, y: curY - 2, width: 4, height: 4, color: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colTerracotta, rotate: degrees(45) });
-  page1.drawRectangle({ x: cx + 18 - 2, y: curY - 2, width: 4, height: 4, color: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colSageDeep, rotate: degrees(45) });
+  page1.drawRectangle({ x: cx - 4, y: curY - 4, width: 8, height: 8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.76, 0.35) : colRose, rotate: degrees(45) });
+  page1.drawCircle({ x: cx, y: curY, size: 2.2, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.95, 0.80) : colAmber });
+  page1.drawRectangle({ x: cx - 18 - 2, y: curY - 2, width: 4, height: 4, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.88, 0.74, 0.42) : colTerracotta, rotate: degrees(45) });
+  page1.drawRectangle({ x: cx + 18 - 2, y: curY - 2, width: 4, height: 4, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.88, 0.74, 0.42) : colSageDeep, rotate: degrees(45) });
 
   curY -= (isSharadPurnimaTheme ? 22 : 18);
 
@@ -2543,9 +2794,9 @@ export async function renderDynamicFestivalPage1(
       `Dear Friend, may this auspicious celebration of ${festClean} arrive at your home with divine peace, joy, and boundless prosperity. ${greetClean} May the divine grace of ${deityClean} effortlessly dissolve every obstacle from your path, filling your home with radiant warmth, good health, righteous wisdom, and timeless harmony - today, and always.`;
   }
 
-  const bCardW = isSharadPurnimaTheme ? 516 : 490;
-  const blessFontSize = isSharadPurnimaTheme ? 12.0 : 10.8;
-  const blessLineHeight = isSharadPurnimaTheme ? 22.0 : 17.5;
+  const bCardW = isSharadPurnimaTheme ? 516 : 494;
+  const blessFontSize = isSharadPurnimaTheme ? 13.0 : 12.2;
+  const blessLineHeight = isSharadPurnimaTheme ? 23.0 : 19.5;
   const bFont = isSharadPurnimaTheme ? hindiBodyFont : fontTimes;
   // Wrap with comfortable 32pt horizontal padding on left & right
   const blessLines = wrapText(blessingParagraph, bFont, blessFontSize, bCardW - 64);
@@ -2569,33 +2820,35 @@ export async function renderDynamicFestivalPage1(
     });
   }
 
-  // Card Outer Container
-  page1.drawRectangle({
-    x: bCardX,
-    y: bCardY,
-    width: bCardW,
-    height: bCardH,
-    color: isSharadPurnimaTheme ? rgb(0.05, 0.08, 0.17) : rgb(0.992, 0.965, 0.93),
-    borderColor: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colPeachDeep,
-    borderWidth: 1.0,
-    opacity: isSharadPurnimaTheme ? 0.88 : 0.94,
-  });
+  // Card Outer Container (Omitted for Karwa Chauth so blessing text floats cleanly on parchment)
+  if (!isKarwaChauthTheme) {
+    page1.drawRectangle({
+      x: bCardX,
+      y: bCardY,
+      width: bCardW,
+      height: bCardH,
+      color: isSharadPurnimaTheme ? rgb(0.05, 0.08, 0.17) : rgb(0.992, 0.965, 0.93),
+      borderColor: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colPeachDeep,
+      borderWidth: 1.0,
+      opacity: isSharadPurnimaTheme ? 0.88 : 0.94,
+    });
 
-  // Inner decorative border for noble manuscript aesthetic
-  page1.drawRectangle({
-    x: bCardX + 4,
-    y: bCardY + 4,
-    width: bCardW - 8,
-    height: bCardH - 8,
-    borderColor: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colTerracotta,
-    borderWidth: 0.5,
-    opacity: isSharadPurnimaTheme ? 0.35 : 0.45,
-  });
+    // Inner decorative border for noble manuscript aesthetic
+    page1.drawRectangle({
+      x: bCardX + 4,
+      y: bCardY + 4,
+      width: bCardW - 8,
+      height: bCardH - 8,
+      borderColor: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colTerracotta,
+      borderWidth: 0.5,
+      opacity: isSharadPurnimaTheme ? 0.35 : 0.45,
+    });
+  }
 
   // Eyebrow Header
   const blessEyebrow = isSharadPurnimaTheme ? '॥ ब्रह्मांड परिवार की ओर से मंगल पावन आशीर्वाद ॥' : 'A   BLESSING   FROM   THE   BRAHMAND   FAMILY';
   const eyebrowFont = isSharadPurnimaTheme ? hindiBodyFont : brandFont;
-  const eyebrowSize = isSharadPurnimaTheme ? 10.2 : 9.5;
+  const eyebrowSize = isSharadPurnimaTheme ? 11.5 : 11.0;
   const bewW = measureTextWidth(eyebrowFont, blessEyebrow, eyebrowSize);
   const eyebrowY = bCardY + bCardH - 20;
 
@@ -2605,7 +2858,7 @@ export async function renderDynamicFestivalPage1(
     size: eyebrowSize,
     font: eyebrowFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.86, 0.42) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.86, 0.42) : colCrimson,
   });
 
   // Delicate decorative bar below eyebrow
@@ -2615,7 +2868,7 @@ export async function renderDynamicFestivalPage1(
     start: { x: cx - eyeDivW / 2, y: eyeDivY },
     end: { x: cx - 12, y: eyeDivY },
     thickness: 0.6,
-    color: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colCrimson,
     opacity: 0.6,
   });
   page1.drawRectangle({
@@ -2623,14 +2876,14 @@ export async function renderDynamicFestivalPage1(
     y: eyeDivY - 2.5,
     width: 5,
     height: 5,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.86, 0.42) : colAmber,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.86, 0.42) : colAmber,
     rotate: degrees(45),
   });
   page1.drawLine({
     start: { x: cx + 12, y: eyeDivY },
     end: { x: cx + eyeDivW / 2, y: eyeDivY },
     thickness: 0.6,
-    color: isSharadPurnimaTheme ? rgb(0.88, 0.74, 0.42) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colCrimson,
     opacity: 0.6,
   });
 
@@ -2644,7 +2897,7 @@ export async function renderDynamicFestivalPage1(
       size: blessFontSize,
       font: bFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.99, 0.98, 0.96) : colInk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.98, 0.96) : colInk,
     });
     blY -= blessLineHeight;
   }
@@ -2717,19 +2970,20 @@ export async function renderDynamicFestivalPage1(
   const mantraTextFont = isSharadPurnimaTheme ? hindiTitleFont : brandFont;
   const shlokaFont = isSharadPurnimaTheme ? hindiTitleFont : fontTimes;
 
-  const mHeadW = measureTextWidth(mantraHeadFont, mHead, 10.5);
+  const mHeadSize = isSharadPurnimaTheme ? 12.0 : 11.8;
+  const mHeadW = measureTextWidth(mantraHeadFont, mHead, mHeadSize);
   safeDrawText(page1, mHead, {
     x: (pageWidth - mHeadW) / 2,
     y: curY,
-    size: 10.5,
+    size: mHeadSize,
     font: mantraHeadFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(0.85, 0.75, 0.55) : colSageDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.88, 0.65) : colSageDeep,
   });
 
   curY -= (isSharadPurnimaTheme ? 28 : 24);
 
-  const mTextSize = isSharadPurnimaTheme ? 17 : 14.5;
+  const mTextSize = isSharadPurnimaTheme ? 18.5 : 16.5;
   const mTextW = measureTextWidth(mantraTextFont, mText, mTextSize);
   safeDrawText(page1, mText, {
     x: (pageWidth - mTextW) / 2,
@@ -2737,12 +2991,12 @@ export async function renderDynamicFestivalPage1(
     size: mTextSize,
     font: mantraTextFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.82, 0.35) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.38) : colCrimson,
   });
 
   curY -= (isSharadPurnimaTheme ? 34 : 26);
 
-  const shlokaSize = 9.8;
+  const shlokaSize = 11.2;
   const shlokaMaxW = pageWidth - 140;
 
   // Shloka 1 rendered in natural top-to-bottom order
@@ -2755,9 +3009,9 @@ export async function renderDynamicFestivalPage1(
       size: shlokaSize,
       font: shlokaFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.92, 0.90, 0.86) : colInk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.96, 0.92) : colInk,
     });
-    curY -= (isSharadPurnimaTheme ? 17 : 14);
+    curY -= (isSharadPurnimaTheme ? 18 : 15);
   }
 
   curY -= (isSharadPurnimaTheme ? 16 : 10);
@@ -2772,16 +3026,16 @@ export async function renderDynamicFestivalPage1(
       size: shlokaSize,
       font: shlokaFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.92, 0.90, 0.86) : colInk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.96, 0.92) : colInk,
     });
-    curY -= (isSharadPurnimaTheme ? 17 : 14);
+    curY -= (isSharadPurnimaTheme ? 18 : 15);
   }
 
   // Plain-language meaning under the shlokas
   if (shlokaMeaning) {
     curY -= (isSharadPurnimaTheme ? 14 : 10);
     const meanFont = isSharadPurnimaTheme ? hindiTitleFont : fontTimesItalic;
-    const meanSize = isSharadPurnimaTheme ? 9.2 : 8.8;
+    const meanSize = isSharadPurnimaTheme ? 10.5 : 10.0;
     const meanMaxW = pageWidth - 140;
     const meanLines = wrapText(shlokaMeaning, meanFont, meanSize, meanMaxW);
     for (let i = 0; i < meanLines.length; i++) {
@@ -2792,9 +3046,9 @@ export async function renderDynamicFestivalPage1(
         size: meanSize,
         font: meanFont,
         fallbackFont: fontPoppins,
-        color: isSharadPurnimaTheme ? rgb(0.95, 0.90, 0.78) : colTerracottaDk,
+        color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.90, 0.75) : colTerracottaDk,
       });
-      curY -= (isSharadPurnimaTheme ? 15 : 12.5);
+      curY -= (isSharadPurnimaTheme ? 16 : 13.5);
     }
   }
 
@@ -2805,7 +3059,7 @@ export async function renderDynamicFestivalPage1(
     ? 'रोज़ का पंचांग · पावन कथा · मंदिर दर्शन — ब्राह्मण्ड ऐप पर मुफ़्त'
     : 'DAILY PANCHANG  ·  FESTIVAL KATHA  ·  TEMPLE DARSHAN  —  FREE ON BRAHMAND.APP';
   const ctaFont = isSharadPurnimaTheme ? hindiBodyFont : fontHelveticaBold;
-  const ctaSize = isSharadPurnimaTheme ? 9.2 : 8.5;
+  const ctaSize = isSharadPurnimaTheme ? 10.2 : 9.6;
 
   curY -= (isSharadPurnimaTheme ? 24 : 16);
   if (curY >= footerLineY + 18) {
@@ -2817,12 +3071,12 @@ export async function renderDynamicFestivalPage1(
       size: ctaSize,
       font: ctaFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.99, 0.88, 0.62) : colCrimson,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.88, 0.62) : colCrimson,
     });
     const ctaLx1 = 52;
     const ctaLx2 = (pageWidth - ctaW) / 2 - 14;
-    page1.drawLine({ start: { x: ctaLx1, y: ctaY + 3 }, end: { x: ctaLx2, y: ctaY + 3 }, thickness: 0.7, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.7 });
-    page1.drawLine({ start: { x: (pageWidth + ctaW) / 2 + 14, y: ctaY + 3 }, end: { x: pageWidth - 52, y: ctaY + 3 }, thickness: 0.7, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.7 });
+    page1.drawLine({ start: { x: ctaLx1, y: ctaY + 3 }, end: { x: ctaLx2, y: ctaY + 3 }, thickness: 0.7, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.7 });
+    page1.drawLine({ start: { x: (pageWidth + ctaW) / 2 + 14, y: ctaY + 3 }, end: { x: pageWidth - 52, y: ctaY + 3 }, thickness: 0.7, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.7 });
   }
 
   // 10. FOOTER (Without QR code, clean elegant balanced layout)
@@ -2830,7 +3084,7 @@ export async function renderDynamicFestivalPage1(
     start: { x: 38, y: footerLineY },
     end: { x: pageWidth - 38, y: footerLineY },
     thickness: 0.8,
-    color: colPeachDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colPeachDeep,
     opacity: 0.85,
   });
 
@@ -2848,23 +3102,23 @@ export async function renderDynamicFestivalPage1(
   page1.drawText('BRAHMAND', {
     x: fBrandX,
     y: footY + 15,
-    size: 12.5,
+    size: 13.5,
     font: brandFont,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : colCrimson,
   });
 
   page1.drawText('Discover more on Brahmand  *  https://brahmand.app', {
     x: 44,
     y: footY + 2,
-    size: 7.8,
+    size: 9.0,
     font: fontTimesItalic,
-    color: isSharadPurnimaTheme ? rgb(0.88, 0.84, 0.76) : colInkSoft,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.90, 0.85, 0.75) : colInkSoft,
   });
 
   try {
     const footerTrackingUrl = getTrackedBrahmandUrl(theme.name, 'pdf_footer');
-    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 7.8);
-    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 7.8);
+    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 9.0);
+    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 9.0);
     addClickableLink(doc, page1, footerTrackingUrl, [
       44 + pfxW - 2,
       footY - 4,
@@ -2880,23 +3134,23 @@ export async function renderDynamicFestivalPage1(
   const pageText = senderName
     ? `SHARED WITH LOVE BY ${cleanTextForPdf(senderName).toUpperCase()}  *  VIA BRAHMAND APP`
     : 'SHARED WITH LOVE VIA BRAHMAND APP';
-  const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 7.8);
+  const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 8.6);
   page1.drawText(pageText, {
     x: pageWidth - 44 - ptW,
     y: footY + 16,
-    size: 7.8,
+    size: 8.6,
     font: fontHelveticaBold,
-    color: isSharadPurnimaTheme ? rgb(0.92, 0.85, 0.70) : colSageDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.85, 0.70) : colSageDeep,
   });
 
   const subPageText = totalPages && totalPages > 1 ? `PAGE ${pageNumber || 1} OF ${totalPages}` : 'SANATAN DHARMA HERITAGE';
-  const sptW = fontHelveticaBold.widthOfTextAtSize(subPageText, 8.2);
+  const sptW = fontHelveticaBold.widthOfTextAtSize(subPageText, 9.2);
   page1.drawText(subPageText, {
     x: pageWidth - 44 - sptW,
     y: footY + 2,
-    size: 8.2,
+    size: 9.2,
     font: fontHelveticaBold,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : colCrimson,
   });
 }
 
@@ -2945,7 +3199,8 @@ function drawPageParchmentFrame(
   pageWidth: number,
   pageHeight: number,
   theme: FestivalTheme,
-  fonts: any
+  fonts: any,
+  options?: { skipWomanArtwork?: boolean }
 ) {
   const isSharad = isSharadPurnimaThemeCheck(theme.name);
   const isKarwa = isKarwaChauthThemeCheck(theme.name);
@@ -2976,6 +3231,16 @@ function drawPageParchmentFrame(
       height: pageHeight,
       opacity: 1.0,
     });
+    // Authentic Chalni & Diya Puja Woman Artwork in Bottom-Left Corner (omitted on guide/checklist page to prevent text clash)
+    if (!options?.skipWomanArtwork && fonts.karwaChauthWomanImage) {
+      const womanDim = 280;
+      page.drawImage(fonts.karwaChauthWomanImage, {
+        x: -35,
+        y: 15,
+        width: womanDim,
+        height: womanDim,
+      });
+    }
   } else {
     // Same warm cream + festive gradient as page 1 for non-Sharad festivals
     page.drawRectangle({
@@ -3046,6 +3311,7 @@ function drawPageBrandHeader(
   const colSage = rgb(0.541, 0.584, 0.451);
   const colInk = rgb(0.10, 0.07, 0.05);
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
   const cx = pageWidth / 2;
 
   let curY = pageHeight - 55;
@@ -3072,7 +3338,7 @@ function drawPageBrandHeader(
     size: brandFontSize,
     font: brandFont,
     fallbackFont: hindiBodyFont,
-    color: isSharadPurnimaTheme ? rgb(0.92, 0.82, 0.65) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.85, 0.40) : colCrimson,
   });
 
   curY -= (isSharadPurnimaTheme ? 27 : 21);
@@ -3081,22 +3347,22 @@ function drawPageBrandHeader(
   const tagW = measureTextWidth(fontHelveticaBold, tagText, 7.5);
   const tagX = (pageWidth - tagW) / 2;
 
-  page.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
+  page.drawLine({ start: { x: tagX - 36, y: curY + 2 }, end: { x: tagX - 12, y: curY + 2 }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
   safeDrawText(page, tagText, {
     x: tagX,
     y: curY,
     size: 7.5,
     font: fontHelveticaBold,
     fallbackFont: hindiBodyFont,
-    color: isSharadPurnimaTheme ? rgb(0.98, 0.88, 0.68) : colSageDeep,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.88, 0.68) : colSageDeep,
   });
-  page.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
+  page.drawLine({ start: { x: tagX + tagW + 12, y: curY + 2 }, end: { x: tagX + tagW + 36, y: curY + 2 }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSageDeep, opacity: 0.6 });
 
   if (isFirstNarrativePage) {
     const festClean = cleanTextForPdf(theme.name);
     const t1 = isSharadPurnimaTheme ? 'शरद पूर्णिमा ' : `${festClean.toUpperCase()} `;
     const t2 = isSharadPurnimaTheme ? 'पावन कथा' : 'KATHA & GUIDE';
-    const tSize = isSharadPurnimaTheme ? 28 : (festClean.length > 18 ? 16.5 : 19);
+    const tSize = isSharadPurnimaTheme ? 30 : (festClean.length > 18 ? 19.5 : 22.5);
     // Clear the tagline descenders/ascenders before drawing the big title (was overlapping it)
     curY -= (tSize * 0.85 + 12);
     const headFont = (isSharadPurnimaTheme || hasDevanagariChar(t1) || hasDevanagariChar(t2)) ? hindiTitleFont : brandFont;
@@ -3111,7 +3377,7 @@ function drawPageBrandHeader(
       size: tSize,
       font: headFont,
       fallbackFont: hindiTitleFont,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.96, 0.92) : colInk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.96, 0.92) : colInk,
     });
     safeDrawText(page, t2, {
       x: sTX + t1W,
@@ -3119,32 +3385,32 @@ function drawPageBrandHeader(
       size: tSize,
       font: headFont,
       fallbackFont: hindiTitleFont,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.76, 0.35) : colCrimson,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.38) : colCrimson,
     });
 
     curY -= (isSharadPurnimaTheme ? 19 : 17);
 
     const storySub = cleanTextForPdf(theme.subtitle || 'Sanatan Dharma Heritage & Complete Celebration Guide');
     const subFont = (isSharadPurnimaTheme || hasDevanagariChar(storySub)) ? hindiBodyFont : fontTimesItalic;
-    const ssW = measureTextWidth(subFont, storySub, 9.5);
+    const ssW = measureTextWidth(subFont, storySub, 11.0);
     safeDrawText(page, storySub, {
       x: (pageWidth - ssW) / 2,
       y: curY,
-      size: 9.5,
+      size: 11.0,
       font: subFont,
       fallbackFont: hindiBodyFont,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.87, 0.66) : colTerracottaDk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.87, 0.66) : colTerracottaDk,
     });
 
     curY -= 16;
 
     const jwWidth = 240;
     const jwX = (pageWidth - jwWidth) / 2;
-    page.drawLine({ start: { x: jwX, y: curY }, end: { x: cx - 22, y: curY }, thickness: 0.8, color: colPeachDeep, opacity: 0.85 });
-    page.drawLine({ start: { x: cx + 22, y: curY }, end: { x: jwX + jwWidth, y: curY }, thickness: 0.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.85 });
-    page.drawRectangle({ x: cx - 3.5, y: curY - 3.5, width: 7, height: 7, color: colTerracotta, rotate: degrees(45) });
-    page.drawRectangle({ x: cx - 16 - 2, y: curY - 2, width: 4, height: 4, color: colRose, rotate: degrees(45) });
-    page.drawRectangle({ x: cx + 16 - 2, y: curY - 2, width: 4, height: 4, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep, rotate: degrees(45) });
+    page.drawLine({ start: { x: jwX, y: curY }, end: { x: cx - 22, y: curY }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colPeachDeep, opacity: 0.85 });
+    page.drawLine({ start: { x: cx + 22, y: curY }, end: { x: jwX + jwWidth, y: curY }, thickness: 0.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSage, opacity: 0.85 });
+    page.drawRectangle({ x: cx - 3.5, y: curY - 3.5, width: 7, height: 7, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.76, 0.35) : colTerracotta, rotate: degrees(45) });
+    page.drawRectangle({ x: cx - 16 - 2, y: curY - 2, width: 4, height: 4, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colRose, rotate: degrees(45) });
+    page.drawRectangle({ x: cx + 16 - 2, y: curY - 2, width: 4, height: 4, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colSageDeep, rotate: degrees(45) });
 
     curY -= 16;
   } else {
@@ -3153,14 +3419,14 @@ function drawPageBrandHeader(
     const festClean = cleanTextForPdf(theme.name);
     const t1 = customTitle || (isSharadPurnimaTheme ? `${festClean} — शेष कथा` : `${festClean.toUpperCase()} — CONTINUED`);
     const secFont = (isSharadPurnimaTheme || hasDevanagariChar(t1)) ? (fontRozha || hindiTitleFont) : brandFont;
-    const tW = measureTextWidth(secFont, t1, 10.5);
+    const tW = measureTextWidth(secFont, t1, 12.0);
     safeDrawText(page, t1, {
       x: (pageWidth - tW) / 2,
       y: curY,
-      size: 10.5,
+      size: 12.0,
       font: secFont,
       fallbackFont: hindiTitleFont,
-      color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colTerracottaDk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : colTerracottaDk,
     });
     curY -= 12;
 
@@ -3193,21 +3459,40 @@ function drawMarketingCardOnPage(
   const textFont = fontPoppins || fontHimalaya || fontHelvetica;
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
+  const isDarkBgTheme = isSharadPurnimaTheme || isKarwaChauthTheme;
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
-  const colHead = isSharadPurnimaTheme ? rgb(1.0, 0.86, 0.45) : colCrimson;
-  const colSub = isSharadPurnimaTheme ? rgb(0.95, 0.88, 0.70) : colTerracottaDk;
+  const colHead = isDarkBgTheme ? rgb(1.0, 0.86, 0.45) : colCrimson;
+  const colSub = isDarkBgTheme ? rgb(0.98, 0.92, 0.78) : colTerracottaDk;
 
-  // Center-aligned marketing & download block without any heavy background boxes
+  // Center-aligned marketing & download block with dedicated contrast card for dark patterned backgrounds
   const baseY = overrideCardY !== undefined ? overrideCardY : 110;
+
+  if (isDarkBgTheme) {
+    const cardW = pageWidth - pMargin * 2;
+    const cardH = 196;
+    const cardX = pMargin;
+    const cardY = baseY - 24;
+    page.drawRectangle({
+      x: cardX,
+      y: cardY,
+      width: cardW,
+      height: cardH,
+      color: isKarwaChauthTheme ? rgb(0.18, 0.02, 0.04) : rgb(0.06, 0.09, 0.20),
+      opacity: 0.86,
+      borderColor: rgb(0.92, 0.78, 0.42),
+      borderWidth: 0.8,
+    });
+  }
 
   // 1. BRAND HEADER (Centered)
   const eyebrowText = 'BRAHMAND APP';
-  const ebW = measureTextWidth(brandFont, eyebrowText, 11.5);
+  const ebW = measureTextWidth(brandFont, eyebrowText, 13.0);
   safeDrawText(page, eyebrowText, {
     x: (pageWidth - ebW) / 2,
     y: baseY + 144,
-    size: 11.5,
+    size: 13.0,
     font: brandFont,
     fallbackFont: fontPoppins,
     color: colHead,
@@ -3218,11 +3503,11 @@ function drawMarketingCardOnPage(
     ? 'दैनिक पंचांग  ·  सम्पूर्ण पावन कथाएं  ·  लाइव जाप'
     : 'Daily Vedic Panchang  ·  Sacred Katha Library  ·  Live Jaap';
   const tagFont = fontPoppins || textFont;
-  const tagW = measureTextWidth(tagFont, taglineText, 8.8);
+  const tagW = measureTextWidth(tagFont, taglineText, 10.5);
   safeDrawText(page, taglineText, {
     x: (pageWidth - tagW) / 2,
     y: baseY + 128,
-    size: 8.8,
+    size: 10.5,
     font: tagFont,
     fallbackFont: fontPoppins,
     color: colSub,
@@ -3241,7 +3526,7 @@ function drawMarketingCardOnPage(
     qrBoxY,
     qrSize,
     rgb(0.08, 0.08, 0.08),
-    isSharadPurnimaTheme ? rgb(0.99, 0.985, 0.95) : rgb(1, 1, 1),
+    isDarkBgTheme ? rgb(0.99, 0.985, 0.95) : rgb(1, 1, 1),
     brahmandLogo
   );
 
@@ -3250,11 +3535,11 @@ function drawMarketingCardOnPage(
     ? '॥ फोन कैमरे से स्कैन करें एवं निःशुल्क डाउनलोड करें ॥'
     : 'Scan with Phone Camera to Download Free';
   const cFont = fontPoppins || brandFont;
-  const capW = measureTextWidth(cFont, qrCaption, 8.4);
+  const capW = measureTextWidth(cFont, qrCaption, 9.6);
   safeDrawText(page, qrCaption, {
     x: (pageWidth - capW) / 2,
     y: qrBoxY - 14,
-    size: 8.4,
+    size: 9.6,
     font: cFont,
     fallbackFont: fontPoppins,
     color: colHead,
@@ -3264,12 +3549,12 @@ function drawMarketingCardOnPage(
   const storeRowY = qrBoxY - 33;
   const playScale = 0.40;
   const playIconW = 24 * playScale;
-  const playTextW = fontHelveticaBold.widthOfTextAtSize('Google Play', 8.5);
+  const playTextW = fontHelveticaBold.widthOfTextAtSize('Google Play', 9.8);
   const playBtnW = playIconW + 5 + playTextW;
 
   const appleScale = 0.40;
   const appleIconW = 24 * appleScale;
-  const appleTextW = fontHelveticaBold.widthOfTextAtSize('App Store', 8.5);
+  const appleTextW = fontHelveticaBold.widthOfTextAtSize('App Store', 9.8);
   const appleBtnW = appleIconW + 5 + appleTextW;
 
   const storeGap = 20;
@@ -3289,9 +3574,9 @@ function drawMarketingCardOnPage(
   page.drawText('Google Play', {
     x: storeStartX + playIconW + 5,
     y: storeRowY,
-    size: 8.5,
+    size: 9.8,
     font: fontHelveticaBold,
-    color: isSharadPurnimaTheme ? rgb(0.95, 0.92, 0.85) : rgb(0.10, 0.07, 0.05),
+    color: isDarkBgTheme ? rgb(0.98, 0.96, 0.92) : rgb(0.10, 0.07, 0.05),
   });
 
   // App Store
@@ -3302,14 +3587,14 @@ function drawMarketingCardOnPage(
     x: appleStartX,
     y: storeRowY + 7,
     scale: appleScale,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : rgb(0.10, 0.07, 0.05),
+    color: isDarkBgTheme ? rgb(1.0, 0.84, 0.45) : rgb(0.10, 0.07, 0.05),
   });
   page.drawText('App Store', {
     x: appleStartX + appleIconW + 5,
     y: storeRowY,
-    size: 8.5,
+    size: 9.8,
     font: fontHelveticaBold,
-    color: isSharadPurnimaTheme ? rgb(0.95, 0.92, 0.85) : rgb(0.10, 0.07, 0.05),
+    color: isDarkBgTheme ? rgb(0.98, 0.96, 0.92) : rgb(0.10, 0.07, 0.05),
   });
 
   // 6. SUB-CAPTION (Centered)
@@ -3317,14 +3602,14 @@ function drawMarketingCardOnPage(
     ? 'Google Play एवं App Store पर निःशुल्क उपलब्ध'
     : 'Available Free on Google Play & App Store';
   const subFont = fontPoppins || fontHelveticaBold;
-  const subW = measureTextWidth(subFont, storeSubLabel, 7.8);
+  const subW = measureTextWidth(subFont, storeSubLabel, 9.0);
   safeDrawText(page, storeSubLabel, {
     x: (pageWidth - subW) / 2,
     y: storeRowY - 14,
-    size: 7.8,
+    size: 9.0,
     font: subFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(0.88, 0.82, 0.70) : colTerracottaDk,
+    color: isDarkBgTheme ? rgb(0.95, 0.88, 0.72) : colTerracottaDk,
   });
 
   // Clickable link annotations
@@ -3370,7 +3655,7 @@ async function renderFestivalGuideAndQuizPage(
   const cx = pageWidth / 2;
 
   const page = doc.addPage([pageWidth, pageHeight]);
-  drawPageParchmentFrame(page, pageWidth, pageHeight, theme, fonts);
+  drawPageParchmentFrame(page, pageWidth, pageHeight, theme, fonts, { skipWomanArtwork: true });
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
 
@@ -3387,11 +3672,12 @@ async function renderFestivalGuideAndQuizPage(
   const colSageDeep = rgb(0.20, 0.28, 0.15);
   const colInk = rgb(0.10, 0.07, 0.05);
   const colAmber = theme.gold || rgb(0.85, 0.70, 0.40);
-  // Readable palette over the Sharad night-sky background (cards keep their light fills + dark text)
-  const colHead = isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colCrimson;
-  const colSub = isSharadPurnimaTheme ? rgb(0.98, 0.87, 0.64) : colTerracottaDk;
-  const colBody = isSharadPurnimaTheme ? rgb(0.95, 0.92, 0.86) : colInk;
-  const colSep = isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
+  // Readable palette over the Sharad night-sky and Karwa Chauth red damask background
+  const colHead = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : colCrimson;
+  const colSub = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.87, 0.64) : colTerracottaDk;
+  const colBody = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.97, 0.94, 0.90) : colInk;
+  const colSep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
 
   const festClean = cleanTextForPdf(theme.name);
   const page3HeaderTitle = isSharadPurnimaTheme
@@ -3432,6 +3718,8 @@ async function renderFestivalGuideAndQuizPage(
   if (!rawAboutText) {
     rawAboutText = isSharadPurnimaTheme
       ? 'शरद पूर्णिमा सनातन परंपरा का अत्यंत पावन पर्व है। इस रात्रि चंद्रमा पृथ्वी के सर्वाधिक निकट आकर अपनी 16 कलाओं से अमृत वर्षा करता है। भक्त रात्रि जागरण कर माँ लक्ष्मी और चंद्र देव की आराधना करते हैं तथा चांदनी में रखी अमृतमयी खीर का प्रसाद ग्रहण करते हैं।'
+      : isKarwaChauthTheme
+      ? 'Karwa Chauth is an auspicious Sanatan festival where married women observe a strict Nirjala Vrat from sunrise to moonrise for the health, prosperity, and longevity of their husbands, worshiping Lord Shiva, Mata Parvati, and Chandra Deva.'
       : cleanTextForPdf(
           festival?.summary ||
           festival?.description ||
@@ -3442,6 +3730,8 @@ async function renderFestivalGuideAndQuizPage(
   if (!rawImportanceText) {
     rawImportanceText = isSharadPurnimaTheme
       ? 'मान्यता है कि इस रात्रि माँ महालक्ष्मी भूलोक में विचरण कर पूछती हैं "को जागर्ति?" (कौन जाग रहा है?)। जागरण और ध्यान में लीन रहने वाले भक्तों को माँ धन, धान्य और दीर्घायु का वरदान देती हैं।'
+      : isKarwaChauthTheme
+      ? 'Legend holds that Queen Veeravati revived her husband through unyielding devotion and strict observance of this sacred fast, symbolising the eternal power of marital love, faith, and divine protection.'
       : cleanTextForPdf(
           festival?.importance ||
           festival?.purpose ||
@@ -3451,17 +3741,23 @@ async function renderFestivalGuideAndQuizPage(
 
   const introText = rawAboutText || (isSharadPurnimaTheme
     ? 'शरद पूर्णिमा सनातन परंपरा का अत्यंत पावन पर्व है। इस रात्रि चंद्रमा पृथ्वी के सर्वाधिक निकट आकर अपनी सोलह कलाओं से अमृत की वर्षा करता है।'
-    : 'Sharad Purnima, also known as Kojagiri Purnima, is celebrated on the full moon day in the month of Ashwin.');
+    : 'Karwa Chauth is an auspicious Sanatan festival celebrated on the fourth day of Kartik month.');
 
   const spiritualMeaningText = rawImportanceText || (isSharadPurnimaTheme
     ? 'यह पावन रात्रि आत्मिक शुद्धि, भक्ति साधना और सकारात्मक ऊर्जा का संचार करने का सर्वोत्तम अवसर है।'
-    : cleanTextForPdf(festival?.purpose || 'According to sacred legend, Goddess Mahalakshmi descends asking Ko Jagarti?'));
+    : cleanTextForPdf(festival?.purpose || 'Legend holds that Queen Veeravati revived her husband through unyielding devotion.'));
 
   const highlights = isSharadPurnimaTheme
     ? [
         '१. चंद्रमा की शीतल किरणें अमृत बरसाती हैं, जिससे स्वास्थ्य एवं तेज की वृद्धि होती है।',
         '२. माँ महालक्ष्मी जागरण करने वाले भक्तों को सुख-समृद्धि एवं शांति प्रदान करती हैं।',
         '३. चांदनी में रखी खीर दिव्य औषधि और पावन महाप्रसाद बन जाती है।'
+      ]
+    : isKarwaChauthTheme
+    ? [
+        '1. Pre-dawn Sargi blessing consumed before sunrise during Brahma Muhurat.',
+        '2. Sacred evening Shiva-Parvati Vrat Puja and recitation of Karwa Katha.',
+        '3. Viewing the full moon & husband through chalni, offering water arghya.'
       ]
     : [
         `Celestial Full Moon radiates all 16 divine kalas, showering curative Amrit on earth.`,
@@ -3471,6 +3767,8 @@ async function renderFestivalGuideAndQuizPage(
 
   const didYouKnowText = isSharadPurnimaTheme
     ? 'शरद पूर्णिमा की पावन रात्रि को ही भगवान श्रीकृष्ण ने वृंदावन में यमुना तट पर महारास रचाया था।'
+    : isKarwaChauthTheme
+    ? 'The earthen pot (Karwa) symbolises water and prosperity, representing life-giving energy and marital harmony in Sanatan tradition.'
     : dykFallback || `According to sacred tradition, this festival day radiates special divine energy for all devotees.`;
 
   // Rituals for Sharad Purnima or other festivals
@@ -3487,6 +3785,21 @@ async function renderFestivalGuideAndQuizPage(
       {
         title: 'चंद्र अर्घ्य एवं स्तोत्र पाठ',
         desc: 'पूर्ण चंद्रमा को जल का अर्घ्य दें तथा श्री सूक्त, कनकधारा व लक्ष्मी स्तोत्र का पाठ करें।',
+      },
+    ];
+  } else if (isKarwaChauthTheme) {
+    ritualsList = [
+      {
+        title: 'Brahma Muhurta Sargi (04:45 AM - 05:35 AM)',
+        desc: 'Consume sacred pre-dawn Sargi blessing (mithai, dry fruits, feni) before sunrise, followed by Nirjala Sankalp.',
+      },
+      {
+        title: 'Evening Karwa Puja & Katha (05:40 PM - 07:02 PM)',
+        desc: 'Adorn traditional attire, worship Goddess Parvati & Lord Shiva, recite Karwa Chauth Vrat Katha and exchange thalis.',
+      },
+      {
+        title: 'Chalni Diya Darshan & Sacred Moon Arghya',
+        desc: 'View the rising moon and husband through sacred sieve with earthen diya, offer water arghya, and conclude vrat.',
       },
     ];
   } else {
@@ -3511,25 +3824,25 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec1Heading, {
     x: pMargin,
     y: curY,
-    size: 10.8,
+    size: 12.5,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
-  curY -= 17;
+  curY -= 18;
 
   // Introduction text with comfortable leading & generous breathing room
-  const introLines = wrapText(introText, bodyTextFont, 9.2, contentWidth);
+  const introLines = wrapText(introText, bodyTextFont, 10.5, contentWidth);
   for (const iLine of introLines.slice(0, 3)) {
     safeDrawText(page, iLine, {
       x: pMargin,
       y: curY,
-      size: 9.2,
+      size: 10.5,
       font: bodyTextFont,
       fallbackFont: fontPoppins,
       color: colBody,
     });
-    curY -= 13.5;
+    curY -= 15.0;
   }
   curY -= 10;
 
@@ -3538,26 +3851,26 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, hlTitle, {
     x: pMargin,
     y: curY,
-    size: 8.8,
+    size: 10.2,
     font: bodyBoldFont,
     fallbackFont: fontPoppins,
     color: colSub,
   });
-  curY -= 14;
+  curY -= 15;
 
   for (const hl of highlights) {
-    page.drawCircle({ x: pMargin + 4, y: curY + 2.5, size: 2.2, color: colHead });
-    const hlLines = wrapText(hl, bodyTextFont, 8.6, contentWidth - 14);
+    page.drawCircle({ x: pMargin + 4, y: curY + 2.5, size: 2.4, color: colHead });
+    const hlLines = wrapText(hl, bodyTextFont, 9.8, contentWidth - 14);
     for (const hLine of hlLines.slice(0, 1)) {
       safeDrawText(page, hLine, {
         x: pMargin + 12,
         y: curY,
-        size: 8.6,
+        size: 9.8,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: colBody,
       });
-      curY -= 13.5;
+      curY -= 14.5;
     }
   }
   curY -= 10;
@@ -3565,25 +3878,29 @@ async function renderFestivalGuideAndQuizPage(
   // Did You Know box with theme-aware styling & comfortable padding
   const dykPrefix = isSharadPurnimaTheme ? 'क्या आप जानते हैं? ' : 'Did You Know? ';
   const dykFull = `${dykPrefix}${didYouKnowText}`;
-  const dykLines = wrapText(dykFull, bodyTextFont, 8.4, contentWidth - 18);
-  const dykBoxH = 18 + Math.min(dykLines.length, 2) * 11.0;
+  const dykLines = wrapText(dykFull, bodyTextFont, 9.8, contentWidth - 18);
+  const dykBoxH = 18 + Math.min(dykLines.length, 2) * 12.5;
   page.drawRectangle({
     x: pMargin,
     y: curY - dykBoxH + 4,
     width: contentWidth,
     height: dykBoxH,
-    color: isSharadPurnimaTheme ? rgb(0.07, 0.11, 0.23) : rgb(0.995, 0.985, 0.96),
-    borderColor: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colAmber,
+    color: isSharadPurnimaTheme
+      ? rgb(0.07, 0.11, 0.23)
+      : isKarwaChauthTheme
+      ? rgb(0.24, 0.04, 0.06)
+      : rgb(0.995, 0.985, 0.96),
+    borderColor: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colAmber,
     borderWidth: 0.6,
   });
   dykLines.slice(0, 2).forEach((ln, i) => {
     safeDrawText(page, ln, {
       x: pMargin + 9,
-      y: curY - 7 - i * 11.0,
-      size: 8.4,
+      y: curY - 7 - i * 12.5,
+      size: 9.8,
       font: bodyTextFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.88, 0.68) : colTerracottaDk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.88, 0.68) : colTerracottaDk,
     });
   });
   curY -= (dykBoxH + 20);
@@ -3593,17 +3910,17 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec2Heading, {
     x: pMargin,
     y: curY,
-    size: 10.5,
+    size: 12.5,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
-  curY -= 16;
+  curY -= 17;
 
   for (let rIdx = 0; rIdx < ritualsList.length; rIdx++) {
     const r = ritualsList[rIdx];
     const badgeNum = `${rIdx + 1}`;
-    const badgeRadius = 7.0;
+    const badgeRadius = 7.5;
     const badgeX = pMargin + badgeRadius;
     const badgeY = curY - 2;
 
@@ -3613,11 +3930,11 @@ async function renderFestivalGuideAndQuizPage(
       size: badgeRadius,
       color: colHead,
     });
-    const bnW = fontHelveticaBold.widthOfTextAtSize(badgeNum, 7.8);
+    const bnW = fontHelveticaBold.widthOfTextAtSize(badgeNum, 8.8);
     page.drawText(badgeNum, {
       x: badgeX - bnW / 2,
-      y: badgeY - 2.8,
-      size: 7.8,
+      y: badgeY - 3.0,
+      size: 8.8,
       font: fontHelveticaBold,
       color: rgb(1, 1, 1),
     });
@@ -3626,24 +3943,24 @@ async function renderFestivalGuideAndQuizPage(
     safeDrawText(page, r.title, {
       x: ritualTitleX,
       y: curY,
-      size: 9.2,
+      size: 10.5,
       font: bodyBoldFont,
       fallbackFont: fontPoppins,
       color: colSub,
     });
-    curY -= 13.0;
+    curY -= 14.0;
 
-    const rDescLines = wrapText(r.desc, bodyTextFont, 8.5, contentWidth - 24);
+    const rDescLines = wrapText(r.desc, bodyTextFont, 9.8, contentWidth - 24);
     for (const dLine of rDescLines.slice(0, 1)) {
       safeDrawText(page, dLine, {
         x: ritualTitleX,
         y: curY,
-        size: 8.5,
+        size: 9.8,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: colBody,
       });
-      curY -= 13.0;
+      curY -= 14.0;
     }
     curY -= 8;
   }
@@ -3657,7 +3974,7 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec3Heading, {
     x: pMargin,
     y: curY,
-    size: 10.5,
+    size: 12.5,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
@@ -3702,42 +4019,42 @@ async function renderFestivalGuideAndQuizPage(
       y: itemY - 1,
       width: boxSize,
       height: boxSize,
-      borderColor: isSharadPurnimaTheme ? rgb(0.98, 0.84, 0.45) : colCrimson,
+      borderColor: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.84, 0.45) : colCrimson,
       borderWidth: 0.8,
-      color: isSharadPurnimaTheme ? rgb(0.12, 0.16, 0.28) : rgb(1, 1, 1),
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.22, 0.04, 0.06) : rgb(1, 1, 1),
     });
     // Check mark tick
     page.drawLine({
       start: { x: itemX + 2, y: itemY + 3.5 },
       end: { x: itemX + 4, y: itemY + 1 },
       thickness: 1.2,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.84, 0.45) : colCrimson,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.84, 0.45) : colCrimson,
     });
     page.drawLine({
       start: { x: itemX + 4, y: itemY + 1 },
       end: { x: itemX + 8, y: itemY + 7 },
       thickness: 1.2,
-      color: isSharadPurnimaTheme ? rgb(0.98, 0.84, 0.45) : colCrimson,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.84, 0.45) : colCrimson,
     });
 
     // Item title
     safeDrawText(page, item.title, {
       x: itemX + 15,
       y: itemY,
-      size: 8.8,
+      size: 10.0,
       font: bodyBoldFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.99, 0.95, 0.88) : colSub,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.95, 0.88) : colSub,
     });
 
     // Sub note
     safeDrawText(page, item.sub, {
       x: itemX + 15,
-      y: itemY - 11.5,
-      size: 7.6,
+      y: itemY - 12.0,
+      size: 8.8,
       font: bodyTextFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(0.88, 0.82, 0.72) : colBody,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.84, 0.72) : colBody,
     });
   }
 
@@ -3767,10 +4084,11 @@ function drawPageFooter(
   const { fontCinzel, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
-  const colPeachDeep = isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : rgb(0.961, 0.710, 0.541);
-  const colCrimson = isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : (theme.primaryAccent || rgb(0.56, 0.11, 0.08));
-  const colInkSoft = isSharadPurnimaTheme ? rgb(0.88, 0.84, 0.76) : rgb(0.18, 0.13, 0.10);
-  const colSageDeep = isSharadPurnimaTheme ? rgb(0.92, 0.85, 0.70) : rgb(0.20, 0.28, 0.15);
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
+  const colPeachDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : rgb(0.961, 0.710, 0.541);
+  const colCrimson = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (theme.primaryAccent || rgb(0.56, 0.11, 0.08));
+  const colInkSoft = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.88, 0.84, 0.76) : rgb(0.18, 0.13, 0.10);
+  const colSageDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.85, 0.70) : rgb(0.20, 0.28, 0.15);
 
   const footY = 24;
   page.drawLine({
@@ -3795,7 +4113,7 @@ function drawPageFooter(
   page.drawText('BRAHMAND', {
     x: fBrandX,
     y: footY + 15,
-    size: 11,
+    size: 13.0,
     font: brandFont,
     color: colCrimson,
   });
@@ -3803,15 +4121,15 @@ function drawPageFooter(
   page.drawText('Discover more on Brahmand  *  https://brahmand.app', {
     x: 44,
     y: footY + 2,
-    size: 7.8,
+    size: 9.0,
     font: fontTimesItalic,
     color: colInkSoft,
   });
 
   try {
     const footerTrackingUrl = getTrackedBrahmandUrl(theme.name, 'pdf_footer');
-    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 7.8);
-    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 7.8);
+    const pfxW = fontTimesItalic.widthOfTextAtSize('Discover more on Brahmand  *  ', 9.0);
+    const lnkW = fontTimesItalic.widthOfTextAtSize('https://brahmand.app', 9.0);
     addClickableLink(doc, page, footerTrackingUrl, [
       44 + pfxW,
       footY - 2,
@@ -3827,21 +4145,21 @@ function drawPageFooter(
   const pageText = senderName
     ? `SHARED WITH LOVE BY ${cleanTextForPdf(senderName).toUpperCase()}  *  VIA BRAHMAND APP`
     : 'SHARED WITH LOVE VIA BRAHMAND APP';
-  const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 7);
+  const ptW = fontHelveticaBold.widthOfTextAtSize(pageText, 8.6);
   page.drawText(pageText, {
     x: pageWidth - 44 - ptW,
     y: footY + 16,
-    size: 7,
+    size: 8.6,
     font: fontHelveticaBold,
     color: colSageDeep,
   });
 
   const subPageText = `PAGE ${pageNum} OF ${totalPages}`;
-  const sptW = fontHelveticaBold.widthOfTextAtSize(subPageText, 7.5);
+  const sptW = fontHelveticaBold.widthOfTextAtSize(subPageText, 9.0);
   page.drawText(subPageText, {
     x: pageWidth - 44 - sptW,
     y: footY + 2,
-    size: 7.5,
+    size: 9.0,
     font: fontHelveticaBold,
     color: colCrimson,
   });
@@ -3869,20 +4187,24 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
   const contentWidth = pageWidth - pMargin * 2;
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
   const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontHelveticaBold, displayFont } = fonts;
   const brandFont = fontCinzel || displayFont;
-  const chapterHeadFont = isSharadPurnimaTheme ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
-  const chapterBodyFont = isSharadPurnimaTheme ? (fontPoppins || fontHimalaya || fontTimes) : fontTimes;
+  const chapterHeadFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
+  const chapterBodyFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontPoppins || fontHimalaya || fontTimes) : fontTimes;
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
   const colPeachDeep = rgb(0.961, 0.710, 0.541);
   const colSageDeep = rgb(0.20, 0.28, 0.15);
   const colInk = rgb(0.10, 0.07, 0.05);
+  const colIvoryText = rgb(0.98, 0.95, 0.90);
+  const colGoldHeader = rgb(1.0, 0.84, 0.45);
+  const colGoldDivider = rgb(0.85, 0.70, 0.40);
 
-  const bodyFontSize = isSharadPurnimaTheme ? 11.2 : 11.8;
+  const bodyFontSize = (isSharadPurnimaTheme || isKarwaChauthTheme) ? 13.0 : 12.5;
   // Devanagari needs taller leading (matras/visargas extend past the baseline)
-  const bodyLineHeight = isSharadPurnimaTheme ? 18.5 : 16.0;
+  const bodyLineHeight = (isSharadPurnimaTheme || isKarwaChauthTheme) ? 20.0 : 17.5;
 
   // Prepare narrative section items
   const narrativeSections = theme.chapters || [];
@@ -3927,18 +4249,19 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
     }
 
     // Draw Section Header
-    const secTitleFontSize = isSharadPurnimaTheme ? 12.0 : 9.6;
+    const secTitleFontSize = (isSharadPurnimaTheme || isKarwaChauthTheme) ? 13.5 : 11.5;
     safeDrawText(curPage, secTitle, {
       x: pMargin,
       y: curY,
       size: secTitleFontSize,
       font: chapterHeadFont,
       fallbackFont: fontPoppins,
-      color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colTerracottaDk,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldHeader : colTerracottaDk,
     });
     curY -= (secTitleFontSize * 0.4 + 11);
 
-    if (isSharadPurnimaTheme) {
+    const isDevanagari = /[\u0900-\u097F]/.test(cleanContent);
+    if (isSharadPurnimaTheme || (isKarwaChauthTheme && isDevanagari)) {
       // In Devanagari Hindi, split-syllable drop caps break ligature rendering.
       // Render entire smooth paragraphs with chapterBodyFont (Poppins Devanagari)
       const allLines = wrapText(cleanContent, chapterBodyFont, bodyFontSize, contentWidth);
@@ -3956,7 +4279,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
           allLines[rIdx],
           chapterBodyFont,
           bodyFontSize,
-          isSharadPurnimaTheme ? rgb(0.95, 0.92, 0.86) : colInk,
+          (isSharadPurnimaTheme || isKarwaChauthTheme) ? colIvoryText : colInk,
           pMargin,
           curY,
           contentWidth,
@@ -3968,18 +4291,18 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
       // English first line with Drop Cap styling
       const dropLetter = cleanContent.charAt(0) || 'T';
       const restOfText = cleanContent.slice(1);
-      const dropCapSize = 21;
+      const dropCapSize = 25;
       const dropW = brandFont.widthOfTextAtSize(dropLetter, dropCapSize);
 
       curPage.drawText(dropLetter, {
         x: pMargin,
-        y: curY - 7.5,
+        y: curY - 8.5,
         size: dropCapSize,
         font: brandFont,
-        color: colCrimson,
+        color: isKarwaChauthTheme ? colGoldHeader : colCrimson,
       });
 
-      const dropIndent = dropW + 4;
+      const dropIndent = dropW + 5;
       const firstLinesWidth = contentWidth - dropIndent;
 
       const words = restOfText.split(/\s+/);
@@ -4015,7 +4338,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
         line1,
         fontTimes,
         bodyFontSize,
-        colInk,
+        isKarwaChauthTheme ? colIvoryText : colInk,
         pMargin + dropIndent,
         curY,
         firstLinesWidth,
@@ -4029,7 +4352,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
           line2,
           fontTimes,
           bodyFontSize,
-          colInk,
+          isKarwaChauthTheme ? colIvoryText : colInk,
           pMargin + dropIndent,
           curY,
           firstLinesWidth,
@@ -4053,7 +4376,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
           remainingLines[rIdx],
           fontTimes,
           bodyFontSize,
-          colInk,
+          isKarwaChauthTheme ? colIvoryText : colInk,
           pMargin,
           curY,
           contentWidth,
@@ -4070,9 +4393,9 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
       if (curY > 80) {
         const dW = 60;
         const dX = (pageWidth - dW) / 2;
-        const dCol = isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
+        const dCol = (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldDivider : colPeachDeep;
         curPage.drawLine({ start: { x: dX, y: curY }, end: { x: cx - 8, y: curY }, thickness: 0.5, color: dCol, opacity: 0.8 });
-        curPage.drawCircle({ x: cx, y: curY, size: 1.8, color: isSharadPurnimaTheme ? rgb(0.85, 0.70, 0.40) : colSageDeep });
+        curPage.drawCircle({ x: cx, y: curY, size: 1.8, color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldDivider : colSageDeep });
         curPage.drawLine({ start: { x: cx + 8, y: curY }, end: { x: dX + dW, y: curY }, thickness: 0.5, color: dCol, opacity: 0.8 });
         curY -= 10;
       }
@@ -4101,33 +4424,33 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
   // Add a heartfelt concluding blessings banner
   const blessHeading = isSharadPurnimaTheme
     ? '॥ मंगल पावन संकल्प एवं दिव्य आशीर्वाद ॥'
-    : 'DIVINE SANATAN BLESSING & SANKALP';
-  const bhFont = isSharadPurnimaTheme ? (fontRozha || brandFont) : brandFont;
-  const bhW = measureTextWidth(bhFont, blessHeading, 10.2);
+    : (isKarwaChauthTheme ? '॥ पावन करवा चौथ आशीर्वाद एवं संकल्प ॥' : 'DIVINE SANATAN BLESSING & SANKALP');
+  const bhFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || brandFont) : brandFont;
+  const bhW = measureTextWidth(bhFont, blessHeading, 12.0);
   safeDrawText(curPage, blessHeading, {
     x: (pageWidth - bhW) / 2,
     y: curY,
-    size: 10.2,
+    size: 12.0,
     font: bhFont,
     fallbackFont: fontPoppins,
-    color: isSharadPurnimaTheme ? rgb(1.0, 0.84, 0.45) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldHeader : colCrimson,
   });
-  curY -= 14;
+  curY -= 16;
 
   const blessText = cleanTextForPdf(theme.blessing || 'Dharmo Rakshati Rakshitah - May the auspicious grace of this festival illuminate your life.');
-  const bTextFont = isSharadPurnimaTheme ? (fontRozha || brandFont) : fontTimes;
-  const blessLines = wrapText(blessText, bTextFont, 10.0, contentWidth);
+  const bTextFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || brandFont) : fontTimes;
+  const blessLines = wrapText(blessText, bTextFont, 11.2, contentWidth);
   for (const bLine of blessLines) {
-    const blW = measureTextWidth(bTextFont, bLine, 10.0);
+    const blW = measureTextWidth(bTextFont, bLine, 11.2);
     safeDrawText(curPage, bLine, {
       x: (pageWidth - blW) / 2,
       y: curY,
-      size: 10.0,
+      size: 11.2,
       font: bTextFont,
-      fallbackFont: bTextFont,
-      color: isSharadPurnimaTheme ? rgb(0.95, 0.92, 0.86) : colInk,
+      fallbackFont: fontPoppins,
+      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colIvoryText : colInk,
     });
-    curY -= 13.5;
+    curY -= 15.0;
   }
 
   // Calculate total pages: 1 (Artwork Page) + Narrative Katha Pages + 1 (Guide, Rituals & Quiz Page)
@@ -4187,9 +4510,9 @@ export async function getFestivalAudioUri(festival: any): Promise<{ audioUri?: s
     const festSlug = (festName || 'festival').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'festival';
 
     // 1. Karwa Chauth local bundled audio
-    if (festName.includes('karwa') || festName.includes('karva')) {
+    if (festName.includes('karwa') || festName.includes('karva') || /करवा\s*चौथ/i.test(festName)) {
       try {
-        const audioAsset = Asset.fromModule(require('../../assets/audio/karwachauth.mp3'));
+        const audioAsset = Asset.fromModule(require('../../assets/audio/Karwa_Chauth_Vrat_Katha_Kokoro_Female.mp3'));
         await audioAsset.downloadAsync();
         const localUri = audioAsset.localUri || audioAsset.uri;
         if (localUri) {

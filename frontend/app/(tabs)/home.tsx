@@ -334,6 +334,49 @@ export default function HomeScreen() {
   }, [isFocused, quickAccessItems.length, featureSnapInterval]);
 
   useEffect(() => {
+    if (!isFocused) return;
+    const BANNER_WIDTH = screenWidth - 40 + 12;
+    const TOTAL_BANNERS = 3;
+
+    const startBannerScroll = () => {
+      if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);
+      bannerIntervalRef.current = setInterval(() => {
+        if (isHoldingBannerRef.current) return;
+        bannerAutoScrollIndex.current = (bannerAutoScrollIndex.current + 1) % TOTAL_BANNERS;
+        bannerScrollRef.current?.scrollTo({
+          x: bannerAutoScrollIndex.current * BANNER_WIDTH,
+          animated: true,
+        });
+        setActiveBannerIndex(bannerAutoScrollIndex.current);
+      }, 7000);
+    };
+
+    const stopBannerScroll = () => {
+      if (bannerIntervalRef.current) {
+        clearInterval(bannerIntervalRef.current);
+        bannerIntervalRef.current = null;
+      }
+    };
+
+    if (AppState.currentState === 'active') {
+      startBannerScroll();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startBannerScroll();
+      } else {
+        stopBannerScroll();
+      }
+    });
+
+    return () => {
+      stopBannerScroll();
+      appStateSub.remove();
+    };
+  }, [isFocused, screenWidth]);
+
+  useEffect(() => {
     if (user?.id) {
       loadRecentSearches();
     }

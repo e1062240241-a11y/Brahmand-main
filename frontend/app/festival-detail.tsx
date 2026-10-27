@@ -78,11 +78,18 @@ const FestivalDetailPage: React.FC = () => {
 
         // 2. Secondary lookup: Cleaned Name match
         if (!selected && targetName) {
-          const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
           selected = items.find((f) => {
-            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
             return fName && (fName === cleanTarget || fName.includes(cleanTarget) || cleanTarget.includes(fName));
           });
+
+          if (!selected && (cleanTarget.includes('karva') || cleanTarget.includes('karwa'))) {
+            selected = items.find((f) => {
+              const fName = (f.festival_name || f.name || f.title || '').toLowerCase();
+              return fName.includes('karva') || fName.includes('karwa');
+            });
+          }
         }
 
         // 3. Fallback: If no match yet and index is valid, match against date-sorted upcoming list (matching festivals.tsx order)

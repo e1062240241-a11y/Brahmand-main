@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import asyncio
+import html
 import re
 import json
 import hmac
@@ -3553,6 +3554,771 @@ async def download_app_redirect(request: Request):
     if (btn && isIOS) {{
       btn.href = "{app_store_url}";
       btn.innerText = 'DOWNLOAD ON APP STORE ➔';
+    }}
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+def _chand_wish_payload(raw_festival: str):
+    """Return the secret (shloka, blessing, card_title) for a festival.
+
+    Deliberately kept OUT of the landing-page HTML: the recipient only receives
+    the wish after completing the scratch, via the /chand-dikha-wish endpoint.
+    This keeps the wish out of "view source" and the WhatsApp link preview.
+    """
+    lowered = (raw_festival or "").lower()
+    if "karwa" in lowered or "karva" in lowered or "करवा" in (raw_festival or ""):
+        return (
+            "॥ ॐ श्रीं सोम सोमाय नमः • ॐ नमः शिवायै शर्वाण्यै ॥",
+            "पावन चाँद का दीदार आपके जीवन में अखंड सौभाग्य, अटूट प्रेम एवं दीर्घायु का वरदान लाए।",
+            "करवा चौथ",
+        )
+    if "sharad" in lowered or "kojagiri" in lowered or "शरद" in (raw_festival or ""):
+        return (
+            "॥ ॐ सों सोमाय नमः • ॐ महालक्ष्म्यै नमः ॥",
+            "शरद पूर्णिमा के चंद्रमा की धवल चांदनी आपके जीवन में उत्तम आरोग्य, सुख-शांति एवं माँ लक्ष्मी की कृपा बरसाए।",
+            "शरद पूर्णिमा",
+        )
+    return (
+        "॥ ॐ सोम सोमाय नमः • सर्वे भवन्तु सुखिनः ॥",
+        "पावन पूर्णिमा के चंद्रमा का दिव्य प्रकाश आपके जीवन में सुख, शांति एवं समृद्धि का संचार करे।",
+        (raw_festival or "").strip() or "करवा चौथ",
+    )
+
+
+async def chand_dikha_wish_api(request: Request):
+    """Serve the wish JSON only once the recipient has actually scratched the card."""
+    raw_festival = (request.query_params.get("festival") or "").strip()
+    shloka, blessing, card_title = _chand_wish_payload(raw_festival)
+    return JSONResponse(
+        {"shloka": shloka, "blessing": blessing, "card_title": card_title},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+# --- Scratch-card style OG preview image (WhatsApp link preview) ---
+_DEVANAGARI_FONT_PATHS = [
+    "/System/Library/Fonts/Supplemental/Devanagari Sangam MN.ttc",
+    "/System/Library/Fonts/Supplemental/DevanagariMT.ttc",
+    "/System/Library/Fonts/Devanagari Sangam MN.ttc",
+]
+
+
+def _load_devanagari_font(size: int):
+    from PIL import ImageFont
+    for path in _DEVANAGARI_FONT_PATHS:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+    return ImageFont.load_default()
+
+
+def _draw_centered(draw, y, text, font, fill):
+    from PIL import Image as PILImage  # noqa: F401 (Pillow already loaded by caller)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0]
+    x = (1200 - w) / 2 - bbox[0]
+    draw.text((x, y), text, font=font, fill=fill)
+
+
+async def chand_dikha_og_image(request: Request):
+    """Generate a scratch-card style PNG preview so WhatsApp shows a card, not plain text."""
+    raw_festival = (request.query_params.get("festival") or "").strip() or "करवा चौथ"
+    sender = html.escape((request.query_params.get("sender") or "").strip() or "आपके शुभचिंतक")
+
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    W, H = 1200, 630
+    img = Image.new("RGB", (W, H))
+    draw = ImageDraw.Draw(img)
+
+    # Deep midnight gradient background
+    top_color = (11, 23, 54)
+    bottom_color = (3, 7, 18)
+    for y in range(H):
+        t = y / H
+        r = int(top_color[0] * (1 - t) + bottom_color[0] * t)
+        g = int(top_color[1] * (1 - t) + bottom_color[1] * t)
+        b = int(top_color[2] * (1 - t) + bottom_color[2] * t)
+        draw.line([(0, y), (W, y)], fill=(r, g, b))
+
+    # Gold dashed border like the in-page foil
+    gold = (251, 191, 36)
+    draw.rectangle([24, 24, W - 24, H - 24], outline=gold, width=4)
+    for x in range(40, W - 40, 36):
+        draw.line([(x, 32), (x + 18, 32)], fill=gold, width=4)
+        draw.line([(x, H - 32), (x + 18, H - 32)], fill=gold, width=4)
+    for y in range(40, H - 40, 36):
+        draw.line([(32, y), (32, y + 18)], fill=gold, width=4)
+        draw.line([(W - 32, y), (W - 32, y + 18)], fill=gold, width=4)
+
+    # Glowing sacred moon (top center)
+    mx, my, mr = W // 2, 150, 62
+    for i in range(5):
+        pad = 26 - i * 5
+        alpha_tint = (254 - i * 8, 240 - i * 12, 138 - i * 20)
+        draw.ellipse([mx - mr - pad, my - mr - pad, mx + mr + pad, my + mr + pad],
+                     outline=tuple(max(0, c) for c in alpha_tint), width=3)
+    draw.ellipse([mx - mr, my - mr, mx + mr, my + mr], fill=(254, 240, 138))
+    # Crescent shadow
+    draw.ellipse([mx - mr + 26, my - mr - 8, mx + mr + 22, my + mr - 8], fill=(14, 26, 60))
+
+    # Headline
+    f_title = _load_devanagari_font(64)
+    f_sub = _load_devanagari_font(34)
+    f_sender = _load_devanagari_font(40)
+    f_small = _load_devanagari_font(26)
+
+    _draw_centered(draw, 250, "चाँद दिखा?", f_title, (255, 251, 235))
+    _draw_centered(draw, 336, "जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी!", f_sub, (253, 224, 71))
+
+    # Sender pill
+    pill_text = f"{sender} ने गुप्त मंगलकामना भेजी है"
+    bbox = draw.textbbox((0, 0), pill_text, font=f_sender)
+    pw, ph = (bbox[2] - bbox[0]) + 60, 74
+    px, py = (W - pw) / 2, 420
+    draw.rounded_rectangle([px, py, px + pw, py + ph], radius=37,
+                           fill=(245, 158, 11), outline=(253, 224, 71), width=2)
+    _draw_centered(draw, int(py) + 14, pill_text, f_sender, (11, 23, 54))
+
+    # Scratch hint (emoji/danda removed — Devanagari font renders them as tofu boxes)
+    _draw_centered(draw, 508, "उंगली से स्क्रैच करें और चाँद देखें", f_small, (248, 250, 252))
+    _draw_centered(draw, 546, "ब्रह्मांड — सनातन संस्कृति एवं उत्सव", f_small, (148, 163, 184))
+
+    buf = BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return Response(content=buf.getvalue(), media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+async def chand_dikha_web_card(request: Request):
+    """Interactive Chand Dikha Scratch Card Web Landing Page for WhatsApp/SMS recipients."""
+    sender = html.escape((request.query_params.get("sender") or "").strip() or "आपके शुभचिंतक")
+    raw_festival = (request.query_params.get("festival") or "").strip() or "करवा चौथ"
+    base = str(request.base_url).rstrip('/')
+    raw_sender_param = (request.query_params.get("sender") or "").strip() or "आपके शुभचिंतक"
+    og_image_url = f"{base}/chand-dikha/og?festival={quote(raw_festival)}&sender={quote(raw_sender_param)}"
+    # JS string-literal safe versions (escape backslashes + quotes)
+    js_festival = raw_festival.replace("\\", "\\\\").replace('"', '\\"')
+    js_sender = raw_sender_param.replace("\\", "\\\\").replace('"', '\\"')
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🌕 चाँद दिखा? — {sender} जी की विशेष गुप्त शुभकामना</title>
+  <meta name="description" content="जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी! अपनी उंगली से स्क्रैच करें और चाँद का दीदार करें।" />
+  <meta property="og:title" content="🌕 चाँद दिखा? {sender} जी ने गुप्त शुभकामना भेजी है!" />
+  <meta property="og:description" content="जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी! उंगली से स्क्रैच करके चाँद देखें..." />
+  <meta property="og:image" content="{og_image_url}" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="{og_image_url}" />
+  <link rel="icon" href="{DEFAULT_BRAHMAND_LOGO}" />
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #030712;
+      color: #F8FAFC;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px 12px 36px;
+      overflow-x: hidden;
+    }}
+    .header {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }}
+    .header img {{
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+    }}
+    .header h2 {{
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: #FEF08A;
+      font-weight: 800;
+      text-transform: uppercase;
+    }}
+    .sender-alert {{
+      background: rgba(245, 158, 11, 0.16);
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      border-radius: 20px;
+      padding: 8px 16px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #FEF08A;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }}
+    .sender-alert strong {{
+      color: #FBBF24;
+      font-weight: 800;
+    }}
+    .card-container {{
+      position: relative;
+      width: 340px;
+      height: 470px;
+      max-width: 92vw;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1.5px solid rgba(251, 191, 36, 0.45);
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.35);
+      background: radial-gradient(circle at 50% 25%, #0B1736 0%, #060B1E 70%, #030712 100%);
+      user-select: none;
+    }}
+    /* Revealed Layer */
+    .revealed-content {{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 16px;
+      text-align: center;
+    }}
+    .shloka-pill {{
+      background: rgba(245, 158, 11, 0.16);
+      border: 0.8px solid rgba(251, 191, 36, 0.45);
+      color: #FDE047;
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }}
+    .moon-wrap {{
+      position: relative;
+      width: 130px;
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 8px 0;
+    }}
+    .moon-halo {{
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: rgba(254, 240, 138, 0.25);
+      box-shadow: 0 0 35px rgba(254, 240, 138, 0.8);
+      animation: pulseHalo 3s ease-in-out infinite;
+    }}
+    @keyframes pulseHalo {{
+      0%, 100% {{ transform: scale(1); opacity: 0.8; }}
+      50% {{ transform: scale(1.08); opacity: 1; }}
+    }}
+    .moon-img {{
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      position: relative;
+      z-index: 2;
+    }}
+    .fest-title {{
+      font-size: 24px;
+      font-weight: 900;
+      color: #FFFBEB;
+      text-shadow: 0 2px 8px rgba(245, 158, 11, 0.7);
+      margin-bottom: 2px;
+    }}
+    .fest-sub {{
+      font-size: 13px;
+      font-weight: 700;
+      color: #FDE047;
+      margin-bottom: 8px;
+    }}
+    .divider {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 80%;
+      margin: 6px 0;
+    }}
+    .divider span {{
+      flex: 1;
+      height: 1px;
+      background: rgba(251, 191, 36, 0.4);
+    }}
+    .divider em {{
+      color: #FDE047;
+      font-style: normal;
+      font-size: 11px;
+    }}
+    .blessing-text {{
+      font-size: 12.5px;
+      color: #E2E8F0;
+      line-height: 1.45;
+      padding: 0 4px;
+    }}
+    .sender-box {{
+      background: rgba(255, 255, 255, 0.08);
+      border: 0.8px solid rgba(254, 240, 138, 0.3);
+      padding: 5px 14px;
+      border-radius: 18px;
+      font-size: 12px;
+      color: #FEF08A;
+      font-weight: 700;
+      margin-top: 8px;
+    }}
+    /* Scratch Canvas Overlay */
+    #scratchCanvas {{
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      cursor: pointer;
+      touch-action: none;
+      transition: opacity 0.6s ease;
+    }}
+    .sparks-layer {{
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }}
+    .spark {{
+      position: absolute;
+      font-size: 14px;
+      pointer-events: none;
+      animation: floatSpark 0.5s ease-out forwards;
+    }}
+    @keyframes floatSpark {{
+      0% {{ opacity: 1; transform: translate(0, 0) scale(1); }}
+      100% {{ opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }}
+    }}
+    .celebrate-pill {{
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #F59E0B;
+      color: #1E1B4B;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 14px;
+      border-radius: 18px;
+      z-index: 25;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      display: none;
+    }}
+    .progress-pill {{
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #FDE047;
+      color: #1E1B4B;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 10px;
+      z-index: 15;
+      pointer-events: none;
+    }}
+    /* Actions below card */
+    .actions-wrap {{
+      width: 340px;
+      max-width: 92vw;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }}
+    .share-btn {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #F59E0B, #D97706);
+      color: #1E1B4B;
+      font-weight: 900;
+      font-size: 14.5px;
+      padding: 13px;
+      border-radius: 14px;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+      border: none;
+      cursor: pointer;
+    }}
+    .custom-sender-input {{
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      border-radius: 12px;
+      color: #FFF;
+      padding: 10px 14px;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }}
+    .download-link {{
+      display: inline-block;
+      text-align: center;
+      color: #94A3B8;
+      font-size: 12px;
+      margin-top: 6px;
+      text-decoration: none;
+    }}
+    .download-link span {{
+      color: #FDE047;
+      text-decoration: underline;
+    }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="{DEFAULT_BRAHMAND_LOGO}" alt="Brahmand" />
+    <h2>BRAHMAND • उत्सव</h2>
+  </div>
+
+  <div class="sender-alert">
+    ✨ <strong>{sender}</strong> ने आपके लिए गुप्त मंगलकामना भेजी है!
+  </div>
+
+  <div class="card-container" id="cardContainer">
+    <div class="celebrate-pill" id="celebratePill">🌕 चाँद दिख गया! दर्शन सम्पूर्ण 🌕</div>
+    <div class="progress-pill" id="progressPill">0% Scratched</div>
+
+    <!-- The Revealed Moon & Blessing Layer (wish text loads ONLY after scratch via JS) -->
+    <div class="revealed-content">
+      <div class="shloka-pill" id="shlokaPill"></div>
+
+      <div class="moon-wrap">
+        <div class="moon-halo"></div>
+        <img src="https://brahmandfeed23.b-cdn.net/assets/festivals/sharad_moon_transparent.png"
+             onerror="this.src='{DEFAULT_BRAHMAND_LOGO}'"
+             alt="Sacred Moon"
+             class="moon-img" />
+      </div>
+
+      <div>
+        <div class="fest-title" id="festTitle"></div>
+        <div class="fest-sub">की पावन अमृतमयी शुभकामनाएं</div>
+      </div>
+
+      <div class="divider">
+        <span></span>
+        <em>✦ 🌕 ✦</em>
+        <span></span>
+      </div>
+
+      <div class="blessing-text" id="blessingText"></div>
+
+      <div class="sender-box">
+        🙏 सप्रेम प्रेषक : {sender} सपरिवार
+      </div>
+    </div>
+
+    <!-- The Interactive Metallic Scratch Foil Canvas -->
+    <canvas id="scratchCanvas"></canvas>
+    <div class="sparks-layer" id="sparksLayer"></div>
+  </div>
+
+  <div class="actions-wrap">
+    <button class="share-btn" onclick="openInApp()">
+      <span>📲 ऐप में खोलें (अगर ब्रह्मांड ऐप है)</span>
+    </button>
+    <input type="text" id="mySenderInput" class="custom-sender-input" placeholder="आप भी अपना नाम लिखकर भेजें (उदा. अमित)" />
+    <button class="share-btn" onclick="shareMyWish()">
+      <span>📤 आप भी किसी को यह कार्ड भेजें</span>
+    </button>
+    <a href="/download" class="download-link">
+      नित्य पंचांग, लाइव दर्शन व कथा हेतु <span>ब्रह्मांड ऐप डाउनलोड करें ➔</span>
+    </a>
+  </div>
+
+  <script>
+    (function() {{
+      var canvas = document.getElementById('scratchCanvas');
+      var container = document.getElementById('cardContainer');
+      var progressPill = document.getElementById('progressPill');
+      var celebratePill = document.getElementById('celebratePill');
+      var sparksLayer = document.getElementById('sparksLayer');
+
+      var width = container.offsetWidth || 340;
+      var height = container.offsetHeight || 470;
+      canvas.width = width;
+      canvas.height = height;
+
+      var ctx = canvas.getContext('2d');
+      var isDrawing = false;
+      var isRevealed = false;
+      var lastPos = null;
+      var wishLoaded = false;
+
+      // Wish text is NOT in the page — fetch it only after the scratch completes.
+      function loadWish() {{
+        if (wishLoaded) return;
+        wishLoaded = true;
+        fetch('/chand-dikha-wish?festival=' + encodeURIComponent("{js_festival}"))
+          .then(function(r) {{ return r.json(); }})
+          .then(function(w) {{
+            document.getElementById('shlokaPill').innerText = w.shloka || '';
+            document.getElementById('festTitle').innerText = w.card_title || '';
+            document.getElementById('blessingText').innerText = w.blessing || '';
+          }})
+          .catch(function() {{
+            document.getElementById('blessingText').innerText = 'शुभकामना लोड नहीं हो सकी। कृपया लिंक फिर से खोलें।';
+          }});
+      }}
+
+      // Draw Metallic Midnight Foil Cover
+      function drawFoil() {{
+        var grad = ctx.createLinearGradient(0, 0, width, height);
+        grad.addColorStop(0, '#0B0F2A');
+        grad.addColorStop(0.35, '#1E1B4B');
+        grad.addColorStop(0.7, '#2E1065');
+        grad.addColorStop(1, '#0B0F2A');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Gold Dash Border
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(10, 10, width - 20, height - 20);
+        ctx.setLineDash([]);
+
+        // Diagonal Sheen
+        ctx.strokeStyle = 'rgba(254, 240, 138, 0.14)';
+        ctx.lineWidth = 45;
+        ctx.beginPath();
+        ctx.moveTo(0, height * 0.4);
+        ctx.lineTo(width, height * 0.1);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, height * 0.8);
+        ctx.lineTo(width, height * 0.5);
+        ctx.stroke();
+
+        // Metallic Emblem
+        var cx = width / 2;
+        var cy = height * 0.35;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(30, 27, 75, 0.9)';
+        ctx.fill();
+        ctx.strokeStyle = '#FBBF24';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Moon Emblem Emoji
+        ctx.font = '36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🌙', cx, cy);
+
+        // Foil Text
+        ctx.fillStyle = '#FFFBEB';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillText('चाँद दिखा?', cx, height * 0.56);
+
+        ctx.fillStyle = '#F8FAFC';
+        ctx.font = '600 14px sans-serif';
+        ctx.fillText('जब तक चाँद नहीं देखा,', cx, height * 0.63);
+
+        ctx.fillStyle = '#FBBF24';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('तब तक विश नहीं मिलेगी!', cx, height * 0.68);
+
+        // Prompt Pill
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.strokeStyle = '#FDE047';
+        ctx.lineWidth = 1;
+        var pw = 200, ph = 34;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(cx - pw/2, height * 0.76, pw, ph, 17) : ctx.rect(cx - pw/2, height * 0.76, pw, ph);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#FDE047';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('👆 उंगली से स्क्रैच करें', cx, height * 0.76 + ph/2);
+      }}
+
+      drawFoil();
+
+      // Scratching Logic via Destination-Out
+      function scratchAt(x, y) {{
+        if (isRevealed) return;
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, 28, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (lastPos) {{
+          ctx.beginPath();
+          ctx.lineWidth = 56;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.moveTo(lastPos.x, lastPos.y);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }}
+        lastPos = {{ x: x, y: y }};
+
+        spawnSpark(x, y);
+        checkScratchPercentage();
+      }}
+
+      function spawnSpark(x, y) {{
+        var sp = document.createElement('div');
+        sp.className = 'spark';
+        var icons = ['✨', '✦', '⭐'];
+        sp.innerText = icons[Math.floor(Math.random() * icons.length)];
+        sp.style.left = (x - 8) + 'px';
+        sp.style.top = (y - 8) + 'px';
+        var dx = (Math.random() * 40 - 20) + 'px';
+        var dy = (Math.random() * 40 - 20) + 'px';
+        sp.style.setProperty('--dx', dx);
+        sp.style.setProperty('--dy', dy);
+        sparksLayer.appendChild(sp);
+        setTimeout(function() {{ sp.remove(); }}, 500);
+      }}
+
+      function checkScratchPercentage() {{
+        // Sample 100 pixels across the canvas
+        var stepX = width / 10;
+        var stepY = height / 10;
+        var cleared = 0;
+        var imgData = ctx.getImageData(0, 0, width, height).data;
+
+        for (var i = 0; i < 10; i++) {{
+          for (var j = 0; j < 10; j++) {{
+            var px = Math.floor(i * stepX + stepX / 2);
+            var py = Math.floor(j * stepY + stepY / 2);
+            var idx = (py * width + px) * 4 + 3; // Alpha channel
+            if (imgData[idx] === 0) {{
+              cleared++;
+            }}
+          }}
+        }}
+
+        progressPill.innerText = cleared + '% Scratched';
+
+        if (cleared >= 36 && !isRevealed) {{
+          isRevealed = true;
+          canvas.style.opacity = '0';
+          celebratePill.style.display = 'block';
+          progressPill.style.display = 'none';
+          playTempleChime();
+          loadWish();
+        }}
+      }}
+
+      function playTempleChime() {{
+        try {{
+          var AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {{
+            var actx = new AudioCtx();
+            var osc = actx.createOscillator();
+            var gain = actx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(528, actx.currentTime); // 528Hz Solfeggio Love frequency
+            osc.frequency.exponentialRampToValueAtTime(1056, actx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.3, actx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 1.2);
+            osc.connect(gain);
+            gain.connect(actx.destination);
+            osc.start();
+            osc.stop(actx.currentTime + 1.2);
+          }}
+        }} catch(e) {{}}
+      }}
+
+      // Touch Events for Mobile Phones
+      canvas.addEventListener('touchstart', function(e) {{
+        e.preventDefault();
+        var touch = e.touches[0];
+        var rect = canvas.getBoundingClientRect();
+        var x = touch.clientX - rect.left;
+        var y = touch.clientY - rect.top;
+        isDrawing = true;
+        lastPos = {{ x: x, y: y }};
+        scratchAt(x, y);
+      }}, {{ passive: false }});
+
+      canvas.addEventListener('touchmove', function(e) {{
+        e.preventDefault();
+        if (!isDrawing) return;
+        var touch = e.touches[0];
+        var rect = canvas.getBoundingClientRect();
+        var x = touch.clientX - rect.left;
+        var y = touch.clientY - rect.top;
+        scratchAt(x, y);
+      }}, {{ passive: false }});
+
+      canvas.addEventListener('touchend', function(e) {{
+        isDrawing = false;
+        lastPos = null;
+      }});
+
+      // Mouse Events for Desktop Testing
+      canvas.addEventListener('mousedown', function(e) {{
+        var rect = canvas.getBoundingClientRect();
+        isDrawing = true;
+        lastPos = {{ x: e.clientX - rect.left, y: e.clientY - rect.top }};
+        scratchAt(lastPos.x, lastPos.y);
+      }});
+
+      canvas.addEventListener('mousemove', function(e) {{
+        if (!isDrawing) return;
+        var rect = canvas.getBoundingClientRect();
+        scratchAt(e.clientX - rect.left, e.clientY - rect.top);
+      }});
+
+      window.addEventListener('mouseup', function() {{
+        isDrawing = false;
+        lastPos = null;
+      }});
+    }})();
+
+    function openInApp() {{
+      // Try the Brahmand app custom scheme (registered on iOS + Android).
+      // If the app is not installed nothing happens — fall back to /download.
+      var appLink = 'sanatanlok://chand-dikha?festival=' + encodeURIComponent("{js_festival}") +
+                    '&sender=' + encodeURIComponent("{js_sender}");
+      var wentHidden = false;
+      document.addEventListener('visibilitychange', function() {{
+        if (document.hidden) wentHidden = true;
+      }});
+      window.location.href = appLink;
+      // If the page stayed visible after 1.6s, the app is likely not installed.
+      setTimeout(function() {{
+        if (!wentHidden) window.location.href = '/download';
+      }}, 1600);
+    }}
+
+    function shareMyWish() {{
+      var name = (document.getElementById('mySenderInput').value || '').trim() || 'शुभचिंतक';
+      var fest = "{js_festival}";
+      // Always share the brahmand.app deep-link URL so the NEXT receiver also
+      // gets the app-installed → in-app route (Universal/App Links) experience.
+      var link = 'https://brahmand.app/chand-dikha?festival=' + encodeURIComponent(fest) + '&sender=' + encodeURIComponent(name);
+      var msg = '🌕 *चाँद दिखा? जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी!* 🌙\\n\\n' +
+                '✨ *' + name + '* ने आपके लिए एक गुप्त मंगलकामना भेजी है!\\n\\n' +
+                '👉 अपनी उंगली से स्क्रीन पर स्क्रैच करें और चाँद का दीदार करें:\\n' + link +
+                '\\n\\n॥ सर्वे भवन्तु सुखिनः ॥\\nब्रह्मांड — सनातन संस्कृति एवं उत्सव';
+
+      var whatsappUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
+      window.location.href = whatsappUrl;
     }}
   </script>
 </body>
@@ -17764,8 +18530,13 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
+app.get("/health", include_in_schema=False)(health_check)
 app.get("/download", response_class=HTMLResponse)(download_app_redirect)
 app.get("/share/download", response_class=HTMLResponse)(download_app_redirect)
+app.get("/chand-dikha", response_class=HTMLResponse)(chand_dikha_web_card)
+app.get("/chand-dikha-wish")(chand_dikha_wish_api)
+app.get("/chand-dikha/og")(chand_dikha_og_image)
+app.get("/festival/chand-dikha", response_class=HTMLResponse)(chand_dikha_web_card)
 app.mount("/socket.io", socket_app)
 
 if __name__ == "__main__":

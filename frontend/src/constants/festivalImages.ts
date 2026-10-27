@@ -28,7 +28,7 @@ const jagannathRathYatra = { uri: `${CDN_FESTIVALS_BASE}/jagannath_rath_yatra.we
 const janmashtami = { uri: `${CDN_FESTIVALS_BASE}/janmashtami.webp` };
 const kajariTeej = { uri: `${CDN_FESTIVALS_BASE}/kajari_teej.webp` };
 const kartikPurnima = { uri: `${CDN_FESTIVALS_BASE}/kartik_purnima.webp` };
-const karvaChauth = { uri: `${CDN_FESTIVALS_BASE}/karva_chauth.webp` };
+const karvaChauth = require('../../assets/images/festivals/karwa_chauth_hero.jpg');
 const maghBihu = { uri: `${CDN_FESTIVALS_BASE}/magh_bihu.webp` };
 const mahaNavami = { uri: `${CDN_FESTIVALS_BASE}/maha_navami.webp` };
 const mahaSaptami = { uri: `${CDN_FESTIVALS_BASE}/maha_saptami.webp` };
@@ -88,6 +88,8 @@ export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Kajari Teej': kajariTeej,
   'Kartik Purnima': kartikPurnima,
   'Karva Chauth': karvaChauth,
+  'Karwa Chauth': karvaChauth,
+  'करवा चौथ': karvaChauth,
   'Magh Bihu': maghBihu,
   'Maha Navami': mahaNavami,
   'Maha Saptami': mahaSaptami,

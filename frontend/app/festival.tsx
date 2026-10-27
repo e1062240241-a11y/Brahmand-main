@@ -51,9 +51,21 @@ const FestivalScreen = () => {
         const response = await getFestivalList();
         const items = response.data || [];
         const index = Number(params.index ?? params.festivalIndex ?? 0);
-        const selected = items[index] || items[0] || {};
+        let selected = items[index] || items[0] || {};
 
-        const name = (params.name as string) || selected.festival_name || selected.name || 'Maha Shivratri';
+        const reqName = (params.name as string) || '';
+        if (reqName && items.length > 0) {
+          const cleanReq = reqName.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+          const found = items.find((f: any) => {
+            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+            return fName && (fName === cleanReq || fName.includes(cleanReq) || cleanReq.includes(fName));
+          });
+          if (found) {
+            selected = found;
+          }
+        }
+
+        const name = reqName || selected.festival_name || selected.name || 'Maha Shivratri';
         const theme = getFestivalTheme(name);
         const imageAsset = getFestivalImage(selected);
 

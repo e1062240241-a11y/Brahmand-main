@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Animated,
@@ -24,6 +25,9 @@ import festivalEnrichments from '../data/festival-enrichments';
 import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
+import { ChandDikhaScratchCard } from './ChandDikhaScratchCard';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
@@ -407,7 +411,9 @@ const GuideItem = ({
         {/* Text Details */}
         <View style={styles.guideTextContainer}>
           <View style={styles.guideHeaderRow}>
-            <Text style={[styles.guideTitle, { color: cfg.accent }]}>{section.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.guideTitle, { color: cfg.accent }]}>{section.title}</Text>
+            </View>
             {isVisited && (
               <View style={styles.visitedBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#D4AF37" />
@@ -446,11 +452,13 @@ const GuideItem = ({
 const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalPress }: FestivalDetailCardProps) => {
   const [visitedSections, setVisitedSections] = useState<string[]>([]);
   const festivalName = festival.festival_name || festival.name || festival.title || '';
+  const festivalTitle = festivalName || 'पावन पर्व';
   const festivalId = festival.id || festivalName;
 
   // Enrichments data mapping
   const enrichmentKey = (festivalName || '').toLowerCase();
-  const enrichment = festivalEnrichments[enrichmentKey];
+  const normalizedKey = enrichmentKey.replace('karwa', 'karva');
+  const enrichment = festivalEnrichments[enrichmentKey] || festivalEnrichments[normalizedKey];
 
   // Dynamic section data per festival with distinct non-overlapping fields
   const rawStory = enrichment?.origin || festival.story || festival.origin || festival.summary;
@@ -477,7 +485,26 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const isKarvaChauthFestival =
     festivalName.toLowerCase().includes('karva') ||
     festivalName.toLowerCase().includes('karwa') ||
+    /करवा\s*चौथ/i.test(festivalName) ||
     (festival.id && String(festival.id).toLowerCase().includes('karva'));
+
+  const isSharadPurnimaFestival =
+    festivalName.toLowerCase().includes('sharad') ||
+    festivalName.toLowerCase().includes('kojagiri') ||
+    festivalName.includes('शरद') ||
+    (festival.id && String(festival.id).toLowerCase().includes('sharad'));
+
+  const isMoonFestival =
+    isSharadPurnimaFestival ||
+    festivalName.toLowerCase().includes('purnima') ||
+    festivalName.includes('पूर्णिमा');
+
+  const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
+  const currentUserName = (currentUser?.name || '').trim();
+  const [chandSenderName, setChandSenderName] = useState<string>(currentUserName || '');
+  const moonCardRef = useRef<any>(null);
+  const [isSharingMoonCard, setIsSharingMoonCard] = useState<boolean>(false);
 
   const leafCardRef = useRef<any>(null);
   const [isSharingLeaf, setIsSharingLeaf] = useState<boolean>(false);
@@ -544,6 +571,34 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       console.warn('Failed to share Shami leaf from festival detail:', err);
     } finally {
       setIsSharingLeaf(false);
+    }
+  };
+
+  const handleShareChandDikha = async () => {
+    if (isSharingMoonCard) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      setIsSharingMoonCard(true);
+
+      const senderText = chandSenderName.trim() || currentUserName || 'शुभचिंतक';
+      // Share the brahmand.app URL: app installed → OS opens the in-app route
+      // directly (Universal/App Links); no app → web build redirects to the
+      // backend's instant standalone HTML scratch card.
+      const webUrl = `https://brahmand.app/chand-dikha?festival=${encodeURIComponent(
+        festivalTitle
+      )}&sender=${encodeURIComponent(senderText)}`;
+
+      const message = `🌕 *चाँद दिखा? जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी!* 🌙\n\n✨ *${senderText}* ने आपके लिए एक सीक्रेट स्क्रैच कार्ड भेजा है!\n\n👉 अपनी उंगली से स्क्रीन पर स्क्रैच करें और चाँद का दीदार करें:\n${webUrl}\n\n(जब तक आप उंगली से चाँद नहीं देखेंगे, तब तक मंगलकामना नहीं खुलेगी!)\n\n॥ सर्वे भवन्तु सुखिनः ॥\nब्रह्मांड — सनातन संस्कृति एवं उत्सव`;
+
+      await RNShare.share({
+        title: 'चाँद दिखा? सीक्रेट स्क्रैच कार्ड',
+        message,
+        url: webUrl,
+      });
+    } catch (err) {
+      console.warn('[FestivalDetailCard] Chand Dikha share failed:', err);
+    } finally {
+      setIsSharingMoonCard(false);
     }
   };
 
@@ -748,6 +803,97 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
             </View>
           </View>
         )
+      )}
+
+
+
+      {/* For Moon Festivals (Karwa Chauth, Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}
+      {isMoonFestival && (
+        <View style={styles.chandDikhaSection}>
+          <LinearGradient
+            colors={['#070B1C', '#0B132B', '#111A38']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.chandDikhaGradient}
+          >
+            {/* Top Pill & Action Row */}
+            <View style={styles.chandDikhaHeaderRow}>
+              <View style={styles.chandDikhaPill}>
+                <Text style={styles.chandDikhaPillEmoji}>🌙</Text>
+                <Text style={styles.chandDikhaPillText}>स्पेशल स्क्रैच विश</Text>
+                <Text style={styles.chandDikhaPillEmoji}>✨</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.fullScreenBadgeBtn}
+                onPress={() =>
+                  router.push(
+                    `/chand-dikha?festival=${encodeURIComponent(
+                      festivalTitle
+                    )}&sender=${encodeURIComponent(currentUserName)}`
+                  )
+                }
+                activeOpacity={0.8}
+              >
+                <Ionicons name="expand" size={13} color="#FDE047" />
+                <Text style={styles.fullScreenBadgeText}>बड़ा देखें</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Catchy Taglines */}
+            <Text style={styles.chandDikhaMainTitle}>"चाँद दिखा" सीक्रेट विश कार्ड</Text>
+            <Text style={styles.chandDikhaPunchline}>
+              "जब तक चाँद नहीं देखा, तब तक विश नहीं मिलेगी!"
+            </Text>
+            <Text style={styles.chandDikhaInstructions}>
+              🎁 इसे जिसे आप भेजेंगे, वो अपनी उंगली से स्क्रैच करके ही चाँद और आपकी शुभकामना देख पाएगा!
+            </Text>
+
+            {/* Sender Name Customization Input */}
+            <View style={styles.senderInputContainer}>
+              <Text style={styles.senderInputLabel}>✍️ प्रेषक का नाम (आपका नाम):</Text>
+              <TextInput
+                style={styles.senderTextInput}
+                value={chandSenderName}
+                onChangeText={setChandSenderName}
+                placeholder="उदा. राहुल, शर्मा परिवार"
+                placeholderTextColor="#64748B"
+                maxLength={40}
+              />
+            </View>
+
+            {/* The Interactive Scratch Card Preview */}
+            <View style={styles.scratchCardContainer}>
+              <ChandDikhaScratchCard
+                ref={moonCardRef}
+                festivalName={festivalTitle}
+                senderName={chandSenderName || currentUserName}
+              />
+            </View>
+
+            {/* Share Action */}
+            <View style={styles.chandDikhaActionRow}>
+              <TouchableOpacity
+                style={styles.chandDikhaShareBtn}
+                onPress={handleShareChandDikha}
+                disabled={isSharingMoonCard}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706', '#B45309']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.chandDikhaShareGradient}
+                >
+                  <Ionicons name="logo-whatsapp" size={19} color="#1E1B4B" />
+                  <Text style={styles.chandDikhaShareBtnText}>
+                    {isSharingMoonCard ? 'तैयार हो रहा है...' : 'यह सीक्रेट कार्ड व्हाट्सएप पर भेजें'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
       )}
 
       {/* Reordered Guide Sections */}
@@ -1265,6 +1411,149 @@ const styles = StyleSheet.create({
   dotActive: {
     backgroundColor: '#D97706',
     width: 18,
+  },
+
+
+  // Chand Dikha Section Styles
+  chandDikhaSection: {
+    borderRadius: 22,
+    marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(251, 191, 36, 0.45)',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  chandDikhaGradient: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  chandDikhaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 8,
+  },
+  chandDikhaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 14,
+    borderWidth: 0.8,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+    gap: 4,
+  },
+  chandDikhaPillEmoji: {
+    fontSize: 10,
+  },
+  chandDikhaPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FDE047',
+  },
+  fullScreenBadgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+    borderWidth: 0.8,
+    borderColor: 'rgba(254, 240, 138, 0.3)',
+    gap: 4,
+  },
+  fullScreenBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FEF08A',
+  },
+  chandDikhaMainTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFBEB',
+    textAlign: 'center',
+    letterSpacing: 0.4,
+    marginTop: 2,
+    textShadowColor: 'rgba(245, 158, 11, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  chandDikhaPunchline: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#FBBF24',
+    textAlign: 'center',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  chandDikhaInstructions: {
+    fontSize: 11.5,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  senderInputContainer: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 0.8,
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+    marginBottom: 10,
+  },
+  senderInputLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FDE047',
+    marginBottom: 4,
+  },
+  senderTextInput: {
+    color: '#FFFBEB',
+    fontSize: 13,
+    fontWeight: '600',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  scratchCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chandDikhaActionRow: {
+    width: '100%',
+    maxWidth: 340,
+    marginTop: 6,
+  },
+  chandDikhaShareBtn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  chandDikhaShareGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  chandDikhaShareBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E1B4B',
+    letterSpacing: 0.3,
   },
 });
 

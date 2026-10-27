@@ -15,9 +15,9 @@ import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
 
-// ponytail: local bundle, upload to BunnyCDN /audio/karwachauth.mp3 if size matters
-const KARVA_CHAUTH_AUDIO = require('../../assets/audio/karwachauth.mp3');
+// ponytail: local bundle, upload to BunnyCDN /audio/sharad_purnima.mp3 if size matters
 const SHARAD_PURNIMA_AUDIO = require('../../assets/audio/sharad_purnima.mp3');
+const KARVA_CHAUTH_AUDIO = require('../../assets/audio/Karwa_Chauth_Vrat_Katha_Kokoro_Female.mp3');
 
 // Local Karwa Chauth story artwork arranged in exact order of upload
 const KARWA_CHAUTH_IMG_1 = require('../../assets/images/festivals/karwa_chauth_brothers_feast.jpg');
@@ -25,9 +25,17 @@ const KARWA_CHAUTH_IMG_2 = require('../../assets/images/festivals/karwa_chauth_p
 const KARWA_CHAUTH_IMG_3 = require('../../assets/images/festivals/karwa_chauth_fainting.jpg');
 const KARWA_CHAUTH_IMG_4 = require('../../assets/images/festivals/karwa_chauth_sieve_tree.jpg');
 const KARWA_CHAUTH_IMG_5 = require('../../assets/images/festivals/karwa_chauth_moon_sighting.jpg');
+const KARWA_CHAUTH_HERO = require('../../assets/images/festivals/karwa_chauth_hero.jpg');
 const SHARAD_PURNIMA_IMG = require('../../assets/images/festivals/sharad_purnima_hero.jpg');
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const formatAudioTime = (sec: number) => {
+  if (!sec || isNaN(sec) || sec < 0) return '00:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+};
 
 interface FestivalSectionDetailCardProps {
   festival: any;
@@ -81,7 +89,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
 
   // Try to find enrichment data by festival name (case-insensitive)
   const enrichmentKey = (festivalName || '').toLowerCase();
-  const enrichment = festivalEnrichments[enrichmentKey];
+  const normalizedKey = enrichmentKey.replace('karwa', 'karva');
+  const enrichment = festivalEnrichments[enrichmentKey] || festivalEnrichments[normalizedKey];
 
   // Section field mapping
   const sectionFieldMap: Record<string, string> = {
@@ -106,7 +115,11 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
   if (section === 'Story') {
     const festivalImg = getFestivalImage(festival);
     const lowerName = festivalName.toLowerCase();
-    const isKarvaChauth = lowerName.includes('karva') || lowerName.includes('karwa');
+    const isKarvaChauth =
+      lowerName.includes('karva') ||
+      lowerName.includes('karwa') ||
+      /करवा\s*चौथ/i.test(festivalName) ||
+      (festival.id && String(festival.id).toLowerCase().includes('karva'));
     const isNagPanchami = lowerName.includes('nag') || lowerName.includes('panchami');
     const isHariyaliTeej = lowerName.includes('hariyali');
     const isKajariTeej = lowerName.includes('kajari') || lowerName.includes('badi teej') || lowerName.includes('satudi');
@@ -122,11 +135,11 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
     const isSharadPurnima = lowerName.includes('sharad purnima') || lowerName.includes('kojagiri') || lowerName.includes('kojagara');
 
-    // Audio story narration enabled for Karwa Chauth and Sharad Purnima katha
-    const storyAudioSource = isKarvaChauth
-      ? KARVA_CHAUTH_AUDIO
-      : isSharadPurnima
+    // Audio story narration enabled for Sharad Purnima & Karwa Chauth katha
+    const storyAudioSource = isSharadPurnima
       ? SHARAD_PURNIMA_AUDIO
+      : isKarvaChauth
+      ? KARVA_CHAUTH_AUDIO
       : null;
 
     const audioPlayer = useAudioPlayer(storyAudioSource, { keepAudioSessionActive: true });
@@ -177,8 +190,38 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       }
     };
 
+    const seekRelative = (secondsDelta: number) => {
+      if (!audioPlayer) return;
+      Haptics.selectionAsync().catch(() => {});
+      const cur = playerStatus?.currentTime ?? 0;
+      const dur = playerStatus?.duration ?? 0;
+      const target = Math.max(0, Math.min(dur, cur + secondsDelta));
+      if (typeof (audioPlayer as any).seekTo === 'function') {
+        suppressAutoRef.current = true;
+        if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+        Promise.resolve((audioPlayer as any).seekTo(target)).catch(() => {});
+        suppressTimerRef.current = setTimeout(() => { suppressAutoRef.current = false; }, 800);
+      }
+    };
+
+    const handleSeekProgress = (evt: any) => {
+      if (!audioPlayer) return;
+      Haptics.selectionAsync().catch(() => {});
+      const { locationX } = evt.nativeEvent;
+      const barWidth = SCREEN_WIDTH - 64;
+      const dur = playerStatus?.duration ?? 0;
+      if (dur > 0 && barWidth > 0 && typeof (audioPlayer as any).seekTo === 'function') {
+        const ratio = Math.max(0, Math.min(1, locationX / barWidth));
+        const target = ratio * dur;
+        suppressAutoRef.current = true;
+        if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+        Promise.resolve((audioPlayer as any).seekTo(target)).catch(() => {});
+        suppressTimerRef.current = setTimeout(() => { suppressAutoRef.current = false; }, 800);
+      }
+    };
+
     const heroImageSource = isKarvaChauth
-      ? KARWA_CHAUTH_IMG_1
+      ? KARWA_CHAUTH_HERO
       : isSharadPurnima
       ? SHARAD_PURNIMA_IMG
       : isHariyaliTeej
@@ -707,33 +750,111 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
             <View style={styles.journeyHeaderRow}>
               <Text style={styles.journeyCardHeading}>Journey</Text>
               {storyAudioSource ? (
-                <TouchableOpacity
-                  style={[
-                    styles.audioControlButton,
-                    isPlaying && styles.audioControlButtonActive,
-                  ]}
-                  onPress={toggleAudio}
-                  activeOpacity={0.75}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={isPlaying ? 'Pause Katha audio' : 'Listen to Katha audio'}
-                >
-                  <Ionicons
-                    name={isPlaying ? 'pause' : 'volume-medium'}
-                    size={14}
-                    color={isPlaying ? '#030712' : '#F6D269'}
-                  />
-                  <Text
-                    style={[
-                      styles.audioControlText,
-                      isPlaying && styles.audioControlTextActive,
-                    ]}
+                <View style={styles.audioControlsGroup}>
+                  {/* Skip -10s */}
+                  <TouchableOpacity
+                    style={styles.audioSkipButton}
+                    onPress={() => seekRelative(-10)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel="Rewind 10 seconds"
                   >
-                    {isPlaying ? 'Pause Katha' : 'Listen Katha'}
-                  </Text>
-                </TouchableOpacity>
+                    <Ionicons name="refresh" size={13} color="#F6D269" style={{ transform: [{ scaleX: -1 }] }} />
+                    <Text style={styles.audioSkipText}>-10s</Text>
+                  </TouchableOpacity>
+
+                  {/* Play / Pause Toggle */}
+                  <TouchableOpacity
+                    style={[
+                      styles.audioControlButton,
+                      isPlaying && styles.audioControlButtonActive,
+                    ]}
+                    onPress={toggleAudio}
+                    activeOpacity={0.75}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={isPlaying ? 'Pause Katha audio' : 'Listen to Katha audio'}
+                  >
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'volume-medium'}
+                      size={14}
+                      color={isPlaying ? '#030712' : '#F6D269'}
+                    />
+                    <Text
+                      style={[
+                        styles.audioControlText,
+                        isPlaying && styles.audioControlTextActive,
+                      ]}
+                    >
+                      {isPlaying ? 'Pause' : 'Listen Katha'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Skip +10s */}
+                  <TouchableOpacity
+                    style={styles.audioSkipButton}
+                    onPress={() => seekRelative(10)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel="Forward 10 seconds"
+                  >
+                    <Ionicons name="refresh" size={13} color="#F6D269" />
+                    <Text style={styles.audioSkipText}>+10s</Text>
+                  </TouchableOpacity>
+                </View>
               ) : null}
             </View>
+
+            {/* Interactive Progress Bar & Time Tracker */}
+            {storyAudioSource && (
+              <View style={styles.audioProgressContainer}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={handleSeekProgress}
+                  style={styles.audioProgressTrackTouchArea}
+                >
+                  <View style={styles.audioProgressTrackBg}>
+                    <View
+                      style={[
+                        styles.audioProgressTrackFill,
+                        {
+                          width: `${Math.min(
+                            100,
+                            Math.max(
+                              0,
+                              ((playerStatus?.currentTime ?? 0) /
+                                (playerStatus?.duration || (isKarvaChauth ? 416.5 : 1))) *
+                                100
+                            )
+                          )}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.audioProgressTimeRow}>
+                  <Text style={styles.audioProgressTimeText}>
+                    {formatAudioTime(playerStatus?.currentTime ?? 0)}
+                  </Text>
+                  <View style={styles.audioLiveIndicator}>
+                    {isPlaying && (
+                      <View style={styles.audioLiveDot} />
+                    )}
+                    <Text style={styles.audioNarrationLabel}>
+                      {isKarvaChauth ? 'Kokoro Narration' : 'Audio Narration'}
+                    </Text>
+                  </View>
+                  <Text style={styles.audioProgressTimeText}>
+                    {formatAudioTime(playerStatus?.duration || (isKarvaChauth ? 416.5 : 0))}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.journeyTabsRow}>
               {chapters.map((ch, idx) => {
@@ -1356,6 +1477,72 @@ const styles = StyleSheet.create({
   audioControlTextActive: {
     color: '#030712',
     fontWeight: '700',
+  },
+  audioControlsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  audioSkipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1.5,
+    backgroundColor: 'rgba(246, 210, 105, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(246, 210, 105, 0.25)',
+    paddingVertical: 3.5,
+    paddingHorizontal: 7,
+    borderRadius: 12,
+  },
+  audioSkipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F6D269',
+  },
+  audioProgressContainer: {
+    marginBottom: 12,
+    marginTop: -2,
+  },
+  audioProgressTrackTouchArea: {
+    paddingVertical: 5,
+  },
+  audioProgressTrackBg: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  audioProgressTrackFill: {
+    height: '100%',
+    backgroundColor: '#F6D269',
+    borderRadius: 2,
+  },
+  audioProgressTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  audioProgressTimeText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#F3F4F6',
+  },
+  audioLiveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  audioLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  audioNarrationLabel: {
+    fontSize: 9.5,
+    color: 'rgba(246, 210, 105, 0.85)',
+    fontStyle: 'italic',
   },
   journeyTabsRow: {
     flexDirection: 'row',

@@ -14,7 +14,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, karwaChauthBannerImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
@@ -202,42 +202,188 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
     );
 });
 
-const StaticBannerCard = ({ source, width, onPress, onPressIn, onPressOut, children }: any) => (
-    <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={{
-            width,
-            height: Platform.OS === 'ios' ? 185 : 160,
-            borderRadius: 16,
-            overflow: 'hidden',
-            alignSelf: 'center',
-            marginBottom: 5,
-            backgroundColor: '#000',
-            // intentionally NO shadowColor / shadowOpacity / elevation
-        }}
-    >
-        <Image
-            source={source}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
-            resizeMode="cover"
-        />
-        <LinearGradient
-            colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
+const KarwaChauthBannerCta = React.memo(function KarwaChauthBannerCta({
+    onPress,
+    onPressIn,
+    onPressOut,
+    isHindi = false,
+}: {
+    onPress: () => void;
+    onPressIn?: () => void;
+    onPressOut?: () => void;
+    isHindi?: boolean;
+}) {
+    const pulseAnim = React.useRef(new Animated.Value(1)).current;
+    const pressAnim = React.useRef(new Animated.Value(1)).current;
+
+    React.useEffect(() => {
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.045,
+                    duration: 1100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1.0,
+                    duration: 1100,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        loop.start();
+        return () => loop.stop();
+    }, [pulseAnim]);
+
+    const handlePressIn = () => {
+        Animated.spring(pressAnim, {
+            toValue: 0.93,
+            useNativeDriver: true,
+        }).start();
+        onPressIn?.();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(pressAnim, {
+            toValue: 1,
+            friction: 4,
+            tension: 50,
+            useNativeDriver: true,
+        }).start();
+        onPressOut?.();
+    };
+
+    return (
+        <Animated.View
             style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                zIndex: 2,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                justifyContent: 'space-between',
+                transform: [
+                    { scale: Animated.multiply(pulseAnim, pressAnim) },
+                ],
+                shadowColor: '#FF6F00',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.8,
+                shadowRadius: 6,
+                elevation: 7,
             }}
         >
-            {children}
-        </LinearGradient>
-    </Pressable>
-);
+            <Pressable
+                onPress={onPress}
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ borderRadius: 22 }}
+            >
+                <LinearGradient
+                    colors={['#FF3D00', '#FF7043', '#FFA000', '#FFD54F']}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingHorizontal: 12,
+                        paddingVertical: 5.5,
+                        borderRadius: 22,
+                        borderWidth: 1.4,
+                        borderColor: '#FFE082',
+                        gap: 5,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: '#FFFFFF',
+                            fontSize: 11.5,
+                            fontWeight: '800',
+                            letterSpacing: 0.3,
+                            textShadowColor: 'rgba(0, 0, 0, 0.55)',
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 3,
+                        }}
+                    >
+                        {isHindi ? 'कथा व मुहूर्त देखें' : 'View Katha & Muhurat'}
+                    </Text>
+                    <View
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.28)',
+                            borderRadius: 10,
+                            width: 17,
+                            height: 17,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginLeft: 1,
+                        }}
+                    >
+                        <Ionicons name="chevron-forward" size={11} color="#FFFFFF" />
+                    </View>
+                </LinearGradient>
+            </Pressable>
+        </Animated.View>
+    );
+});
+
+const StaticBannerCard = ({
+    source,
+    width,
+    height,
+    resizeMode = 'cover',
+    imageStyle,
+    gradientColors,
+    onPress,
+    onPressIn,
+    onPressOut,
+    children
+}: any) => {
+    const cardHeight = height || (Platform.OS === 'ios' ? 185 : 160);
+    return (
+        <Pressable
+            onPress={onPress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            style={{
+                width,
+                height: cardHeight,
+                borderRadius: 16,
+                overflow: 'hidden',
+                alignSelf: 'center',
+                marginBottom: 5,
+                backgroundColor: '#010c20',
+                // intentionally NO shadowColor / shadowOpacity / elevation
+            }}
+        >
+            <Image
+                source={source}
+                style={[
+                    {
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 1,
+                    },
+                    imageStyle,
+                ]}
+                resizeMode={resizeMode}
+            />
+            {children ? (
+                <LinearGradient
+                    colors={gradientColors || ['rgba(0,0,0,0.05)', 'transparent', 'rgba(0,0,0,0.2)']}
+                    style={{
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 2,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        justifyContent: 'space-between',
+                    }}
+                >
+                    {children}
+                </LinearGradient>
+            ) : null}
+        </Pressable>
+    );
+};
 
 export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     user,
@@ -895,7 +1041,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -905,7 +1051,48 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Helper components for Banner 1 & Banner 2 */}
+                            {/* Banner 1: Karwa Chauth Special Festival Banner */}
+                            <StaticBannerCard
+                                key="karwa_chauth_banner"
+                                width={screenWidth - 40}
+                                source={karwaChauthBannerImage}
+                                imageStyle={{ transform: [{ translateY: 7 }] }}
+                                gradientColors={['transparent', 'transparent', 'transparent']}
+                                onPress={() => {
+                                    try {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    } catch (_e) { }
+                                    router.push({
+                                        pathname: '/festival-detail',
+                                        params: { name: 'Karva Chauth' }
+                                    });
+                                }}
+                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                            >
+                                <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'flex-end' }}>
+                                    <KarwaChauthBannerCta
+                                        isHindi={t('language') === 'hi'}
+                                        onPress={() => {
+                                            try {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                            } catch (_e) { }
+                                            router.push({
+                                                pathname: '/festival-detail',
+                                                params: { name: 'Karva Chauth' }
+                                            });
+                                        }}
+                                        onPressIn={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                        }}
+                                        onPressOut={() => {
+                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                        }}
+                                    />
+                                </View>
+                            </StaticBannerCard>
+
+                            {/* Helper components for Banner 2 & Banner 3 */}
                             {(() => {
                                 const renderHanumanBanner = (key: string) => (
                                     <StaticBannerCard
@@ -1260,7 +1447,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1].map((idx) => (
+                            {[0, 1, 2].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
