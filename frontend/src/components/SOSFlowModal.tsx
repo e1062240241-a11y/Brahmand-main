@@ -295,7 +295,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerRightSpacer} />
       </View>
 
       {renderProgressBar()}
@@ -304,12 +304,14 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
       <Text style={styles.stepSubHeading}>Choose the type of emergency you are facing.</Text>
 
       <View style={styles.typeGrid}>
-        {[
-          { id: 'medical', label: 'Medical', icon: 'heart-pulse' },
-          { id: 'accident', label: 'Accident', icon: 'car' },
-          { id: 'safety', label: 'Safety', icon: 'shield-check' },
-          { id: 'other', label: 'Other', icon: 'dots-horizontal' },
-        ].map((t) => (
+        {(
+          [
+            { id: 'medical', label: 'Medical', icon: 'heart-pulse' },
+            { id: 'accident', label: 'Accident', icon: 'car' },
+            { id: 'safety', label: 'Safety', icon: 'shield-check' },
+            { id: 'other', label: 'Other', icon: 'dots-horizontal' },
+          ] as const
+        ).map((t) => (
           <TouchableOpacity
             key={t.id}
             style={[styles.typeButton, emergencyType === t.id && styles.typeButtonActive]}
@@ -325,7 +327,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           >
             <View style={[styles.typeIconBg, emergencyType === t.id && styles.typeIconBgActive]}>
               <MaterialCommunityIcons 
-                name={t.icon as any} 
+                name={t.icon}
                 size={24} 
                 color={emergencyType === t.id ? '#FF0000' : '#333'} 
               />
@@ -370,7 +372,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerRightSpacer} />
       </View>
 
       {renderProgressBar()}
@@ -400,14 +402,14 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
       </TouchableOpacity>
 
       <TouchableOpacity 
-        style={[styles.locationCard, { backgroundColor: '#FFF5EB', borderColor: '#FFD7C2', borderWidth: 1, marginTop: -20, marginBottom: 20 }]} 
+        style={styles.manualLocationCard}
         onPress={() => setPickerVisible(true)}
         activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Choose Location Manually using Map or Search"
       >
-        <Ionicons name="map-outline" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
-        <Text style={[styles.locationLabel, { color: COLORS.primary, marginBottom: 0 }]}>
+        <Ionicons name="map-outline" size={20} color={COLORS.primary} style={styles.manualLocationIcon} />
+        <Text style={styles.manualLocationLabel}>
           Choose Location Manually (Map/Search)
         </Text>
       </TouchableOpacity>
@@ -457,7 +459,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerRightSpacer} />
       </View>
 
       {renderProgressBar()}
@@ -906,5 +908,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 32,
     zIndex: 100,
+  },
+  headerRightSpacer: {
+    width: 40,
+  },
+  manualLocationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5EB',
+    borderColor: '#FFD7C2',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: -20,
+    marginBottom: 20,
+    width: '100%',
+  },
+  manualLocationIcon: {
+    marginRight: 12,
+  },
+  manualLocationLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: COLORS.primary,
+    marginBottom: 0,
   },
 });
