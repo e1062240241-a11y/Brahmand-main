@@ -11788,11 +11788,6 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 skipped += 1
             else:
                 f_uid = doc_map[doc_id]
-                await db.set_document('user_follows', doc_id, {
-                    'follower_uid': uid,
-                    'followee_uid': f_uid,
-                })
-                created += 1
                 tasks.append(db.set_document('user_follows', doc_id, {
                     'follower_uid': uid,
                     'followee_uid': f_uid,
@@ -11800,9 +11795,9 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 created += 1
 
         if tasks:
-            # Chunk the write operations to avoid overwhelming the database
-            for i in range(0, len(tasks), 500):
-                await asyncio.gather(*tasks[i:i+500])
+            # Chunk write operations (batches of 400) to prevent overwhelming Firestore
+            for i in range(0, len(tasks), 400):
+                await asyncio.gather(*tasks[i:i+400])
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}
