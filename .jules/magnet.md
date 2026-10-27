@@ -93,3 +93,7 @@
 ## 2026-09-25 - Atharvaved Bookmarks Modal & Reading Instruction Polish
 **Learning:** Hardcoded English UI copy in scripture reading screens (like Atharvaved) disrupts the devotional atmosphere for Hindi users. Conditionally rendering Devanagari Hindi copy (`"स्वाध्याय आरंभ करने हेतु स्पर्श करें ✨"`, `"सहेजे गए पृष्ठ / चिह्न"`, `"अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨"`, `"काण्ड ..."`) based on `useLanguageStore` maintains spiritual reverence and mother-tongue immersion across all sacred text screens.
 **Action:** Updated `frontend/app/library/atharvaved.tsx` with `useLanguageStore` to conditionally render localized Devanagari Hindi copy for the book opening prompt, bookmarks modal title, empty bookmarks placeholder, and chapter item subtext when `language === 'hi'`.
+
+## 2026-09-26 - Rigveda Bookmarks Modal & Reading Instruction Polish
+**Learning:** Hardcoded English UI text in sacred scripture reading screens (such as Rigveda) creates a jarred experience for Hindi-first readers. Conditionally displaying Devanagari Hindi copy (`"स्वाध्याय आरंभ करने हेतु स्पर्श करें ✨"`, `"सहेजे गए पृष्ठ / चिह्न"`, `"अभी तक कोई पृष्ठ सहेजा नहीं गया है ✨"`, `"मण्डल ..."`) based on `useLanguageStore` ensures consistent mother-tongue immersion during daily Vedic study.
+**Action:** Updated `frontend/app/library/rigveda.tsx` to subscribe to `useLanguageStore` and conditionally render Devanagari Hindi copy across the reading instruction badge, bookmarks modal header, empty bookmarks placeholder, and chapter subtext when `language === 'hi'`.
