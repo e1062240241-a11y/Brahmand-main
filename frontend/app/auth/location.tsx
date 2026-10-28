@@ -248,7 +248,7 @@ export default function LocationSetupScreen() {
       });
       
       updateUser(response.data.user);
-      router.replace('/home');
+      router.replace('/(tabs)/home');
     } catch (err: any) {
       setError(err.response?.data?.detail || getTranslation('failedToSave'));
     } finally {
@@ -257,7 +257,7 @@ export default function LocationSetupScreen() {
   };
 
   const handleSkip = () => {
-    router.replace('/home');
+    router.replace('/(tabs)/home');
   };
 
   return (

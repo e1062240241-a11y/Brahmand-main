@@ -13,9 +13,12 @@ import { useSafeVideoPlayer, isPlayerValid } from '../SafeVideoView';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Svg, { Text as SvgText, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { styles } from './home.styles';
 import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, karwaChauthBannerImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
+import { HomeCornerMoonCountdown } from './HomeCornerMoonCountdown';
+import { ChalniMoonProfileAvatar } from './ChalniMoonProfileAvatar';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
@@ -584,15 +587,10 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={styles.profileButton}
+                            <ChalniMoonProfileAvatar
+                                size={Platform.OS === 'android' ? 42 : 55}
                                 onPress={() => router.push('/(tabs)/profile')}
-                                accessibilityRole="button"
-                                accessibilityLabel="View your profile"
-                            >
-                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         <View style={{
@@ -605,23 +603,38 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             alignItems: 'center',
                             zIndex: -1,
                         }} pointerEvents="none">
-                            <Text
-                                numberOfLines={1}
+                            <Svg
+                                height="38"
+                                width="230"
+                                viewBox="0 0 230 38"
                                 style={{
-                                    color: '#000',
-                                    textAlign: 'center',
-                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                    fontSize: Platform.OS === 'android' ? 24 : 27,
-                                    fontStyle: 'normal',
-                                    fontWeight: '400',
-                                    letterSpacing: 0.5,
-                                    includeFontPadding: false,
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
+                                    shadowColor: '#7F1D1D',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.22,
+                                    shadowRadius: 2,
                                 }}
                             >
-                                BRAHMAND
-                            </Text>
+                                <Defs>
+                                    <SvgLinearGradient id="kumkumAltaGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <Stop offset="0%" stopColor="#4A0505" />
+                                        <Stop offset="30%" stopColor="#7F1D1D" />
+                                        <Stop offset="68%" stopColor="#A82015" />
+                                        <Stop offset="100%" stopColor="#C2410C" />
+                                    </SvgLinearGradient>
+                                </Defs>
+                                <SvgText
+                                    x="115"
+                                    y="27"
+                                    textAnchor="middle"
+                                    fill="url(#kumkumAltaGrad)"
+                                    fontFamily={FONTS.brandTitle}
+                                    fontSize={Platform.OS === 'android' ? 24 : 27}
+                                    fontWeight={Platform.OS === 'android' ? undefined : '700'}
+                                    letterSpacing="2.0"
+                                >
+                                    BRAHMAND
+                                </SvgText>
+                            </Svg>
                         </View>
 
                         <View style={styles.headerRight}>
@@ -667,6 +680,11 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     </View>
 
+                    {!searchActive && (
+                        <View style={{ alignItems: 'flex-start', marginTop: 4, marginBottom: 2 }}>
+                            <HomeCornerMoonCountdown />
+                        </View>
+                    )}
 
                     {searchActive ? (
                         <View style={styles.searchPanel}>
@@ -799,7 +817,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     ) : (
                         <View
-                            style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
+                            style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 6, marginBottom: 8 }]}
                         >
                             <ScrollView
                                 ref={topFeaturesScrollRef}

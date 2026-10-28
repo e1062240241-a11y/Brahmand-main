@@ -27,7 +27,7 @@ export default function IndexRoute() {
   useEffect(() => {
     if (!isLoading) {
       if (token && token !== '>' && token.length >= 10) {
-        safeNavigate(() => router.replace('/home'));
+        safeNavigate(() => router.replace('/(tabs)/home'));
       } else {
         safeNavigate(() => router.replace('/auth/entry-animation'));
       }

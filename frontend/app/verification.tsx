@@ -64,7 +64,7 @@ export default function VerificationScreen() {
           </Text>
           <Button
             title="Go to Communities"
-            onPress={() => router.replace('/home')}
+            onPress={() => router.replace('/(tabs)/home')}
             style={styles.successButton}
           />
         </View>

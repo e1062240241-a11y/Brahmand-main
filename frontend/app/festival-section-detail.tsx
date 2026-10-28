@@ -263,6 +263,19 @@ const FestivalSectionDetailPage = () => {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>{error || 'Festival not found.'}</Text>
+        <TouchableOpacity
+          style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: COLORS.primary || '#FF6F00', borderRadius: 8 }}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/festivals');
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

@@ -131,7 +131,7 @@ function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourne
   };
 
   const handleExit = () => {
-    router.replace('/home' as any);
+    router.replace('/(tabs)/home' as any);
   };
 
   const firstPhoto = journey.media && journey.media.find((m: any) => m.type === 'photo');

@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { FlashList } from '@shopify/flash-list';
 import { useTranslation } from '../../src/utils/i18n';
+import { isVideoUrl } from '../../src/utils/mediaQuality';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
 import { useAuthStore } from '../../src/store/authStore';
@@ -1321,11 +1322,15 @@ export default function ProfileScreen() {
   const renderPost = ({ item }: { item: any }) => {
     const rawUrl = item.media_url || item.mediaUrl || item.image_url || item.image || '';
     const isVideo =
+      isVideoUrl(rawUrl) ||
       !!rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) ||
       item.media_type === 'video' ||
       item.is_video ||
       item.isVideo;
-    const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || (isVideo ? '' : rawUrl);
+    const thumbCandidate = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || '';
+    const displayUrl = (thumbCandidate && !isVideoUrl(thumbCandidate))
+      ? thumbCandidate
+      : (isVideo ? '' : (isVideoUrl(rawUrl) ? '' : rawUrl));
     const isGallery = !isVideo && (item.media_count > 1 || item.is_carousel || item.carousel);
 
     return (
@@ -1333,7 +1338,7 @@ export default function ProfileScreen() {
         style={({ pressed }) => [styles.gridItem, pressed && styles.gridItemPressed]}
         onPress={() => openPostModal(item)}
       >
-        {displayUrl ? (
+        {displayUrl && !isVideoUrl(displayUrl) ? (
           <Image
             source={{ uri: displayUrl }}
             style={styles.gridImage}

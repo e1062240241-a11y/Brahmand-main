@@ -1965,7 +1965,13 @@ const DirectMessageScreen = () => {
             </View>
           ) : null}
           {safeSharedMediaUrl && safeSharedMediaUrl !== 'null' ? (
-            <Image source={{ uri: safeSharedMediaUrl }} style={styles.sharedPostImage} resizeMode="cover" />
+            !isMediaUrl(safeSharedMediaUrl, 'video') ? (
+              <Image source={{ uri: safeSharedMediaUrl }} style={styles.sharedPostImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.sharedPostImage, { backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="play-circle-outline" size={36} color="#FFF" />
+              </View>
+            )
           ) : null}
           <View style={styles.sharedPostMeta}>
             <Text style={styles.sharedPostTitle}>{shared.title || 'Shared post'}</Text>

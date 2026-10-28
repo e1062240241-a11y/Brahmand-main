@@ -378,7 +378,7 @@ function useDeepLinkHandler() {
           toast.show('Invalid or unsupported link', 'error');
           // If we launched the app via an invalid deep link, fallback to home
           if (token && isAuthenticated) {
-            safeNavigate(() => router.replace('/home'));
+            safeNavigate(() => router.replace('/(tabs)/home'));
           }
           return;
         }
@@ -747,6 +747,8 @@ export default function RootLayout() {
     Outfit_600SemiBold,
     Outfit_700Bold,
     'Cinzel': require('../assets/fonts/Cinzel-Regular.ttf'),
+    'Cinzel-Regular': require('../assets/fonts/Cinzel-Regular.ttf'),
+    'Cinzel-Bold': require('../assets/fonts/Cinzel-Bold.ttf'),
     'Poppins': require('../assets/fonts/Poppins-Regular.ttf'),
     'RozhaOne': require('../assets/fonts/RozhaOne-Regular.ttf'),
   });

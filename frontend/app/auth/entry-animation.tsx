@@ -107,7 +107,7 @@ export default function EntryAnimationScreen() {
 
   useEffect(() => {
     if (token) {
-      router.replace('/home');
+      router.replace('/(tabs)/home');
       return;
     }
 

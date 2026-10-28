@@ -1,5 +1,6 @@
 import React, { Component, ReactNode, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Platform, Image, AppState } from 'react-native';
+import { isVideoUrl } from '../utils/mediaQuality';
 
 let ExpoVideoModule: any = null;
 try {
@@ -225,7 +226,10 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
     if (this.state.hasError || !ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
       if (fallback) return fallback;
       if (posterSource) {
-        return <Image source={typeof posterSource === 'string' ? { uri: posterSource } : posterSource} style={[styles.defaultFallback, this.props.style]} resizeMode="cover" />;
+        const posterUri = typeof posterSource === 'string' ? posterSource : posterSource?.uri;
+        if (!posterUri || !isVideoUrl(posterUri)) {
+          return <Image source={typeof posterSource === 'string' ? { uri: posterSource } : posterSource} style={[styles.defaultFallback, this.props.style]} resizeMode="cover" />;
+        }
       }
       return <View style={[styles.defaultFallback, this.props.style]} />;
     }

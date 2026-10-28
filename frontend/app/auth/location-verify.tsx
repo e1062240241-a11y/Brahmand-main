@@ -123,7 +123,7 @@ export default function LocationVerifyScreen() {
         useAuthStore.getState().setPendingDeepLink(null);
         router.replace(pendingDeepLink as any);
       } else {
-        router.replace('/home');
+        router.replace('/(tabs)/home');
       }
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.detail || 'Failed to save location');

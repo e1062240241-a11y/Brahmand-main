@@ -28,6 +28,7 @@ import { ReelViewer } from './ReelViewer';
 import NativeVideoPlayer from './NativeVideoPlayer';
 import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
+import { isVideoUrl } from '../utils/mediaQuality';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
 import { useOptionalTabBar } from '../contexts/TabBarContext';
@@ -217,13 +218,36 @@ const PostFeedCardComponent = ({
     post?.thumbnail_url ||
     post?.thumbnailUrl;
 
-  const posterUrl = String(
-    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || rawMediaUrl || ''
-  );
   let mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
     mediaUrl = mediaUrl.replace('http://', 'https://');
   }
+
+  const rawMediaType =
+    post?.media_type ||
+    post?.mediaType ||
+    post?.type;
+
+  const mediaType = rawMediaType ? String(rawMediaType).toLowerCase() : '';
+
+  const isVideo =
+    mediaType.startsWith('video') ||
+    mediaType === 'reel' ||
+    Boolean(post?.is_video || post?.isVideo) ||
+    isVideoUrl(mediaUrl) ||
+    isVideoUrl(rawMediaUrl);
+
+  const thumbCandidate = String(
+    post?.thumbnail_url ||
+    post?.thumbnailUrl ||
+    post?.metadata?.thumbnail_url ||
+    post?.metadata?.thumbnailUrl ||
+    (!isVideo && rawMediaUrl ? rawMediaUrl : '') ||
+    ''
+  ).trim();
+
+  // Guard: NEVER pass video URL as image poster to Image component (prevents iOS ImageIO ftyp error)
+  const posterUrl = (thumbCandidate && !isVideoUrl(thumbCandidate)) ? thumbCandidate : '';
 
   const [imageUri, setImageUri] = useState(mediaUrl);
   const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
@@ -259,8 +283,10 @@ const PostFeedCardComponent = ({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        setImageUri(fallbackUrl);
-        return;
+        if (!isVideoUrl(fallbackUrl)) {
+          setImageUri(fallbackUrl);
+          return;
+        }
       }
     }
     setMediaLoading(false);
@@ -273,19 +299,14 @@ const PostFeedCardComponent = ({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        setVideoPosterUrl(fallbackUrl);
+        if (!isVideoUrl(fallbackUrl)) {
+          setVideoPosterUrl(fallbackUrl);
+          return;
+        }
       }
     }
+    setVideoPosterUrl('');
   };
-
-  const rawMediaType =
-    post?.media_type ||
-    post?.mediaType ||
-    post?.type;
-
-  const mediaType = rawMediaType ? String(rawMediaType).toLowerCase() : '';
-
-  const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
   const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
@@ -845,24 +866,30 @@ const PostFeedCardComponent = ({
               onTouchEnd={handleTouchEnd}
               onPress={handleMediaPress}
             >
-              <Image
-                source={{ uri: imageUri }}
-                style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
-                contentFit="cover"
-                transition={0}
-                recyclingKey={post.id}
-                onLoadStart={() => setMediaLoading(true)}
-                onLoad={(e) => {
-                  setMediaLoading(false);
-                  if (!initialRawRatio) {
-                    const { width, height } = e.source;
-                    if (width && height) {
-                      setDynamicRatio(width / height);
+              {!isVideoUrl(imageUri) ? (
+                <Image
+                  source={{ uri: imageUri }}
+                  style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
+                  contentFit="cover"
+                  transition={0}
+                  recyclingKey={post.id}
+                  onLoadStart={() => setMediaLoading(true)}
+                  onLoad={(e) => {
+                    setMediaLoading(false);
+                    if (!initialRawRatio) {
+                      const { width, height } = e.source;
+                      if (width && height) {
+                        setDynamicRatio(width / height);
+                      }
                     }
-                  }
-                }}
-                onError={handleImageError}
-              />
+                  }}
+                  onError={handleImageError}
+                />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="videocam" size={32} color="#FFF" />
+                </View>
+              )}
               {((Platform.OS as string) !== 'web') && filterName !== 'Normal' && (
                 <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
               )}

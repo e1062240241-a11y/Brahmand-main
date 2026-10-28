@@ -245,7 +245,7 @@ const HashtagPage = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-          <TouchableOpacity onPress={() => router.replace('/home')}>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/home')}>
             <Ionicons name="chevron-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={{ fontSize: 18, fontWeight: '600', color: COLORS.text, marginLeft: 12 }}>

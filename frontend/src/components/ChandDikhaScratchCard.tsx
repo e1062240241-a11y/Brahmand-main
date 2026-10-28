@@ -707,6 +707,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   brandTitle: {
+    fontFamily: Platform.OS === 'android' ? 'Cinzel-Bold' : 'Cinzel',
     fontSize: 11,
     letterSpacing: 2.5,
     color: '#FEF08A',

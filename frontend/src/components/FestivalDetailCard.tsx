@@ -26,6 +26,7 @@ import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
 import { ChandDikhaScratchCard } from './ChandDikhaScratchCard';
+import { PersonalizedKarwaCard } from './PersonalizedKarwaCard';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
@@ -281,7 +282,7 @@ const GuideItem = ({
   isVisited,
   onPress,
 }: {
-  section: { title: string; value: string };
+  section: { title: string; value: string; customHeading?: string; subtitle?: string };
   index: number;
   festivalName: string;
   isVisited: boolean;
@@ -412,7 +413,9 @@ const GuideItem = ({
         <View style={styles.guideTextContainer}>
           <View style={styles.guideHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.guideTitle, { color: cfg.accent }]}>{section.title}</Text>
+              <Text style={[styles.guideTitle, { color: cfg.accent }]}>
+                {section.customHeading || section.title}
+              </Text>
             </View>
             {isVisited && (
               <View style={styles.visitedBadge}>
@@ -427,7 +430,7 @@ const GuideItem = ({
             style={styles.guideDescription}
             maxFontSizeMultiplier={1.3}
           >
-            {section.value}
+            {section.subtitle || section.value}
           </Text>
           {isTruncated && (
             <Text style={[styles.seeMore, { color: cfg.accent }]} maxFontSizeMultiplier={1.3}>
@@ -602,15 +605,38 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     }
   };
 
-  const sections = [
-    { title: 'Story', value: rawStory },
-    { title: 'About', value: rawAbout },
-    ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
-    { title: 'Importance', value: rawImportance },
-    { title: 'Puja Vidhi', value: rawPujaVidhi },
-    ...(!isKarvaChauthFestival ? [{ title: 'Mantra', value: rawMantra }] : []),
-    { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
-  ].filter((s) => Boolean(s.value));
+  const karwaChauthSections = [
+    {
+      title: 'Story',
+      customHeading: 'करवा चौथ व्रत कथा',
+      subtitle: 'रानी वीरवती और करवा माता की पावन अमर कथा (ऑडियो सहित सुनें)',
+      value: rawStory || 'रानी वीरवती और करवा माता की पावन कथा, जिसने पति के प्राणों की रक्षा की और अमर सुहाग का वरदान प्राप्त किया।',
+    },
+    {
+      title: 'Puja Vidhi',
+      customHeading: 'सम्पूर्ण पूजा विधि व सामग्री',
+      subtitle: 'करवा पूजन, सरगी, गौरी पूजन व चंद्र अर्घ्य की सम्पूर्ण विधि',
+      value: rawPujaVidhi || 'मिट्टी का करवा, छलनी, कच्चा दूध, अक्षत, रोली, कुमकुम, सुहाग सामग्री व जल से माता पार्वती व शिव परिवार का पूजन करें।',
+    },
+    {
+      title: 'Importance',
+      customHeading: 'महत्व व अखंड सौभाग्य नियम',
+      subtitle: 'पति की दीर्घायु, निर्जला व्रत के नियम एवं आध्यात्मिक महत्व',
+      value: rawImportance || 'पति की दीर्घायु और अखंड सौभाग्य के लिए निर्जला व्रत, चंद्र दर्शन और अर्घ्य का पावन विधान।',
+    },
+  ];
+
+  const sections = isKarvaChauthFestival
+    ? karwaChauthSections
+    : [
+        { title: 'Story', value: rawStory },
+        { title: 'About', value: rawAbout },
+        ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
+        { title: 'Importance', value: rawImportance },
+        { title: 'Puja Vidhi', value: rawPujaVidhi },
+        ...(!isKarvaChauthFestival ? [{ title: 'Mantra', value: rawMantra }] : []),
+        { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
+      ].filter((s) => Boolean(s.value));
 
   // Load visited sections progress
   useEffect(() => {
@@ -651,65 +677,67 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
         <Text style={styles.watermarkText}>☸ 🌿 🏵 🌿 ☸</Text>
       </View>
 
-      {/* Cultural Hero Card */}
-      <LinearGradient
-        colors={['#8B0000', '#B22222', '#1E4620']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.heroCard, IS_SMALL_SCREEN && styles.heroCardCompact]}
-      >
-        {/* Low-opacity Hero Image Background */}
-        {festivalImgAsset && (
-          <Image
-            source={festivalImgAsset}
-            style={styles.heroBackgroundImage}
-            contentFit="cover"
-          />
-        )}
-        <View style={styles.heroGradientOverlay} />
-
-        {/* Top Badges Row */}
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroPill}>
-            <Text style={styles.heroPillText}>🪔 SACRED FESTIVAL GUIDE</Text>
-          </View>
-          {daysRemaining && (
-            <View style={styles.countdownBadge}>
-              <Ionicons name="time" size={12} color="#FFD700" />
-              <Text style={styles.countdownText}>{daysRemaining}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Title */}
-        <Text
-          style={[styles.heroTitle, IS_SMALL_SCREEN && styles.heroTitleCompact]}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          numberOfLines={2}
+      {/* Cultural Hero Card (For other festivals; Karwa Chauth uses its dedicated unified card) */}
+      {!isKarvaChauthFestival && (
+        <LinearGradient
+          colors={['#8B0000', '#B22222', '#1E4620']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.heroCard, IS_SMALL_SCREEN && styles.heroCardCompact]}
         >
-          {festivalName}
-        </Text>
+          {/* Low-opacity Hero Image Background */}
+          {festivalImgAsset && (
+            <Image
+              source={festivalImgAsset}
+              style={styles.heroBackgroundImage}
+              contentFit="cover"
+            />
+          )}
+          <View style={styles.heroGradientOverlay} />
 
-        {/* Deity & Date Row */}
-        <View style={styles.deityDateContainer}>
-          <View style={styles.deityBadge}>
-            <Ionicons name="sparkles" size={13} color="#FFD700" />
-            <Text style={styles.deityBadgeText}>{deity}</Text>
+          {/* Top Badges Row */}
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroPill}>
+              <Text style={styles.heroPillText}>🪔 SACRED FESTIVAL GUIDE</Text>
+            </View>
+            {daysRemaining && (
+              <View style={styles.countdownBadge}>
+                <Ionicons name="time" size={12} color="#FFD700" />
+                <Text style={styles.countdownText}>{daysRemaining}</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.dateRow}>
-            <Ionicons name="calendar" size={14} color="#FFD580" />
-            <Text style={styles.heroDate}>{formatFestivalDate(festival.date || '2026-08-15')}</Text>
+
+          {/* Title */}
+          <Text
+            style={[styles.heroTitle, IS_SMALL_SCREEN && styles.heroTitleCompact]}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            numberOfLines={2}
+          >
+            {festivalName}
+          </Text>
+
+          {/* Deity & Date Row */}
+          <View style={styles.deityDateContainer}>
+            <View style={styles.deityBadge}>
+              <Ionicons name="sparkles" size={13} color="#FFD700" />
+              <Text style={styles.deityBadgeText}>{deity}</Text>
+            </View>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar" size={14} color="#FFD580" />
+              <Text style={styles.heroDate}>{formatFestivalDate(festival.date || '2026-08-15')}</Text>
+            </View>
           </View>
-        </View>
 
-        {/* Gold Accent Divider */}
-        <View style={styles.heroDivider} />
+          {/* Gold Accent Divider */}
+          <View style={styles.heroDivider} />
 
-        <Text style={styles.heroHint}>
-          🌿 Immerse yourself in divine mythology, rituals & monsoon traditions
-        </Text>
-      </LinearGradient>
+          <Text style={styles.heroHint}>
+            🌿 Immerse yourself in divine mythology, rituals & monsoon traditions
+          </Text>
+        </LinearGradient>
+      )}
 
       {/* Hidden Leaf Wish Card for Screenshot/Capture */}
       {isDussehraFestival && (
@@ -788,7 +816,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      ) : (
+      ) : isKarvaChauthFestival ? null : (
         /* Progress Bar for Other Festivals */
         totalCount > 0 && (
           <View style={styles.progressContainer}>
@@ -807,8 +835,13 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
 
 
 
-      {/* For Moon Festivals (Karwa Chauth, Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}
-      {isMoonFestival && (
+      {/* For Karwa Chauth: Highly Personalized Devotee Card & Day Tracker */}
+      {isKarvaChauthFestival && (
+        <PersonalizedKarwaCard />
+      )}
+
+      {/* For Non-Karwa Moon Festivals (Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}
+      {isMoonFestival && !isKarvaChauthFestival && (
         <View style={styles.chandDikhaSection}>
           <LinearGradient
             colors={['#070B1C', '#0B132B', '#111A38']}
@@ -900,7 +933,9 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       <View style={styles.guideSection}>
         <View style={styles.sectionHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-            <Text style={styles.sectionHeading}>Festival Guide Topics</Text>
+            <Text style={styles.sectionHeading}>
+              {isKarvaChauthFestival ? 'करवा चौथ पावन मार्गदर्शिका' : 'Festival Guide Topics'}
+            </Text>
             {sections.length > 0 && (
               <Text style={styles.sectionCount}>({sections.length})</Text>
             )}

@@ -100,12 +100,75 @@ export function getMediaUrl(post: any, quality: MediaQuality): string {
     post?.metadata?.thumbnail_url ||
     '';
 
-  if (explicitThumb && explicitThumb !== rawUrl) {
+  if (explicitThumb && explicitThumb !== rawUrl && !isVideoUrl(explicitThumb)) {
     return explicitThumb;
   }
 
   // Images: try CDN thumbnail transform
   return getThumbnailUrl(rawUrl);
+}
+
+/**
+ * Detect whether a given URL points to a video resource rather than an image.
+ * This is crucial to prevent iOS ImageIO from attempting to parse video containers (e.g. MP4/MOV)
+ * as static images, which triggers `createImageAtIndex 1 could not find plugin for image source ... ftyp`.
+ */
+export function isVideoUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const cleanUrl = url.split('?')[0].toLowerCase().trim();
+  return (
+    cleanUrl.endsWith('.mp4') ||
+    cleanUrl.endsWith('.mov') ||
+    cleanUrl.endsWith('.m4v') ||
+    cleanUrl.endsWith('.webm') ||
+    cleanUrl.endsWith('.m3u8') ||
+    cleanUrl.endsWith('.avi') ||
+    cleanUrl.endsWith('.mkv') ||
+    cleanUrl.endsWith('.flv') ||
+    cleanUrl.endsWith('.wmv') ||
+    cleanUrl.includes('/videos/') ||
+    cleanUrl.includes('/video/') ||
+    cleanUrl.includes('%2fvideo') ||
+    cleanUrl.includes('_video_')
+  );
+}
+
+/**
+ * Returns true if the post or media item represents a video.
+ */
+export function isVideoItem(post: any, rawUrl?: string | null): boolean {
+  if (!post && !rawUrl) return false;
+  const mediaType = String(post?.media_type || post?.mediaType || post?.type || '').toLowerCase();
+  if (
+    mediaType.startsWith('video') ||
+    mediaType === 'reel' ||
+    Boolean(post?.is_video || post?.isVideo)
+  ) {
+    return true;
+  }
+  const targetUrl = rawUrl || post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image;
+  return isVideoUrl(targetUrl);
+}
+
+/**
+ * Safely extracts an image thumbnail/poster URL for a post.
+ * If the candidate points to a video file, it returns empty string rather than
+ * passing an MP4 to an Image component.
+ */
+export function getSafeImageThumbnail(post: any): string {
+  if (!post) return '';
+  const candidate = String(
+    post?.thumbnail_url ||
+    post?.thumbnailUrl ||
+    post?.metadata?.thumbnail_url ||
+    post?.metadata?.thumbnailUrl ||
+    ''
+  ).trim();
+
+  if (candidate && !isVideoUrl(candidate)) {
+    return candidate;
+  }
+  return '';
 }
 
 /**
@@ -115,3 +178,4 @@ export function getMediaUrl(post: any, quality: MediaQuality): string {
 export function getInitialQuality(index: number): MediaQuality {
   return index < 5 ? 'high' : 'thumbnail';
 }
+

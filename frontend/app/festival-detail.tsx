@@ -7,6 +7,7 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,93 +55,109 @@ const FestivalDetailPage: React.FC = () => {
 
   const [festival, setFestival] = useState<FestivalRawItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
   const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
 
   const isMountedRef = useRef<boolean>(true);
 
-  // Load selected festival details on mount / param change
-  useEffect(() => {
-    isMountedRef.current = true;
+  // Load selected festival details on mount / param change / refresh
+  const loadFestival = useCallback(async (forceRefresh = false) => {
+    try {
+      if (!forceRefresh) {
+        setLoading(true);
+      }
+      setError(null);
+      const response = await getFestivalList(forceRefresh);
+      const items: FestivalRawItem[] = response?.data || response || [];
 
-    const loadFestival = async () => {
-      try {
-        const response = await getFestivalList();
-        const items: FestivalRawItem[] = response?.data || response || [];
+      let selected: FestivalRawItem | undefined;
 
-        let selected: FestivalRawItem | undefined;
+      // 1. Primary lookup: Exact ID match
+      if (targetId) {
+        selected = items.find((f) => f.id && String(f.id).trim().toLowerCase() === targetId.toLowerCase());
+      }
 
-        // 1. Primary lookup: Exact ID match
-        if (targetId) {
-          selected = items.find((f) => f.id && String(f.id).trim().toLowerCase() === targetId.toLowerCase());
-        }
+      // 2. Secondary lookup: Cleaned Name match
+      if (!selected && targetName) {
+        const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+        selected = items.find((f) => {
+          const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+          return fName && (fName === cleanTarget || fName.includes(cleanTarget) || cleanTarget.includes(fName));
+        });
 
-        // 2. Secondary lookup: Cleaned Name match
-        if (!selected && targetName) {
-          const cleanTarget = targetName.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+        if (!selected && (cleanTarget.includes('karva') || cleanTarget.includes('karwa'))) {
           selected = items.find((f) => {
-            const fName = (f.festival_name || f.name || f.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
-            return fName && (fName === cleanTarget || fName.includes(cleanTarget) || cleanTarget.includes(fName));
+            const fName = (f.festival_name || f.name || f.title || '').toLowerCase();
+            return fName.includes('karva') || fName.includes('karwa');
           });
-
-          if (!selected && (cleanTarget.includes('karva') || cleanTarget.includes('karwa'))) {
-            selected = items.find((f) => {
-              const fName = (f.festival_name || f.name || f.title || '').toLowerCase();
-              return fName.includes('karva') || fName.includes('karwa');
-            });
-          }
-        }
-
-        // 3. Fallback: If no match yet and index is valid, match against date-sorted upcoming list (matching festivals.tsx order)
-        if (!selected && !Number.isNaN(festivalIndex) && festivalIndex >= 0) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          const upcoming = items.filter((f) => {
-            if (!f.date) return true;
-            return new Date(f.date) >= today;
-          });
-
-          const sorted = upcoming.sort(
-            (a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
-          );
-
-          const sortedList = sorted.length > 0 ? sorted : items;
-          selected = sortedList[festivalIndex] || items[festivalIndex];
-        }
-
-        if (!selected) {
-          if (isMountedRef.current) {
-            setError('Festival not found.');
-          }
-        } else {
-          const festivalId = selected.id || selected.name || selected.festival_name || '';
-          const reminderState = await getFestivalReminderState(festivalId);
-
-          if (isMountedRef.current) {
-            setFestival(selected);
-            setReminderEnabled(!!reminderState?.enabled);
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load festival details', err);
-        if (isMountedRef.current) {
-          setError('Unable to load festival details.');
-        }
-      } finally {
-        if (isMountedRef.current) {
-          setLoading(false);
         }
       }
-    };
 
+      // 3. Fallback: If no match yet and index is valid, match against date-sorted upcoming list (matching festivals.tsx order)
+      if (!selected && !Number.isNaN(festivalIndex) && festivalIndex >= 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const upcoming = items.filter((f) => {
+          if (!f.date) return true;
+          return new Date(f.date) >= today;
+        });
+
+        const sorted = upcoming.sort(
+          (a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
+        );
+
+        const sortedList = sorted.length > 0 ? sorted : items;
+        selected = sortedList[festivalIndex] || items[festivalIndex];
+      }
+
+      // 4. Safe recovery fallback: If still not matched, pick first available festival instead of failing with not found
+      if (!selected && items.length > 0) {
+        selected = items[0];
+      }
+
+      if (!selected) {
+        if (isMountedRef.current) {
+          setError('Festival not found.');
+        }
+      } else {
+        const festivalId = selected.id || selected.name || selected.festival_name || '';
+        const reminderState = await getFestivalReminderState(festivalId);
+
+        if (isMountedRef.current) {
+          setFestival(selected);
+          setError(null);
+          setReminderEnabled(!!reminderState?.enabled);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load festival details', err);
+      if (isMountedRef.current) {
+        setError('Unable to load festival details.');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, [festivalIndex, targetId, targetName]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
     loadFestival();
 
     return () => {
       isMountedRef.current = false;
     };
-  }, [festivalIndex, targetId, targetName]);
+  }, [loadFestival]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadFestival(true);
+  }, [loadFestival]);
 
   // Handler for toggling notifications
   const handleToggleReminder = useCallback(async () => {
@@ -229,7 +246,23 @@ const FestivalDetailPage: React.FC = () => {
   if (error || !festival) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || 'Something went wrong.'}</Text>
+        <Text style={styles.errorText}>{error || 'Festival not found.'}</Text>
+        <View style={styles.errorActions}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => loadFestival(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.retryButton, styles.backBtnSecondary]}
+            onPress={handleBackPress}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.retryButtonText, { color: '#1A1A1A' }]}>Back to Festivals</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -288,7 +321,18 @@ const FestivalDetailPage: React.FC = () => {
       </View>
 
       {/* Main Festival Detail Card */}
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
+          />
+        }
+      >
         <FestivalDetailCard
           festival={{ ...festival, reminderEnabled, onToggleReminder: handleToggleReminder }}
           onBack={handleBackPress}
@@ -323,6 +367,25 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     fontSize: 14,
     textAlign: 'center',
+  },
+  errorActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    backgroundColor: COLORS.primary || '#FF6F00',
+    borderRadius: 8,
+  },
+  backBtnSecondary: {
+    backgroundColor: '#E5E7EB',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',

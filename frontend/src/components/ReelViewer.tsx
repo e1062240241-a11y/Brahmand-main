@@ -42,6 +42,7 @@ import { useRouter } from 'expo-router';
 import { socketService } from '../services/socket';
 import SharePostModal from './SharePostModal';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
+import { isVideoUrl } from '../utils/mediaQuality';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
@@ -389,9 +390,10 @@ const ReelVideoItem = React.memo(({
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
     mediaUrl = mediaUrl.replace('http://', 'https://');
   }
-  const posterUrl = String(
+  const rawPoster = String(
     post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
-  );
+  ).trim();
+  const posterUrl = (rawPoster && !isVideoUrl(rawPoster)) ? rawPoster : '';
 
   const [imageUri, setImageUri] = useState(mediaUrl);
   const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
@@ -411,7 +413,10 @@ const ReelVideoItem = React.memo(({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        setImageUri(fallbackUrl);
+        if (!isVideoUrl(fallbackUrl)) {
+          setImageUri(fallbackUrl);
+          return;
+        }
       }
     }
   };
@@ -422,13 +427,17 @@ const ReelVideoItem = React.memo(({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        setVideoPosterUrl(fallbackUrl);
+        if (!isVideoUrl(fallbackUrl)) {
+          setVideoPosterUrl(fallbackUrl);
+          return;
+        }
       }
     }
+    setVideoPosterUrl('');
   };
   // OPT-7: read directly from post prop
   const mediaType = String(post?.media_type || post?.mediaType || '').toLowerCase();
-  const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+  const isVideo = mediaType.startsWith('video') || mediaType === 'reel' || Boolean(post?.is_video || post?.isVideo) || isVideoUrl(mediaUrl);
   const mediaWidth = Number(post?.media_width || post?.mediaWidth || 0);
   const mediaHeight = Number(post?.media_height || post?.mediaHeight || 0);
   const [aspectRatio, setAspectRatio] = useState<number | null>(

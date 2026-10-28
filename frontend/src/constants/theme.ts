@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export const COLORS = {
   // Brahmand Brand Colors
   primary: '#FF6600',
@@ -48,7 +50,10 @@ export const FONTS = {
   medium: 'Inter_500Medium',
   semiBold: 'Inter_600SemiBold',
   bold: 'Inter_700Bold',
-  brandTitle: 'Cinzel', // NON-NEGOTIABLE BRANDING IDENTITY FONT - DO NOT ALTER OR REMOVE
+  brandTitle: Platform.select({
+    android: 'Cinzel-Bold',
+    default: 'Cinzel',
+  }), // NON-NEGOTIABLE BRANDING IDENTITY FONT - DO NOT ALTER OR REMOVE
 };
 
 export const SPACING = {

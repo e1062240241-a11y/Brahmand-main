@@ -336,7 +336,7 @@ export default function FollowConnectionsScreen() {
           <TouchableOpacity
             style={styles.addMoreButtonIcon}
             activeOpacity={0.85}
-            onPress={() => router.push('/home' as any)}
+            onPress={() => router.push('/(tabs)/home' as any)}
           >
             <Ionicons name="person-add" size={20} color="#F25C05" />
           </TouchableOpacity>

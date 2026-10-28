@@ -33,6 +33,7 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
 import { originalAlert } from '../../src/utils/nativeAlert';
+import { isVideoUrl } from '../../src/utils/mediaQuality';
 import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
@@ -957,7 +958,8 @@ const UserProfileScreen = () => {
 
   const renderPost = ({ item }: { item: any }) => {
     const rawUrl = item.media_url || item.mediaUrl || item.image_url || item.image || '';
-    const isVideo = (rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) || false) ||
+    const isVideo = isVideoUrl(rawUrl) ||
+      (rawUrl.match(/\.(mp4|mov|m4v|webm|m3u8|avi|mkv|flv|wmv)(\?|$)/i) || false) ||
       item.media_type === 'video' ||
       item.is_video ||
       item.isVideo ||
@@ -968,7 +970,10 @@ const UserProfileScreen = () => {
         rawUrl.toLowerCase().includes('.m3u8') ||
         rawUrl.toLowerCase().includes('%2fposts%2f')
       ));
-    const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || rawUrl;
+    const thumbCandidate = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || '';
+    const displayUrl = (thumbCandidate && !isVideoUrl(thumbCandidate))
+      ? thumbCandidate
+      : (isVideo ? '' : (isVideoUrl(rawUrl) ? '' : rawUrl));
     const views = item.views_count || 0;
 
     return (
@@ -977,7 +982,7 @@ const UserProfileScreen = () => {
         activeOpacity={0.9}
         onPress={() => openPostModal(item)}
       >
-        {displayUrl ? (
+        {displayUrl && !isVideoUrl(displayUrl) ? (
           <Image source={{ uri: displayUrl }} style={styles.gridImage} />
         ) : (
           <View style={styles.gridPlaceholder}>

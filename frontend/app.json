@@ -173,6 +173,7 @@
         {
           "fonts": [
             "./assets/fonts/Cinzel-Regular.ttf",
+            "./assets/fonts/Cinzel-Bold.ttf",
             "./assets/fonts/Poppins-Regular.ttf",
             "./assets/fonts/RozhaOne-Regular.ttf",
             "./assets/fonts/SpaceMono-Regular.ttf"

@@ -181,9 +181,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2.8,
     color: '#78350F',
     fontFamily: Platform.select({
-      ios: 'Cinzel-Regular',
-      android: 'serif',
-      default: 'serif',
+      android: 'Cinzel-Bold',
+      ios: 'Cinzel',
+      default: 'Cinzel',
     }),
   },
   goldenTraditionBadge: {
