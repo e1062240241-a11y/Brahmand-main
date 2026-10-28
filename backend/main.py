@@ -4332,7 +4332,9 @@ async def chand_dikha_web_card(request: Request):
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
-    post = await db.get_document('posts', post_id)
+    # Field masking: Fetch only user_id and views_count to avoid transferring
+    # large post media, captions, and comments on view count endpoints.
+    post = await db.get_document_fields('posts', post_id, ['user_id', 'views_count'])
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
 
