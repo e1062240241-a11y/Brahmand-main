@@ -580,6 +580,12 @@ export default function JaapLandingScreen() {
                   ? (t('language') === 'hi' ? 'विजयादशमी स्पेशल 🏹' : 'Vijayadashami Special 🏹')
                   : undefined;
 
+                // 🧡 Engagement: Reframed transactional call-to-action "शामिल हों" (Join) to devotional satsang invitation "साधना से जुड़ें" (Join Sadhana).
+                // Lever: Reframing + Devotion / Cultivating Satsang (Collectiveness over Individuality)
+                // Why: "साधना से जुड़ें" invites the user into a collective spiritual journey rather than a generic app button click.
+                // UI: Text-only change, no visual components or layout structure altered.
+                const joinSadhanaText = t('language') === 'hi' ? 'साधना से जुड़ें' : 'Join Sadhana';
+
                 return (
                   <LiveJaapCard
                     key={jaap.id}
@@ -589,7 +595,7 @@ export default function JaapLandingScreen() {
                     liveLabel={liveLabel}
                     activeCount={activeCounts[getMantraRoomName(jaap.id)] || 0}
                     translatedTitle={translatedTitle}
-                    joinText={t('join')}
+                    joinText={joinSadhanaText}
                     onJoin={() => safeNavigate(() => {
                       router.push({
                         pathname: '/live-jaap-welcome',
