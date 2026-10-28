@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { NAVRATRI_DAY_NOTIFICATIONS } from '../data/navdurgaDaysData';
+import { detectUserMoonCity } from './karwaMoonrise';
 
 const STORAGE_KEY = '@festival_reminders';
 
@@ -142,6 +143,14 @@ async function scheduleNotificationsForFestival(
     festivalName.toLowerCase().includes('dasara') ||
     festivalName.toLowerCase().includes('vijaya');
 
+  // Check if this festival is Karwa Chauth
+  const isKarwaChauth =
+    festivalId.toLowerCase().includes('karwa') ||
+    festivalId.toLowerCase().includes('karva') ||
+    festivalName.toLowerCase().includes('karwa') ||
+    festivalName.toLowerCase().includes('karva') ||
+    festivalName.includes('करवा');
+
   if (isNavratri) {
     // Schedule dedicated Day 1 to Day 9 notifications for Navratri
     for (const dayNotif of NAVRATRI_DAY_NOTIFICATIONS) {
@@ -264,6 +273,92 @@ async function scheduleNotificationsForFestival(
           '🌿 सोनं घ्या, सोन्यासारखे राहा! शुभ विजयादशमी',
           'विजयादशमी की हार्दिक शुभकामनाएं! अपने परिजनों संग पवित्र वर्चुअल शमी पत्र साझा करें और खुशियां फैलाएं।',
           dussehraNotifData,
+          immediateTrigger,
+          `fest_${festivalId}_immediate_${now.toDateString()}`
+        );
+        if (id) notificationIds.push(id);
+      }
+    }
+  } else if (isKarwaChauth) {
+    // Specialized Karwa Chauth hooks: 1. Pre-Dawn Sargi, 2. Evening Puja/Katha Muhurat, 3. Dynamic City Moonrise & Arghya
+    const karwaNotifData = {
+      type: 'festival_reminder',
+      subType: 'karwa_chauth',
+      festivalId,
+      route: '/festival-detail',
+      target: 'karwa',
+    };
+
+    // 1. Pre-Dawn Sargi - 04:30 AM (Sargi window: 04:45 AM - 05:35 AM)
+    const sargi430AM = new Date(festivalDate.getTime());
+    sargi430AM.setHours(4, 30, 0, 0);
+    if (sargi430AM > now) {
+      const id = await scheduleLocalNotif(
+        '🌅 शुभ ब्रह्म मुहूर्त: सरगी का समय',
+        'करवा चौथ के पावन निर्जला व्रत की शुरुआत करें सास द्वारा दी गई सरगी व जल ग्रहण करके। अपने परिवार व सहेलियों को भी सरगी की शुभकामनाएं भेजें! 🌸',
+        karwaNotifData,
+        sargi430AM,
+        `fest_${festivalId}_sargi_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 2. Evening Puja & Vrat Katha Muhurat - 05:30 PM (Muhurat: 05:43 PM - 07:01 PM)
+    const evening530PM = new Date(festivalDate.getTime());
+    evening530PM.setHours(17, 30, 0, 0);
+    if (evening530PM > now) {
+      const id = await scheduleLocalNotif(
+        '🪔 शुभ पूजा मुहूर्त: करवा चौथ व्रत कथा',
+        'संध्या पूजन का शुभ मुहूर्त (5:43 PM - 7:01 PM) शुरू हो रहा है। शिव-पार्वती पूजन करें, कथा सुनें व परिवार और मित्रों संग पावन शुभकामनाएं साझा करें! ✨',
+        karwaNotifData,
+        evening530PM,
+        `fest_${festivalId}_katha_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 3. Moonrise, Arghya & Vrat Paran - Dynamic city moonrise time (or 08:09 PM Delhi default)
+    let moonriseHour = 20;
+    let moonriseMinute = 9;
+    let userCityName = 'आपके शहर';
+
+    try {
+      const detectedCity = await detectUserMoonCity();
+      if (detectedCity) {
+        moonriseHour = detectedCity.hour ?? 20;
+        moonriseMinute = detectedCity.minute ?? 9;
+        userCityName = detectedCity.hindiCity?.split('/')[0]?.trim() || detectedCity.city || 'आपके शहर';
+      }
+    } catch (_e) {}
+
+    const moonriseTrigger = new Date(festivalDate.getTime());
+    moonriseTrigger.setHours(moonriseHour, moonriseMinute, 0, 0);
+
+    if (moonriseTrigger > now) {
+      const id = await scheduleLocalNotif(
+        '🌙 चाँद निकला! चंद्र दर्शन व पावन अर्घ्य',
+        `${userCityName} में चंद्र दर्शन का समय हो गया है! छलनी से चंद्र व पति का दर्शन कर अर्घ्य दें। अपनों और परिवार के साथ यह पावन क्षण व कार्ड साझा करें! 🌕`,
+        karwaNotifData,
+        moonriseTrigger,
+        `fest_${festivalId}_moonrise_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 4. Fallback Immediate Trigger if reminder toggled on Karwa Chauth day or eve & times passed
+    const isTomorrow = now.toDateString() === new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000).toDateString();
+    const isToday = now.toDateString() === festivalDate.toDateString();
+
+    if ((isTomorrow || isToday) && notificationIds.length === 0) {
+      const festivalEnd = new Date(festivalDate.getTime());
+      festivalEnd.setHours(23, 59, 59, 999);
+
+      if (now < festivalEnd) {
+        const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+        const id = await scheduleLocalNotif(
+          '🌙 शुभ करवा चौथ!',
+          'करवा चौथ की पावन मंगलकामनाएं! अपने परिजनों व मित्रों के साथ पावन शुभकामना कार्ड साझा करें और खुशियां बांटें। 🌸',
+          karwaNotifData,
           immediateTrigger,
           `fest_${festivalId}_immediate_${now.toDateString()}`
         );

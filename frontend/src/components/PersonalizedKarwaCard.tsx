@@ -8,10 +8,17 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  Image as RNImage,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../store/authStore';
@@ -21,9 +28,12 @@ import {
   MAJOR_CITIES_MOONRISE,
   POPULAR_CITY_IDS,
   STORAGE_KEY_MANUAL_CITY,
+  createCustomCityData,
+  getInitialUserMoonCity,
 } from '../utils/karwaMoonrise';
 import { KarwaChauthShareCard } from './KarwaChauthShareCard';
 import { shareFestivalCard } from '../utils/shareFestivalCard';
+import { shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   try {
@@ -58,25 +68,26 @@ export const getPersonalizedSankalpFull = (
   `ॐ विष्णुर्विष्णुर्विष्णुः। श्रीमद्भगवतो महापुरुषस्य विष्णोराज्ञया प्रवर्तमानस्य... ${cityNameFull}, ${gotraName} ${fullName} अहं मम पतिश्चायुरारोग्यसौभाग्यपुत्रपौत्रादि धनधान्यसमृद्ध्यर्थं श्रीउमामहेश्वरसायुज्यसिद्ध्यर्थं च करवा चौथ व्रतमहं करिष्ये।`;
 
 export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
+  festival,
   onCityDetected,
 }: {
+  festival?: any;
   onCityDetected?: (city: CityMoonriseData) => void;
 }) {
   const user = useAuthStore((state) => state.user);
-  const [detectedCity, setDetectedCity] = useState<CityMoonriseData>(MAJOR_CITIES_MOONRISE[0]);
+  const [detectedCity, setDetectedCity] = useState<CityMoonriseData>(() => getInitialUserMoonCity(user));
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [showFullSankalp, setShowFullSankalp] = useState<boolean>(false);
   const [cityPickerVisible, setCityPickerVisible] = useState<boolean>(false);
   const [citySearchQuery, setCitySearchQuery] = useState<string>('');
-  const [isChecklistExpanded, setIsChecklistExpanded] = useState<boolean>(false);
+  const [isChecklistExpanded, setIsChecklistExpanded] = useState<boolean>(true);
+  const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
   const [isSharingWhatsApp, setIsSharingWhatsApp] = useState<boolean>(false);
   const shareCardRef = useRef<any>(null);
 
   // User profile derived attributes
   const rawName = (user?.name || '').trim();
-  const firstName = rawName ? rawName.split(' ')[0] : 'भक्त';
   const fullName = rawName || 'करवा चौथ व्रती';
-  const photoUrl = user?.photo;
   const gender = (user?.gender || '').toLowerCase();
   const isFemale = gender.includes('female') || gender.includes('महिला') || gender.includes('woman') || !gender;
   const isMale = gender.includes('male') || gender.includes('पुरुष') || gender.includes('man');
@@ -117,17 +128,23 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (_e) {}
     setDetectedCity(city);
-    AsyncStorage.setItem(STORAGE_KEY_MANUAL_CITY, city.id).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY_MANUAL_CITY, JSON.stringify(city)).catch(() => {});
     setCityPickerVisible(false);
     setCitySearchQuery('');
     onCityDetected?.(city);
   };
 
   const toggleChecklistStep = (id: string) => {
+    const willBeDone = !completedSteps.includes(id);
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (willBeDone) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
     } catch (_e) {}
 
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCompletedSteps((prev) => {
       const updated = prev.includes(id)
         ? prev.filter((item) => item !== id)
@@ -135,6 +152,14 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
       AsyncStorage.setItem('@karwa_day_checklist_2026', JSON.stringify(updated)).catch(() => {});
       return updated;
     });
+  };
+
+  const toggleChecklistExpanded = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (_e) {}
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsChecklistExpanded((prev) => !prev);
   };
 
   const cityName = detectedCity?.hindiCity?.split('/')[0]?.trim() || 'आपके शहर';
@@ -210,6 +235,28 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
     [cityNameFull, gotraName, fullName]
   );
 
+  // Share Sacred Karwa Chauth Katha & Puja Vidhi PDF
+  const handleSharePdf = async () => {
+    if (isSharingPdf) return;
+    try {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (_e) {}
+      setIsSharingPdf(true);
+      const festObj = festival || {
+        id: 'karwa-chauth',
+        name: 'Karwa Chauth',
+        festival_name: 'Karwa Chauth',
+        date: '2026-10-29',
+      };
+      await shareFestivalStoryPdf(festObj);
+    } catch (err) {
+      console.warn('[PersonalizedKarwaCard] PDF share error:', err);
+    } finally {
+      setIsSharingPdf(false);
+    }
+  };
+
   // Share festive greeting image card + text to WhatsApp
   const handleWhatsAppShare = async () => {
     if (isSharingWhatsApp) return;
@@ -224,13 +271,25 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
 
       let imageUri: string | null = null;
       if (shareCardRef.current) {
-        await new Promise((res) => setTimeout(res, 300));
+        await new Promise((res) => setTimeout(res, 350));
         const captureResult = await safeCaptureRef(shareCardRef, {
           format: 'png',
           quality: 0.95,
           result: 'tmpfile',
         });
         imageUri = captureResult.uri;
+      }
+
+      // Guaranteed fallback to festive parchment card asset if snapshot is null
+      if (!imageUri) {
+        try {
+          const fallbackSource = RNImage.resolveAssetSource(
+            require('../../assets/images/festivals/karwa_chauth_share_bg.jpg')
+          );
+          if (fallbackSource?.uri) {
+            imageUri = fallbackSource.uri;
+          }
+        } catch (_err) {}
       }
 
       await shareFestivalCard(
@@ -256,24 +315,7 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
         style={styles.heroUnifiedCard}
       >
         <View style={styles.heroTopRow}>
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.avatarImg} contentFit="cover" />
-          ) : (
-            <LinearGradient
-              colors={['#F59E0B', '#D97706']}
-              style={styles.avatarFallback}
-            >
-              <Text style={styles.avatarInitial}>{firstName.charAt(0)}</Text>
-            </LinearGradient>
-          )}
-
           <View style={styles.heroTextCol}>
-            <View style={styles.badgeRow}>
-              <View style={styles.festivalPill}>
-                <Text style={styles.festivalPillText}>🪔 करवा चौथ महापर्व • 29 अक्टूबर</Text>
-              </View>
-            </View>
-
             <Text style={styles.devoteeName} numberOfLines={1}>
               {fullName} जी
             </Text>
@@ -339,10 +381,7 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
         {/* Personalized Vedic Sankalp Card */}
         <View style={styles.sankalpContainer}>
           <View style={styles.sankalpHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Ionicons name="sparkles" size={12} color="#FDE047" />
-              <Text style={styles.sankalpTitle}>आपका व्यक्तिगत व्रत संकल्प</Text>
-            </View>
+            <Text style={styles.sankalpTitle}>आपका व्यक्तिगत व्रत संकल्प</Text>
             <TouchableOpacity
               onPress={() => setShowFullSankalp((prev) => !prev)}
               activeOpacity={0.8}
@@ -358,101 +397,128 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
           </Text>
         </View>
 
-        {/* Quick WhatsApp Share Pill with Sacred Festive Image Card */}
+        {/* Sacred Karwa Chauth Wishes Share Button */}
         <TouchableOpacity
-          style={styles.quickSharePill}
+          style={styles.pdfShareBtn}
           activeOpacity={0.85}
-          disabled={isSharingWhatsApp}
-          onPress={handleWhatsAppShare}
+          disabled={isSharingPdf}
+          onPress={handleSharePdf}
         >
-          {isSharingWhatsApp ? (
+          {isSharingPdf ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Ionicons name="logo-whatsapp" size={15} color="#25D366" />
+            <Ionicons name="share-social-outline" size={16} color="#FBBF24" />
           )}
-          <Text style={styles.quickSharePillText}>
-            {isSharingWhatsApp
-              ? 'शुभकामना कार्ड तैयार हो रहा है...'
-              : `${cityName} का चंद्रोदय कार्ड व्हाट्सएप करें`}
+          <Text style={styles.pdfShareBtnText}>
+            {isSharingPdf ? 'Preparing Wishes...' : 'Share Your Wishes'}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* 2. Personalized Interactive 5-Step Day Tracker (Dropdown Accordion) */}
+      {/* 2. Personalized Interactive 5-Step Day Tracker */}
       <View style={styles.trackerCard}>
+        {/* Tracker Header */}
         <TouchableOpacity
           style={styles.trackerHeaderRow}
           activeOpacity={0.7}
-          onPress={() => {
-            try {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            } catch (_e) {}
-            setIsChecklistExpanded((prev) => !prev);
-          }}
+          onPress={toggleChecklistExpanded}
         >
           <View style={{ flex: 1, paddingRight: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.trackerMainTitle}>आपकी व्रत दिनचर्या व चेकलिस्ट</Text>
-              <Ionicons
-                name={isChecklistExpanded ? 'chevron-up-circle' : 'chevron-down-circle'}
-                size={18}
-                color="#B45309"
-              />
-            </View>
-            <Text style={styles.trackerSubTitle}>
-              {isChecklistExpanded
-                ? `${cityName} में आपके करवा चौथ का क्रमवार पालन • टैप करके समेटें ▴`
-                : `${completedCount}/${totalCount} पूर्ण • टैप करके चेकलिस्ट देखें ▾`}
-            </Text>
+            <Text style={styles.trackerMainTitle}>आपकी पावन व्रत दिनचर्या</Text>
           </View>
 
-          <View style={styles.trackerProgressBadge}>
-            <Text style={styles.trackerProgressText}>
-              {completedCount}/{totalCount} पूर्ण
+          <View style={styles.trackerTogglePill}>
+            <Text style={styles.trackerTogglePillText}>
+              {completedCount === totalCount ? 'पूर्ण ✓' : `${completedCount}/${totalCount}`}
             </Text>
+            <Ionicons
+              name={isChecklistExpanded ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#B45309"
+            />
           </View>
         </TouchableOpacity>
+
+        {/* Progress Bar Track */}
+        <View style={styles.trackerProgressBarBg}>
+          <LinearGradient
+            colors={['#F59E0B', '#D97706', '#E11D48']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[
+              styles.trackerProgressBarFill,
+              { width: `${Math.max(progressPercent > 0 ? 8 : 0, progressPercent)}%` },
+            ]}
+          />
+        </View>
 
         {/* Dropdown Content */}
         {isChecklistExpanded && (
           <View style={styles.checklistDropdownBody}>
-            {/* Progress Bar Track */}
-            <View style={styles.trackerProgressBarBg}>
-              <View
-                style={[
-                  styles.trackerProgressBarFill,
-                  { width: `${progressPercent}%` },
-                ]}
-              />
-            </View>
-
-            {/* Checklist Steps */}
-            <View style={styles.checklistGrid}>
+            {/* Checklist Timeline */}
+            <View style={styles.timelineContainer}>
               {checklistSteps.map((step, idx) => {
                 const isDone = completedSteps.includes(step.id);
+
                 return (
                   <TouchableOpacity
                     key={step.id}
-                    style={[styles.checkItemRow, isDone && styles.checkItemRowDone]}
-                    activeOpacity={0.8}
+                    style={[
+                      styles.checkItemCard,
+                      isDone && styles.checkItemCardDone,
+                    ]}
+                    activeOpacity={0.85}
                     onPress={() => toggleChecklistStep(step.id)}
                   >
-                    <View style={[styles.checkbox, isDone && styles.checkboxDone]}>
+                    {/* Circle Node */}
+                    <View
+                      style={[
+                        styles.timelineCircleNode,
+                        isDone && styles.timelineCircleNodeDone,
+                      ]}
+                    >
                       {isDone ? (
-                        <Ionicons name="checkmark" size={15} color="#1E1B4B" />
+                        <Ionicons name="checkmark-sharp" size={13} color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.stepNumberText}>{idx + 1}</Text>
+                        <Text style={styles.timelineNodeNumber}>{idx + 1}</Text>
                       )}
                     </View>
 
-                    <View style={styles.checkTextCol}>
-                      <View style={styles.checkTitleRow}>
-                        <Text style={[styles.checkTitle, isDone && styles.checkTitleDone]}>
-                          {step.icon} {step.title}
+                    {/* Step Content Column */}
+                    <View style={styles.stepContentCol}>
+                      {/* Title & Status */}
+                      <View style={styles.stepHeaderRow}>
+                        <Text
+                          style={[
+                            styles.stepTitleText,
+                            isDone && styles.stepTitleTextDone,
+                          ]}
+                        >
+                          <Text style={styles.stepIconEmoji}>{step.icon} </Text>
+                          {step.title}
                         </Text>
-                        <Text style={styles.checkTime}>{step.timeRange}</Text>
+                        {isDone && (
+                          <View style={styles.doneBadgePill}>
+                            <Text style={styles.doneBadgeText}>पूर्ण ✓</Text>
+                          </View>
+                        )}
                       </View>
-                      <Text style={[styles.checkDesc, isDone && styles.checkDescDone]}>
+
+                      {/* Time Pill */}
+                      <View style={styles.stepTimePill}>
+                        <Ionicons name="time-outline" size={11} color="#B45309" />
+                        <Text style={styles.stepTimeText} numberOfLines={1}>
+                          {step.timeRange}
+                        </Text>
+                      </View>
+
+                      {/* Description */}
+                      <Text
+                        style={[
+                          styles.stepDescText,
+                          isDone && styles.stepDescTextDone,
+                        ]}
+                      >
                         {step.desc}
                       </Text>
                     </View>
@@ -460,6 +526,19 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
                 );
               })}
             </View>
+
+            {/* Motivational Footer if all completed */}
+            {completedCount === totalCount && (
+              <View style={styles.celebrationFooter}>
+                <Text style={styles.celebrationEmoji}>🎉 🌸 🪔</Text>
+                <Text style={styles.celebrationTitle}>
+                  समस्त करवा चौथ व्रत विधि पूर्ण!
+                </Text>
+                <Text style={styles.celebrationSub}>
+                  माता पार्वती व शिव परिवार आपके दांपत्य जीवन में सदा सुख, प्रेम व अखंड सौभाग्य बनाए रखें।
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -468,14 +547,15 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
       <View
         style={styles.offscreenShareContainer}
         pointerEvents="none"
-        collapsable={false}
       >
-        <KarwaChauthShareCard
-          ref={shareCardRef}
-          userName={fullName}
-          cityName={cityName}
-          moonriseTime={moonriseTime}
-        />
+        <View collapsable={false} style={{ width: 576, height: 1024, backgroundColor: 'transparent' }}>
+          <KarwaChauthShareCard
+            ref={shareCardRef}
+            userName={fullName}
+            cityName={cityName}
+            moonriseTime={moonriseTime}
+          />
+        </View>
       </View>
 
       {/* Interactive City Selector Modal */}
@@ -558,6 +638,31 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
+              {/* Option to use typed city as custom city */}
+              {citySearchQuery.trim().length > 0 && (
+                <TouchableOpacity
+                  style={styles.customCityOption}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    const custom = createCustomCityData(citySearchQuery.trim());
+                    handleSelectCity(custom);
+                  }}
+                >
+                  <View style={styles.customCityOptionLeft}>
+                    <Ionicons name="location" size={18} color="#D97706" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.customCityOptionName}>
+                        {`📍 "${citySearchQuery.trim()}" चुनें`}
+                      </Text>
+                      <Text style={styles.customCityOptionSub}>
+                        कस्टम शहर • स्वचालित चंद्रोदय गणना
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#D97706" />
+                </TouchableOpacity>
+              )}
+
               {filteredCities.map((item) => {
                 const isSelected = item.id === detectedCity.id;
                 return (
@@ -613,8 +718,9 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 16,
+    width: '100%',
     marginBottom: 8,
+    overflow: 'hidden',
   },
   // 1. Unified Hero Card
   heroUnifiedCard: {
@@ -633,27 +739,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  avatarImg: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  avatarFallback: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FEF08A',
-  },
-  avatarInitial: {
-    color: '#FFF',
-    fontSize: 22,
-    fontWeight: '800',
   },
   heroTextCol: {
     flex: 1,
@@ -804,24 +889,25 @@ const styles = StyleSheet.create({
     lineHeight: 15.5,
   },
 
-  // WhatsApp Button
-  quickSharePill: {
+  // Sacred PDF Share Button
+  pdfShareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(37, 211, 102, 0.2)',
+    gap: 8,
+    backgroundColor: 'rgba(217, 119, 6, 0.22)',
     borderWidth: 1,
-    borderColor: 'rgba(37, 211, 102, 0.5)',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginTop: 8,
+    borderColor: 'rgba(251, 191, 36, 0.55)',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    marginTop: 10,
   },
-  quickSharePillText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
+  pdfShareBtnText: {
+    color: '#FFFBEB',
+    fontSize: 12.5,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
 
   // 2. Interactive Tracker Card
@@ -829,127 +915,213 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 0,
     paddingVertical: 2,
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  offscreenShareContainer: {
+    position: 'absolute',
+    left: -9999,
+    top: -9999,
+    width: 576,
+    height: 1024,
+    opacity: 1,
+    zIndex: -999,
   },
   trackerHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 4,
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  checklistDropdownBody: {
-    marginTop: 6,
-  },
-  offscreenShareContainer: {
-    position: 'absolute',
-    left: -9999,
-    top: -9999,
-    opacity: 0.01,
-    zIndex: -999,
+  trackerHeaderIcon: {
+    fontSize: 14,
   },
   trackerMainTitle: {
     color: '#1E293B',
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   trackerSubTitle: {
-    color: '#64748B',
-    fontSize: 10.5,
-    marginTop: 1,
+    color: '#78716C',
+    fontSize: 11,
+    marginTop: 2,
   },
-  trackerProgressBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+  trackerTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 0.8,
     borderColor: '#F59E0B',
   },
-  trackerProgressText: {
+  trackerTogglePillText: {
     color: '#B45309',
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '800',
   },
   trackerProgressBarBg: {
-    height: 5,
-    backgroundColor: '#F1F5F9',
+    height: 6,
+    backgroundColor: 'rgba(203, 213, 225, 0.35)',
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   trackerProgressBarFill: {
     height: '100%',
-    backgroundColor: '#F59E0B',
     borderRadius: 3,
   },
-  checklistGrid: {
-    gap: 7,
+  checklistDropdownBody: {
+    marginTop: 2,
   },
-  checkItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 9,
-    borderWidth: 0.8,
-    borderColor: '#E2E8F0',
+  timelineContainer: {
+    width: '100%',
     gap: 9,
   },
-  checkItemRowDone: {
-    backgroundColor: '#FEFCE8',
-    borderColor: '#FDE047',
+  checkItemCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(217, 119, 6, 0.16)',
+    shadowColor: '#78350F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
+    overflow: 'hidden',
   },
-  checkbox: {
+  checkItemCardDone: {
+    backgroundColor: '#FFFDF7',
+    borderColor: '#FBBF24',
+  },
+  timelineCircleNode: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: '#D6D3D1',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    marginTop: 2,
+    marginRight: 10,
+    flexShrink: 0,
   },
-  checkboxDone: {
-    backgroundColor: '#FDE047',
-    borderColor: '#D97706',
+  timelineCircleNodeDone: {
+    backgroundColor: '#D97706',
+    borderColor: '#B45309',
   },
-  stepNumberText: {
-    color: '#94A3B8',
+  timelineNodeNumber: {
+    color: '#78716C',
     fontSize: 10.5,
-    fontWeight: '700',
-  },
-  checkTextCol: {
-    flex: 1,
-  },
-  checkTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  checkTitle: {
-    color: '#1E293B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  checkTitleDone: {
-    color: '#854D0E',
     fontWeight: '800',
   },
-  checkTime: {
-    color: '#D97706',
-    fontSize: 10,
+  stepContentCol: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+  },
+  stepHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 6,
+    marginBottom: 4,
+  },
+  stepTitleText: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+    color: '#1C1917',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.1,
+    lineHeight: 18,
+  },
+  stepTitleTextDone: {
+    color: '#854D0E',
+  },
+  stepIconEmoji: {
+    fontSize: 13,
+  },
+  doneBadgePill: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 0.8,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+    flexShrink: 0,
+    marginLeft: 4,
+  },
+  doneBadgeText: {
+    color: '#15803D',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  stepTimePill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    marginBottom: 5,
+    maxWidth: '100%',
+  },
+  stepTimeText: {
+    color: '#B45309',
+    fontSize: 10.5,
     fontWeight: '700',
+    flexShrink: 1,
   },
-  checkDesc: {
-    color: '#64748B',
-    fontSize: 10,
-    lineHeight: 13.5,
+  stepDescText: {
+    color: '#78716C',
+    fontSize: 11,
+    lineHeight: 15,
+    width: '100%',
+    flexShrink: 1,
   },
-  checkDescDone: {
+  stepDescTextDone: {
     color: '#92400E',
+  },
+  celebrationFooter: {
+    width: '100%',
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#FEFCE8',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  celebrationEmoji: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  celebrationTitle: {
+    color: '#854D0E',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  celebrationSub: {
+    color: '#A16207',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 15,
   },
 
   // Modal Styles
@@ -1072,5 +1244,33 @@ const styles = StyleSheet.create({
   cityListMoonSelected: {
     color: '#D97706',
     fontWeight: '800',
+  },
+  customCityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  customCityOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  customCityOptionName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  customCityOptionSub: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 1,
   },
 });

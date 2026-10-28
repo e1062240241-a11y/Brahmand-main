@@ -161,6 +161,17 @@ export async function resolveFestivalLocation(): Promise<{ lat: number; lng: num
         lat = match.lat;
         lng = match.lng;
         if (!state) state = match.state;
+      } else if (state) {
+        const stateKey = String(state).toLowerCase().trim();
+        const stateMatch = MAJOR_STATE_COORDS[stateKey];
+        if (stateMatch) {
+          lat = stateMatch.lat;
+          lng = stateMatch.lng;
+        }
+      }
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        lat = 26.85;
+        lng = 78.50;
       }
     }
 
@@ -2616,7 +2627,8 @@ export async function renderDynamicFestivalPage1(
     row2Text = `SARGI MUHURAT: ${sargiStr}   ·   PUJA MUHURAT: ${pujaStr}`;
 
     // Row 3: Moonrise for user's city/state & Bhadra Kaal
-    const cityLabel = (panchangInfo?.city || 'DELHI / NCR').toUpperCase();
+    const userProfileCity = (useAuthStore.getState()?.user as any)?.home_location?.city;
+    const cityLabel = (panchangInfo?.city || userProfileCity || 'YOUR REGION').toUpperCase();
     const moonriseTime = panchangInfo?.moonrise || '08:12 PM';
     const bhadraEndStr = panchangInfo?.bhadraEnd ? `ENDS ${panchangInfo.bhadraEnd}` : 'ENDS 01:07 PM';
     row3Text = `MOONRISE (${cityLabel}): ${moonriseTime}   ·   BHADRA KAAL: ${bhadraEndStr} (PUJA IS BHADRA-FREE)`;
@@ -4472,8 +4484,15 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
 
   // Save multi-page PDF with standard xref table for maximum compatibility
   const base64Pdf = await doc.saveAsBase64({ useObjectStreams: false });
-  const sanitizedName = theme.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase() || 'festival';
-  const filename = `${sanitizedName}_katha.pdf`;
+  const isKarwaChauth = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isSharadPurnima = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
+
+  let filename = `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_Sampoorna_Katha_Pujan_Vidhi.pdf`;
+  if (isKarwaChauth) {
+    filename = 'Karwa_Chauth_Akhand_Saubhagya_Katha_Pujan_Vidhi.pdf';
+  } else if (isSharadPurnima) {
+    filename = 'Sharad_Purnima_Kojagara_Pawan_Katha_Booklet.pdf';
+  }
 
   const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
   const rawUri = `${targetDir}${filename}`;
@@ -4626,36 +4645,88 @@ export async function shareFestivalStoryPdf(
     // Check for associated audio narration
     const audioInfo = await getFestivalAudioUri(festival);
 
-    const trackingShareUrl = getTrackedBrahmandUrl(theme.name, 'whatsapp_share');
-    const shareTitle = `${theme.name} — Katha, Puja Vidhi & Complete Guide`;
+    const isKarwaChauth = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
+    const isSharadPurnima = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
-    const chaptersSummary = (theme.chapters || [])
-      .map((ch, idx) => `  ${idx + 1}. *${ch.title}*: ${ch.content}`)
-      .join('\n\n');
+    const trackingShareUrl = getTrackedBrahmandUrl(theme.name, 'whatsapp_share');
+
+    let shareTitle = `${theme.name} — सम्पूर्ण सचित्र पावन कथा व पूजन विधि`;
+    let filenameBase = `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_Katha_Pujan_Vidhi`;
+
+    if (isKarwaChauth) {
+      shareTitle = '🌙 करवा चौथ अखंड सौभाग्य अमर कथा व सम्पूर्ण पूजा विधि';
+      filenameBase = 'Karwa_Chauth_Akhand_Saubhagya_Katha_Pujan_Vidhi';
+    } else if (isSharadPurnima) {
+      shareTitle = '🌕 शरद पूर्णिमा कोजागरा पावन कथा व अमृत वर्षा विधान';
+      filenameBase = 'Sharad_Purnima_Kojagara_Pawan_Katha_Booklet';
+    }
 
     let audioLine = '';
     if (audioInfo?.audioWebUrl || audioInfo?.audioTitle) {
       audioLine =
-        `\n🎧 *ऑडियो कथा श्रवण (Sacred Audio Katha):*\n` +
-        `▶️ ${audioInfo.audioTitle || 'Listen to Sacred Katha Narration'}\n` +
+        `\n🎧 *ऑडियो कथा श्रवण (साथ में सुनें):*\n` +
+        `▶️ ${audioInfo.audioTitle || 'पावन कथा का मधुर ऑडियो सुनें'}\n` +
         `🔗 ${audioInfo.audioWebUrl || trackingShareUrl}\n`;
     }
 
-    const shareMessage =
-      `🌸 *${theme.name.toUpperCase()} — सम्पूर्ण कथा, पूजा विधि एवं महात्म्य* 🌸\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🕉 *आराध्य देव / Deity:* ${theme.deity}\n` +
-      `📅 *तिथि / Tithi:* ${theme.tithi}\n` +
-      `✨ *परंपरा / Tradition:* ${theme.tradition}\n\n` +
-      `📜 *कथा एवं सम्पूर्ण पावन प्रसंग (All Sections):*\n\n` +
-      `${chaptersSummary}\n\n` +
-      `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🙏 *दिव्य आशीर्वाद (Blessing):*\n` +
-      `"${theme.blessing}"\n` +
-      audioLine +
-      `\n📖 *संलग्न (Attached):* सम्पूर्ण सचित्र E-Booklet / Katha PDF\n\n` +
-      `🛕 *Download Brahmand App* — 1,000+ Live Temple Darshans, Vedic Panchang, Daily Jaap & Kathas:\n` +
-      `👉 ${trackingShareUrl}`;
+    let shareMessage: string;
+
+    if (isKarwaChauth) {
+      shareMessage =
+        `🌙✨ *करवा चौथ — अखंड सौभाग्य पावन अमर कथा व सम्पूर्ण पूजा विधि* ✨🪔\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🌸 *प्रिय सखी / परिवारजन, आपके और आपके परिवार के अखंड सौभाग्य, अटूट दांपत्य प्रेम व दीर्घायु की पावन मंगलकामनाओं के साथ यह विशेष सचित्र ई-बुकलेट (PDF) भेजी गई है।* 💖\n\n` +
+        `📖 *कृपया नीचे अटैच की गई सचित्र सुंदर PDF को प्यार से Open करें!* 📑👇\n` +
+        `"जानिए कैसे पतिव्रता रानी वीरवती ने अपनी अटूट तपस्या, प्रेम और भक्ति से यमराज के पाश से भी वापस लौटा लिए थे अपने पति के प्राण..."\n\n` +
+        `✨ *इस सचित्र रंगीन ई-बुकलेट (PDF) में आपके लिए विशेष:* ✨\n` +
+        `🪔 १. *रानी वीरवती एवं करवा माता की सम्पूर्ण प्रामाणिक अमर कथा*\n` +
+        `🌅 २. *ब्रह्म मुहूर्त सरगी ग्रहण करने का शुभ समय, नियम व संकल्प*\n` +
+        `🌸 ३. *संध्या करवा पूजन की पावन थाली व सम्पूर्ण गौरी-शिव पूजा विधि*\n` +
+        `🎁 ४. *सास को बायना (करवा व सुहाग सामग्री) अर्पण करने का नियम*\n` +
+        `🌕 ५. *छलनी से चंद्र दर्शन, अर्घ्य समर्पण व व्रत पारण का सही विधान*\n` +
+        `🙏 ६. *अखंड सौभाग्य व दांपत्य प्रेम का व्यक्तिगत वैदिक संकल्प*\n\n` +
+        `👉 *परिवार के साथ नीचे दी गई PDF को अभी खोलें (Open करें) और आज का पावन व्रत विधिवत संपन्न करें!* 📑✨\n` +
+        audioLine +
+        `\n📲 *ब्रह्मांड (Brahmand) App अभी Download करें:* 👇\n` +
+        `📍 अपने शहर का सटीक चंद्रोदय समय, दैनिक पंचांग व 1000+ मंदिरों के लाइव दर्शन के लिए:\n` +
+        `🔗 ${trackingShareUrl}`;
+    } else if (isSharadPurnima) {
+      shareMessage =
+        `🌕✨ *शरद पूर्णिमा कोजागरा — अमृत वर्षा व पावन लक्ष्मी कथा* ✨🪔\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📖 *इस पावन सचित्र ई-बुकलेट (PDF) में संजोया गया है शरद पूर्णिमा का सम्पूर्ण आध्यात्मिक रहस्य!*\n\n` +
+        `"शरद पूर्णिमा की इस धवल चांदनी रात में जब चंद्रमा अपनी सोलह कलाओं से अमृत बरसाता है, तब माँ महालक्ष्मी पृथ्वी पर भ्रमण कर पूछती हैं — 'को जागर्ति?' (कौन जाग रहा है?)..."\n\n` +
+        `✨ *इस सचित्र रंगीन ई-बुकलेट (PDF) में आपके लिए विशेष:* ✨\n` +
+        `📜 १. *शरद पूर्णिमा व कोजागरा व्रत की सम्पूर्ण प्रामाणिक कथा*\n` +
+        `🥣 २. *खीर बनाकर रातभर चांदनी में रखने का वैज्ञानिक व आध्यात्मिक विधान*\n` +
+        `🪔 ३. *माता लक्ष्मी व चंद्र देव की सम्पूर्ण पूजा विधि व सिद्ध मंत्र*\n` +
+        `🌕 ४. *अमृत वर्षा दर्शन, अर्घ्य समर्पण व दिव्य आशीर्वाद*\n\n` +
+        `👉 *नीचे संलग्न सचित्र PDF को अभी Open करें और अमृत कथा का पाठ करें!* 📑👇\n` +
+        audioLine +
+        `\n📲 *ब्रह्मांड (Brahmand) App अभी Download करें:* 👇\n` +
+        `📍 दैनिक पंचांग, 1000+ मंदिरों के लाइव दर्शन व संपूर्ण वैदिक उत्सवों के लिए:\n` +
+        `🔗 ${trackingShareUrl}`;
+    } else {
+      const chaptersHighlights = (theme.chapters || [])
+        .slice(0, 5)
+        .map((ch, idx) => `  🔹 ${idx + 1}. *${ch.title}*`)
+        .join('\n');
+
+      shareMessage =
+        `🌸✨ *${theme.name.toUpperCase()} — सम्पूर्ण सचित्र पावन कथा व उत्सव मार्गदर्शिका* ✨🪔\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📖 *इस पावन ई-बुकलेट (PDF) में संजोया गया है ${theme.name} का सम्पूर्ण आध्यात्मिक रहस्य व महात्म्य!*\n\n` +
+        `🕉 *आराध्य देव / Deity:* ${theme.deity}\n` +
+        `📅 *तिथि / Tithi:* ${theme.tithi}\n` +
+        (theme.blessing ? `🙏 *दिव्य आशीर्वाद:* "${theme.blessing}"\n\n` : '\n') +
+        `✨ *इस रंगीन सचित्र PDF में आपके लिए विशेष सामग्री:* ✨\n` +
+        (chaptersHighlights || `  🔹 १. *सम्पूर्ण प्रामाणिक पावन कथा*\n  🔹 २. *घर पर करने योग्य पूजा विधि व सामग्री*\n  🔹 ३. *आरती, सिद्ध मंत्र व दिव्य स्तुति*`) +
+        `\n\n👉 *नीचे अटैच की गई सचित्र PDF को अभी Open करें और इस दिव्य कथा का अमृत लाभ लें!* 📑👇\n` +
+        audioLine +
+        `\n📲 *ब्रह्मांड (Brahmand) App अभी Download करें:* 👇\n` +
+        `📍 दैनिक पंचांग, 1000+ मंदिरों के लाइव दर्शन व संपूर्ण वैदिक उत्सवों के लिए:\n` +
+        `🔗 ${trackingShareUrl}`;
+    }
 
     const isUserCancellation = (err: any) => {
       const msg = String(err?.message || err || '').toLowerCase();
@@ -4682,7 +4753,7 @@ export async function shareFestivalStoryPdf(
             message: shareMessage,
             url: fileUri,
             type: 'application/pdf',
-            filename: `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_katha`,
+            filename: filenameBase,
             failOnCancel: false,
           });
           return { success: true, uri: fileUri, audioShared: Boolean(audioInfo?.audioWebUrl) };
@@ -4758,7 +4829,7 @@ export async function shareFestivalStoryPdf(
           message: shareMessage,
           url: fileUri,
           type: 'application/pdf',
-          filename: `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')} Katha`,
+          filename: filenameBase,
           failOnCancel: false,
         });
         return { success: true, uri: fileUri, audioShared: Boolean(audioInfo?.audioWebUrl) };

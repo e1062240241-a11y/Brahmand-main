@@ -837,7 +837,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
 
       {/* For Karwa Chauth: Highly Personalized Devotee Card & Day Tracker */}
       {isKarvaChauthFestival && (
-        <PersonalizedKarwaCard />
+        <PersonalizedKarwaCard festival={festival} />
       )}
 
       {/* For Non-Karwa Moon Festivals (Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}

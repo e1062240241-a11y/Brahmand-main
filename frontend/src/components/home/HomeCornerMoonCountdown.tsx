@@ -13,13 +13,13 @@ import {
   CityMoonriseData,
   detectUserMoonCity,
   getKarwaMoonriseCountdown,
-  MAJOR_CITIES_MOONRISE,
+  getInitialUserMoonCity,
 } from '../../utils/karwaMoonrise';
 
 export const HomeCornerMoonCountdown = React.memo(function HomeCornerMoonCountdown() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const [selectedCity, setSelectedCity] = useState<CityMoonriseData>(MAJOR_CITIES_MOONRISE[0]);
+  const [selectedCity, setSelectedCity] = useState<CityMoonriseData>(() => getInitialUserMoonCity(user));
   const [now, setNow] = useState<Date>(new Date());
 
   // Load selected city from storage or profile location or GPS
@@ -43,7 +43,7 @@ export const HomeCornerMoonCountdown = React.memo(function HomeCornerMoonCountdo
     return () => clearInterval(timer);
   }, []);
 
-  const { isRisen, timeStr } = useMemo(() => {
+  const { timeStr } = useMemo(() => {
     return getKarwaMoonriseCountdown(selectedCity, now);
   }, [now, selectedCity]);
 

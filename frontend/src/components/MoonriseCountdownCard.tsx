@@ -6,7 +6,6 @@ import {
   TextInput,
   StyleSheet,
   Animated,
-  Platform,
   Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +20,8 @@ import {
   POPULAR_CITY_IDS,
   detectUserMoonCity,
   getKarwaMoonriseCountdown,
+  getInitialUserMoonCity,
+  createCustomCityData,
 } from '../utils/karwaMoonrise';
 
 export { CityMoonriseData, MAJOR_CITIES_MOONRISE, POPULAR_CITY_IDS };
@@ -31,7 +32,7 @@ export const MoonriseCountdownCard = React.memo(function MoonriseCountdownCard({
   onSelectCity?: (city: CityMoonriseData) => void;
 }) {
   const user = useAuthStore((state) => state.user);
-  const [selectedCityId, setSelectedCityId] = useState<string>('delhi');
+  const [selectedCity, setSelectedCity] = useState<CityMoonriseData>(() => getInitialUserMoonCity(user));
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showFullCityList, setShowFullCityList] = useState<boolean>(false);
   const [now, setNow] = useState<Date>(new Date());
@@ -62,7 +63,7 @@ export const MoonriseCountdownCard = React.memo(function MoonriseCountdownCard({
     let isMounted = true;
     detectUserMoonCity(user).then((city) => {
       if (isMounted && city) {
-        setSelectedCityId(city.id);
+        setSelectedCity(city);
       }
     });
     return () => {
@@ -78,18 +79,12 @@ export const MoonriseCountdownCard = React.memo(function MoonriseCountdownCard({
     return () => clearInterval(timer);
   }, []);
 
-  const selectedCity = useMemo(() => {
-    return (
-      MAJOR_CITIES_MOONRISE.find((c) => c.id === selectedCityId) ||
-      MAJOR_CITIES_MOONRISE[0]
-    );
-  }, [selectedCityId]);
-
   const handleCityChange = (city: CityMoonriseData) => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (_e) { }
-    setSelectedCityId(city.id);
+    setSelectedCity(city);
+    AsyncStorage.setItem('@karwa_user_manual_city', JSON.stringify(city)).catch(() => {});
     AsyncStorage.setItem('@karwa_selected_city', city.id).catch(() => {});
     onSelectCity?.(city);
   };
@@ -191,8 +186,38 @@ export const MoonriseCountdownCard = React.memo(function MoonriseCountdownCard({
             </View>
 
             <View style={styles.cityTable}>
+              {searchQuery.trim().length > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.cityTableRow,
+                    {
+                      backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                      borderColor: '#F59E0B',
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      marginBottom: 6,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    const custom = createCustomCityData(searchQuery.trim());
+                    handleCityChange(custom);
+                    setShowFullCityList(false);
+                    setSearchQuery('');
+                  }}
+                >
+                  <View style={styles.cityRowLeft}>
+                    <Text style={[styles.cityNameText, { color: '#FDE047', fontWeight: '800' }]}>
+                      {`📍 "${searchQuery.trim()}" चुनें`}
+                    </Text>
+                    <Text style={styles.stateNameText}>कस्टम शहर • स्वचालित चंद्रोदय गणना</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+                </TouchableOpacity>
+              )}
+
               {filteredCities.slice(0, 15).map((c) => {
-                const isSelected = c.id === selectedCityId;
+                const isSelected = c.id === selectedCity.id;
                 return (
                   <TouchableOpacity
                     key={c.id}
@@ -204,6 +229,7 @@ export const MoonriseCountdownCard = React.memo(function MoonriseCountdownCard({
                     onPress={() => {
                       handleCityChange(c);
                       setShowFullCityList(false);
+                      setSearchQuery('');
                     }}
                   >
                     <View style={styles.cityRowLeft}>

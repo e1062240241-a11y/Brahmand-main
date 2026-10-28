@@ -17,7 +17,6 @@ import { getFestivalList } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
-import { shareFestivalStoryPdf } from '../src/utils/generateFestivalStoryPdf';
 import * as Haptics from 'expo-haptics';
 
 // ============================================================================
@@ -58,7 +57,6 @@ const FestivalDetailPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
-  const [isSharingPdf, setIsSharingPdf] = useState<boolean>(false);
 
   const isMountedRef = useRef<boolean>(true);
 
@@ -176,10 +174,23 @@ const FestivalDetailPage: React.FC = () => {
           targetName.toLowerCase().includes('vijaya') ||
           (festival?.festival_name || '').toLowerCase().includes('dussehra');
 
+        const isKarwaChauth =
+          targetId.toLowerCase().includes('karwa') ||
+          targetId.toLowerCase().includes('karva') ||
+          targetName.toLowerCase().includes('karwa') ||
+          targetName.toLowerCase().includes('karva') ||
+          (festival?.festival_name || '').toLowerCase().includes('karwa') ||
+          (festival?.festival_name || '').toLowerCase().includes('karva');
+
         if (isDussehra) {
           Alert.alert(
             '🌿 विजयादशमी व शमी पत्र रिमाइंडर सेट!',
             'आपको विजयादशमी की पूर्व संध्या और पावन पर्व पर "सोनं घ्या, सोन्यासारखे राहा!" सुवर्ण शमी पत्र साझा करने की सूचना मिलेगी।'
+          );
+        } else if (isKarwaChauth) {
+          Alert.alert(
+            '🌙 करवा चौथ पावन रिमाइंडर सेट!',
+            'आपको सरगी (04:30 AM), संध्या पूजा व व्रत कथा मुहूर्त (05:30 PM), और आपके शहर के सटीक चंद्रोदय पर अर्घ्य व शुभकामना शेयर करने का नोटिफिकेशन मिलेगा।'
           );
         } else {
           Alert.alert(
@@ -221,19 +232,6 @@ const FestivalDetailPage: React.FC = () => {
     },
     [router, festivalIndex, festival, targetId, targetName]
   );
-
-  const handleSharePdf = useCallback(async () => {
-    if (!festival || isSharingPdf) return;
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      setIsSharingPdf(true);
-      await shareFestivalStoryPdf(festival);
-    } catch (e) {
-      console.warn('Failed to share festival PDF:', e);
-    } finally {
-      setIsSharingPdf(false);
-    }
-  }, [festival, isSharingPdf]);
 
   if (loading) {
     return (
@@ -289,21 +287,6 @@ const FestivalDetailPage: React.FC = () => {
         </Text>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerActionBtn}
-            onPress={handleSharePdf}
-            disabled={isSharingPdf}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Share complete festival booklet"
-          >
-            {isSharingPdf ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <Ionicons name="share-social-outline" size={22} color="#000000" />
-            )}
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.headerActionBtn}
             onPress={handleToggleReminder}

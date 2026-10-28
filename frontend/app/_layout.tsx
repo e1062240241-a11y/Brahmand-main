@@ -635,7 +635,10 @@ function useNotificationResponseHandler() {
         titleStr.includes('navratri') ||
         titleStr.includes('शमी') ||
         titleStr.includes('dussehra') ||
-        titleStr.includes('विजयादशमी')
+        titleStr.includes('विजयादशमी') ||
+        titleStr.includes('करवा') ||
+        titleStr.includes('karwa') ||
+        titleStr.includes('चाँद')
       ) {
         let targetRoute = data.route && data.route.startsWith('/') ? data.route : '/festivals';
         if (data.festivalId && (targetRoute === '/festival-detail' || targetRoute === '/festival')) {

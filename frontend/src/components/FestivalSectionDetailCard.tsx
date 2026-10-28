@@ -841,14 +841,11 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
                   <Text style={styles.audioProgressTimeText}>
                     {formatAudioTime(playerStatus?.currentTime ?? 0)}
                   </Text>
-                  <View style={styles.audioLiveIndicator}>
-                    {isPlaying && (
+                  {isPlaying && (
+                    <View style={styles.audioLiveIndicator}>
                       <View style={styles.audioLiveDot} />
-                    )}
-                    <Text style={styles.audioNarrationLabel}>
-                      {isKarvaChauth ? 'Kokoro Narration' : 'Audio Narration'}
-                    </Text>
-                  </View>
+                    </View>
+                  )}
                   <Text style={styles.audioProgressTimeText}>
                     {formatAudioTime(playerStatus?.duration || (isKarvaChauth ? 416.5 : 0))}
                   </Text>
@@ -1538,11 +1535,6 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: '#10B981',
-  },
-  audioNarrationLabel: {
-    fontSize: 9.5,
-    color: 'rgba(246, 210, 105, 0.85)',
-    fontStyle: 'italic',
   },
   journeyTabsRow: {
     flexDirection: 'row',
