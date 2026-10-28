@@ -150,6 +150,8 @@ const VerseCard = React.memo(({
               onPress={onToggleBookmark}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={styles.actionBtn}
+              accessibilityRole="button"
+              accessibilityLabel={isBookmarked ? "Remove bookmark" : "Add bookmark"}
             >
               <Ionicons
                 name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
@@ -194,7 +196,7 @@ const VerseCard = React.memo(({
       {(hindiText || englishText) && (
         <View style={[styles.translationCard, nightMode && styles.translationCardNight]}>
           {/* Tabs to switch or view both */}
-          <View style={styles.tabBar}>
+          <View style={styles.tabBar} accessibilityRole="tablist">
             <View style={styles.tabButtonsRow}>
               <TouchableOpacity
                 style={[
@@ -202,6 +204,9 @@ const VerseCard = React.memo(({
                   activeTab === 'both' && (nightMode ? styles.tabButtonActiveNight : styles.tabButtonActive),
                 ]}
                 onPress={() => setActiveTab('both')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === 'both' }}
+                accessibilityLabel="Show all translations"
               >
                 <Text
                   style={[
@@ -221,6 +226,9 @@ const VerseCard = React.memo(({
                     activeTab === 'hindi' && (nightMode ? styles.tabButtonActiveNight : styles.tabButtonActive),
                   ]}
                   onPress={() => setActiveTab('hindi')}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: activeTab === 'hindi' }}
+                  accessibilityLabel="Show Hindi translation"
                 >
                   <Text
                     style={[
@@ -241,6 +249,9 @@ const VerseCard = React.memo(({
                     activeTab === 'english' && (nightMode ? styles.tabButtonActiveNight : styles.tabButtonActive),
                   ]}
                   onPress={() => setActiveTab('english')}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: activeTab === 'english' }}
+                  accessibilityLabel="Show English translation"
                 >
                   <Text
                     style={[
@@ -260,6 +271,9 @@ const VerseCard = React.memo(({
               onPress={() => setIsExpanded(!isExpanded)}
               style={styles.expandBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={isExpanded ? "Collapse translations" : "Expand translations"}
+              accessibilityState={{ expanded: isExpanded }}
             >
               <Ionicons
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
