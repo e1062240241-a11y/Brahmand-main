@@ -8,3 +8,7 @@
 ## 2023-10-19 - Chunked Batch Updates for Database Backfills
 **Learning:** Sequential `await db.update_document` loops with cache invalidation (like during data backfilling for official status) causes severe N+1 database operations and performance bottlenecks.
 **Action:** Replace `await db.update_document` inside loops with chunked (<=400 docs per chunk, due to Firestore limits) `await db.batch_update_documents(collection, updates)`. Concurrently gather any dependent tasks like cache invalidations `await asyncio.gather(*[cache_manager.invalidate_user(uid) for uid in chunk])` per chunk to avoid thread exhaustion.
+
+## 2025-02-27 - Reduce Garbage Collection Pressure in React Native Buttons
+**Learning:** Inline allocations of complex style objects (e.g. `pressed && { opacity: 0.8 }`) and property objects like `android_ripple={{ color: 'rgba(...)', borderless: false }}` within interactive components like `Pressable` trigger object recreation on every render cycle, increasing garbage collection pressure.
+**Action:** Lift static objects into module-level constants (e.g., `const RIPPLE_DEFAULT = {...}`) and move conditional state styling into a robust `StyleSheet.create` (e.g., `styles.pressed`) to maintain stable references.

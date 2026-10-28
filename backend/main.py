@@ -1832,8 +1832,11 @@ async def admin_panel_login(data: dict = Body(...), _: bool = Depends(auth_rate_
     pass_bytes = password.encode('utf-8')
     exp_pass_bytes = expected_password.encode('utf-8')
 
-    if not secrets.compare_digest(user_bytes, exp_user_bytes) or not secrets.compare_digest(pass_bytes, exp_pass_bytes):
-        logger.warning(f"Admin login attempt failed for username: '{username}' (expected: '{expected_username}')")
+    user_match = secrets.compare_digest(user_bytes, exp_user_bytes)
+    pass_match = secrets.compare_digest(pass_bytes, exp_pass_bytes)
+
+    if not (user_match and pass_match):
+        logger.warning(f"Admin login attempt failed for username: '{username}'")
         raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
     token = create_jwt_token('admin', 'ADMIN')
@@ -11788,11 +11791,6 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 skipped += 1
             else:
                 f_uid = doc_map[doc_id]
-                await db.set_document('user_follows', doc_id, {
-                    'follower_uid': uid,
-                    'followee_uid': f_uid,
-                })
-                created += 1
                 tasks.append(db.set_document('user_follows', doc_id, {
                     'follower_uid': uid,
                     'followee_uid': f_uid,
@@ -11800,9 +11798,9 @@ async def backfill_follow_edges(token_data: dict = Depends(verify_admin)):
                 created += 1
 
         if tasks:
-            # Chunk the write operations to avoid overwhelming the database
-            for i in range(0, len(tasks), 500):
-                await asyncio.gather(*tasks[i:i+500])
+            # Chunk write operations (batches of 400) to prevent overwhelming Firestore
+            for i in range(0, len(tasks), 400):
+                await asyncio.gather(*tasks[i:i+400])
 
     logger.info(f"Backfill complete: created {created} follow edges, skipped {skipped} existing")
     return {"message": "Backfill complete", "created": created, "skipped": skipped}

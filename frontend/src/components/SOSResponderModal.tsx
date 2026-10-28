@@ -35,6 +35,11 @@ interface SOSResponderModalProps {
   onReportMisuse?: (sosId: string, reason: string) => Promise<void>;
 }
 
+const RIPPLE_CLOSE = { color: 'rgba(0,0,0,0.1)', borderless: true, radius: 15 };
+const RIPPLE_REPORT = { color: 'rgba(255,59,48,0.2)', borderless: false };
+const RIPPLE_CANCEL = { color: 'rgba(0,0,0,0.05)', borderless: false };
+const RIPPLE_RESPOND = { color: 'rgba(255,255,255,0.25)', borderless: false };
+
 // Varnish fix: Replaced `sosData: any` with strict `SOSData` interface, extracted inline activity indicator style into StyleSheet,
 // and wrapped component in `React.memo` to eliminate unnecessary modal re-renders during parent state updates.
 export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
@@ -103,8 +108,8 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
             </View>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 15 }}
+              style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed07]}
+              android_ripple={RIPPLE_CLOSE}
               accessibilityRole="button"
               accessibilityLabel="Close modal"
             >
@@ -137,10 +142,10 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.reportMisuseBtn, (pressed || reporting) && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.reportMisuseBtn, (pressed || reporting) && styles.pressed08]}
               onPress={handleReportMisuse}
               disabled={reporting}
-              android_ripple={{ color: 'rgba(255,59,48,0.2)', borderless: false }}
+              android_ripple={RIPPLE_REPORT}
               accessibilityRole="button"
               accessibilityLabel="Report misuse"
               accessibilityState={{ disabled: reporting, busy: reporting }}
@@ -156,9 +161,9 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
 
           <View style={styles.footer}>
             <Pressable
-              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed07]}
               onPress={onClose}
-              android_ripple={{ color: 'rgba(0,0,0,0.05)', borderless: false }}
+              android_ripple={RIPPLE_CANCEL}
               accessibilityRole="button"
               accessibilityLabel="Ignore emergency"
             >
@@ -169,11 +174,11 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
               style={({ pressed }) => [
                 styles.respondBtn,
                 loading && styles.respondBtnDisabled,
-                pressed && !loading && { opacity: 0.85 }
+                pressed && !loading && styles.pressed085
               ]} 
               onPress={handleRespond}
               disabled={loading}
-              android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false }}
+              android_ripple={RIPPLE_RESPOND}
               accessibilityRole="button"
               accessibilityLabel="Respond to emergency"
               accessibilityState={{ disabled: loading, busy: loading }}
@@ -194,6 +199,15 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = React.memo(({
 SOSResponderModal.displayName = 'SOSResponderModal';
 
 const styles = StyleSheet.create({
+  pressed07: {
+    opacity: 0.7,
+  },
+  pressed08: {
+    opacity: 0.8,
+  },
+  pressed085: {
+    opacity: 0.85,
+  },
   activityIndicatorMargin: {
     marginRight: 8,
   },
