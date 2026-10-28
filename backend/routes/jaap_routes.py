@@ -150,6 +150,7 @@ async def record_jaap(
     milestone_config = MANTRA_MILESTONES.get(mantra_type, MANTRA_MILESTONES["default"])
 
     # ⚡ Bolt Optimization: Batch fetch certificates instead of N+1 queries
+    import asyncio
     cert_ids_to_check = []
     for tier in ["bronze", "silver", "gold", "diamond"]:
         if new_count >= milestone_config["counts"][tier]:
@@ -161,10 +162,10 @@ async def record_jaap(
     if cert_ids_to_check:
         # Avoid get_documents_batch since some instances of firestore_db might not expose it
         # depending on version, fallback to asyncio.gather
-        import asyncio
         existing_certs = await asyncio.gather(*(db.get_document('jaap_certificates', cid) for cid in cert_ids_to_check))
         existing_certs_map = {cid: cert for cid, cert in zip(cert_ids_to_check, existing_certs) if cert}
 
+    cert_creation_tasks = []
     for tier in ["bronze", "silver", "gold", "diamond"]:
         # 1. Count milestone
         count_threshold = milestone_config["counts"][tier]
@@ -187,7 +188,7 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
+                cert_creation_tasks.append(db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True))
                 newly_unlocked.append(cert_data)
 
         # 2. Duration milestone
@@ -211,8 +212,16 @@ async def record_jaap(
                     "earned_at": datetime.now(timezone.utc).isoformat(),
                     "signature": "Sanatan Lok Dharma Board"
                 }
-                await db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True)
+                cert_creation_tasks.append(db.create_document('jaap_certificates', cert_data, doc_id=cert_id, overwrite=True))
                 newly_unlocked.append(cert_data)
+
+
+
+    # ⚡ Bolt Optimization: Execute all certificate document creations concurrently
+    # instead of sequentially awaiting each one in the loop.
+    # Impact: Reduces N+1 write latency bottleneck when unlocking multiple tiers at once.
+    if cert_creation_tasks:
+        await asyncio.gather(*cert_creation_tasks)
 
     return {
         "status": "success",

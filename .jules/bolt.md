@@ -12,3 +12,7 @@
 ## 2025-02-27 - Reduce Garbage Collection Pressure in React Native Buttons
 **Learning:** Inline allocations of complex style objects (e.g. `pressed && { opacity: 0.8 }`) and property objects like `android_ripple={{ color: 'rgba(...)', borderless: false }}` within interactive components like `Pressable` trigger object recreation on every render cycle, increasing garbage collection pressure.
 **Action:** Lift static objects into module-level constants (e.g., `const RIPPLE_DEFAULT = {...}`) and move conditional state styling into a robust `StyleSheet.create` (e.g., `styles.pressed`) to maintain stable references.
+
+## 2024-10-28 - Concurrent Document Creation for Custom IDs in Firestore
+**Learning:** `db.batch_create_documents` in `backend/config/firestore_db.py` auto-generates document IDs and does not support passing a custom `doc_id`.
+**Action:** When you need to create multiple documents that require specific, custom IDs (e.g. composite keys like `doc_id=cert_id`), accumulate the `db.create_document` tasks into a list and execute them concurrently using `asyncio.gather(*tasks)` rather than doing it sequentially inside a loop to prevent N+1 write bottlenecks.
