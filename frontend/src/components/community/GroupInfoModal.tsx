@@ -51,7 +51,12 @@ export const GroupInfoModal: React.FC<GroupInfoModalProps> = ({
         <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Group Info</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close group info"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
