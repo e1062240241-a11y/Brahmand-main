@@ -2,29 +2,33 @@ import React from 'react';
 import { ImageBackground, StyleSheet, View, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { styles } from './home.styles';
+import { styles as homeStyles } from './home.styles';
 import { HOME_CARD_TEXTURES, CARD_TEXTURE_OVERLAY, HomeCardTextureKey } from './homeConstants';
 
-export function HomeCardTextureBg({
-    texture,
-    borderRadius = 15,
-    children,
-}: {
+export interface HomeCardTextureBgProps {
     texture: HomeCardTextureKey;
     borderRadius?: number;
     children?: React.ReactNode;
-}) {
+}
+
+// Varnish fix: Wrapped HomeCardTextureBg in React.memo and extracted inline style objects to StyleSheet
+// to avoid allocation churn and unnecessary re-renders when parent screens re-render.
+export const HomeCardTextureBg: React.FC<HomeCardTextureBgProps> = React.memo(({
+    texture,
+    borderRadius = 15,
+    children,
+}) => {
     const overlayColors = CARD_TEXTURE_OVERLAY[texture] || ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)'];
 
     return (
         <ImageBackground
             source={HOME_CARD_TEXTURES[texture]}
-            style={{ width: '100%', height: '100%', borderRadius, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.65)' }}
+            style={[localStyles.container, { borderRadius }]}
             imageStyle={{ borderRadius, resizeMode: 'cover' }}
             resizeMode="cover"
         >
             {Platform.OS === 'web' ? (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+                <View style={[StyleSheet.absoluteFill, localStyles.webBlurFallback]} />
             ) : (
                 <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFill} />
             )}
@@ -34,7 +38,22 @@ export function HomeCardTextureBg({
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
             />
-            <View style={styles.cardTextureContent}>{children}</View>
+            <View style={homeStyles.cardTextureContent}>{children}</View>
         </ImageBackground>
     );
-}
+});
+
+HomeCardTextureBg.displayName = 'HomeCardTextureBg';
+
+const localStyles = StyleSheet.create({
+    container: {
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.65)',
+    },
+    webBlurFallback: {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+});
