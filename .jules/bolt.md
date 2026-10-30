@@ -12,3 +12,7 @@
 ## 2025-02-27 - Reduce Garbage Collection Pressure in React Native Buttons
 **Learning:** Inline allocations of complex style objects (e.g. `pressed && { opacity: 0.8 }`) and property objects like `android_ripple={{ color: 'rgba(...)', borderless: false }}` within interactive components like `Pressable` trigger object recreation on every render cycle, increasing garbage collection pressure.
 **Action:** Lift static objects into module-level constants (e.g., `const RIPPLE_DEFAULT = {...}`) and move conditional state styling into a robust `StyleSheet.create` (e.g., `styles.pressed`) to maintain stable references.
+
+## 2024-05-18 - Optimized view_post to use Firestore field masking
+**Learning:** Checking ownership of a post doesn't require fetching the whole document.
+**Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.

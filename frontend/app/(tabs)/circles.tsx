@@ -8,44 +8,36 @@ import { Circle } from '../../src/types';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 
-export default function CirclesScreen() {
-  const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const isHindi = user?.language === 'hi';
-  const [circles, setCircles] = useState<Circle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+const ANDROID_RIPPLE_CONFIG = { color: 'rgba(255,107,0,0.15)', borderless: false };
 
-  const fetchCircles = useCallback(async () => {
-    try {
-      const response = await getCircles();
-      setCircles(response.data);
-    } catch (error) {
-      console.error('Error fetching circles:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+const ListSeparator = React.memo(() => <View style={styles.separator} />);
+ListSeparator.displayName = 'ListSeparator';
 
-  useEffect(() => {
-    fetchCircles();
-  }, [fetchCircles]);
+interface CircleCardItemProps {
+  item: Circle;
+  isHindi: boolean;
+  onPress: (id: string) => void;
+}
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchCircles();
-  };
+// Varnish fix: Extracted CircleCardItem to React.memo with explicit displayName, moved ripple config & pressed styles to StyleSheet, and eliminated inline function allocations.
+const CircleCardItem = React.memo(({ item, isHindi, onPress }: CircleCardItemProps) => {
+  const handlePress = useCallback(() => {
+    onPress(item.id);
+  }, [item.id, onPress]);
 
-  const renderCircle = ({ item }: { item: Circle }) => (
+  const cardStyle = useCallback(({ pressed }: { pressed: boolean }) => [
+    styles.circleCard,
+    Platform.OS === 'android' && styles.androidOverflow,
+    pressed && Platform.OS === 'ios' && styles.iosPressed,
+  ], []);
+
+  const memberCount = ((item.member_count || item.members_count || 1) * 11);
+
+  return (
     <Pressable
-      style={({ pressed }) => [
-        styles.circleCard,
-        Platform.OS === 'android' && { overflow: 'hidden' },
-        pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-      ]}
-      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-      onPress={() => router.push(`/chat/circle/${item.id}`)}
+      style={cardStyle}
+      android_ripple={ANDROID_RIPPLE_CONFIG}
+      onPress={handlePress}
     >
       <View style={styles.iconContainer}>
         <Ionicons name="ellipse" size={24} color={COLORS.primary} />
@@ -66,7 +58,7 @@ export default function CirclesScreen() {
         <View style={styles.circleMeta}>
           <View style={styles.memberCount}>
             <Ionicons name="people" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.memberText}>{((item.member_count || (item as any).members_count || 1) * 11)} {isHindi ? 'सदस्य' : 'members'}</Text>
+            <Text style={styles.memberText}>{memberCount} {isHindi ? 'सदस्य' : 'members'}</Text>
           </View>
           <View style={styles.privacyIndicator}>
             <Ionicons 
@@ -83,6 +75,89 @@ export default function CirclesScreen() {
       <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
     </Pressable>
   );
+});
+
+CircleCardItem.displayName = 'CircleCardItem';
+
+export default function CirclesScreen() {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isHindi = user?.language === 'hi';
+  const [circles, setCircles] = useState<Circle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCircles()
+      .then((response) => {
+        if (isMounted) {
+          setCircles(response.data);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching circles:', error);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleFetchCircles = useCallback(async () => {
+    try {
+      const response = await getCircles();
+      setCircles(response.data);
+    } catch (error) {
+      console.error('Error fetching circles:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    handleFetchCircles();
+  }, [handleFetchCircles]);
+
+  const handleCirclePress = useCallback((id: string) => {
+    router.push(`/chat/circle/${id}`);
+  }, [router]);
+
+  const handleCreateCircle = useCallback(() => {
+    router.push('/circle/create');
+  }, [router]);
+
+  const handleJoinCircle = useCallback(() => {
+    router.push('/circle/join');
+  }, [router]);
+
+  const renderCircle = useCallback(({ item }: { item: Circle }) => (
+    <CircleCardItem
+      item={item}
+      isHindi={isHindi}
+      onPress={handleCirclePress}
+    />
+  ), [isHindi, handleCirclePress]);
+
+  const keyExtractor = useCallback((item: Circle) => item.id, []);
+
+  const createButtonStyle = useCallback(({ pressed }: { pressed: boolean }) => [
+    styles.actionButton,
+    pressed && Platform.OS === 'ios' && styles.iosPressed,
+  ], []);
+
+  const joinButtonStyle = useCallback(({ pressed }: { pressed: boolean }) => [
+    styles.actionButton,
+    styles.actionButtonOutline,
+    pressed && Platform.OS === 'ios' && styles.iosPressed,
+  ], []);
 
   if (loading) {
     return (
@@ -97,24 +172,17 @@ export default function CirclesScreen() {
       {/* Action Buttons */}
       <View style={styles.actionRow}>
         <Pressable
-          style={({ pressed }) => [
-            styles.actionButton,
-            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-          ]}
-          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-          onPress={() => router.push('/circle/create')}
+          style={createButtonStyle}
+          android_ripple={ANDROID_RIPPLE_CONFIG}
+          onPress={handleCreateCircle}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.textWhite} />
           <Text style={styles.actionText}>{isHindi ? 'सर्कल बनाएं' : 'Create Circle'}</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [
-            styles.actionButton,
-            styles.actionButtonOutline,
-            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-          ]}
-          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-          onPress={() => router.push('/circle/join')}
+          style={joinButtonStyle}
+          android_ripple={ANDROID_RIPPLE_CONFIG}
+          onPress={handleJoinCircle}
         >
           <Ionicons name="enter" size={20} color={COLORS.primary} />
           <Text style={[styles.actionText, styles.actionTextOutline]}>{isHindi ? 'सर्कल में जुड़ें' : 'Join Circle'}</Text>
@@ -139,12 +207,12 @@ export default function CirclesScreen() {
         <FlatList
           data={circles}
           renderItem={renderCircle}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
           }
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={ListSeparator}
         />
       )}
     </View>
@@ -199,6 +267,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
     borderRadius: BORDER_RADIUS.lg,
+  },
+  androidOverflow: {
+    overflow: 'hidden',
+  },
+  iosPressed: {
+    opacity: 0.7,
   },
   iconContainer: {
     width: 48,
