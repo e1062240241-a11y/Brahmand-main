@@ -67,7 +67,7 @@ export const getPersonalizedSankalpFull = (
 ) =>
   `ॐ विष्णुर्विष्णुर्विष्णुः। श्रीमद्भगवतो महापुरुषस्य विष्णोराज्ञया प्रवर्तमानस्य... ${cityNameFull}, ${gotraName} ${fullName} अहं मम पतिश्चायुरारोग्यसौभाग्यपुत्रपौत्रादि धनधान्यसमृद्ध्यर्थं श्रीउमामहेश्वरसायुज्यसिद्ध्यर्थं च करवा चौथ व्रतमहं करिष्ये।`;
 
-export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
+export function PersonalizedKarwaCard({
   festival,
   onCityDetected,
 }: {
@@ -714,7 +714,7 @@ export const PersonalizedKarwaCard = React.memo(function PersonalizedKarwaCard({
       </Modal>
     </View>
   );
-});
+}
 
 const styles = StyleSheet.create({
   container: {

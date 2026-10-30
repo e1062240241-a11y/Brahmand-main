@@ -11,13 +11,11 @@ export interface HomeCardTextureBgProps {
     children?: React.ReactNode;
 }
 
-// Varnish fix: Wrapped HomeCardTextureBg in React.memo and extracted inline style objects to StyleSheet
-// to avoid allocation churn and unnecessary re-renders when parent screens re-render.
-export const HomeCardTextureBg: React.FC<HomeCardTextureBgProps> = React.memo(({
+export function HomeCardTextureBg({
     texture,
     borderRadius = 15,
     children,
-}) => {
+}: HomeCardTextureBgProps) {
     const overlayColors = CARD_TEXTURE_OVERLAY[texture] || ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)'];
 
     return (
@@ -41,9 +39,7 @@ export const HomeCardTextureBg: React.FC<HomeCardTextureBgProps> = React.memo(({
             <View style={homeStyles.cardTextureContent}>{children}</View>
         </ImageBackground>
     );
-});
-
-HomeCardTextureBg.displayName = 'HomeCardTextureBg';
+}
 
 const localStyles = StyleSheet.create({
     container: {
