@@ -128,23 +128,27 @@ export default function DiscoverScreen() {
                 : 'Follow temples to receive updates and announcements 🙏'}
             </Text>
             
+            {/* 🧡 Engagement: Reframed transactional empty temple state ("No temples registered yet") into devotional Darshan & Mandir network framing.
+                Lever: Reframing + Devotion + Culture
+                Why: Framing temple network empty state as an invitation to connect with divine holy spaces turns a blank list into a meaningful spiritual opportunity.
+                UI: Text-only change, zero structural modifications. */}
             {temples.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="home-outline" size={48} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>
-                  {isHindi ? 'अभी कोई मंदिर पंजीकृत नहीं है' : 'No temples registered yet'}
+                  {isHindi ? 'दिव्य दर्शन का पावन स्थल ✨' : 'Sacred Space for Divine Darshan ✨'}
                 </Text>
                 <Text style={styles.emptySubtext}>
-                  {isHindi ? 'अपने स्थानीय मंदिर की जानकारी जोड़ें 🙏' : 'Be the first to add your local temple 🙏'}
+                  {isHindi ? 'अपने स्थानीय मंदिर व धाम की पावन जानकारी जोड़ें 🙏' : 'Connect and share details of your local temple & shrine 🙏'}
                 </Text>
                 <TouchableOpacity
                   style={styles.emptyCtaButton}
                   onPress={() => router.push('/panchang' as any)}
                   accessibilityRole="button"
-                  accessibilityLabel={isHindi ? 'आज का पंचांग देखें' : 'Today\'s Panchang'}
+                  accessibilityLabel={isHindi ? 'आज का शुभ पंचांग देखें' : 'Today\'s Sacred Panchang'}
                 >
                   <Text style={styles.emptyCtaText}>
-                    {isHindi ? 'आज का पंचांग देखें →' : "Today's Panchang →"}
+                    {isHindi ? 'आज का शुभ पंचांग देखें →' : "Today's Sacred Panchang →"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -192,25 +196,29 @@ export default function DiscoverScreen() {
                 : 'Discover spiritual events happening near you 🙏'}
             </Text>
             
+            {/* 🧡 Engagement: Reframed transactional empty events state ("No upcoming events") into collective Satsang & spiritual gathering framing.
+                Lever: Reframing + Satsang + Anticipation
+                Why: Framing spiritual events as collective Satsang builds anticipation for group devotion rather than presenting a dry calendar gap.
+                UI: Text-only change, zero structural modifications. */}
             {events.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={48} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>
-                  {isHindi ? 'अभी कोई आगामी कार्यक्रम नहीं' : 'No upcoming events'}
+                  {isHindi ? 'सामूहिक सत्संग एवं धर्म सभाएं 🚩' : 'Collective Satsang & Spiritual Gatherings 🚩'}
                 </Text>
                 <Text style={styles.emptySubtext}>
                   {isHindi
-                    ? 'शीघ्र ही नए कार्यक्रमों की जानकारी उपलब्ध होगी 🙏'
-                    : 'Check back later for new events 🙏'}
+                    ? 'शीघ्र ही नए सामूहिक आयोजन एवं पावन कथाएं प्रारंभ होंगी 🙏'
+                    : 'Upcoming spiritual events and discourses will be announced soon 🙏'}
                 </Text>
                 <TouchableOpacity
                   style={styles.emptyCtaButton}
                   onPress={() => router.push('/(tabs)/jaap' as any)}
                   accessibilityRole="button"
-                  accessibilityLabel={isHindi ? 'दैनिक जाप शुरू करें' : 'Start Daily Jaap'}
+                  accessibilityLabel={isHindi ? 'दैनिक साधना शुरू करें' : 'Begin Daily Sadhana'}
                 >
                   <Text style={styles.emptyCtaText}>
-                    {isHindi ? 'दैनिक जाप शुरू करें →' : 'Start Daily Jaap →'}
+                    {isHindi ? 'दैनिक साधना शुरू करें →' : 'Begin Daily Sadhana →'}
                   </Text>
                 </TouchableOpacity>
               </View>
