@@ -336,7 +336,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!isFocused) return;
     const BANNER_WIDTH = screenWidth - 40 + 12;
-    const TOTAL_BANNERS = 3;
+    const TOTAL_BANNERS = 2;
 
     const startBannerScroll = () => {
       if (bannerIntervalRef.current) clearInterval(bannerIntervalRef.current);

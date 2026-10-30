@@ -13,12 +13,9 @@ import { useSafeVideoPlayer, isPlayerValid } from '../SafeVideoView';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Svg, { Text as SvgText, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, karwaChauthBannerImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
-import { HomeCornerMoonCountdown } from './HomeCornerMoonCountdown';
-import { ChalniMoonProfileAvatar } from './ChalniMoonProfileAvatar';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
@@ -205,188 +202,42 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
     );
 });
 
-const KarwaChauthBannerCta = React.memo(function KarwaChauthBannerCta({
-    onPress,
-    onPressIn,
-    onPressOut,
-    isHindi = false,
-}: {
-    onPress: () => void;
-    onPressIn?: () => void;
-    onPressOut?: () => void;
-    isHindi?: boolean;
-}) {
-    const pulseAnim = React.useRef(new Animated.Value(1)).current;
-    const pressAnim = React.useRef(new Animated.Value(1)).current;
-
-    React.useEffect(() => {
-        const loop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1.045,
-                    duration: 1100,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1.0,
-                    duration: 1100,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
-        loop.start();
-        return () => loop.stop();
-    }, [pulseAnim]);
-
-    const handlePressIn = () => {
-        Animated.spring(pressAnim, {
-            toValue: 0.93,
-            useNativeDriver: true,
-        }).start();
-        onPressIn?.();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(pressAnim, {
-            toValue: 1,
-            friction: 4,
-            tension: 50,
-            useNativeDriver: true,
-        }).start();
-        onPressOut?.();
-    };
-
-    return (
-        <Animated.View
+const StaticBannerCard = ({ source, width, onPress, onPressIn, onPressOut, children }: any) => (
+    <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={{
+            width,
+            height: Platform.OS === 'ios' ? 185 : 160,
+            borderRadius: 16,
+            overflow: 'hidden',
+            alignSelf: 'center',
+            marginBottom: 5,
+            backgroundColor: '#000',
+            // intentionally NO shadowColor / shadowOpacity / elevation
+        }}
+    >
+        <Image
+            source={source}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
+            resizeMode="cover"
+        />
+        <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
             style={{
-                transform: [
-                    { scale: Animated.multiply(pulseAnim, pressAnim) },
-                ],
-                shadowColor: '#FF6F00',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.8,
-                shadowRadius: 6,
-                elevation: 7,
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                zIndex: 2,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                justifyContent: 'space-between',
             }}
         >
-            <Pressable
-                onPress={onPress}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={{ borderRadius: 22 }}
-            >
-                <LinearGradient
-                    colors={['#FF3D00', '#FF7043', '#FFA000', '#FFD54F']}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingHorizontal: 12,
-                        paddingVertical: 5.5,
-                        borderRadius: 22,
-                        borderWidth: 1.4,
-                        borderColor: '#FFE082',
-                        gap: 5,
-                    }}
-                >
-                    <Text
-                        style={{
-                            color: '#FFFFFF',
-                            fontSize: 11.5,
-                            fontWeight: '800',
-                            letterSpacing: 0.3,
-                            textShadowColor: 'rgba(0, 0, 0, 0.55)',
-                            textShadowOffset: { width: 0, height: 1 },
-                            textShadowRadius: 3,
-                        }}
-                    >
-                        {isHindi ? 'कथा व मुहूर्त देखें' : 'View Katha & Muhurat'}
-                    </Text>
-                    <View
-                        style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.28)',
-                            borderRadius: 10,
-                            width: 17,
-                            height: 17,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginLeft: 1,
-                        }}
-                    >
-                        <Ionicons name="chevron-forward" size={11} color="#FFFFFF" />
-                    </View>
-                </LinearGradient>
-            </Pressable>
-        </Animated.View>
-    );
-});
-
-const StaticBannerCard = ({
-    source,
-    width,
-    height,
-    resizeMode = 'cover',
-    imageStyle,
-    gradientColors,
-    onPress,
-    onPressIn,
-    onPressOut,
-    children
-}: any) => {
-    const cardHeight = height || (Platform.OS === 'ios' ? 185 : 160);
-    return (
-        <Pressable
-            onPress={onPress}
-            onPressIn={onPressIn}
-            onPressOut={onPressOut}
-            style={{
-                width,
-                height: cardHeight,
-                borderRadius: 16,
-                overflow: 'hidden',
-                alignSelf: 'center',
-                marginBottom: 5,
-                backgroundColor: '#010c20',
-                // intentionally NO shadowColor / shadowOpacity / elevation
-            }}
-        >
-            <Image
-                source={source}
-                style={[
-                    {
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        width: '100%',
-                        height: '100%',
-                        zIndex: 1,
-                    },
-                    imageStyle,
-                ]}
-                resizeMode={resizeMode}
-            />
-            {children ? (
-                <LinearGradient
-                    colors={gradientColors || ['rgba(0,0,0,0.05)', 'transparent', 'rgba(0,0,0,0.2)']}
-                    style={{
-                        position: 'absolute',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        zIndex: 2,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    {children}
-                </LinearGradient>
-            ) : null}
-        </Pressable>
-    );
-};
+            {children}
+        </LinearGradient>
+    </Pressable>
+);
 
 export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     user,
@@ -587,10 +438,15 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <ChalniMoonProfileAvatar
-                                size={Platform.OS === 'android' ? 42 : 55}
+                            <TouchableOpacity
+                                activeOpacity={0.86}
+                                style={styles.profileButton}
                                 onPress={() => router.push('/(tabs)/profile')}
-                            />
+                                accessibilityRole="button"
+                                accessibilityLabel="View your profile"
+                            >
+                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={{
@@ -603,38 +459,23 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             alignItems: 'center',
                             zIndex: -1,
                         }} pointerEvents="none">
-                            <Svg
-                                height="38"
-                                width="230"
-                                viewBox="0 0 230 38"
+                            <Text
+                                numberOfLines={1}
                                 style={{
-                                    shadowColor: '#7F1D1D',
-                                    shadowOffset: { width: 0, height: 1 },
-                                    shadowOpacity: 0.22,
-                                    shadowRadius: 2,
+                                    color: '#000',
+                                    textAlign: 'center',
+                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
+                                    fontSize: Platform.OS === 'android' ? 24 : 27,
+                                    fontStyle: 'normal',
+                                    fontWeight: '400',
+                                    letterSpacing: 0.5,
+                                    includeFontPadding: false,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
                                 }}
                             >
-                                <Defs>
-                                    <SvgLinearGradient id="kumkumAltaGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <Stop offset="0%" stopColor="#4A0505" />
-                                        <Stop offset="30%" stopColor="#7F1D1D" />
-                                        <Stop offset="68%" stopColor="#A82015" />
-                                        <Stop offset="100%" stopColor="#C2410C" />
-                                    </SvgLinearGradient>
-                                </Defs>
-                                <SvgText
-                                    x="115"
-                                    y="27"
-                                    textAnchor="middle"
-                                    fill="url(#kumkumAltaGrad)"
-                                    fontFamily={FONTS.brandTitle}
-                                    fontSize={Platform.OS === 'android' ? 24 : 27}
-                                    fontWeight={Platform.OS === 'android' ? undefined : '700'}
-                                    letterSpacing="2.0"
-                                >
-                                    BRAHMAND
-                                </SvgText>
-                            </Svg>
+                                BRAHMAND
+                            </Text>
                         </View>
 
                         <View style={styles.headerRight}>
@@ -679,12 +520,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             </Pressable>
                         </View>
                     </View>
-
-                    {!searchActive && (
-                        <View style={{ alignItems: 'flex-start', marginTop: 4, marginBottom: 2 }}>
-                            <HomeCornerMoonCountdown />
-                        </View>
-                    )}
 
                     {searchActive ? (
                         <View style={styles.searchPanel}>
@@ -817,7 +652,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     ) : (
                         <View
-                            style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 6, marginBottom: 8 }]}
+                            style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
                         >
                             <ScrollView
                                 ref={topFeaturesScrollRef}
@@ -1059,7 +894,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -1069,48 +904,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Banner 1: Karwa Chauth Special Festival Banner */}
-                            <StaticBannerCard
-                                key="karwa_chauth_banner"
-                                width={screenWidth - 40}
-                                source={karwaChauthBannerImage}
-                                imageStyle={{ transform: [{ translateY: 7 }] }}
-                                gradientColors={['transparent', 'transparent', 'transparent']}
-                                onPress={() => {
-                                    try {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                    } catch (_e) { }
-                                    router.push({
-                                        pathname: '/festival-detail',
-                                        params: { name: 'Karva Chauth' }
-                                    });
-                                }}
-                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                            >
-                                <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'flex-end' }}>
-                                    <KarwaChauthBannerCta
-                                        isHindi={t('language') === 'hi'}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (_e) { }
-                                            router.push({
-                                                pathname: '/festival-detail',
-                                                params: { name: 'Karva Chauth' }
-                                            });
-                                        }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                    />
-                                </View>
-                            </StaticBannerCard>
-
-                            {/* Helper components for Banner 2 & Banner 3 */}
+                            {/* Helper components for Banner 1 & Banner 2 */}
                             {(() => {
                                 const renderHanumanBanner = (key: string) => (
                                     <StaticBannerCard
@@ -1465,7 +1259,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1, 2].map((idx) => (
+                            {[0, 1].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
