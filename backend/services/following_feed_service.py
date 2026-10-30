@@ -135,17 +135,48 @@ async def backfill_following_inbox(db: FirestoreDB, follower_id: str, creator_id
 async def clean_following_inbox(db: FirestoreDB, follower_id: str, creator_id: str):
     """
     Remove all posts by creator_id from follower_id's following_inbox upon unfollow.
+    Enforces chunked DB-level query bounds (limit=500 per batch) in a loop to ensure
+    complete cleanup without memory exhaustion or partial deletion.
     """
     try:
-        inbox_items = await db.query_documents(
-            'following_inboxes',
-            filters=[('user_id', '==', follower_id), ('author_id', '==', creator_id)]
-        )
-        if inbox_items:
+        total_cleaned = 0
+        max_iterations = 10  # Cap at 5,000 items safety max
+        for _ in range(max_iterations):
+            try:
+                inbox_items = await db.query_documents(
+                    'following_inboxes',
+                    filters=[('user_id', '==', follower_id), ('author_id', '==', creator_id)],
+                    order_by='created_at',
+                    order_direction='DESCENDING',
+                    limit=500
+                )
+            except Exception as query_err:
+                if 'requires an index' in str(query_err) or '400' in str(query_err):
+                    logger.warning(
+                        f"Firestore index missing for following_inboxes (user_id, author_id, created_at), "
+                        f"falling back to un-ordered bounded query: {query_err}"
+                    )
+                    inbox_items = await db.query_documents(
+                        'following_inboxes',
+                        filters=[('user_id', '==', follower_id), ('author_id', '==', creator_id)],
+                        limit=500
+                    )
+                else:
+                    raise query_err
+
+            if not inbox_items:
+                break
+
             item_ids = [item['id'] for item in inbox_items if item.get('id')]
             if item_ids:
                 await db.batch_delete_documents('following_inboxes', item_ids)
-                logger.info(f"Cleaned {len(item_ids)} posts from creator {creator_id} from follower {follower_id} inbox")
+                total_cleaned += len(item_ids)
+
+            if len(inbox_items) < 500:
+                break
+
+        if total_cleaned > 0:
+            logger.info(f"Cleaned {total_cleaned} posts from creator {creator_id} from follower {follower_id} inbox")
     except Exception as e:
         logger.error(f"Error cleaning following_inbox for follower {follower_id} from creator {creator_id}: {e}")
 
