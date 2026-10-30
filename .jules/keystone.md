@@ -82,6 +82,7 @@ RACE CONDITIONS:
 UNBOUNDED GROWTH:
 - `temple.followers` array — exposed in full on list responses — FIXED
 - `temple.posts` array — embedded posts and reactions grow unbounded in temple doc — FIXED
+- `following_inboxes` cleanup on unfollow — unpaginated full collection query — FIXED
 
 N+1 QUERY PATTERNS:
 - `/communities/my-creation-requests` — executed batch user fetches in a loop per creation request — FIXED
@@ -188,3 +189,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-10-01 - Targeted Firestore field masking in view_post
 **Learning:** `view_post` (`POST /posts/{post_id}/view` / `GET /posts/{post_id}/views`) previously fetched full post documents via `db.get_document('posts', post_id)` merely to check the author's `user_id` and read `views_count`. At 1 lakh+ scale, fetching large post payloads (with extensive caption text, media URLs, tags, or nested arrays) on high-frequency view ping endpoints causes unnecessary network ingress, memory allocation, and Firestore transfer latency.
 **Action:** Replaced `db.get_document('posts', post_id)` in `view_post` (`backend/main.py`) with `db.get_document_fields('posts', post_id, ['user_id', 'views_count'])` to project only required fields via Firestore field masking.
+
+## 2026-10-02 - Bounded Query Limits for Following Inbox Cleanups
+**Learning:** `clean_following_inbox` in `backend/services/following_feed_service.py` queried `following_inboxes` for all documents matching `(user_id, author_id)` without query limits. If a user unfollowed a high-volume content creator, Firestore streamed all historical inbox entries for that creator into memory, causing DB read spikes and memory bloat.
+**Action:** Added DB-level query bounds (`limit=500`) with `created_at` DESC ordering and composite index exception fallback logic to `clean_following_inbox`.
