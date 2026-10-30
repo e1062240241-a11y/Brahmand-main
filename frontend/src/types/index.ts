@@ -104,6 +104,7 @@ export interface Circle {
   admin_ids?: string[];
   members?: CircleMember[];
   member_count: number;
+  members_count?: number;
   is_admin: boolean;
   created_at: string;
 }

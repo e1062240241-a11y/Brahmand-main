@@ -1,5 +1,9 @@
 # Keystone Architecture Journal
 
+## 2026-10-01 - Targeted Field Masking for Post View Lookup
+**Learning:** Fetching full post documents in `view_post` using `db.get_document('posts', post_id)` transfers large unnecessary fields (such as media URLs, captions, and comments) when only post author (`user_id`) and `views_count` are required for self-view checks and view recording.
+**Action:** Replaced `db.get_document` with `db.get_document_fields('posts', post_id, ['user_id', 'views_count'])` in `view_post` (`backend/main.py`), reducing network bandwidth and backend memory allocation per view request while preserving atomic view count increments and Redis deduplication.
+
 ## 2026-09-30 - Eliminating Synchronous Blocking Write & Redundant Operations in /admin/backfill-follow-edges
 **Learning:** In `/admin/backfill-follow-edges`, for each missing follow edge, the migration loop executed an `await db.set_document('user_follows', doc_id, ...)` synchronously before also appending `db.set_document(...)` to `tasks` for subsequent `asyncio.gather`. This caused duplicate writes for every missing edge and blocked the event loop during the initial write, defeating the purpose of asynchronous batch execution.
 **Action:** Removed the redundant synchronous `await db.set_document` call and duplicate `created += 1` increment in `backend/main.py`, ensuring missing edge document writes are queued into `tasks` and executed concurrently in 500-item chunks via `asyncio.gather`.
@@ -180,3 +184,7 @@ FIRESTORE DOCUMENT STRUCTURE ISSUES:
 ## 2026-09-30 - Eliminate redundant double-writes and blocking network calls in POST /admin/backfill-follow-edges
 **Learning:** `POST /admin/backfill-follow-edges` executed a synchronous inline `await db.set_document(...)` inside a loop for missing follow edges while also appending the exact same write task to `tasks` for later `asyncio.gather`. This caused $2\times$ redundant Firestore writes, double-counted `created` metrics, and introduced blocking N+1 network latency during the loop.
 **Action:** Removed the synchronous `await db.set_document` call and duplicate `created` counter increment in `backfill_follow_edges` (`backend/main.py`), leaving a single async task queued per missing edge executed in chunked batches of 400.
+
+## 2026-10-01 - Targeted Firestore field masking in view_post
+**Learning:** `view_post` (`POST /posts/{post_id}/view` / `GET /posts/{post_id}/views`) previously fetched full post documents via `db.get_document('posts', post_id)` merely to check the author's `user_id` and read `views_count`. At 1 lakh+ scale, fetching large post payloads (with extensive caption text, media URLs, tags, or nested arrays) on high-frequency view ping endpoints causes unnecessary network ingress, memory allocation, and Firestore transfer latency.
+**Action:** Replaced `db.get_document('posts', post_id)` in `view_post` (`backend/main.py`) with `db.get_document_fields('posts', post_id, ['user_id', 'views_count'])` to project only required fields via Firestore field masking.
