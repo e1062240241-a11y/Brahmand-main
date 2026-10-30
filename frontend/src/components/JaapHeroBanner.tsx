@@ -26,11 +26,20 @@ const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 
+// Constant ripple config extracted to prevent allocation on every render
+const ANDROID_RIPPLE_JOIN = { color: 'rgba(255, 107, 0, 0.2)', borderless: false } as const;
+
 export interface JaapHeroBannerProps {
   now?: Date;
   onPress?: () => void;
 }
 
+/**
+ * 🎨 Varnish Code Quality & Performance Fix:
+ * 1. Extracted module-level constant `ANDROID_RIPPLE_JOIN` and moved `{ opacity: 0.8 }` to `styles.iosPressed` to eliminate GC churn on render.
+ * 2. Explicitly assigned `JaapHeroBanner.displayName = 'JaapHeroBanner'` to satisfy `react/display-name`.
+ * 3. Added `accessibilityRole="button"` and `accessibilityLabel` for screen readers.
+ */
 export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHeroBannerProps) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -137,10 +146,16 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
               <Pressable
                 style={({ pressed }) => [
                   styles.mockupJoinNowBtn,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                  pressed && Platform.OS === 'ios' && styles.iosPressed,
                 ]}
-                android_ripple={{ color: 'rgba(255, 107, 0, 0.2)', borderless: false }}
+                android_ripple={ANDROID_RIPPLE_JOIN}
                 onPress={handleJoinPress}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  liveActive
+                    ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap')
+                    : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')
+                }
               >
                 <LinearGradient
                   colors={['#FF6B00', '#FF8800']}
@@ -290,6 +305,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     flexShrink: 1,
   },
+  iosPressed: {
+    opacity: 0.8,
+  },
 });
+
+JaapHeroBanner.displayName = 'JaapHeroBanner';
 
 export default JaapHeroBanner;
