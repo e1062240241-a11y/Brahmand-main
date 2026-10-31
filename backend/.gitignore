@@ -60,4 +60,7 @@ yarn.lock
 tmp/
 *.swp
 *~
+data/tts_cache/
+data/gita_audio_cache/
+
 

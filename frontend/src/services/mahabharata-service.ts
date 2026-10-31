@@ -1,5 +1,5 @@
 import { getMahabharataBook } from '../../src/services/api';
-import { LIBRARY_CDN_BASE } from './library-cdn';
+import { LIBRARY_CDN_BASE, fetchCdnJson } from './library-cdn';
 import { loadCachedBookContent, removeCachedBookContent } from './book-cache';
 
 const BOOK_NAME = 'mahabharata';
@@ -14,10 +14,8 @@ const normalizeMahabharataVerse = (verse: any): any => ({
 const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
 const fetchMahabharataBook = async (num: number) => {
-  try {
-    const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
-    if (res.ok) return res.json();
-  } catch {}
+  const cdnData = await fetchCdnJson(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`, 4000);
+  if (cdnData) return cdnData;
   const apiRes = await getMahabharataBook(num);
   return apiRes.data;
 };

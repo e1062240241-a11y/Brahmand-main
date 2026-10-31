@@ -95,6 +95,7 @@ from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
 from middleware.rate_limiter import auth_rate_limit, messaging_rate_limit, upload_rate_limit, geocode_rate_limit, astrology_rate_limit
 from routes.bhagavad_gita_routes import router as bhagavad_gita_router
+from routes.story_routes import story_router
 from routes.ramcharitmanas_routes import router as ramcharitmanas_router
 from routes.atharvaved_routes import router as atharvaved_router
 from routes.mahabharata_routes import router as mahabharata_router
@@ -18529,6 +18530,7 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 app.include_router(api_router)
 app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
+app.include_router(story_router)
 app.get("/health", include_in_schema=False)(health_check)
 app.get("/download", response_class=HTMLResponse)(download_app_redirect)
 app.get("/share/download", response_class=HTMLResponse)(download_app_redirect)

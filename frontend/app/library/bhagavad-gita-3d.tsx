@@ -31,8 +31,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import VerseCard from '../../src/components/VerseCard';
 import { useLibraryStore } from '../../src/store/libraryStore';
-import { loadBhagavadGitaChapter, prefetchBhagavadGitaChapters, cleanupBhagavadGitaChapters } from '../../src/services/bhagavad-geeta-service';
+import { useStoryStore } from '../../src/store/useStoryStore';
+import { GitaStoryView } from '../../src/components/GitaStoryView';
+import { StoryAudioPlayer } from '../../src/components/StoryAudioPlayer';
+import { loadBhagavadGitaChapter, loadBhagavadGitaStoryChapter, prefetchBhagavadGitaChapters, cleanupBhagavadGitaChapters } from '../../src/services/bhagavad-geeta-service';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { gitaSpeechService, SpeechLanguage } from '../../src/services/gita-speech-service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -83,6 +87,43 @@ const getTranslations = (translations: any) => {
   }
 
   return { hindi, english };
+};
+
+const getVerseTextForSpeech = (
+  verse: any,
+  mode: 'sanskrit' | 'hindi' | 'english' | 'both'
+): { text: string; secondaryText?: string; langType: SpeechLanguage } => {
+  const rawText = verse?.text || '';
+  const speakerMatch = rawText.match(/^([^\n]+उवाच[^\n]*)\n+/);
+  const speakerHeading = speakerMatch ? speakerMatch[1].trim() : '';
+  const rawShloka = speakerMatch ? rawText.replace(speakerMatch[0], '').trim() : rawText;
+  const cleanSanskrit = rawShloka.replace(/\s*।।\s*\d+(?:\.\d+)?\s*।।\s*$/, '').trim();
+
+  const { hindi, english } = getTranslations(verse?.translations);
+
+  if (mode === 'sanskrit') {
+    return {
+      text: (speakerHeading ? `${speakerHeading}। ` : '') + cleanSanskrit,
+      langType: 'sanskrit',
+    };
+  } else if (mode === 'hindi') {
+    return {
+      text: hindi || cleanSanskrit,
+      langType: 'hindi',
+    };
+  } else if (mode === 'english') {
+    return {
+      text: english || cleanSanskrit,
+      langType: 'english',
+    };
+  } else {
+    // Both: authentic Sanskrit chanting first, followed smoothly by Hindi/English explanation
+    return {
+      text: (speakerHeading ? `${speakerHeading}। ` : '') + cleanSanskrit,
+      secondaryText: hindi ? `भावार्थ: ${hindi}` : (english ? `Meaning: ${english}` : undefined),
+      langType: 'sanskrit',
+    };
+  }
 };
 
 
@@ -146,6 +187,200 @@ export default function BhagavadGita3DPage() {
   
   const isChapterBookmarked = bookmarks.some(b => b.chapter === currentChapter);
 
+  // Cosmic Storyteller Mode ("मैं समय हूँ") State
+  const { viewMode, setViewMode, isPlaying, setIsPlaying } = useStoryStore();
+  const [storyChapterData, setStoryChapterData] = useState<any | null>(null);
+  const [storyLoading, setStoryLoading] = useState(false);
+  const [activeStoryScene, setActiveStoryScene] = useState<any | null>(null);
+  const [activeCueMark, setActiveCueMark] = useState<string | null>(null);
+  const [activeCueSceneId, setActiveCueSceneId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+    setStoryLoading(true);
+    loadBhagavadGitaStoryChapter(currentChapter).then((data) => {
+      if (isCurrent) {
+        setStoryChapterData(data);
+        setStoryLoading(false);
+      }
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [currentChapter]);
+
+  // Cosmic Storyteller auto-advancing callback
+  const handleStorySceneComplete = useCallback(() => {
+    if (!storyChapterData || !activeStoryScene) return;
+
+    if (activeStoryScene.scene_id === 'opening') {
+      // Opening prologue ended -> switch to Scene 1
+      if (storyChapterData.scenes && storyChapterData.scenes.length > 0) {
+        setActiveStoryScene(storyChapterData.scenes[0]);
+        setIsPlaying(true);
+        return;
+      }
+    }
+
+    const currentIndex = storyChapterData.scenes?.findIndex(
+      (s: any) => s.scene_id === activeStoryScene.scene_id
+    ) ?? -1;
+
+    if (currentIndex >= 0 && currentIndex < (storyChapterData.scenes?.length || 0) - 1) {
+      // Advance to next dramatic scene
+      const nextScene = storyChapterData.scenes[currentIndex + 1];
+      setActiveStoryScene(nextScene);
+      setIsPlaying(true);
+    } else {
+      // Completed entire chapter storyline
+      setActiveStoryScene(null);
+      setIsPlaying(false);
+    }
+  }, [storyChapterData, activeStoryScene, setIsPlaying]);
+
+  // Audio Recitation State
+  const [activeRecitingIndex, setActiveRecitingIndex] = useState<number | null>(null);
+  const [isReciting, setIsReciting] = useState(false);
+  const [isAudioPlayerVisible, setIsAudioPlayerVisible] = useState(false);
+  const [reciteMode, setReciteMode] = useState<'sanskrit' | 'hindi' | 'english' | 'both'>('sanskrit');
+  const [reciteSpeed, setReciteSpeed] = useState<number>(0.85); // 0.85 (Slow/Sacred), 1.0 (Normal), 1.15 (Fast)
+  const [continuousPlay, setContinuousPlay] = useState<boolean>(true);
+
+  const versePositionsRef = useRef<Record<number, number>>({});
+  const activeRecitingIndexRef = useRef<number | null>(null);
+  const isRecitingRef = useRef<boolean>(false);
+  const continuousPlayRef = useRef<boolean>(true);
+  const reciteModeRef = useRef<'sanskrit' | 'hindi' | 'english' | 'both'>('sanskrit');
+  const reciteSpeedRef = useRef<number>(0.85);
+  const versesRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    activeRecitingIndexRef.current = activeRecitingIndex;
+  }, [activeRecitingIndex]);
+
+  useEffect(() => {
+    isRecitingRef.current = isReciting;
+  }, [isReciting]);
+
+  useEffect(() => {
+    continuousPlayRef.current = continuousPlay;
+  }, [continuousPlay]);
+
+  useEffect(() => {
+    reciteModeRef.current = reciteMode;
+  }, [reciteMode]);
+
+  useEffect(() => {
+    reciteSpeedRef.current = reciteSpeed;
+  }, [reciteSpeed]);
+
+  useEffect(() => {
+    versesRef.current = verses;
+  }, [verses]);
+
+  const stopRecitation = useCallback(async () => {
+    await gitaSpeechService.stop();
+    setIsReciting(false);
+    setActiveRecitingIndex(null);
+  }, []);
+
+  const startRecitingVerse = useCallback(async (
+    targetIndex: number,
+    mode = reciteModeRef.current,
+    speed = reciteSpeedRef.current
+  ) => {
+    const verseList = versesRef.current;
+    if (!verseList || targetIndex < 0 || targetIndex >= verseList.length) {
+      setIsReciting(false);
+      setActiveRecitingIndex(null);
+      return;
+    }
+
+    const verse = verseList[targetIndex];
+    const { text, secondaryText, langType } = getVerseTextForSpeech(verse, mode);
+
+    setActiveRecitingIndex(targetIndex);
+    setIsReciting(true);
+    setIsAudioPlayerVisible(true);
+
+    // Auto-scroll to center the reciting verse
+    const posY = versePositionsRef.current[targetIndex];
+    if (typeof posY === 'number' && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: Math.max(0, posY - 100), animated: true });
+    }
+
+    const ch = Number(verse?.chapter) || currentChapter || 1;
+    const v = Number(verse?.verse) || verse?.id || targetIndex + 1;
+
+    await gitaSpeechService.speak({
+      text,
+      secondaryText,
+      chapter: ch,
+      verse: v,
+      type: langType,
+      rate: speed,
+      voiceGender: 'female',
+      onStart: () => {
+        setIsReciting(true);
+      },
+      onDone: () => {
+        if (!isRecitingRef.current) return;
+        if (continuousPlayRef.current && targetIndex + 1 < versesRef.current.length) {
+          // Pause 700ms between verses for natural meditative breathing
+          setTimeout(() => {
+            if (isRecitingRef.current) {
+              startRecitingVerse(targetIndex + 1, mode, speed);
+            }
+          }, 700);
+        } else {
+          setIsReciting(false);
+          setActiveRecitingIndex(null);
+        }
+      },
+      onStopped: () => {
+        setIsReciting(false);
+        setActiveRecitingIndex(null);
+      },
+      onError: (err) => {
+        console.warn('Recitation error:', err);
+        setIsReciting(false);
+        setActiveRecitingIndex(null);
+      },
+    });
+  }, []);
+
+  const togglePlayPauseAudio = useCallback(() => {
+    if (isReciting) {
+      gitaSpeechService.stop();
+      setIsReciting(false);
+    } else {
+      const idx = activeRecitingIndex ?? 0;
+      startRecitingVerse(idx);
+    }
+  }, [isReciting, activeRecitingIndex, startRecitingVerse]);
+
+  const cycleReciteSpeed = useCallback(() => {
+    setReciteSpeed((prev) => {
+      const next = prev === 0.85 ? 1.0 : prev === 1.0 ? 1.15 : 0.85;
+      if (isReciting && activeRecitingIndex !== null) {
+        startRecitingVerse(activeRecitingIndex, reciteMode, next);
+      }
+      return next;
+    });
+  }, [isReciting, activeRecitingIndex, reciteMode, startRecitingVerse]);
+
+  const cycleReciteMode = useCallback(() => {
+    setReciteMode((prev) => {
+      const modes: Array<'sanskrit' | 'hindi' | 'english' | 'both'> = ['sanskrit', 'hindi', 'english', 'both'];
+      const nextIdx = (modes.indexOf(prev) + 1) % modes.length;
+      const next = modes[nextIdx];
+      if (isReciting && activeRecitingIndex !== null) {
+        startRecitingVerse(activeRecitingIndex, next, reciteSpeed);
+      }
+      return next;
+    });
+  }, [isReciting, activeRecitingIndex, reciteSpeed, startRecitingVerse]);
+
   const handleToggleBookmark = () => {
     const title = GITA_CHAPTERS_META[currentChapter - 1]?.nameHi || `अध्याय ${currentChapter}`;
     toggleBookmark(BOOK_ID, currentChapter, 0, title);
@@ -197,6 +432,9 @@ export default function BhagavadGita3DPage() {
 
   const handleChapterChange = (chNum: number) => {
     commitProgress();
+    stopRecitation();
+    setActiveStoryScene(null);
+    setActiveCueMark(null);
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
@@ -264,10 +502,11 @@ export default function BhagavadGita3DPage() {
 
   // Animation values
 
-  // Flush pending DB writes on unmount
+  // Flush pending DB writes and stop speech on unmount
   useEffect(() => {
     return () => {
       commitProgress();
+      gitaSpeechService.stop();
     };
   }, []);
 
@@ -297,6 +536,8 @@ export default function BhagavadGita3DPage() {
       } else {
         commitProgress();
         cancelAnimation(floatingY);
+        gitaSpeechService.stop();
+        setIsReciting(false);
       }
     });
 
@@ -443,6 +684,33 @@ export default function BhagavadGita3DPage() {
               </TouchableOpacity>
 
               <View style={styles.headerRightActions}>
+                {/* Audio Recitation Speaker Icon */}
+                <TouchableOpacity
+                  style={[
+                    styles.headerIconBtn,
+                    nightMode && styles.headerIconBtnNight,
+                    (isReciting || isAudioPlayerVisible) && (nightMode ? styles.headerIconBtnActiveNight : styles.headerIconBtnActive),
+                  ]}
+                  onPress={() => {
+                    if (isReciting) {
+                      stopRecitation();
+                    } else if (isAudioPlayerVisible) {
+                      setIsAudioPlayerVisible(false);
+                    } else {
+                      setIsAudioPlayerVisible(true);
+                      startRecitingVerse(activeRecitingIndex ?? 0);
+                    }
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="श्लोक पाठ सुनें"
+                >
+                  <Ionicons
+                    name={isReciting ? 'volume-high' : 'volume-medium-outline'}
+                    size={20}
+                    color={isReciting ? '#FF9933' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  />
+                </TouchableOpacity>
+
                 {/* Table of Contents Icon */}
                 <TouchableOpacity
                   style={[styles.headerIconBtn, nightMode && styles.headerIconBtnNight]}
@@ -513,6 +781,58 @@ export default function BhagavadGita3DPage() {
                 );
               })}
             </ScrollView>
+
+            {/* Mode Switcher: Classical Verses vs Cosmic Storyteller Mode */}
+            <View style={[styles.modeSwitcherContainer, nightMode && styles.modeSwitcherContainerNight]}>
+              <TouchableOpacity
+                style={[
+                  styles.modeTabBtn,
+                  viewMode === 'classical' && styles.modeTabBtnActive,
+                  nightMode && styles.modeTabBtnNight,
+                  viewMode === 'classical' && nightMode && styles.modeTabBtnActiveNight,
+                ]}
+                onPress={() => setViewMode('classical')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="book-outline"
+                  size={14}
+                  color={viewMode === 'classical' ? '#FFFFFF' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    nightMode && styles.modeTabTextNight,
+                    viewMode === 'classical' && styles.modeTabTextActive,
+                  ]}
+                >
+                  शास्त्रीय श्लोक
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeTabBtn,
+                  viewMode === 'story' && styles.modeTabBtnStoryActive,
+                  nightMode && styles.modeTabBtnNight,
+                  viewMode === 'story' && styles.modeTabBtnStoryActive,
+                ]}
+                onPress={() => setViewMode('story')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, marginRight: 4 }}>⏳</Text>
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    nightMode && styles.modeTabTextNight,
+                    viewMode === 'story' && styles.modeTabTextStoryActive,
+                  ]}
+                >
+                  कथा प्रवाह (मैं समय हूँ)
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* ── Main Scrollable Reading Area ── */}
@@ -530,52 +850,98 @@ export default function BhagavadGita3DPage() {
             onContentSizeChange={(_, h) => setContentHeight(h)}
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
           >
-            {/* Chapter Intro Banner */}
-            <View style={styles.chapterIntroBanner}>
-              <View style={styles.introOrnamentRow}>
-                <View style={[styles.introLine, nightMode && styles.introLineNight]} />
-                <Text style={[styles.introOmText, nightMode && styles.introOmTextNight]}>ॐ</Text>
-                <View style={[styles.introLine, nightMode && styles.introLineNight]} />
-              </View>
-              <Text style={[styles.introChapterNumber, nightMode && styles.introChapterNumberNight]}>
-                अथ {currentMeta.nameHi}
-              </Text>
-              <Text style={[styles.introSubtitle, nightMode && styles.introSubtitleNight]}>
-                {currentMeta.subtitle} • {convertToHindiNumerals(totalVerses || verses.length)} श्लोक
-              </Text>
-            </View>
-
-            {/* Verses List */}
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
-                  पवित्र श्लोक प्रस्तुत हो रहे हैं... ✨
-                </Text>
-              </View>
-            ) : verses.length === 0 ? (
-              <View style={styles.loadingContainer}>
-                <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
-                  इस अध्याय की सामग्री उपलब्ध नहीं है।
-                </Text>
-              </View>
-            ) : (
-              verses.slice(0, visibleLimit).map((verse: any, index: number) => (
-                <VerseCard
-                  key={`verse-${currentChapter}-${verse.verse || index}`}
-                  verse={verse}
-                  nightMode={nightMode}
-                  index={index}
-                  isLast={index === verses.length - 1}
-                  bookId={BOOK_ID}
-                  chapterNumber={currentChapter}
-                  fontSizeScale={fontSizeScale}
-                  isBookmarked={bookmarks.some(b => b.chapter === currentChapter && b.scrollY === verse.verse)}
-                  onToggleBookmark={() => {
-                    const title = `${currentMeta.nameHi} · श्लोक ${verse.verse}`;
-                    toggleBookmark(BOOK_ID, currentChapter, Number(verse.verse) || 0, title);
+            {viewMode === 'story' ? (
+              storyLoading && !storyChapterData ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={[styles.loadingText, { color: '#F59E0B' }]}>
+                    काल-कथा प्रस्तुत हो रही है... ✨
+                  </Text>
+                </View>
+              ) : storyChapterData ? (
+                <GitaStoryView
+                  chapterData={storyChapterData}
+                  activeCueMark={activeCueMark}
+                  activeCueSceneId={activeCueSceneId}
+                  onPlayScene={(scene) => {
+                    if (activeStoryScene?.scene_id === scene.scene_id && isPlaying) {
+                      setActiveStoryScene(null);
+                      setIsPlaying(false);
+                    } else {
+                      setActiveStoryScene(scene);
+                    }
+                  }}
+                  onNavigateToStudy={() => {
+                    setViewMode('classical');
                   }}
                 />
-              ))
+              ) : (
+                <View style={styles.loadingContainer}>
+                  <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                    इस अध्याय की कथा अभी उपलब्ध नहीं है।
+                  </Text>
+                </View>
+              )
+            ) : (
+              <>
+                {/* Chapter Intro Banner */}
+                <View style={styles.chapterIntroBanner}>
+                  <View style={styles.introOrnamentRow}>
+                    <View style={[styles.introLine, nightMode && styles.introLineNight]} />
+                    <Text style={[styles.introOmText, nightMode && styles.introOmTextNight]}>ॐ</Text>
+                    <View style={[styles.introLine, nightMode && styles.introLineNight]} />
+                  </View>
+                  <Text style={[styles.introChapterNumber, nightMode && styles.introChapterNumberNight]}>
+                    अथ {currentMeta.nameHi}
+                  </Text>
+                  <Text style={[styles.introSubtitle, nightMode && styles.introSubtitleNight]}>
+                    {currentMeta.subtitle} • {convertToHindiNumerals(totalVerses || verses.length)} श्लोक
+                  </Text>
+                </View>
+
+                {/* Verses List */}
+                {loading ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                      पवित्र श्लोक प्रस्तुत हो रहे हैं... ✨
+                    </Text>
+                  </View>
+                ) : verses.length === 0 ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                      इस अध्याय की सामग्री उपलब्ध नहीं है।
+                    </Text>
+                  </View>
+                ) : (
+                  verses.slice(0, visibleLimit).map((verse: any, index: number) => (
+                    <VerseCard
+                      key={`verse-${currentChapter}-${verse.verse || index}`}
+                      verse={verse}
+                      nightMode={nightMode}
+                      index={index}
+                      isLast={index === verses.length - 1}
+                      bookId={BOOK_ID}
+                      chapterNumber={currentChapter}
+                      fontSizeScale={fontSizeScale}
+                      isBookmarked={bookmarks.some(b => b.chapter === currentChapter && b.scrollY === verse.verse)}
+                      onToggleBookmark={() => {
+                        const title = `${currentMeta.nameHi} · श्लोक ${verse.verse}`;
+                        toggleBookmark(BOOK_ID, currentChapter, Number(verse.verse) || 0, title);
+                      }}
+                      isPlayingAudio={activeRecitingIndex === index && isReciting}
+                      onToggleAudio={(type) => {
+                        if (activeRecitingIndex === index && isReciting) {
+                          stopRecitation();
+                        } else {
+                          startRecitingVerse(index, type || reciteMode);
+                        }
+                      }}
+                      onLayout={(event) => {
+                        versePositionsRef.current[index] = event.nativeEvent.layout.y;
+                      }}
+                    />
+                  ))
+                )}
+              </>
             )}
 
             {/* Chapter Footer Navigation */}
@@ -607,6 +973,125 @@ export default function BhagavadGita3DPage() {
               ) : <View style={{ width: 120 }} />}
             </View>
           </ScrollView>
+
+          {/* ── Floating Sacred Audio Recitation Bar ── */}
+          {isAudioPlayerVisible && (
+            <View
+              style={[
+                styles.floatingAudioBar,
+                { bottom: insets.bottom + 65 },
+                nightMode && styles.floatingAudioBarNight,
+              ]}
+            >
+              {/* Left info badge */}
+              <View style={styles.audioBarLeft}>
+                <View style={[styles.audioPulseDot, isReciting && styles.audioPulseDotActive]}>
+                  <Ionicons
+                    name={isReciting ? 'volume-high' : 'volume-mute'}
+                    size={14}
+                    color="#FFFFFF"
+                  />
+                </View>
+                <View style={styles.audioBarTextCol}>
+                  <Text numberOfLines={1} style={[styles.audioBarTitle, nightMode && styles.audioBarTitleNight]}>
+                    {activeRecitingIndex !== null
+                      ? `श्लोक ${convertToHindiNumerals((verses[activeRecitingIndex]?.verse) || activeRecitingIndex + 1)} / ${convertToHindiNumerals(totalVerses || verses.length)}`
+                      : 'पाठ तैयार है'}
+                  </Text>
+                  <Text numberOfLines={1} style={[styles.audioBarModeLabel, nightMode && styles.audioBarModeLabelNight]}>
+                    {reciteMode === 'sanskrit'
+                      ? 'संस्कृत श्लोक (शास्त्रीय पाठ)'
+                      : reciteMode === 'hindi'
+                      ? 'हिन्दी अनुवाद (मधुर स्वर)'
+                      : reciteMode === 'english'
+                      ? 'English (Divine Voice)'
+                      : 'सम्पूर्ण पाठ (श्लोक व भावार्थ)'} · {reciteSpeed === 0.85 ? 'धीमी गति' : reciteSpeed === 1.0 ? 'सामान्य' : 'द्रुत गति'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Center playback controls */}
+              <View style={styles.audioBarControls}>
+                {/* Prev Verse */}
+                <TouchableOpacity
+                  style={styles.audioControlBtn}
+                  disabled={!activeRecitingIndex || activeRecitingIndex <= 0}
+                  onPress={() => activeRecitingIndex !== null && activeRecitingIndex > 0 && startRecitingVerse(activeRecitingIndex - 1)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name="play-skip-back"
+                    size={16}
+                    color={(!activeRecitingIndex || activeRecitingIndex <= 0) ? '#D0C2AF' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  />
+                </TouchableOpacity>
+
+                {/* Play / Pause Primary */}
+                <TouchableOpacity
+                  style={[styles.audioPlayPauseBtn, nightMode && styles.audioPlayPauseBtnNight]}
+                  onPress={togglePlayPauseAudio}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={isReciting ? 'pause' : 'play'}
+                    size={18}
+                    color="#FFFFFF"
+                  />
+                </TouchableOpacity>
+
+                {/* Next Verse */}
+                <TouchableOpacity
+                  style={styles.audioControlBtn}
+                  disabled={activeRecitingIndex === null || activeRecitingIndex >= verses.length - 1}
+                  onPress={() => activeRecitingIndex !== null && activeRecitingIndex < verses.length - 1 && startRecitingVerse(activeRecitingIndex + 1)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name="play-skip-forward"
+                    size={16}
+                    color={(activeRecitingIndex === null || activeRecitingIndex >= verses.length - 1) ? '#D0C2AF' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Right quick toggles: Mode + Speed + Close */}
+              <View style={styles.audioBarRightActions}>
+                {/* Recitation Mode Pill */}
+                <TouchableOpacity
+                  style={[styles.audioPillBtn, nightMode && styles.audioPillBtnNight]}
+                  onPress={cycleReciteMode}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Text style={[styles.audioPillText, nightMode && styles.audioPillTextNight]}>
+                    {reciteMode === 'sanskrit' ? 'श्लोक' : reciteMode === 'hindi' ? 'अर्थ' : reciteMode === 'english' ? 'EN' : 'सर्व'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Speed Pill */}
+                <TouchableOpacity
+                  style={[styles.audioPillBtn, nightMode && styles.audioPillBtnNight]}
+                  onPress={cycleReciteSpeed}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Text style={[styles.audioPillText, nightMode && styles.audioPillTextNight]}>
+                    {reciteSpeed === 0.85 ? '0.8x' : reciteSpeed === 1.0 ? '1.0x' : '1.2x'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Close floating bar */}
+                <TouchableOpacity
+                  style={styles.audioCloseBtn}
+                  onPress={() => {
+                    stopRecitation();
+                    setIsAudioPlayerVisible(false);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={17} color={nightMode ? '#B5A496' : '#8A7568'} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* ── Slim, Organized Bottom Reading Toolbar ── */}
           <View
@@ -706,6 +1191,33 @@ export default function BhagavadGita3DPage() {
                 />
               </TouchableOpacity>
 
+              {/* Audio Recitation Toggle */}
+              <TouchableOpacity
+                style={[
+                  styles.toolbarBtn,
+                  nightMode && styles.toolbarBtnNight,
+                  (isReciting || isAudioPlayerVisible) && (nightMode ? styles.toolbarBtnActiveNight : styles.toolbarBtnActive),
+                ]}
+                onPress={() => {
+                  if (isReciting) {
+                    stopRecitation();
+                  } else if (isAudioPlayerVisible) {
+                    setIsAudioPlayerVisible(false);
+                  } else {
+                    setIsAudioPlayerVisible(true);
+                    startRecitingVerse(activeRecitingIndex ?? 0);
+                  }
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="श्लोक पाठ सुनें"
+              >
+                <Ionicons
+                  name={isReciting ? 'volume-high' : 'volume-medium-outline'}
+                  size={18}
+                  color={isReciting ? '#FF9933' : (nightMode ? '#E8D5C4' : '#743B27')}
+                />
+              </TouchableOpacity>
+
               {/* Saved Bookmarks Modal Trigger */}
               <TouchableOpacity
                 style={[styles.toolbarBtn, nightMode && styles.toolbarBtnNight]}
@@ -720,6 +1232,26 @@ export default function BhagavadGita3DPage() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Floating Story Audio Player in Story Mode */}
+          {viewMode === 'story' && activeStoryScene && (
+            <StoryAudioPlayer
+              chapter={currentChapter}
+              scene={activeStoryScene}
+              onCueActive={(mark, cueSceneId) => {
+                setActiveCueMark(mark);
+                if (cueSceneId) {
+                  setActiveCueSceneId(cueSceneId);
+                }
+              }}
+              onSceneComplete={handleStorySceneComplete}
+              onClose={() => {
+                setActiveStoryScene(null);
+                setIsPlaying(false);
+              }}
+              autoPlay={true}
+            />
+          )}
         </View>
       )}
 
@@ -982,6 +1514,12 @@ const styles = StyleSheet.create({
   headerIconBtnNight: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
+  headerIconBtnActive: {
+    backgroundColor: 'rgba(232, 154, 60, 0.2)',
+  },
+  headerIconBtnActiveNight: {
+    backgroundColor: 'rgba(255, 165, 52, 0.25)',
+  },
 
   /* Horizontal Chapter Selector */
   chapterSelectorRow: {
@@ -1041,6 +1579,64 @@ const styles = StyleSheet.create({
   },
   chapterPillTextActiveNight: {
     color: '#F4ECE0',
+    fontWeight: '700',
+  },
+
+  /* Mode Switcher: Classical Verses vs Cosmic Storyteller Mode */
+  modeSwitcherContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(116, 59, 39, 0.04)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(116, 59, 39, 0.08)',
+  },
+  modeSwitcherContainerNight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modeTabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(116, 59, 39, 0.25)',
+    backgroundColor: 'transparent',
+  },
+  modeTabBtnNight: {
+    borderColor: 'rgba(232, 213, 196, 0.2)',
+  },
+  modeTabBtnActive: {
+    backgroundColor: '#743B27',
+    borderColor: '#743B27',
+  },
+  modeTabBtnActiveNight: {
+    backgroundColor: '#C6A16B',
+    borderColor: '#C6A16B',
+  },
+  modeTabBtnStoryActive: {
+    backgroundColor: '#78350F',
+    borderColor: '#F59E0B',
+  },
+  modeTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#743B27',
+  },
+  modeTabTextNight: {
+    color: '#E8D5C4',
+  },
+  modeTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  modeTabTextStoryActive: {
+    color: '#FEF3C7',
     fontWeight: '700',
   },
 
@@ -1189,6 +1785,12 @@ const styles = StyleSheet.create({
   },
   toolbarBtnNight: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  toolbarBtnActive: {
+    backgroundColor: 'rgba(232, 154, 60, 0.2)',
+  },
+  toolbarBtnActiveNight: {
+    backgroundColor: 'rgba(255, 165, 52, 0.25)',
   },
   toolbarBtnDisabled: {
     opacity: 0.35,
@@ -1409,5 +2011,124 @@ const styles = StyleSheet.create({
   },
   bookmarkItemSubNight: {
     color: '#C6A16B',
+  },
+
+  /* Floating Audio Bar */
+  floatingAudioBar: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    backgroundColor: 'rgba(255, 252, 246, 0.96)',
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    borderColor: '#E89A3C',
+    shadowColor: '#743B27',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    zIndex: 99,
+  },
+  floatingAudioBarNight: {
+    backgroundColor: 'rgba(32, 24, 20, 0.96)',
+    borderColor: '#FFA534',
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+  },
+  audioBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 6,
+  },
+  audioPulseDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#8A7568',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  audioPulseDotActive: {
+    backgroundColor: '#E89A3C',
+  },
+  audioBarTextCol: {
+    flex: 1,
+  },
+  audioBarTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  audioBarTitleNight: {
+    color: '#FFDBB5',
+  },
+  audioBarModeLabel: {
+    fontSize: 11,
+    color: '#8A7568',
+    marginTop: 1,
+  },
+  audioBarModeLabelNight: {
+    color: '#A8927F',
+  },
+  audioBarControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginRight: 8,
+  },
+  audioControlBtn: {
+    padding: 6,
+  },
+  audioPlayPauseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#E89A3C',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#E89A3C',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  audioPlayPauseBtnNight: {
+    backgroundColor: '#FFA534',
+  },
+  audioBarRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  audioPillBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#F3E8D7',
+    borderWidth: 0.5,
+    borderColor: '#E2D2BD',
+  },
+  audioPillBtnNight: {
+    backgroundColor: '#352720',
+    borderColor: 'rgba(198, 161, 107, 0.3)',
+  },
+  audioPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  audioPillTextNight: {
+    color: '#FFD9B3',
+  },
+  audioCloseBtn: {
+    padding: 5,
+    marginLeft: 2,
   },
 });

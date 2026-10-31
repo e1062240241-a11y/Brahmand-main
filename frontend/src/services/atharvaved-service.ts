@@ -1,5 +1,5 @@
 import { getAtharvavedChapter } from '../../src/services/api';
-import { LIBRARY_CDN_BASE } from './library-cdn';
+import { LIBRARY_CDN_BASE, fetchCdnJson } from './library-cdn';
 import { loadCachedBookContent, removeCachedBookContent } from './book-cache';
 
 const BOOK_NAME = 'atharvaved';
@@ -14,10 +14,8 @@ const normalizeAtharvavedVerse = (verse: any): any => ({
 const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
 const fetchAtharvavedChapter = async (num: number) => {
-  try {
-    const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
-    if (res.ok) return res.json();
-  } catch {}
+  const cdnData = await fetchCdnJson(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`, 4000);
+  if (cdnData) return cdnData;
   const apiRes = await getAtharvavedChapter(num);
   return apiRes.data;
 };

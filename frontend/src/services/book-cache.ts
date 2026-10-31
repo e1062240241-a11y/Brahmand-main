@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BOOK_CACHE_PREFIX = 'book-json-cache:v4';
-const BOOK_LOAD_TIMEOUT_MS = 10000;
+const BOOK_LOAD_TIMEOUT_MS = 15000;
 
 type LoadCachedBookContentOptions<T> = {
   cacheKey: string;
@@ -9,12 +9,18 @@ type LoadCachedBookContentOptions<T> = {
   extractVerses: (response: any) => unknown[];
   normalizeVerse: (verse: any) => T;
   timeoutMessage: string;
+  timeoutMs?: number;
+  fallback?: () => Promise<any> | any;
 };
 
-const withTimeout = async <T>(promise: Promise<T>, message: string): Promise<T> => {
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  message: string,
+  timeoutMs: number = BOOK_LOAD_TIMEOUT_MS,
+): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), BOOK_LOAD_TIMEOUT_MS);
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
   });
 
   try {
@@ -61,6 +67,8 @@ export const loadCachedBookContent = async <T>({
   extractVerses,
   normalizeVerse,
   timeoutMessage,
+  timeoutMs,
+  fallback,
 }: LoadCachedBookContentOptions<T>): Promise<T[]> => {
   const storageKey = `${BOOK_CACHE_PREFIX}:${cacheKey}`;
   const cachedVerses = await readCachedVerses<T>(storageKey);
@@ -70,7 +78,7 @@ export const loadCachedBookContent = async <T>({
   }
 
   try {
-    const response = await withTimeout(fetcher(), timeoutMessage);
+    const response = await withTimeout(fetcher(), timeoutMessage, timeoutMs);
     const verses = extractVerses(response).map(normalizeVerse);
     if (verses.length > 0) {
       await writeCachedVerses(storageKey, verses);
@@ -80,6 +88,20 @@ export const loadCachedBookContent = async <T>({
     const fallbackVerses = await readCachedVerses<T>(storageKey);
     if (fallbackVerses?.length) {
       return fallbackVerses;
+    }
+    if (fallback) {
+      try {
+        const fallbackData = await fallback();
+        if (fallbackData) {
+          const verses = extractVerses(fallbackData).map(normalizeVerse);
+          if (verses.length > 0) {
+            await writeCachedVerses(storageKey, verses);
+            return verses;
+          }
+        }
+      } catch (fallbackError) {
+        console.warn('Fallback failed in loadCachedBookContent:', fallbackError);
+      }
     }
     throw error;
   }

@@ -1,5 +1,5 @@
 import { getRamayanChapter } from '../../src/services/api';
-import { LIBRARY_CDN_BASE } from './library-cdn';
+import { LIBRARY_CDN_BASE, fetchCdnJson } from './library-cdn';
 import { loadCachedBookContent, removeCachedBookContent } from './book-cache';
 
 const BOOK_NAME = 'ramayan';
@@ -14,10 +14,8 @@ const normalizeRamayanVerse = (verse: any): any => ({
 const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
 const fetchRamayanChapter = async (num: number) => {
-  try {
-    const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
-    if (res.ok) return res.json();
-  } catch {}
+  const cdnData = await fetchCdnJson(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`, 4000);
+  if (cdnData) return cdnData;
   const apiRes = await getRamayanChapter(num);
   return apiRes.data;
 };

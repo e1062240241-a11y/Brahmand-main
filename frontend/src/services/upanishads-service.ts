@@ -1,5 +1,5 @@
 import { getUpanishadsChapter } from '../../src/services/api';
-import { LIBRARY_CDN_BASE } from './library-cdn';
+import { LIBRARY_CDN_BASE, fetchCdnJson } from './library-cdn';
 import { loadCachedBookContent, removeCachedBookContent } from './book-cache';
 import upanishadsData from '../../assets/data/upanishads_data.json';
 
@@ -30,18 +30,19 @@ const normalizeUpanishadVerse = (verse: any): any => {
 
 const chapterCacheKey = (num: number) => `${BOOK_NAME}:chapter:${num}`;
 
-const fetchUpanishadsChapter = async (num: number) => {
-  try {
-    const res = await fetch(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`);
-    if (res.ok) {
-      const data = await res.json();
-      return data;
-    }
-  } catch {}
+const getLocalUpanishadChapter = (num: number) => {
   const localVerses = (upanishadsData as any[]).filter((v) => v?.chapter === num);
   if (localVerses.length) {
     return { book: BOOK_NAME, chapter: num, total_verses: localVerses.length, verses: localVerses };
   }
+  return null;
+};
+
+const fetchUpanishadsChapter = async (num: number) => {
+  const cdnData = await fetchCdnJson(`${LIBRARY_CDN_BASE}/${BOOK_NAME}/chapter-${num}.json`, 3500);
+  if (cdnData) return cdnData;
+  const local = getLocalUpanishadChapter(num);
+  if (local) return local;
   const apiRes = await getUpanishadsChapter(num);
   return apiRes.data;
 };
@@ -53,6 +54,7 @@ export const loadUpanishadChapter = (chapterNumber: number) =>
     extractVerses: (data: any) => data?.verses ?? [],
     normalizeVerse: normalizeUpanishadVerse,
     timeoutMessage: `Timed out loading ${BOOK_NAME} chapter ${chapterNumber}`,
+    fallback: () => getLocalUpanishadChapter(chapterNumber),
   });
 
 export const prefetchUpanishadsChapters = (from: number, count: number = PREFETCH_AHEAD) => {

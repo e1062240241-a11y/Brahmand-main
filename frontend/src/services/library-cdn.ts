@@ -2,6 +2,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const LIBRARY_CDN_BASE = 'https://brahmandfeed23.b-cdn.net/library';
 
+export const fetchCdnJson = async (url: string, timeoutMs: number = 4000): Promise<any | null> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+  return null;
+};
+
 const LIBRARY_BOOK_NAMES = [
   'bhagavad-gita',
   'atharvaved',

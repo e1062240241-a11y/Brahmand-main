@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { gitaSpeechService, SpeechLanguage } from '../services/gita-speech-service';
 
 const convertToHindiNumerals = (num: number) => {
   const hindiNumerals = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
@@ -30,6 +31,9 @@ interface VerseCardProps {
   fontSizeScale?: number;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
+  isPlayingAudio?: boolean;
+  onToggleAudio?: (type?: 'sanskrit' | 'hindi' | 'english' | 'both') => void;
+  onLayout?: (event: any) => void;
 }
 
 const cleanTranslationString = (raw: string | null | undefined): string | null => {
@@ -37,7 +41,16 @@ const cleanTranslationString = (raw: string | null | undefined): string | null =
   let text = raw.trim();
   if (text.toLowerCase().includes('did not comment')) return null;
   // Strip leading verse markers e.g. "।।1.1।।", "1.1.", "1.1 - 1.19"
-  text = text.replace(/^(?:।।\s*\d+(?:\.\d+)?\s*।।|\d+\.\d+(?:\s*-\s*\d+\.\d+)?\.?)\s*/, '');
+  text = text.replace(/^(?:।।|॥|\/\/|\|\|)?\s*\d+(?:\.\d+)?(?:\s*--\s*\d+(?:\.\d+)?)?\s*(?:।।|॥|\/\/|\|\|)?\.?\s*/, '');
+  text = text.replace(/(?:।।|॥|\/\/|\|\|)\s*\d+(?:\.\d+)?\s*(?:।।|॥|\/\/|\|\|)/g, '');
+  // Clean footnote annotations e.g. (टिप्पणी प0 1.2)
+  text = text.replace(/\s*\([^)]*टिप्पणी[^)]*\)\s*/g, ' ');
+  text = text.replace(/\s*\[[^\]]*टिप्पणी[^\]]*\]\s*/g, ' ');
+  text = text.replace(/\s*\([^)]*प0[^)]*\)\s*/g, ' ');
+  // Clean colons inside brackets e.g. (युयुत्सव:) -> (युयुत्सव)
+  text = text.replace(/\s*\(\s*([^)]*?):?\s*\)\s*/g, ' ($1) ');
+  // Fix corrupt duplicate matras (e.g. मेरेे -> मेरे)
+  text = text.replace(/([\u093E-\u094C])[\u093E-\u094C]+/g, '$1');
   text = text.replace(/\s+/g, ' ').trim();
   return text || null;
 };
@@ -52,9 +65,24 @@ const VerseCard = React.memo(({
   fontSizeScale = 1.0,
   isBookmarked = false,
   onToggleBookmark,
+  isPlayingAudio,
+  onToggleAudio,
+  onLayout,
 }: VerseCardProps) => {
   const [activeTab, setActiveTab] = useState<'both' | 'hindi' | 'english'>('both');
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showAudioSheet, setShowAudioSheet] = useState(false);
+  const [localPlaying, setLocalPlaying] = useState(false);
+
+  const isAudioActive = isPlayingAudio !== undefined ? isPlayingAudio : localPlaying;
+
+  useEffect(() => {
+    return () => {
+      if (localPlaying) {
+        gitaSpeechService.stop();
+      }
+    };
+  }, [localPlaying]);
 
   // Extract Speaker heading (e.g. "धृतराष्ट्र उवाच", "सञ्जय उवाच", "श्रीभगवानुवाच", "अर्जुन उवाच")
   const rawText = verse.text || '';
@@ -136,8 +164,71 @@ const VerseCard = React.memo(({
 
   const verseRefLabel = `${prefix} ${chNumHindi}.${verseNumHindi}`;
 
+  const handleSpeakerPress = () => {
+    if (isAudioActive) {
+      if (onToggleAudio) {
+        onToggleAudio();
+      } else {
+        gitaSpeechService.stop();
+        setLocalPlaying(false);
+      }
+      return;
+    }
+    setShowAudioSheet(true);
+  };
+
+  const handleSelectAudioOption = (type: 'sanskrit' | 'hindi' | 'english' | 'both') => {
+    setShowAudioSheet(false);
+    if (onToggleAudio) {
+      onToggleAudio(type);
+      return;
+    }
+
+    const ch = Number(verse.chapter) || chapterNumber || 1;
+    const v = Number(verse.verse) || (verse as any).id || index + 1;
+
+    let textToSpeak = '';
+    let secText: string | undefined = undefined;
+    let speechLang: SpeechLanguage = 'sanskrit';
+
+    if (type === 'sanskrit') {
+      textToSpeak = (speakerHeading ? `${speakerHeading}। ` : '') + cleanSanskrit;
+      speechLang = 'sanskrit';
+    } else if (type === 'hindi') {
+      textToSpeak = hindiText || cleanSanskrit;
+      speechLang = 'hindi';
+    } else if (type === 'english') {
+      textToSpeak = englishText || cleanSanskrit;
+      speechLang = 'english';
+    } else if (type === 'both') {
+      textToSpeak = (speakerHeading ? `${speakerHeading}। ` : '') + cleanSanskrit;
+      secText = hindiText ? `भावार्थ: ${hindiText}` : (englishText ? `Meaning: ${englishText}` : undefined);
+      speechLang = 'sanskrit';
+    }
+
+    setLocalPlaying(true);
+    gitaSpeechService.speak({
+      text: textToSpeak,
+      secondaryText: secText,
+      chapter: ch,
+      verse: v,
+      type: speechLang,
+      onStart: () => setLocalPlaying(true),
+      onDone: () => setLocalPlaying(false),
+      onStopped: () => setLocalPlaying(false),
+      onError: () => setLocalPlaying(false),
+    });
+  };
+
   return (
-    <View style={[styles.cardContainer, nightMode && styles.cardContainerNight]}>
+    <View
+      onLayout={onLayout}
+      style={[
+        styles.cardContainer,
+        nightMode && styles.cardContainerNight,
+        isAudioActive && (nightMode ? styles.cardContainerPlayingNight : styles.cardContainerPlaying),
+      ]}
+    >
       {/* ── Top Header / Metadata Bar ── */}
       <View style={styles.cardHeader}>
         <View style={styles.refBadge}>
@@ -145,6 +236,23 @@ const VerseCard = React.memo(({
         </View>
 
         <View style={styles.headerRightActions}>
+          {/* Audio Recitation Button */}
+          <TouchableOpacity
+            onPress={handleSpeakerPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={[
+              styles.actionBtn,
+              isAudioActive && (nightMode ? styles.actionBtnActiveNight : styles.actionBtnActive),
+            ]}
+            accessibilityLabel="श्लोक पाठ सुनें"
+          >
+            <Ionicons
+              name={isAudioActive ? 'volume-high' : 'volume-medium-outline'}
+              size={18}
+              color={isAudioActive ? '#FF9933' : (nightMode ? '#A8927F' : '#9E8674')}
+            />
+          </TouchableOpacity>
+
           {onToggleBookmark && (
             <TouchableOpacity
               onPress={onToggleBookmark}
@@ -332,6 +440,109 @@ const VerseCard = React.memo(({
           <View style={[styles.dividerHairline, nightMode && styles.dividerHairlineNight]} />
         </View>
       )}
+
+      {/* ── Audio Recitation Mode Modal ── */}
+      <Modal visible={showAudioSheet} transparent animationType="fade">
+        <Pressable style={styles.audioModalOverlay} onPress={() => setShowAudioSheet(false)}>
+          <View style={[styles.audioModalBox, nightMode && styles.audioModalBoxNight]}>
+            <View style={styles.audioModalHeader}>
+              <View style={styles.audioHeaderTitleRow}>
+                <Ionicons name="musical-notes" size={18} color={nightMode ? '#FFB870' : '#8A4A28'} />
+                <Text style={[styles.audioModalTitle, nightMode && styles.audioModalTitleNight]}>
+                  {verseRefLabel} पाठ सुनें
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowAudioSheet(false)} style={styles.audioModalCloseBtn}>
+                <Ionicons name="close" size={18} color={nightMode ? '#C4B5A5' : '#8A7568'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.audioOptionsList}>
+              <TouchableOpacity
+                style={[styles.audioOptionItem, nightMode && styles.audioOptionItemNight]}
+                onPress={() => handleSelectAudioOption('sanskrit')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.audioOptionIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                  <Text style={styles.audioOptionOm}>ॐ</Text>
+                </View>
+                <View style={styles.audioOptionTextCol}>
+                  <Text style={[styles.audioOptionLabel, nightMode && styles.audioOptionLabelNight]}>
+                    संस्कृत श्लोक पाठ
+                  </Text>
+                  <Text style={[styles.audioOptionSub, nightMode && styles.audioOptionSubNight]}>
+                    मधुर दिव्य स्वर (रुक-रुक कर शांत उच्चारण)
+                  </Text>
+                </View>
+                <Ionicons name="play-circle" size={24} color="#E89A3C" />
+              </TouchableOpacity>
+
+              {hindiText ? (
+                <TouchableOpacity
+                  style={[styles.audioOptionItem, nightMode && styles.audioOptionItemNight]}
+                  onPress={() => handleSelectAudioOption('hindi')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.audioOptionIconCircle, { backgroundColor: '#FDF1E6' }]}>
+                    <Ionicons name="book-outline" size={17} color="#B35B21" />
+                  </View>
+                  <View style={styles.audioOptionTextCol}>
+                    <Text style={[styles.audioOptionLabel, nightMode && styles.audioOptionLabelNight]}>
+                      हिन्दी अनुवाद
+                    </Text>
+                    <Text style={[styles.audioOptionSub, nightMode && styles.audioOptionSubNight]}>
+                      सरल हिन्दी भावार्थ (मधुर दिव्य स्वर)
+                    </Text>
+                  </View>
+                  <Ionicons name="play-circle" size={24} color="#B35B21" />
+                </TouchableOpacity>
+              ) : null}
+
+              {englishText ? (
+                <TouchableOpacity
+                  style={[styles.audioOptionItem, nightMode && styles.audioOptionItemNight]}
+                  onPress={() => handleSelectAudioOption('english')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.audioOptionIconCircle, { backgroundColor: '#F0F4F8' }]}>
+                    <Ionicons name="globe-outline" size={17} color="#3B6790" />
+                  </View>
+                  <View style={styles.audioOptionTextCol}>
+                    <Text style={[styles.audioOptionLabel, nightMode && styles.audioOptionLabelNight]}>
+                      English Translation
+                    </Text>
+                    <Text style={[styles.audioOptionSub, nightMode && styles.audioOptionSubNight]}>
+                      English meaning and commentary
+                    </Text>
+                  </View>
+                  <Ionicons name="play-circle" size={24} color="#3B6790" />
+                </TouchableOpacity>
+              ) : null}
+
+              {hindiText ? (
+                <TouchableOpacity
+                  style={[styles.audioOptionItem, nightMode && styles.audioOptionItemNight]}
+                  onPress={() => handleSelectAudioOption('both')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.audioOptionIconCircle, { backgroundColor: '#FDF7EB' }]}>
+                    <Ionicons name="sparkles" size={17} color="#D48817" />
+                  </View>
+                  <View style={styles.audioOptionTextCol}>
+                    <Text style={[styles.audioOptionLabel, nightMode && styles.audioOptionLabelNight]}>
+                      सम्पूर्ण पाठ
+                    </Text>
+                    <Text style={[styles.audioOptionSub, nightMode && styles.audioOptionSubNight]}>
+                      संस्कृत श्लोक एवं हिन्दी भावार्थ (विश्राम सहित)
+                    </Text>
+                  </View>
+                  <Ionicons name="play-circle" size={24} color="#D48817" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }, (prev, next) => {
@@ -343,7 +554,8 @@ const VerseCard = React.memo(({
     prev.bookId === next.bookId &&
     prev.chapterNumber === next.chapterNumber &&
     prev.fontSizeScale === next.fontSizeScale &&
-    prev.isBookmarked === next.isBookmarked
+    prev.isBookmarked === next.isBookmarked &&
+    prev.isPlayingAudio === next.isPlayingAudio
   );
 });
 
@@ -368,6 +580,26 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(198, 161, 107, 0.2)',
     shadowColor: '#000',
     shadowOpacity: 0.3,
+  },
+  cardContainerPlaying: {
+    borderColor: '#E89A3C',
+    borderWidth: 1.5,
+    backgroundColor: '#FFFBF2',
+    shadowColor: '#E89A3C',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  cardContainerPlayingNight: {
+    borderColor: '#FFA534',
+    borderWidth: 1.5,
+    backgroundColor: '#261B14',
+    shadowColor: '#FFA534',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
 
   /* Header */
@@ -397,9 +629,17 @@ const styles = StyleSheet.create({
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   actionBtn: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 8,
+  },
+  actionBtnActive: {
+    backgroundColor: 'rgba(232, 154, 60, 0.15)',
+  },
+  actionBtnActiveNight: {
+    backgroundColor: 'rgba(255, 165, 52, 0.2)',
   },
 
   /* Sanskrit Shloka */
@@ -595,6 +835,107 @@ const styles = StyleSheet.create({
   },
   mandalaDotNight: {
     backgroundColor: '#C6A16B',
+  },
+
+  /* Audio Recitation Modal */
+  audioModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  audioModalBox: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFDF9',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E8DEC9',
+    shadowColor: '#5A4136',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  audioModalBoxNight: {
+    backgroundColor: '#201814',
+    borderColor: 'rgba(198, 161, 107, 0.25)',
+    shadowColor: '#000',
+  },
+  audioModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E7D8',
+  },
+  audioHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  audioModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#743B27',
+  },
+  audioModalTitleNight: {
+    color: '#FFD9B3',
+  },
+  audioModalCloseBtn: {
+    padding: 4,
+  },
+  audioOptionsList: {
+    gap: 10,
+  },
+  audioOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FAF5ED',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EBE1D0',
+  },
+  audioOptionItemNight: {
+    backgroundColor: '#2A1F1A',
+    borderColor: 'rgba(198, 161, 107, 0.18)',
+  },
+  audioOptionIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  audioOptionOm: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#E89A3C',
+  },
+  audioOptionTextCol: {
+    flex: 1,
+  },
+  audioOptionLabel: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#42372F',
+    marginBottom: 2,
+  },
+  audioOptionLabelNight: {
+    color: '#EFE7DC',
+  },
+  audioOptionSub: {
+    fontSize: 12,
+    color: '#8A7568',
+  },
+  audioOptionSubNight: {
+    color: '#A8927F',
   },
 });
 

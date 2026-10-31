@@ -30,6 +30,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from '../../src/services/api';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { useKathaPlayerStore } from '../../src/store/kathaPlayerStore';
+import { KathaVisualizerView } from '../../src/components/katha/KathaVisualizerView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -139,6 +141,22 @@ export default function KathaPage() {
     banner_message: 'Shravan Katha Daily Uploaded Episodes',
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
+
+  const storeActiveEpisode = useKathaPlayerStore((state) => state.activeEpisode);
+  const isListenMode = useKathaPlayerStore((state) => state.isListenMode);
+  const setListenMode = useKathaPlayerStore((state) => state.setListenMode);
+  const playStoreEpisode = useKathaPlayerStore((state) => state.playEpisode);
+  const storeIsPlaying = useKathaPlayerStore((state) => state.isPlaying);
+  const storeCurrentTime = useKathaPlayerStore((state) => state.currentTime);
+  const storeDuration = useKathaPlayerStore((state) => state.duration);
+
+  // Sync with store if user navigated back from global floating player
+  useEffect(() => {
+    if (storeActiveEpisode && !userSelectedEpisode) {
+      setUserSelectedEpisode(storeActiveEpisode);
+      setActiveEpisode(storeActiveEpisode);
+    }
+  }, [storeActiveEpisode]);
 
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -358,6 +376,8 @@ export default function KathaPage() {
   }, [player, userSelectedEpisode?.id, activeEpisode?.id, persistDurationsDebounced]);
 
   // Zero-Heat Thermal & Background Cleanup
+  // In video mode, pauses video when leaving screen to conserve resources;
+  // In listen mode, allows uninterrupted sacred audio & floating visualizer across all pages!
   useEffect(() => {
     const handlePause = () => {
       if (isPlayerValid(player)) {
@@ -369,19 +389,27 @@ export default function KathaPage() {
     };
 
     if (!isFocused) {
-      handlePause();
+      if (!isListenMode) {
+        const ep = userSelectedEpisode || activeEpisode;
+        if (isPlaying && ep) {
+          playStoreEpisode(ep, true, currentTime);
+        }
+        handlePause();
+      }
     }
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
-        handlePause();
+        if (!isListenMode) {
+          handlePause();
+        }
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [isFocused, player]);
+  }, [isFocused, isListenMode, player, isPlaying, userSelectedEpisode, activeEpisode, currentTime, playStoreEpisode]);
 
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
@@ -554,10 +582,11 @@ export default function KathaPage() {
     setUserSelectedEpisode(ep);
     setActiveEpisode(ep);
     setIsPlaying(true);
+    playStoreEpisode(ep, isListenMode);
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollTo({ y: 0, animated: true });
     }
-  }, []);
+  }, [isListenMode, playStoreEpisode]);
 
   const handleShareKatha = useCallback(async () => {
     try {
@@ -845,8 +874,48 @@ export default function KathaPage() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
         }
       >
-        {(status.is_live || isUserSelectedOldEpisode) && (
+        {(status.is_live || isUserSelectedOldEpisode || activeEpisode || storeActiveEpisode) && (
           <>
+            {/* Mode Switcher: Listen Visuals vs Watch Video */}
+            <View style={styles.modeSegmentContainer}>
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, isListenMode && styles.modeSegmentBtnActive]}
+                onPress={() => {
+                  setListenMode(true);
+                  const ep = userSelectedEpisode || activeEpisode || storeActiveEpisode;
+                  if (ep) {
+                    playStoreEpisode(ep, true, currentTime);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="musical-notes" size={16} color={isListenMode ? '#FFF' : '#773300'} />
+                <Text style={[styles.modeSegmentText, isListenMode && styles.modeSegmentTextActive]}>
+                  🎧 श्रवण दृश्य (Listen Visuals)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeSegmentBtn, !isListenMode && styles.modeSegmentBtnActive]}
+                onPress={() => {
+                  setListenMode(false);
+                  if (isPlayerValid(player)) {
+                    try {
+                      player.currentTime = storeCurrentTime || currentTime;
+                      player.play();
+                      setIsPlaying(true);
+                    } catch (_e) {}
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="videocam" size={16} color={!isListenMode ? '#FFF' : '#773300'} />
+                <Text style={[styles.modeSegmentText, !isListenMode && styles.modeSegmentTextActive]}>
+                  📺 वीडियो (Watch Video)
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Animated.View style={[
               styles.playerContainer,
               {
@@ -868,23 +937,39 @@ export default function KathaPage() {
                 ],
               }
             ]}>
-              <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
-                {renderPlayerContent(false)}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    StyleSheet.absoluteFillObject,
-                    {
-                      backgroundColor: '#000000',
-                      opacity: scrollY.interpolate({
-                        inputRange: [0, 150, 400],
-                        outputRange: [0, 0.15, 0.35],
-                        extrapolate: 'clamp',
-                      }),
-                    },
-                  ]}
+              {isListenMode ? (
+                <KathaVisualizerView
+                  episode={userSelectedEpisode || activeEpisode || storeActiveEpisode}
+                  onSwitchToVideo={() => {
+                    setListenMode(false);
+                    if (isPlayerValid(player)) {
+                      try {
+                        player.currentTime = storeCurrentTime || currentTime;
+                        player.play();
+                        setIsPlaying(true);
+                      } catch (_e) {}
+                    }
+                  }}
                 />
-              </View>
+              ) : (
+                <View style={{ borderRadius: 18, overflow: 'hidden', backgroundColor: '#000000', position: 'relative' }}>
+                  {renderPlayerContent(false)}
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      StyleSheet.absoluteFillObject,
+                      {
+                        backgroundColor: '#000000',
+                        opacity: scrollY.interpolate({
+                          inputRange: [0, 150, 400],
+                          outputRange: [0, 0.15, 0.35],
+                          extrapolate: 'clamp',
+                        }),
+                      },
+                    ]}
+                  />
+                </View>
+              )}
             </Animated.View>
 
             <View style={styles.activeDetails}>
@@ -1111,6 +1196,47 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255, 107, 0, 0.25)',
     textShadowOffset: { width: 1, height: 1.5 },
     textShadowRadius: 2.5,
+  },
+  modeSegmentContainer: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 238, 229, 0.95)',
+    borderRadius: 24,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+    elevation: 3,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  modeSegmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    gap: 6,
+  },
+  modeSegmentBtnActive: {
+    backgroundColor: '#FF6B00',
+    elevation: 2,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modeSegmentText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#773300',
+  },
+  modeSegmentTextActive: {
+    color: '#FFFFFF',
   },
   playerContainer: {
     paddingHorizontal: 16,

@@ -30,6 +30,8 @@ import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
 import { clearLegacyLibraryCache } from '../src/services/library-cdn';
+import { GlobalKathaAudioEngine } from '../src/components/katha/GlobalKathaAudioEngine';
+import { GlobalKathaFloatingPlayer } from '../src/components/katha/GlobalKathaFloatingPlayer';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 import { setAudioModeAsync } from 'expo-audio';
@@ -1493,6 +1495,8 @@ export default function RootLayout() {
             {/* Other standard stack navigations will inherit default ios sliding */}
           </Stack>
           <GlobalFAB />
+          <GlobalKathaFloatingPlayer />
+          <GlobalKathaAudioEngine />
           <UploadProgressBanner />
           <ToastContainer />
         </MuteProvider>
