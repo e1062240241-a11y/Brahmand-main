@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { PassportJourney } from '../../src/types/passport';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
@@ -102,6 +103,8 @@ function PassportTimelineScreen({
   observedCertificates?: any[];
 }) {
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
+  const isHindi = language === 'hi';
   const zustandBadges = usePassportStore((state) => state.badges) || [];
   const allBadges = [...observedBadges, ...zustandBadges];
 
@@ -382,8 +385,14 @@ function PassportTimelineScreen({
 
       <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Subtitle */}
+        {/* 🧡 Engagement: Reframed transactional subtitle into devotional memory & Sanskara framing
+            Lever: Reframing + Devotion + Sanskara + Mother Tongue
+            Why: "पावन यात्रा संस्मरण, साधना संकल्प और स्वाध्याय उपलब्धियाँ" resonates with sacred devotion and cultural reverence.
+            UI: Text-only change, zero structural or visual changes. */}
         <Text style={styles.pageSubtitle}>
-          Your Yatra memories, jaap milestones and reading badges
+          {isHindi
+            ? 'आपकी पावन यात्रा संस्मरण, साधना संकल्प और स्वाध्याय उपलब्धियाँ ✨'
+            : 'Your sacred Yatra memories, jaap milestones, and spiritual achievements ✨'}
         </Text>
 
         {/* Stats Card */}
