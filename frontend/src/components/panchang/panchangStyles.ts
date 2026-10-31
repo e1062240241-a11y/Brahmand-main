@@ -884,4 +884,21 @@ export const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 18,
   },
+  planetIcon: {
+    width: 18.333,
+    height: 18.333,
+    tintColor: '#994700',
+  },
+  celestialIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#FFF',
+  },
+  celestialLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  celestialArrow: {
+    marginLeft: 4,
+  },
 });

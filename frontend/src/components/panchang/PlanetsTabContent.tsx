@@ -21,74 +21,86 @@ export interface PlanetsTabContentProps {
   onNavigateTransitCalendar?: () => void;
 }
 
-export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
+/**
+ * 🎨 Varnish Optimization:
+ * 1. Extracted helper functions `getPlanetFromApi` and `getShadowPlanetFromApi` outside component scope
+ *    to eliminate function recreations per render and fix `react-hooks/exhaustive-deps` warnings in `useMemo`.
+ * 2. Wrapped `PlanetsTabContent` in `React.memo` with explicit `displayName` to prevent redundant re-renders
+ *    when parent Panchang container re-renders due to date or timer ticks.
+ * 3. Extracted inline style objects for planet icons, celestial icon, and link row into `panchangStyles.ts`.
+ * 4. Added `fadeDuration={0}` to all `<Image>` tags to prevent image flash during state re-renders on Android.
+ * 5. Added accessibilityRole and label for screen reader compliance on transit calendar action.
+ */
+const getPlanetFromApi = (
+  planetsSource: PlanetData[] | undefined,
+  name: string,
+  fallback: PlanetItemDisplay
+): PlanetItemDisplay => {
+  if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
+  const apiPlanet = planetsSource.find(
+    (p: PlanetData) => (p.name || '').toLowerCase() === name.toLowerCase()
+  );
+  if (!apiPlanet) return fallback;
+
+  const motion: 'DIRECT' | 'RETRO' =
+    apiPlanet.isRetro === 'true' || apiPlanet.isRetro === true
+      ? 'RETRO'
+      : 'DIRECT';
+  const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
+
+  return {
+    name,
+    sanskrit: PLANET_DETAILS[name]?.sanskrit || name.toUpperCase(),
+    sign: apiPlanet.sign || fallback.sign,
+    degree: degreeVal != null ? formatPlanetDegree(degreeVal) : fallback.degree,
+    motion,
+    desc: PLANET_DETAILS[name]?.desc || fallback.desc,
+    icon: PLANET_DETAILS[name]?.icon || fallback.icon,
+  };
+};
+
+const getShadowPlanetFromApi = (
+  planetsSource: PlanetData[] | undefined,
+  name: string,
+  fallback: ShadowPlanetDisplay
+): ShadowPlanetDisplay => {
+  if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
+  const apiPlanet = planetsSource.find(
+    (p: PlanetData) => (p.name || '').toLowerCase() === name.toLowerCase()
+  );
+  if (!apiPlanet) return fallback;
+
+  const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
+  const formattedDegree = degreeVal != null ? formatPlanetDegree(degreeVal) : '';
+  const sign = apiPlanet.sign || '';
+
+  return {
+    name,
+    signDegree:
+      sign && formattedDegree ? `${sign} • ${formattedDegree}` : fallback.signDegree,
+    meaning: name === 'Rahu' ? 'TRANSFORMATION' : 'WISDOM',
+    icon: PLANET_DETAILS[name]?.icon || fallback.icon,
+  };
+};
+
+export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = React.memo(({
   planetsSource,
   onNavigateTransitCalendar,
 }) => {
-  const getPlanetFromApi = (
-    name: string,
-    fallback: PlanetItemDisplay
-  ): PlanetItemDisplay => {
-    if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
-    const apiPlanet = planetsSource.find(
-      (p: PlanetData) => (p.name || '').toLowerCase() === name.toLowerCase()
-    );
-    if (!apiPlanet) return fallback;
-
-    const motion: 'DIRECT' | 'RETRO' =
-      apiPlanet.isRetro === 'true' || apiPlanet.isRetro === true
-        ? 'RETRO'
-        : 'DIRECT';
-    const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
-
-    return {
-      name,
-      sanskrit: PLANET_DETAILS[name]?.sanskrit || name.toUpperCase(),
-      sign: apiPlanet.sign || fallback.sign,
-      degree: degreeVal != null ? formatPlanetDegree(degreeVal) : fallback.degree,
-      motion,
-      desc: PLANET_DETAILS[name]?.desc || fallback.desc,
-      icon: PLANET_DETAILS[name]?.icon || fallback.icon,
-    };
-  };
-
-  const getShadowPlanetFromApi = (
-    name: string,
-    fallback: ShadowPlanetDisplay
-  ): ShadowPlanetDisplay => {
-    if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
-    const apiPlanet = planetsSource.find(
-      (p: PlanetData) => (p.name || '').toLowerCase() === name.toLowerCase()
-    );
-    if (!apiPlanet) return fallback;
-
-    const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
-    const formattedDegree = degreeVal != null ? formatPlanetDegree(degreeVal) : '';
-    const sign = apiPlanet.sign || '';
-
-    return {
-      name,
-      signDegree:
-        sign && formattedDegree ? `${sign} • ${formattedDegree}` : fallback.signDegree,
-      meaning: name === 'Rahu' ? 'TRANSFORMATION' : 'WISDOM',
-      icon: PLANET_DETAILS[name]?.icon || fallback.icon,
-    };
-  };
-
   const mainPlanets = useMemo(() => [
-    getPlanetFromApi('Sun', DEFAULT_MAIN_PLANETS_FALLBACK[0]),
-    getPlanetFromApi('Moon', DEFAULT_MAIN_PLANETS_FALLBACK[1]),
-    getPlanetFromApi('Jupiter', DEFAULT_MAIN_PLANETS_FALLBACK[2]),
-    getPlanetFromApi('Mars', DEFAULT_MAIN_PLANETS_FALLBACK[3]),
+    getPlanetFromApi(planetsSource, 'Sun', DEFAULT_MAIN_PLANETS_FALLBACK[0]),
+    getPlanetFromApi(planetsSource, 'Moon', DEFAULT_MAIN_PLANETS_FALLBACK[1]),
+    getPlanetFromApi(planetsSource, 'Jupiter', DEFAULT_MAIN_PLANETS_FALLBACK[2]),
+    getPlanetFromApi(planetsSource, 'Mars', DEFAULT_MAIN_PLANETS_FALLBACK[3]),
   ], [planetsSource]);
 
   const shadowPlanets = useMemo(() => [
-    getShadowPlanetFromApi('Rahu', DEFAULT_SHADOW_PLANETS_FALLBACK[0]),
-    getShadowPlanetFromApi('Ketu', DEFAULT_SHADOW_PLANETS_FALLBACK[1]),
+    getShadowPlanetFromApi(planetsSource, 'Rahu', DEFAULT_SHADOW_PLANETS_FALLBACK[0]),
+    getShadowPlanetFromApi(planetsSource, 'Ketu', DEFAULT_SHADOW_PLANETS_FALLBACK[1]),
   ], [planetsSource]);
 
   const saturnData = useMemo(() => {
-    return getPlanetFromApi('Saturn', DEFAULT_SATURN_FALLBACK);
+    return getPlanetFromApi(planetsSource, 'Saturn', DEFAULT_SATURN_FALLBACK);
   }, [planetsSource]);
 
   return (
@@ -100,8 +112,9 @@ export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
             <View style={styles.planetHeaderLeft}>
               <Image
                 source={p.icon}
-                style={{ width: 18.333, height: 18.333, tintColor: '#994700' }}
+                style={styles.planetIcon}
                 resizeMode="contain"
+                fadeDuration={0}
               />
               <View style={styles.planetNameCol}>
                 <Text style={styles.planetNameNew}>{p.name}</Text>
@@ -135,8 +148,9 @@ export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
             <View style={styles.nodeHeader}>
               <Image
                 source={n.icon}
-                style={{ width: 18.333, height: 18.333, tintColor: '#994700' }}
+                style={styles.planetIcon}
                 resizeMode="contain"
+                fadeDuration={0}
               />
               <Text style={styles.nodeName}>{n.name}</Text>
             </View>
@@ -153,8 +167,9 @@ export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
             {saturnData.icon && (
               <Image
                 source={saturnData.icon}
-                style={{ width: 18.333, height: 18.333, tintColor: '#994700' }}
+                style={styles.planetIcon}
                 resizeMode="contain"
+                fadeDuration={0}
               />
             )}
             <View style={styles.planetNameCol}>
@@ -186,8 +201,9 @@ export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
         <View style={styles.celestialIconBox}>
           <Image
             source={{ uri: CELESTIAL_EVENT_ICON }}
-            style={{ width: 24, height: 24, tintColor: '#FFF' }}
+            style={styles.celestialIcon}
             resizeMode="contain"
+            fadeDuration={0}
           />
         </View>
         <View style={styles.celestialTextCol}>
@@ -200,19 +216,23 @@ export const PlanetsTabContent: React.FC<PlanetsTabContentProps> = ({
             Venus enters Taurus tomorrow at 06:45 AM. Expect a surge in creative energy.
           </Text>
           <TouchableOpacity
-            style={{ flexDirection: 'row', alignItems: 'center' }}
+            style={styles.celestialLinkRow}
             onPress={onNavigateTransitCalendar}
+            accessibilityRole="button"
+            accessibilityLabel="View Transit Calendar"
           >
             <Text style={styles.celestialLink}>View Transit Calendar</Text>
             <Ionicons
               name="arrow-forward"
               size={9.333}
               color="#994700"
-              style={{ marginLeft: 4 }}
+              style={styles.celestialArrow}
             />
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
-};
+});
+
+PlanetsTabContent.displayName = 'PlanetsTabContent';
