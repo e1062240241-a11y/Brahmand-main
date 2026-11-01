@@ -16,3 +16,7 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+
+## 2024-05-14 - Optimize Firestore Fetches for Partial Data Updates
+**Learning:** In the Python backend, `get_document_fields` is significantly faster than `get_document` when only a subset of fields is needed, especially for frequent update endpoints like `record_watch_event`. Fetching the entire post document adds unnecessary network overhead, particularly when fields like `followers` or large arrays exist on the document but aren't needed for calculating rolling averages.
+**Action:** Always prefer `get_document_fields` for read-before-write operations when only a small subset of scalar fields is required to compute the updated values. This avoids fetching large, unneeded payloads.
