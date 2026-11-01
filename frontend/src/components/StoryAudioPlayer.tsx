@@ -243,6 +243,8 @@ export const StoryAudioPlayer: React.FC<StoryAudioPlayerProps> = ({
               ]}
               onPress={toggleTanpura}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={isTanpuraEnabled ? 'Turn off Tanpura' : 'Turn on Tanpura'}
             >
               <Text style={{ fontSize: 12 }}>🪕</Text>
               <Text
@@ -261,6 +263,8 @@ export const StoryAudioPlayer: React.FC<StoryAudioPlayerProps> = ({
               onPress={handleStopAndClose}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close audio player"
             >
               <Ionicons name="close" size={17} color="#FDE68A" />
             </TouchableOpacity>
@@ -275,6 +279,8 @@ export const StoryAudioPlayer: React.FC<StoryAudioPlayerProps> = ({
               <TouchableOpacity
                 style={styles.switchModeBtn}
                 onPress={() => setViewMode('classical')}
+                accessibilityRole="button"
+                accessibilityLabel="View classical text"
               >
                 <Text style={styles.switchModeBtnText}>शास्त्रीय पाठ देखें</Text>
               </TouchableOpacity>
@@ -289,6 +295,8 @@ export const StoryAudioPlayer: React.FC<StoryAudioPlayerProps> = ({
             style={styles.playBtn}
             onPress={handleTogglePlay}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={isPlayingLocal ? 'Pause audio' : 'Play audio'}
           >
             <Ionicons
               name={isPlayingLocal ? 'pause' : 'play'}
