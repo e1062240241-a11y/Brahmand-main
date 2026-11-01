@@ -16,3 +16,6 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+## 2025-02-27 - In-memory update replaces db.get_document after array_union_update
+**Learning:** In the FastAPI backend, when an endpoint updates an array using `db.array_union_update` (like SOS responders) and then immediately re-fetches the document using `db.get_document` just to get the updated length, it introduces unnecessary N+1 latency.
+**Action:** Use an in-memory copy of the previously fetched document (e.g. `updated_alert = alert.copy() if alert else {}`), append the new element to its array, and use the length of this in-memory list instead of re-fetching.
