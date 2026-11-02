@@ -12144,14 +12144,8 @@ async def get_unread_count(token_data: dict = Depends(verify_token)):
 
 @api_router.post("/notifications/mark-all-read")
 async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    user_id = token_data["user_id"]
-    # Get all unread notifications
-    notifications = await db.query_documents('notifications', filters=[('user_id', '==', user_id), ('is_read', '==', False)])
-    if notifications:
-        updates = [(notif['id'], {'is_read': True}) for notif in notifications]
-        await db.batch_update_documents('notifications', updates)
-    return {"message": "All notifications marked as read"}
+    from services.firebase_notification_service import FirebaseNotificationService
+    return await FirebaseNotificationService.mark_all_as_read(token_data["user_id"])
 
 @api_router.post("/notifications/{notification_id}/mark-read")
 async def mark_notification_read(notification_id: str, token_data: dict = Depends(verify_token)):
