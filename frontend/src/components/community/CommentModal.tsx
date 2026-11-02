@@ -104,7 +104,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                 ? `टिप्पणियाँ (${displayCommentCount})`
                 : `Comments (${displayCommentCount})`}
             </Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'बंद करें' : 'Close'} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
           </View>
@@ -197,10 +197,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                           )}
                         </View>
                         {comment.userId === user?.id ? (
-                          <TouchableOpacity
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => onDeleteComment(comment.id)}
-                          >
+                          <TouchableOpacity hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => onDeleteComment(comment.id)} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'टिप्पणी मिटाएं' : 'Delete comment'}>
                             <Ionicons
                               name="trash-outline"
                               size={16}
@@ -208,10 +205,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                             />
                           </TouchableOpacity>
                         ) : (
-                          <TouchableOpacity
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => onReportComment(comment)}
-                          >
+                          <TouchableOpacity hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} onPress={() => onReportComment(comment)} accessibilityRole="button" accessibilityLabel={t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report comment'}>
                             <Ionicons
                               name="ellipsis-horizontal"
                               size={16}
