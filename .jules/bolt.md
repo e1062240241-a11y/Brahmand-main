@@ -16,3 +16,7 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+
+## 2026-11-02 - [Batch Notification Reads]
+**Learning:** Sequential Firebase DB document reads and writes in `mark_all_notifications_read` for all unread notifications can be replaced with `db.batch_update_documents('notifications', updates)` or handled centrally in the notification service via `FirebaseNotificationService.mark_all_as_read`.
+**Action:** Used `FirebaseNotificationService.mark_all_as_read` to improve endpoint response time by using chunked batch updates.
