@@ -93,8 +93,8 @@ const GoldCoin = React.memo(function GoldCoin({ size = 12 }: GoldCoinProps) {
 
 // -------------------------------------------------------------
 // Component: Open-Mouth Sacred Kalash (खुले मुख वाला स्वर्ण कलश)
-// Designed with a wide open 3D mouth revealing inner golden cavity,
-// with mango leaves framing the sides without obstructing the opening.
+// Designed with an unmistakably wide, deep 3D open mouth revealing
+// inner radiant gold cavity, with mango leaves framing the sides.
 // -------------------------------------------------------------
 interface OpenMouthKalashSvgProps {
   width?: number;
@@ -102,43 +102,44 @@ interface OpenMouthKalashSvgProps {
 }
 
 const OpenMouthKalashSvg = React.memo(function OpenMouthKalashSvg({
-  width = 34,
-  height = 38,
+  width = 36,
+  height = 40,
 }: OpenMouthKalashSvgProps) {
   return (
-    <Svg width={width} height={height} viewBox="0 0 46 50">
+    <Svg width={width} height={height} viewBox="0 0 48 52">
       <Defs>
         {/* Pot Belly Golden Radial Gradient */}
-        <SvgRadialGradient id="kalashGoldBelly" cx="35%" cy="40%" r="65%">
-          <Stop offset="0%" stopColor="#FFF9C4" />
+        <SvgRadialGradient id="kalashGoldBelly" cx="35%" cy="38%" r="65%">
+          <Stop offset="0%" stopColor="#FFFDE7" />
           <Stop offset="25%" stopColor="#FFD54F" />
           <Stop offset="65%" stopColor="#FFA000" />
           <Stop offset="90%" stopColor="#E65100" />
           <Stop offset="100%" stopColor="#BF360C" />
         </SvgRadialGradient>
 
-        {/* Outer Rim Lip Gradient */}
-        <SvgLinearGradient id="goldenLipGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        {/* Front Rolled Lip Golden Gradient */}
+        <SvgLinearGradient id="goldenFrontLipGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <Stop offset="0%" stopColor="#FFE082" />
+          <Stop offset="25%" stopColor="#FFFDE7" />
+          <Stop offset="50%" stopColor="#FFD54F" />
+          <Stop offset="80%" stopColor="#FFA000" />
+          <Stop offset="100%" stopColor="#E65100" />
+        </SvgLinearGradient>
+
+        {/* Deep Hollow Cavity Gradient (Dark Depth transitioning to Gold) */}
+        <SvgRadialGradient id="mouthInteriorCavity" cx="50%" cy="25%" r="65%">
+          <Stop offset="0%" stopColor="#220B00" />
+          <Stop offset="45%" stopColor="#542100" />
+          <Stop offset="80%" stopColor="#9C4D00" />
+          <Stop offset="100%" stopColor="#E67E22" />
+        </SvgRadialGradient>
+
+        {/* Glowing Gold Reservoir on Cavity Floor */}
+        <SvgRadialGradient id="insideGoldGlow" cx="50%" cy="40%" r="60%">
+          <Stop offset="0%" stopColor="#FFFFFF" />
           <Stop offset="30%" stopColor="#FFF9C4" />
           <Stop offset="70%" stopColor="#FFD54F" />
           <Stop offset="100%" stopColor="#FF8F00" />
-        </SvgLinearGradient>
-
-        {/* Inner Mouth Hollow Shadow Gradient */}
-        <SvgRadialGradient id="mouthInteriorCavity" cx="50%" cy="30%" r="65%">
-          <Stop offset="0%" stopColor="#3E1E00" />
-          <Stop offset="45%" stopColor="#6D3B00" />
-          <Stop offset="80%" stopColor="#B26500" />
-          <Stop offset="100%" stopColor="#FFB300" />
-        </SvgRadialGradient>
-
-        {/* Glowing Gold Pile inside the Mouth */}
-        <SvgRadialGradient id="insideGoldGlow" cx="45%" cy="40%" r="60%">
-          <Stop offset="0%" stopColor="#FFFDE7" />
-          <Stop offset="40%" stopColor="#FFD54F" />
-          <Stop offset="85%" stopColor="#FFA000" />
-          <Stop offset="100%" stopColor="#E65100" />
         </SvgRadialGradient>
 
         {/* Base Pedestal Gradient */}
@@ -151,7 +152,7 @@ const OpenMouthKalashSvg = React.memo(function OpenMouthKalashSvg({
         {/* Mango Leaves Gradients */}
         <SvgLinearGradient id="leafGradDark" x1="0%" y1="100%" x2="0%" y2="0%">
           <Stop offset="0%" stopColor="#1B5E20" />
-          <Stop offset="50%" stopColor="#2E7D32" />
+          <Stop offset="55%" stopColor="#2E7D32" />
           <Stop offset="100%" stopColor="#4CAF50" />
         </SvgLinearGradient>
         <SvgLinearGradient id="leafGradLight" x1="0%" y1="100%" x2="0%" y2="0%">
@@ -159,65 +160,58 @@ const OpenMouthKalashSvg = React.memo(function OpenMouthKalashSvg({
           <Stop offset="60%" stopColor="#43A047" />
           <Stop offset="100%" stopColor="#81C784" />
         </SvgLinearGradient>
-
-        {/* Overspill Coin Gradient */}
-        <SvgRadialGradient id="peekCoinGrad" cx="35%" cy="30%" r="70%">
-          <Stop offset="0%" stopColor="#FFFDE7" />
-          <Stop offset="55%" stopColor="#FFD54F" />
-          <Stop offset="100%" stopColor="#FF8F00" />
-        </SvgRadialGradient>
       </Defs>
 
       {/* 1. Pedestal Base */}
       <Path
-        d="M 15.5 43 C 15.5 41.5, 30.5 41.5, 30.5 43 L 29.5 46.5 C 29.5 47.5, 16.5 47.5, 16.5 46.5 Z"
+        d="M 15 44 C 15 42.5, 33 42.5, 33 44 L 32 48.5 C 32 49.5, 16 49.5, 16 48.5 Z"
         fill="url(#kalashBaseGrad)"
         stroke="#E65100"
         strokeWidth="0.5"
       />
 
-      {/* 2. Mango Leaves (Amra Pallav) framing the neck without blocking the open mouth */}
-      {/* Upper-left leaf */}
+      {/* 2. Mango Leaves (Amra Pallav) framing outward to the sides - opening remains clear */}
+      {/* Top-left spreading leaf */}
       <Path
-        d="M 15 13 C 10.5 7, 9.5 2, 11 0 C 13.5 3.5, 15 8, 16 13 Z"
+        d="M 17 14 C 11 8, 8 2, 9 0 C 12 3, 15 8, 18 14 Z"
         fill="url(#leafGradLight)"
       />
-      <Line x1="11" y1="1" x2="15.5" y2="13" stroke="#C8E6C9" strokeWidth="0.5" opacity={0.8} />
+      <Line x1="9" y1="0.5" x2="17.5" y2="14" stroke="#C8E6C9" strokeWidth="0.5" opacity={0.8} />
 
-      {/* Upper-right leaf */}
+      {/* Top-right spreading leaf */}
       <Path
-        d="M 31 13 C 35.5 7, 36.5 2, 35 0 C 32.5 3.5, 31 8, 30 13 Z"
+        d="M 31 14 C 37 8, 40 2, 39 0 C 36 3, 33 8, 30 14 Z"
         fill="url(#leafGradLight)"
       />
-      <Line x1="35" y1="1" x2="30.5" y2="13" stroke="#C8E6C9" strokeWidth="0.5" opacity={0.8} />
+      <Line x1="39" y1="0.5" x2="30.5" y2="14" stroke="#C8E6C9" strokeWidth="0.5" opacity={0.8} />
 
-      {/* Mid-left spreading leaf */}
+      {/* Mid-left outward leaf */}
       <Path
-        d="M 14 15 C 8 11.5, 4 11, 1 12 C 4 14.5, 9 16, 14 16.5 Z"
+        d="M 16 16 C 9 13, 3 13, 0 14.5 C 3 17, 8 18.5, 16 18 Z"
         fill="url(#leafGradDark)"
       />
 
-      {/* Mid-right spreading leaf */}
+      {/* Mid-right outward leaf */}
       <Path
-        d="M 32 15 C 38 11.5, 42 11, 45 12 C 42 14.5, 37 16, 32 16.5 Z"
+        d="M 32 16 C 39 13, 45 13, 48 14.5 C 45 17, 40 18.5, 32 18 Z"
         fill="url(#leafGradDark)"
       />
 
       {/* Lower-left leaf */}
       <Path
-        d="M 15 17 C 8 16, 4 17.5, 1 20 C 5 21, 10 20, 15 18.5 Z"
+        d="M 17 19 C 9 18, 4 20, 1 23 C 5 24, 11 23, 17 21 Z"
         fill="url(#leafGradDark)"
       />
 
       {/* Lower-right leaf */}
       <Path
-        d="M 31 17 C 38 16, 42 17.5, 45 20 C 41 21, 36 20, 31 18.5 Z"
+        d="M 31 19 C 39 18, 44 20, 47 23 C 43 24, 37 23, 31 21 Z"
         fill="url(#leafGradDark)"
       />
 
       {/* 3. Kalash Pot Body (Lota/Kumbha belly) */}
       <Path
-        d="M 16 17 C 7.5 23, 6.5 34.5, 11.5 40.5 C 15 43.5, 31 43.5, 34.5 40.5 C 39.5 34.5, 38.5 23, 30 17 Z"
+        d="M 14 16 C 5 22, 4 35, 9.5 41.5 C 13.5 45, 34.5 45, 38.5 41.5 C 44 35, 43 22, 34 16 Z"
         fill="url(#kalashGoldBelly)"
         stroke="#FFA000"
         strokeWidth="0.8"
@@ -225,88 +219,82 @@ const OpenMouthKalashSvg = React.memo(function OpenMouthKalashSvg({
 
       {/* Belly Left Highlight Sheen */}
       <Path
-        d="M 11.5 24 C 8.5 29, 9.5 35, 14.5 39"
-        stroke="rgba(255, 255, 255, 0.45)"
-        strokeWidth="1.3"
+        d="M 10 24 C 7.5 29, 8.5 35, 13.5 39"
+        stroke="rgba(255, 255, 255, 0.48)"
+        strokeWidth="1.4"
         strokeLinecap="round"
         fill="none"
       />
 
       {/* 4. Sacred Swastika (卐) on the Belly */}
       <Path
-        d="M 23 26 L 23 35 M 18.5 30.5 L 27.5 30.5 M 23 26 L 26.5 26 M 23 35 L 19.5 35 M 18.5 30.5 L 18.5 27 M 27.5 30.5 L 27.5 34"
+        d="M 24 26 L 24 35 M 19.5 30.5 L 28.5 30.5 M 24 26 L 27.5 26 M 24 35 L 20.5 35 M 19.5 30.5 L 19.5 27 M 28.5 30.5 L 28.5 34"
         stroke="#C62828"
-        strokeWidth="1.4"
+        strokeWidth="1.3"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
       {/* 4 Auspicious Bindus */}
-      <Circle cx="20.8" cy="28.5" r="0.7" fill="#C62828" />
-      <Circle cx="25.2" cy="28.5" r="0.7" fill="#C62828" />
-      <Circle cx="20.8" cy="32.5" r="0.7" fill="#C62828" />
-      <Circle cx="25.2" cy="32.5" r="0.7" fill="#C62828" />
+      <Circle cx="21.8" cy="28.5" r="0.7" fill="#C62828" />
+      <Circle cx="26.2" cy="28.5" r="0.7" fill="#C62828" />
+      <Circle cx="21.8" cy="32.5" r="0.7" fill="#C62828" />
+      <Circle cx="26.2" cy="32.5" r="0.7" fill="#C62828" />
 
       {/* 5. Sacred Mauli/Kalava Thread (Red & Gold) around the neck */}
-      <Rect x="15.5" y="14.5" width="15" height="3" rx="1.5" fill="#C62828" />
-      <Line x1="18.5" y1="14.5" x2="18.5" y2="17.5" stroke="#FFE082" strokeWidth="0.8" />
-      <Line x1="23" y1="14.5" x2="23" y2="17.5" stroke="#FFE082" strokeWidth="0.8" />
-      <Line x1="27.5" y1="14.5" x2="27.5" y2="17.5" stroke="#FFE082" strokeWidth="0.8" />
+      <Rect x="14" y="14" width="20" height="3" rx="1.5" fill="#C62828" />
+      <Line x1="18" y1="14" x2="18" y2="17" stroke="#FFE082" strokeWidth="0.8" />
+      <Line x1="24" y1="14" x2="24" y2="17" stroke="#FFE082" strokeWidth="0.8" />
+      <Line x1="30" y1="14" x2="30" y2="17" stroke="#FFE082" strokeWidth="0.8" />
 
-      {/* 6. OPEN MOUTH (खुला मुख) - Deep 3D Hollow Opening */}
-      {/* Back Rim Lip */}
+      {/* 6. CLEARLY VISIBLE OPEN MOUTH (स्पष्ट खुला मुख) */}
+      {/* Back Inner Rim Curve */}
       <Path
-        d="M 11 11 C 11 6.5, 35 6.5, 35 11"
-        stroke="#FFB300"
-        strokeWidth="1.2"
+        d="M 9 10.5 C 9 4, 39 4, 39 10.5"
+        stroke="#FFA000"
+        strokeWidth="1.5"
         fill="none"
       />
 
-      {/* Deep Hollow Interior Cavity of the Open Mouth */}
+      {/* Deep 3D Hollow Interior Cavity of the Open Mouth */}
       <Ellipse
-        cx="23"
-        cy="11"
-        rx="11.2"
-        ry="4.2"
+        cx="24"
+        cy="10.5"
+        rx="14.2"
+        ry="6.0"
         fill="url(#mouthInteriorCavity)"
       />
 
-      {/* Glowing Liquid Gold & Heap of Coins inside the open mouth */}
+      {/* Radiant Golden Glow inside the mouth depth where coins are created */}
       <Ellipse
-        cx="23"
+        cx="24"
         cy="11.5"
-        rx="8.5"
-        ry="2.8"
+        rx="10.5"
+        ry="3.8"
         fill="url(#insideGoldGlow)"
       />
-      {/* Inner coin edge embossing */}
-      <Ellipse cx="19.5" cy="11.2" rx="3.5" ry="1.2" fill="#FFE082" stroke="#FF8F00" strokeWidth="0.4" />
-      <Ellipse cx="26.5" cy="11" rx="3.8" ry="1.3" fill="#FFF59D" stroke="#FF8F00" strokeWidth="0.4" />
-      <Ellipse cx="23" cy="12" rx="4.2" ry="1.4" fill="#FFD54F" stroke="#E65100" strokeWidth="0.4" />
+      {/* Subtle interior gold ripple contours */}
+      <Ellipse cx="20.5" cy="11.2" rx="4.5" ry="1.6" fill="none" stroke="#FFE082" strokeWidth="0.5" opacity={0.8} />
+      <Ellipse cx="27.5" cy="11.0" rx="4.2" ry="1.5" fill="none" stroke="#FFE082" strokeWidth="0.5" opacity={0.8} />
 
-      {/* Front Rim Lip (Thick 3D Metallic Golden Lip) */}
+      {/* Front Rim Lip (Thick 3D Metallic Golden Flared Lip) */}
       <Path
-        d="M 11 11 C 11 15.8, 35 15.8, 35 11"
-        stroke="url(#goldenLipGrad)"
-        strokeWidth="2.4"
+        d="M 8.5 10.5 C 8.5 17.5, 39.5 17.5, 39.5 10.5"
+        stroke="url(#goldenFrontLipGrad)"
+        strokeWidth="3.0"
         strokeLinecap="round"
         fill="none"
       />
-      {/* Glistening Highlight on Front Lip */}
+
+      {/* Glistening Highlight on Front Lip Crest */}
       <Path
-        d="M 13.5 12.5 C 16.5 14.8, 29.5 14.8, 32.5 12.5"
+        d="M 12 11.8 C 15 16, 33 16, 36 11.8"
         stroke="#FFFFFF"
-        strokeWidth="0.8"
+        strokeWidth="1.0"
         strokeLinecap="round"
         fill="none"
-        opacity={0.85}
+        opacity={0.9}
       />
-
-      {/* 7. Shimmering Gold Coins Peeking / Overflowing right at the Rim Lip */}
-      <Circle cx="17.5" cy="13" r="3.2" fill="url(#peekCoinGrad)" stroke="#FFE082" strokeWidth="0.5" />
-      <Circle cx="27.5" cy="13.2" r="3.4" fill="url(#peekCoinGrad)" stroke="#FFF9C4" strokeWidth="0.5" />
-      <Circle cx="22.5" cy="14.2" r="3.5" fill="url(#peekCoinGrad)" stroke="#FFE082" strokeWidth="0.5" />
-      <Circle cx="22.5" cy="14.2" r="1.5" fill="#E65100" opacity={0.6} />
     </Svg>
   );
 });
@@ -333,7 +321,7 @@ const SparkleStar = React.memo(function SparkleStar({
 });
 
 // -------------------------------------------------------------
-// Configuration: Continuous Streaming Coins from Open Mouth
+// Configuration: Continuous Streaming Coins Emerging from Inside Mouth
 // -------------------------------------------------------------
 interface StreamCoinConfig {
   id: number;
@@ -346,14 +334,13 @@ interface StreamCoinConfig {
 }
 
 const STREAM_COINS: StreamCoinConfig[] = [
-  { id: 1, startDelay: 0, duration: 1750, driftX: -6, fallDistance: 54, spinDeg: 320, coinSize: 11 },
-  { id: 2, startDelay: 220, duration: 1950, driftX: 6, fallDistance: 58, spinDeg: -340, coinSize: 12 },
-  { id: 3, startDelay: 440, duration: 1650, driftX: -12, fallDistance: 52, spinDeg: 360, coinSize: 10 },
-  { id: 4, startDelay: 680, duration: 2050, driftX: 2, fallDistance: 60, spinDeg: -280, coinSize: 13 },
-  { id: 5, startDelay: 920, duration: 1800, driftX: 9, fallDistance: 55, spinDeg: 380, coinSize: 11 },
-  { id: 6, startDelay: 1160, duration: 1900, driftX: -4, fallDistance: 62, spinDeg: -360, coinSize: 12 },
-  { id: 7, startDelay: 1400, duration: 1700, driftX: 12, fallDistance: 51, spinDeg: 300, coinSize: 10 },
-  { id: 8, startDelay: 1640, duration: 2000, driftX: -8, fallDistance: 57, spinDeg: -320, coinSize: 12 },
+  { id: 1, startDelay: 0, duration: 1800, driftX: -5, fallDistance: 56, spinDeg: 320, coinSize: 11 },
+  { id: 2, startDelay: 260, duration: 2000, driftX: 6, fallDistance: 58, spinDeg: -340, coinSize: 12 },
+  { id: 3, startDelay: 520, duration: 1700, driftX: -10, fallDistance: 54, spinDeg: 360, coinSize: 10 },
+  { id: 4, startDelay: 780, duration: 2100, driftX: 2, fallDistance: 60, spinDeg: -280, coinSize: 13 },
+  { id: 5, startDelay: 1040, duration: 1850, driftX: 9, fallDistance: 55, spinDeg: 380, coinSize: 11 },
+  { id: 6, startDelay: 1300, duration: 1950, driftX: -4, fallDistance: 62, spinDeg: -360, coinSize: 12 },
+  { id: 7, startDelay: 1560, duration: 1750, driftX: 11, fallDistance: 52, spinDeg: 300, coinSize: 10 },
 ];
 
 interface BurstCoinConfig {
@@ -365,15 +352,16 @@ interface BurstCoinConfig {
 }
 
 const BURST_COINS: BurstCoinConfig[] = [
-  { id: 101, driftX: -14, fallDistance: 58, spinDeg: 460, coinSize: 13 },
-  { id: 102, driftX: -3, fallDistance: 65, spinDeg: -520, coinSize: 14 },
-  { id: 103, driftX: 8, fallDistance: 62, spinDeg: 420, coinSize: 12 },
-  { id: 104, driftX: 18, fallDistance: 56, spinDeg: -380, coinSize: 13 },
+  { id: 101, driftX: -12, fallDistance: 56, spinDeg: 460, coinSize: 13 },
+  { id: 102, driftX: -3, fallDistance: 64, spinDeg: -520, coinSize: 14 },
+  { id: 103, driftX: 7, fallDistance: 60, spinDeg: 420, coinSize: 12 },
+  { id: 104, driftX: 15, fallDistance: 54, spinDeg: -380, coinSize: 13 },
 ];
 
 // -------------------------------------------------------------
 // Component: Self-Contained Continuous Falling Coin
-// Manages its own Animated.Value safely (immune to Fast Refresh issues)
+// Manages its own animation: emerges from deep inside the open mouth cavity,
+// rises slightly over the front rim lip, then cascades down in front.
 // -------------------------------------------------------------
 const FallingStreamCoin = React.memo(function FallingStreamCoin({
   cfg,
@@ -405,41 +393,51 @@ const FallingStreamCoin = React.memo(function FallingStreamCoin({
     return () => loop.stop();
   }, [anim, cfg]);
 
+  // Y trajectory: starts inside cavity (-3), rises slightly over lip (3), then falls down (fallDistance)
   const translateY = anim.interpolate({
-    inputRange: [0, 0.12, 1],
-    outputRange: [-2, 5, cfg.fallDistance],
+    inputRange: [0, 0.14, 0.45, 1],
+    outputRange: [-3, 3, 26, cfg.fallDistance],
   });
 
+  // Natural gentle horizontal drift
   const translateX = anim.interpolate({
-    inputRange: [0, 0.2, 1],
-    outputRange: [0, cfg.driftX * 0.3, cfg.driftX],
+    inputRange: [0, 0.14, 0.5, 1],
+    outputRange: [0, cfg.driftX * 0.2, cfg.driftX * 0.6, cfg.driftX],
   });
 
+  // 3D tumble flip
+  const scaleX = anim.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: [1, 0.2, 1, 0.2, 1],
+  });
+
+  // Rotation around Z-axis
   const rotate = anim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', `${cfg.spinDeg}deg`],
   });
 
-  const scaleX = anim.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [1, 0.22, 1, 0.22, 1],
-  });
-
+  // Emerges small from cavity floor, expands to full size over rim, then slightly scales down with depth
   const scale = anim.interpolate({
-    inputRange: [0, 0.12, 0.7, 1],
-    outputRange: [0.28, 1, 0.95, 0.8],
+    inputRange: [0, 0.14, 0.7, 1],
+    outputRange: [0.35, 1, 0.95, 0.75],
   });
 
+  // Fades in right inside cavity, fully visible as it pours, fades out at the bottom
   const opacity = anim.interpolate({
-    inputRange: [0, 0.08, 0.8, 1],
-    outputRange: [0, 1, 0.9, 0],
+    inputRange: [0, 0.08, 0.82, 1],
+    outputRange: [0, 1, 0.95, 0],
   });
+
+  const halfSize = Math.round(cfg.coinSize / 2);
 
   return (
     <Animated.View
       style={[
         styles.fallingCoin,
         {
+          left: -halfSize,
+          top: -halfSize,
           opacity,
           transform: [
             { translateX },
@@ -482,8 +480,8 @@ const BurstStreamCoin = React.memo(function BurstStreamCoin({
   }, [bAnim, delay]);
 
   const translateY = bAnim.interpolate({
-    inputRange: [0, 0.12, 1],
-    outputRange: [-2, 6, cfg.fallDistance],
+    inputRange: [0, 0.14, 0.5, 1],
+    outputRange: [-3, 4, 28, cfg.fallDistance],
   });
 
   const translateX = bAnim.interpolate({
@@ -501,22 +499,32 @@ const BurstStreamCoin = React.memo(function BurstStreamCoin({
     outputRange: [1, 0.2, 1, 0.2, 1],
   });
 
+  const scale = bAnim.interpolate({
+    inputRange: [0, 0.14, 0.7, 1],
+    outputRange: [0.4, 1.05, 0.95, 0.8],
+  });
+
   const opacity = bAnim.interpolate({
-    inputRange: [0, 0.1, 0.8, 1],
+    inputRange: [0, 0.08, 0.85, 1],
     outputRange: [0, 1, 0.95, 0],
   });
+
+  const halfSize = Math.round(cfg.coinSize / 2);
 
   return (
     <Animated.View
       style={[
         styles.fallingCoin,
         {
+          left: -halfSize,
+          top: -halfSize,
           opacity,
           transform: [
             { translateX },
             { translateY },
             { rotate },
             { scaleX },
+            { scale },
           ],
         },
       ]}
@@ -536,16 +544,16 @@ interface KalashCoinAnimationProps {
 
 export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.memo(
   function KalashCoinAnimation({
-    size = Platform.OS === 'android' ? 32 : 36,
+    size = Platform.OS === 'android' ? 34 : 38,
     onPress,
   }: KalashCoinAnimationProps) {
-    // 1. Kalash Idle Hover & Gentle Tilting Animation Values
+    // 1. Kalash Divine Hover & Gentle Natural Sway
     const kalashHoverY = useRef(new Animated.Value(0)).current;
     const kalashTilt = useRef(new Animated.Value(0)).current;
     const kalashScale = useRef(new Animated.Value(1)).current;
     const auraPulse = useRef(new Animated.Value(0.4)).current;
 
-    // 2. Sparkle Twinkle Animations
+    // 2. Sparkle Twinkle Animations at the mouth rim
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
 
@@ -558,7 +566,7 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
       const hoverLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(kalashHoverY, {
-            toValue: -2,
+            toValue: -1.5,
             duration: 1500,
             useNativeDriver: true,
           }),
@@ -574,12 +582,12 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
         Animated.sequence([
           Animated.timing(kalashTilt, {
             toValue: 1,
-            duration: 2000,
+            duration: 2200,
             useNativeDriver: true,
           }),
           Animated.timing(kalashTilt, {
             toValue: 0,
-            duration: 2000,
+            duration: 2200,
             useNativeDriver: true,
           }),
         ])
@@ -659,18 +667,18 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } catch (_e) {}
 
-      // Joyful Kalash bounce & extra pour tilt
+      // Joyful Kalash bounce & slight pour nod
       Animated.sequence([
         Animated.parallel([
           Animated.spring(kalashScale, {
-            toValue: 1.18,
+            toValue: 1.15,
             friction: 4,
             tension: 180,
             useNativeDriver: true,
           }),
           Animated.timing(kalashTilt, {
             toValue: 1.8,
-            duration: 160,
+            duration: 150,
             useNativeDriver: true,
           }),
         ]),
@@ -683,7 +691,7 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
           }),
           Animated.timing(kalashTilt, {
             toValue: 0,
-            duration: 350,
+            duration: 320,
             useNativeDriver: true,
           }),
         ]),
@@ -699,19 +707,19 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
       if (onPress) onPress();
     }, [kalashScale, kalashTilt, onPress]);
 
-    // Interpolate Kalash Rotation: rests at -12deg pouring angle, tilts to -20deg / -28deg on pour/tap
+    // Kalash rests upright with subtle natural sway (0deg to -3deg), slight nod on tap (-8deg)
     const kalashRotate = kalashTilt.interpolate({
       inputRange: [0, 1, 1.8],
-      outputRange: ['-12deg', '-20deg', '-28deg'],
+      outputRange: ['0deg', '-3deg', '-8deg'],
     });
 
     const kalashWidth = size;
-    const kalashHeight = Math.round(size * 1.12);
+    const kalashHeight = Math.round(size * (52 / 48));
 
-    // Exact mouth emitter coordinates relative to the Kalash:
-    // In viewBox="0 0 46 50", mouth is centered at x=23 (50%) and y=11 (22% from top).
+    // Center of open mouth cavity in viewBox="0 0 48 52":
+    // Mouth center is at x = 24 (50%) and y = 10.5 (20.2% from top)
     const mouthEmitterLeft = Math.round(kalashWidth * 0.5);
-    const mouthEmitterTop = Math.round(kalashHeight * 0.22);
+    const mouthEmitterTop = Math.round(kalashHeight * 0.20);
 
     return (
       <View style={styles.outerContainer} pointerEvents="box-none">
@@ -732,7 +740,7 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
 
         {/* Kalash Touch Target & Animated Vessel */}
         <TouchableOpacity
-          activeOpacity={0.85}
+          activeOpacity={0.88}
           onPress={handlePress}
           style={styles.touchable}
           hitSlop={{ top: 8, bottom: 8, left: 6, right: 8 }}
@@ -759,8 +767,8 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
             {/*
               Coins Emitter Container:
               Critically positioned INSIDE the Kalash wrapper, precisely at the
-              open mouth coordinates (mouthEmitterLeft, mouthEmitterTop).
-              This guarantees coins ALWAYS emerge from inside the open mouth!
+              deep open mouth cavity coordinates (mouthEmitterLeft, mouthEmitterTop).
+              Coins emerge directly from inside the open mouth!
             */}
             <View
               style={[
@@ -829,8 +837,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
-    width: 36,
-    height: 40,
+    width: 38,
+    height: 42,
   },
   touchable: {
     alignItems: 'center',
@@ -859,20 +867,17 @@ const styles = StyleSheet.create({
   },
   fallingCoin: {
     position: 'absolute',
-    // Center the coin on the emitter origin
-    left: -7,
-    top: -7,
     alignItems: 'center',
     justifyContent: 'center',
   },
   mouthSparkle1: {
     position: 'absolute',
-    top: -8,
-    left: -12,
+    top: -6,
+    left: -14,
   },
   mouthSparkle2: {
     position: 'absolute',
-    top: 2,
+    top: -2,
     right: -14,
   },
 });

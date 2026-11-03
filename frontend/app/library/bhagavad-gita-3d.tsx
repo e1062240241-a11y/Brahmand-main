@@ -39,6 +39,8 @@ import { useLanguageStore } from '../../src/utils/i18n';
 import { gitaSpeechService, SpeechLanguage } from '../../src/services/gita-speech-service';
 import { useGitaPlayerStore } from '../../src/store/gitaPlayerStore';
 import { GitaVisualizerView } from '../../src/components/library/GitaVisualizerView';
+import { KathaPravahPlayer } from '../../src/components/library/KathaPravahPlayer';
+import { CosmicAnimatedBackground } from '../../src/components/library/CosmicAnimatedBackground';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -196,6 +198,10 @@ export default function BhagavadGita3DPage() {
   const [activeStoryScene, setActiveStoryScene] = useState<any | null>(null);
   const [activeCueMark, setActiveCueMark] = useState<string | null>(null);
   const [activeCueSceneId, setActiveCueSceneId] = useState<string | null>(null);
+
+  // Full-screen Katha Pravah narrator player
+  const [kathaPravahOpen, setKathaPravahOpen] = useState(false);
+  const [pravahInitialSceneId, setPravahInitialSceneId] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -513,6 +519,17 @@ export default function BhagavadGita3DPage() {
       const approxTabW = 120;
       chapterScrollRef.current.scrollTo({ x: Math.max(0, (chNum - 1) * approxTabW - 80), animated: true });
     }
+  };
+
+  // Launch the immersive Katha Pravah narrator player (stops any classical recitation first)
+  const openKathaPravah = (sceneId?: string | null) => {
+    stopRecitation();
+    setIsAudioPlayerVisible(false);
+    setActiveStoryScene(null);
+    setActiveCueMark(null);
+    setActiveCueSceneId(null);
+    setPravahInitialSceneId(sceneId ?? null);
+    setKathaPravahOpen(true);
   };
 
   // Cycle font sizes: Normal (1.0) -> Large (1.15) -> Compact (0.9)
@@ -882,7 +899,10 @@ export default function BhagavadGita3DPage() {
                   nightMode && styles.modeTabBtnNight,
                   viewMode === 'story' && styles.modeTabBtnStoryActive,
                 ]}
-                onPress={() => setViewMode('story')}
+                onPress={() => {
+                  setViewMode('story');
+                  openKathaPravah(null);
+                }}
                 activeOpacity={0.8}
               >
                 <Text style={{ fontSize: 13, marginRight: 4 }}>⏳</Text>
@@ -932,7 +952,29 @@ export default function BhagavadGita3DPage() {
           </View>
 
           {/* ── Main Scrollable Reading Area ── */}
-          <ScrollView
+          <View style={styles.storyCanvas}>
+            {/* Ambient divine wallpaper behind the story mode reading area */}
+            {viewMode === 'story' && !kathaPravahOpen && (
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <CosmicAnimatedBackground
+                  style={StyleSheet.absoluteFillObject}
+                  showKaalChakra
+                  speed={0.7}
+                  overlayOpacity={0.5}
+                />
+                <LinearGradient
+                  colors={[
+                    'rgba(5, 4, 10, 0.74)',
+                    'rgba(8, 5, 18, 0.32)',
+                    'rgba(5, 4, 10, 0.9)',
+                  ]}
+                  locations={[0, 0.45, 1]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              </View>
+            )}
+
+            <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
@@ -984,16 +1026,12 @@ export default function BhagavadGita3DPage() {
               ) : storyChapterData ? (
                 <GitaStoryView
                   chapterData={storyChapterData}
-                  nightMode={nightMode}
+                  nightMode
                   activeCueMark={activeCueMark}
                   activeCueSceneId={activeCueSceneId}
                   onPlayScene={(scene) => {
-                    if (activeStoryScene?.scene_id === scene.scene_id && isPlaying) {
-                      setActiveStoryScene(null);
-                      setIsPlaying(false);
-                    } else {
-                      setActiveStoryScene(scene);
-                    }
+                    // All story playback flows through the immersive Katha Pravah narrator player
+                    openKathaPravah(scene.scene_id === 'full' ? null : scene.scene_id);
                   }}
                   onNavigateToStudy={() => {
                     setViewMode('classical');
@@ -1001,7 +1039,7 @@ export default function BhagavadGita3DPage() {
                 />
               ) : (
                 <View style={styles.loadingContainer}>
-                  <Text style={[styles.loadingText, nightMode && styles.loadingTextNight]}>
+                  <Text style={[styles.loadingText, styles.loadingTextNight]}>
                     इस अध्याय की कथा अभी उपलब्ध नहीं है।
                   </Text>
                 </View>
@@ -1098,6 +1136,7 @@ export default function BhagavadGita3DPage() {
               ) : <View style={{ width: 120 }} />}
             </View>
           </ScrollView>
+          </View>
 
           {/* ── Floating Sacred Audio Recitation Bar ── */}
           {isAudioPlayerVisible && viewMode !== 'visualizer' && (
@@ -1370,8 +1409,8 @@ export default function BhagavadGita3DPage() {
             </View>
           </View>
 
-          {/* Floating Story Audio Player in Story Mode */}
-          {viewMode === 'story' && activeStoryScene && (
+          {/* Floating Story Audio Player in Story Mode (legacy path — superseded by KathaPravahPlayer) */}
+          {viewMode === 'story' && activeStoryScene && !kathaPravahOpen && (
             <StoryAudioPlayer
               chapter={currentChapter}
               scene={activeStoryScene}
@@ -1390,6 +1429,21 @@ export default function BhagavadGita3DPage() {
             />
           )}
         </View>
+      )}
+
+      {/* ── Full-screen Katha Pravah Narrator Player (fresh mount per open) ── */}
+      {kathaPravahOpen && (
+        <KathaPravahPlayer
+          visible={kathaPravahOpen}
+          chapter={currentChapter}
+          chapterData={storyChapterData}
+          initialSceneId={pravahInitialSceneId}
+          onClose={() => setKathaPravahOpen(false)}
+          onSwitchToClassical={() => {
+            setKathaPravahOpen(false);
+            setViewMode('classical');
+          }}
+        />
       )}
 
       {/* ── Chapter Index / Table of Contents Modal ── */}
@@ -1781,6 +1835,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 18,
     paddingTop: 16,
+  },
+  storyCanvas: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   chapterIntroBanner: {
     alignItems: 'center',

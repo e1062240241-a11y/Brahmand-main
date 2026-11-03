@@ -1,6 +1,14 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, Platform, StyleProp, ViewStyle, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 export interface CosmicAnimatedBackgroundProps {
   style?: StyleProp<ViewStyle>;
@@ -572,9 +580,274 @@ function buildCosmicAnimationHtml(options: {
 }
 
 /**
+ * ── Native wallpaper (Android / iOS) ──
+ * Pure React Native + Reanimated ambient scene. The previous WebView
+ * (TextureView) implementation never painted reliably on Android —
+ * it showed a black screen and glitched over sibling content — so
+ * native platforms now draw the cosmic scene with ordinary views.
+ * Web keeps the original HTML/Canvas iframe.
+ */
+
+/** Deterministic PRNG so stars/particles don't reshuffle every render. */
+function makeRng(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface StarSpec {
+  x: number;
+  y: number;
+  size: number;
+  delay: number;
+  dur: number;
+  warm: boolean;
+}
+
+interface ParticleSpec {
+  x: number;
+  size: number;
+  delay: number;
+  dur: number;
+}
+
+const TwinkleStar: React.FC<{ spec: StarSpec }> = ({ spec }) => {
+  const o = useSharedValue(0.35);
+  useEffect(() => {
+    o.value = withDelay(
+      spec.delay,
+      withRepeat(
+        withTiming(1, { duration: spec.dur, easing: Easing.inOut(Easing.quad) }),
+        -1,
+        true
+      )
+    );
+  }, [o, spec.delay, spec.dur]);
+  const animated = useAnimatedStyle(() => ({ opacity: o.value }));
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: `${spec.x}%`,
+          top: `${spec.y}%`,
+          width: spec.size,
+          height: spec.size,
+          borderRadius: spec.size / 2,
+          backgroundColor: spec.warm ? '#FDE68A' : '#E2E8F0',
+        },
+        animated,
+      ]}
+    />
+  );
+};
+
+const RisingParticle: React.FC<{ spec: ParticleSpec; height: number }> = ({
+  spec,
+  height,
+}) => {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = withDelay(
+      spec.delay,
+      withRepeat(withTiming(1, { duration: spec.dur, easing: Easing.linear }), -1, false)
+    );
+  }, [p, spec.delay, spec.dur]);
+  const animated = useAnimatedStyle(() => {
+    const t = p.value;
+    const opacity = t < 0.1 ? t / 0.1 : t > 0.8 ? (1 - t) / 0.2 : 1;
+    return {
+      opacity,
+      transform: [{ translateY: -t * (height + 16) }],
+    };
+  });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: `${spec.x}%`,
+          bottom: -6,
+          width: spec.size,
+          height: spec.size,
+          borderRadius: spec.size / 2,
+          backgroundColor: 'rgba(253, 196, 74, 0.9)',
+        },
+        animated,
+      ]}
+    />
+  );
+};
+
+/** Soft radial-ish glow faked with three nested translucent circles. */
+const NebulaBlob: React.FC<{
+  rgb: string;
+  size: number;
+  cx: number;
+  cy: number;
+  dur: number;
+  delay: number;
+}> = ({ rgb, size, cx, cy, dur, delay }) => {
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.value = withDelay(
+      delay,
+      withRepeat(
+        withTiming(1, { duration: dur, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      )
+    );
+  }, [pulse, delay, dur]);
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.94 + pulse.value * 0.12 }],
+  }));
+  const circle = (inset: number, alpha: number) => ({
+    position: 'absolute' as const,
+    left: inset,
+    top: inset,
+    width: size - inset * 2,
+    height: size - inset * 2,
+    borderRadius: (size - inset * 2) / 2,
+    backgroundColor: `rgba(${rgb}, ${alpha})`,
+  });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: `${cx}%`,
+          top: `${cy}%`,
+          width: size,
+          height: size,
+          marginLeft: -size / 2,
+          marginTop: -size / 2,
+        },
+        animated,
+      ]}
+    >
+      <View style={circle(0, 0.05)} />
+      <View style={circle(size * 0.14, 0.05)} />
+      <View style={circle(size * 0.3, 0.06)} />
+    </Animated.View>
+  );
+};
+
+/** Sacred Kaal Chakra: spinning rings + spokes with a static center glyph. */
+const KaalChakra: React.FC<{ speed: number }> = ({ speed }) => {
+  const rot = useSharedValue(0);
+  useEffect(() => {
+    const safeSpeed = speed > 0 ? speed : 1;
+    rot.value = withRepeat(
+      withTiming(1, { duration: 42000 / safeSpeed, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [rot, speed]);
+  const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${rot.value * 360}deg` }] }));
+  return (
+    <View style={styles.chakraPos} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFillObject, spin]}>
+        <View style={styles.chakraRingOuter} />
+        <View style={styles.chakraRingInner} />
+        {[0, 45, 90, 135].map((deg) => (
+          <View
+            key={deg}
+            style={[styles.chakraSpoke, { transform: [{ rotate: `${deg}deg` }] }]}
+          />
+        ))}
+      </Animated.View>
+      <View style={styles.chakraGlyphWrap}>
+        <Text style={styles.chakraGlyph}>☸</Text>
+      </View>
+    </View>
+  );
+};
+
+const NEBULAE = [
+  { rgb: '124, 58, 237', size: 340, cx: 18, cy: 22, dur: 9000, delay: 0 },
+  { rgb: '245, 158, 11', size: 300, cx: 82, cy: 64, dur: 11000, delay: 1500 },
+  { rgb: '34, 211, 238', size: 320, cx: 58, cy: 10, dur: 13000, delay: 800 },
+] as const;
+
+const NativeCosmicWallpaper: React.FC<{
+  showKaalChakra: boolean;
+  speed: number;
+  starCount: number;
+  particleCount: number;
+}> = ({ showKaalChakra, speed, starCount, particleCount }) => {
+  const [height, setHeight] = useState(0);
+
+  const stars = useMemo(() => {
+    const rng = makeRng(0xc0ffee);
+    const n = Math.max(0, Math.min(starCount, 70));
+    return Array.from({ length: n }, (): StarSpec => {
+      const warm = rng() > 0.55;
+      return {
+        x: rng() * 100,
+        y: rng() * 100,
+        size: warm ? 2 + rng() * 1.6 : 1.5 + rng() * 1.4,
+        delay: Math.floor(rng() * 3000),
+        dur: 1300 + Math.floor(rng() * 1500),
+        warm,
+      };
+    });
+  }, [starCount]);
+
+  const particles = useMemo(() => {
+    const rng = makeRng(0xbada55);
+    const n = Math.max(0, Math.min(particleCount, 12));
+    return Array.from({ length: n }, (): ParticleSpec => ({
+      x: 5 + rng() * 90,
+      size: 2 + rng() * 2,
+      delay: Math.floor(rng() * 6000),
+      dur: 6000 + Math.floor(rng() * 5000),
+    }));
+  }, [particleCount]);
+
+  const safeSpeed = speed > 0 ? speed : 1;
+
+  return (
+    <View
+      style={StyleSheet.absoluteFillObject}
+      pointerEvents="none"
+      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
+    >
+      <LinearGradient
+        colors={['#0B0A1F', '#150C33', '#05040A']}
+        locations={[0, 0.55, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      {NEBULAE.map((n, i) => (
+        <NebulaBlob key={`neb-${i}`} {...n} />
+      ))}
+      {stars.map((spec, i) => (
+        <TwinkleStar key={`star-${i}`} spec={spec} />
+      ))}
+      {particles.map((spec, i) => (
+        <RisingParticle key={`p-${i}`} spec={spec} height={height} />
+      ))}
+      {showKaalChakra && (
+        <KaalChakra speed={safeSpeed} />
+      )}
+    </View>
+  );
+};
+
+/**
  * CosmicAnimatedBackground
- * A high-performance, beautiful cosmic animation component rendered with CSS and JavaScript Canvas.
- * Safe across all platforms (Android, iOS, Web) without video-codec blackouts.
+ * Ambient divine wallpaper. Web renders the original CSS + Canvas
+ * animation via iframe; Android/iOS render a pure-RN Reanimated scene
+ * (WebView backgrounds glitched badly on Android).
  */
 export const CosmicAnimatedBackground: React.FC<CosmicAnimatedBackgroundProps> = ({
   style,
@@ -607,19 +880,11 @@ export const CosmicAnimatedBackground: React.FC<CosmicAnimatedBackgroundProps> =
           tabIndex={-1}
         />
       ) : (
-        <WebView
-          source={{ html: htmlContent }}
-          style={styles.webview}
-          scrollEnabled={false}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          scalesPageToFit={true}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          overScrollMode="never"
-          androidLayerType="hardware"
-          pointerEvents="none"
+        <NativeCosmicWallpaper
+          showKaalChakra={showKaalChakra}
+          speed={speed}
+          starCount={starCount}
+          particleCount={particleCount}
         />
       )}
 
@@ -643,10 +908,52 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#05040A',
   },
-  webview: {
+  chakraPos: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 240,
+    height: 240,
+    marginLeft: -120,
+    marginTop: -120,
+  },
+  chakraRingOuter: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 120,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.30)',
+  },
+  chakraRingInner: {
+    position: 'absolute',
+    left: 28,
+    top: 28,
+    right: 28,
+    bottom: 28,
+    borderRadius: 92,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.18)',
+  },
+  chakraSpoke: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -0.75,
+    top: 14,
+    bottom: 14,
+    width: 1.5,
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+  },
+  chakraGlyphWrap: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    opacity: 0.99, // Prevents Android TextureView glitch
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chakraGlyph: {
+    fontSize: 64,
+    color: 'rgba(253, 230, 138, 0.55)',
   },
   webIframe: {
     position: 'absolute',

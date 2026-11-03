@@ -19,6 +19,8 @@ import { ActionCardsRow } from './ActionCardsRow';
 import { KalashCoinAnimation } from './KalashCoinAnimation';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
+const dhanterasKalashAvatar = require('../../../assets/images/festivals/dhanteras_kalash_avatar.png');
+
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
     targetLiveTime,
@@ -456,11 +458,20 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             <TouchableOpacity
                                 activeOpacity={0.86}
                                 style={styles.profileButton}
-                                onPress={() => router.push('/(tabs)/profile')}
+                                onPress={() => {
+                                    try {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    } catch (_e) {}
+                                    router.push('/(tabs)/profile');
+                                }}
                                 accessibilityRole="button"
                                 accessibilityLabel="View your profile"
                             >
-                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
+                                <Image
+                                    source={dhanterasKalashAvatar}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode="contain"
+                                />
                             </TouchableOpacity>
                         </View>
 

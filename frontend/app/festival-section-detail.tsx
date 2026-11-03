@@ -347,9 +347,12 @@ const FestivalSectionDetailPage = () => {
           </TouchableOpacity>
 
           {!isStorySection && (
-            <Text style={styles.headerTitle}>
-              {decodeURIComponent(section)}
-            </Text>
+            <>
+              <Text style={styles.headerTitle}>
+                {decodeURIComponent(section)}
+              </Text>
+              <View style={{ width: 40 }} />
+            </>
           )}
 
           {/* Share Button - Only visible in Story section */}

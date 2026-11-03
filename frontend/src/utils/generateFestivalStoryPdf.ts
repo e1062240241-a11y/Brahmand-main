@@ -2809,7 +2809,7 @@ export async function renderDynamicFestivalPage1(
   const bCardW = isSharadPurnimaTheme ? 516 : 494;
   const blessFontSize = isSharadPurnimaTheme ? 13.0 : 12.2;
   const blessLineHeight = isSharadPurnimaTheme ? 23.0 : 19.5;
-  const bFont = isSharadPurnimaTheme ? hindiBodyFont : fontTimes;
+  const bFont = (isSharadPurnimaTheme || hasDevanagariChar(blessingParagraph)) ? hindiBodyFont : fontTimes;
   // Wrap with comfortable 32pt horizontal padding on left & right
   const blessLines = wrapText(blessingParagraph, bFont, blessFontSize, bCardW - 64);
 
@@ -2978,9 +2978,9 @@ export async function renderDynamicFestivalPage1(
       : 'SHLOKA MEANING — O Vakratunda, radiant as a million suns, make all our tasks free of obstacles.';
   }
 
-  const mantraHeadFont = isSharadPurnimaTheme ? hindiBodyFont : brandFont;
-  const mantraTextFont = isSharadPurnimaTheme ? hindiTitleFont : brandFont;
-  const shlokaFont = isSharadPurnimaTheme ? hindiTitleFont : fontTimes;
+  const mantraHeadFont = (isSharadPurnimaTheme || hasDevanagariChar(mHead)) ? hindiBodyFont : brandFont;
+  const mantraTextFont = (isSharadPurnimaTheme || hasDevanagariChar(mText)) ? hindiTitleFont : brandFont;
+  const shlokaFont = (isSharadPurnimaTheme || hasDevanagariChar(shloka1) || hasDevanagariChar(shloka2)) ? hindiTitleFont : fontTimes;
 
   const mHeadSize = isSharadPurnimaTheme ? 12.0 : 11.8;
   const mHeadW = measureTextWidth(mantraHeadFont, mHead, mHeadSize);
@@ -3046,7 +3046,7 @@ export async function renderDynamicFestivalPage1(
   // Plain-language meaning under the shlokas
   if (shlokaMeaning) {
     curY -= (isSharadPurnimaTheme ? 14 : 10);
-    const meanFont = isSharadPurnimaTheme ? hindiTitleFont : fontTimesItalic;
+    const meanFont = (isSharadPurnimaTheme || hasDevanagariChar(shlokaMeaning)) ? hindiTitleFont : fontTimesItalic;
     const meanSize = isSharadPurnimaTheme ? 10.5 : 10.0;
     const meanMaxW = pageWidth - 140;
     const meanLines = wrapText(shlokaMeaning, meanFont, meanSize, meanMaxW);
@@ -3673,10 +3673,11 @@ async function renderFestivalGuideAndQuizPage(
 
   const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont } = fonts;
   const brandFont = fontCinzel || displayFont;
-  const pageHeadFont = isSharadPurnimaTheme ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
-  const pageSubFont = isSharadPurnimaTheme ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
-  const bodyTextFont = isSharadPurnimaTheme ? (fontPoppins || fontHimalaya || fontTimes) : fontTimes;
-  const bodyBoldFont = isSharadPurnimaTheme ? (fontPoppins || fontHimalaya || fontHelveticaBold) : fontHelveticaBold;
+  const isAboutDevanagari = hasDevanagariChar(theme.name) || hasDevanagariChar(theme.subtitle || '');
+  const pageHeadFont = (isSharadPurnimaTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
+  const pageSubFont = (isSharadPurnimaTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
+  const bodyTextFont = fontPoppins || fontHimalaya || fontTimes;
+  const bodyBoldFont = fontPoppins || fontHimalaya || fontHelveticaBold;
 
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
@@ -4203,8 +4204,9 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
 
   const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontHelveticaBold, displayFont } = fonts;
   const brandFont = fontCinzel || displayFont;
-  const chapterHeadFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
-  const chapterBodyFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontPoppins || fontHimalaya || fontTimes) : fontTimes;
+  const isDevanagariTheme = hasDevanagariChar(theme.name) || (theme.chapters && theme.chapters.some((c: any) => hasDevanagariChar(c.title) || hasDevanagariChar(c.content)));
+  const chapterHeadFont = (isSharadPurnimaTheme || isKarwaChauthTheme || isDevanagariTheme) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
+  const chapterBodyFont = (isSharadPurnimaTheme || isKarwaChauthTheme || isDevanagariTheme) ? (fontPoppins || fontHimalaya || fontTimes) : fontTimes;
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
   const colTerracottaDk = rgb(0.50, 0.18, 0.09);
   const colPeachDeep = rgb(0.961, 0.710, 0.541);
@@ -4272,8 +4274,8 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
     });
     curY -= (secTitleFontSize * 0.4 + 11);
 
-    const isDevanagari = /[\u0900-\u097F]/.test(cleanContent);
-    if (isSharadPurnimaTheme || (isKarwaChauthTheme && isDevanagari)) {
+    const isDevanagari = hasDevanagariChar(cleanContent);
+    if (isDevanagari || isSharadPurnimaTheme || isKarwaChauthTheme) {
       // In Devanagari Hindi, split-syllable drop caps break ligature rendering.
       // Render entire smooth paragraphs with chapterBodyFont (Poppins Devanagari)
       const allLines = wrapText(cleanContent, chapterBodyFont, bodyFontSize, contentWidth);
@@ -4304,19 +4306,23 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
       const dropLetter = cleanContent.charAt(0) || 'T';
       const restOfText = cleanContent.slice(1);
       const dropCapSize = 25;
-      const dropW = brandFont.widthOfTextAtSize(dropLetter, dropCapSize);
+      const isDropDev = hasDevanagariChar(dropLetter);
+      const effectiveDropFont = isDropDev ? fontPoppins : brandFont;
+      const dropW = measureTextWidth(effectiveDropFont, dropLetter, dropCapSize);
 
-      curPage.drawText(dropLetter, {
+      safeDrawText(curPage, dropLetter, {
         x: pMargin,
         y: curY - 8.5,
         size: dropCapSize,
-        font: brandFont,
+        font: effectiveDropFont,
+        fallbackFont: fontPoppins,
         color: isKarwaChauthTheme ? colGoldHeader : colCrimson,
       });
 
       const dropIndent = dropW + 5;
       const firstLinesWidth = contentWidth - dropIndent;
 
+      const effectiveBodyFont = hasDevanagariChar(restOfText) ? chapterBodyFont : fontTimes;
       const words = restOfText.split(/\s+/);
       let line1 = '';
       let line2 = '';
@@ -4324,7 +4330,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
 
       while (wordIdx < words.length) {
         const test = line1 ? `${line1} ${words[wordIdx]}` : words[wordIdx];
-        if (fontTimes.widthOfTextAtSize(test, bodyFontSize) <= firstLinesWidth) {
+        if (measureTextWidth(effectiveBodyFont, test, bodyFontSize) <= firstLinesWidth) {
           line1 = test;
           wordIdx++;
         } else {
@@ -4334,7 +4340,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
 
       while (wordIdx < words.length) {
         const test = line2 ? `${line2} ${words[wordIdx]}` : words[wordIdx];
-        if (fontTimes.widthOfTextAtSize(test, bodyFontSize) <= firstLinesWidth) {
+        if (measureTextWidth(effectiveBodyFont, test, bodyFontSize) <= firstLinesWidth) {
           line2 = test;
           wordIdx++;
         } else {
@@ -4343,18 +4349,19 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
       }
 
       const remainingText = words.slice(wordIdx).join(' ');
-      const remainingLines = wrapText(remainingText, fontTimes, bodyFontSize, contentWidth);
+      const remainingLines = wrapText(remainingText, effectiveBodyFont, bodyFontSize, contentWidth);
 
       drawJustifiedLine(
         curPage,
         line1,
-        fontTimes,
+        effectiveBodyFont,
         bodyFontSize,
         isKarwaChauthTheme ? colIvoryText : colInk,
         pMargin + dropIndent,
         curY,
         firstLinesWidth,
-        wordIdx >= words.length
+        wordIdx >= words.length,
+        fontPoppins
       );
       curY -= bodyLineHeight;
 
@@ -4362,13 +4369,14 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
         drawJustifiedLine(
           curPage,
           line2,
-          fontTimes,
+          effectiveBodyFont,
           bodyFontSize,
           isKarwaChauthTheme ? colIvoryText : colInk,
           pMargin + dropIndent,
           curY,
           firstLinesWidth,
-          remainingLines.length === 0
+          remainingLines.length === 0,
+          fontPoppins
         );
         curY -= bodyLineHeight;
       }
@@ -4386,13 +4394,14 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
         drawJustifiedLine(
           curPage,
           remainingLines[rIdx],
-          fontTimes,
+          effectiveBodyFont,
           bodyFontSize,
           isKarwaChauthTheme ? colIvoryText : colInk,
           pMargin,
           curY,
           contentWidth,
-          isLast
+          isLast,
+          fontPoppins
         );
         curY -= bodyLineHeight;
       }
@@ -4450,7 +4459,7 @@ export async function generateFestivalStoryPdf(festival: any, sectionValue?: str
   curY -= 16;
 
   const blessText = cleanTextForPdf(theme.blessing || 'Dharmo Rakshati Rakshitah - May the auspicious grace of this festival illuminate your life.');
-  const bTextFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || brandFont) : fontTimes;
+  const bTextFont = (isSharadPurnimaTheme || isKarwaChauthTheme || hasDevanagariChar(blessText)) ? (fontRozha || fontPoppins || brandFont) : fontTimes;
   const blessLines = wrapText(blessText, bTextFont, 11.2, contentWidth);
   for (const bLine of blessLines) {
     const blW = measureTextWidth(bTextFont, bLine, 11.2);

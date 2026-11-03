@@ -16343,7 +16343,7 @@ FESTIVAL_YEAR_DATES = {
         "diwali": "8 November 2026",
         "deepavali": "8 November 2026",
         "naraka chaturdashi": "8 November 2026",
-        "govardhan puja": "9 November 2026",
+        "govardhan puja": "10 November 2026",
         "bhai dooj": "11 November 2026",
         "chhath puja": "15 November 2026",
         "dev uthani ekadashi": "20 November 2026",

@@ -14,6 +14,8 @@ import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
+import { PersonalizedDhanterasCard } from './PersonalizedDhanterasCard';
+import { FestivalMantraRenderer } from './festival/FestivalMantraRenderer';
 
 // ponytail: local bundle, upload to BunnyCDN /audio/sharad_purnima.mp3 if size matters
 const SHARAD_PURNIMA_AUDIO = require('../../assets/audio/sharad_purnima.mp3');
@@ -949,6 +951,28 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
   }
 
 
+  // Dedicated Dhanteras Shubh Muhurat & Kharidari Choghadiya Section
+  const isDhanteras =
+    festivalName.toLowerCase().includes('dhanteras') ||
+    festivalName.toLowerCase().includes('dhanatrayodashi') ||
+    /धनतेरस/i.test(festivalName) ||
+    (festival.id && String(festival.id).toLowerCase().includes('dhanteras'));
+
+  if (
+    isDhanteras &&
+    (section === 'Muhurat & Shopping' ||
+      section.toLowerCase().includes('muhurat') ||
+      section.toLowerCase().includes('shopping') ||
+      section.toLowerCase().includes('kharidari') ||
+      /मुहूर्त/i.test(section))
+  ) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+        <PersonalizedDhanterasCard festival={festival} />
+      </View>
+    );
+  }
+
   // Dedicated Nav Durga Renderer (Navratri Special 9 Days Guide)
   if (section === 'Nav Durga' || section === 'Navdurga') {
     return (
@@ -1027,6 +1051,21 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           )}
         </View>
       </View>
+    );
+  }
+
+  // Dedicated Mantra Renderer (Clean, non-repetitive Vedic & Siddh Mantras)
+  if (
+    section === 'Mantra' ||
+    section.toLowerCase().includes('mantra') ||
+    /मंत्र/i.test(section)
+  ) {
+    return (
+      <FestivalMantraRenderer
+        festivalName={festivalName}
+        rawMantra={typeof sectionValue === 'string' ? sectionValue : ''}
+        isDhanteras={isDhanteras}
+      />
     );
   }
 

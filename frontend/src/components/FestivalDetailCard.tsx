@@ -491,6 +491,12 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     /करवा\s*चौथ/i.test(festivalName) ||
     (festival.id && String(festival.id).toLowerCase().includes('karva'));
 
+  const isDhanterasFestival =
+    festivalName.toLowerCase().includes('dhanteras') ||
+    festivalName.toLowerCase().includes('dhanatrayodashi') ||
+    /धनतेरस/i.test(festivalName) ||
+    (festival.id && String(festival.id).toLowerCase().includes('dhanteras'));
+
   const isSharadPurnimaFestival =
     festivalName.toLowerCase().includes('sharad') ||
     festivalName.toLowerCase().includes('kojagiri') ||
@@ -626,8 +632,37 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     },
   ];
 
+  const dhanterasSections = [
+    {
+      title: 'Muhurat & Shopping',
+      customHeading: 'शुभ मुहूर्त व खरीदारी चौघड़िया',
+      subtitle: 'पूजा मुहूर्त, चौघड़िया, राहु काल व क्या खरीदें-क्या न खरीदें',
+      value: 'धनतेरस पर प्रदोष काल में स्थिर लग्न पूजा, 4 शुभ चौघड़िया मुहूर्त व क्या खरीदें की संपूर्ण प्रामाणिक जानकारी।',
+    },
+    {
+      title: 'Puja Vidhi',
+      customHeading: 'धन्वंतरि, लक्ष्मी व कुबेर पूजा विधि',
+      subtitle: 'पंचोपचार पूजन, भोग, कलश स्थापना व यम दीप दान विधि',
+      value: rawPujaVidhi || 'भगवान धन्वंतरि, मां लक्ष्मी और कुबेर देव का पंचोपचार पूजन, कलश स्थापना और दीपदान की शास्त्रसम्मत विधि।',
+    },
+    {
+      title: 'Story',
+      customHeading: 'धनतेरस व्रत व समुद्र मंथन कथा',
+      subtitle: 'भगवान धन्वंतरि अमृत कलश प्राकट्य व यमराज-हेमराज अमर कथा',
+      value: rawStory || 'समुद्र मंथन से अमृत कलश लेकर प्रकट हुए भगवान धन्वंतरि और राजा हेम के पुत्र की यम फांस से रक्षा की पावन अमर कथा।',
+    },
+    {
+      title: 'Mantra',
+      customHeading: 'कुबेर, लक्ष्मी व धन्वंतरि सिद्ध मंत्र',
+      subtitle: 'आरोग्य, ऐश्वर्य व धन-धान्य समृद्धि हेतु वैदिक मंत्र',
+      value: rawMantra || 'ॐ ह्रीं कुबेराय नमः • ॐ श्रीं महालक्ष्म्यै नमः • ॐ धन्वंतरये नमः सिद्ध मंत्र।',
+    },
+  ];
+
   const sections = isKarvaChauthFestival
     ? karwaChauthSections
+    : isDhanterasFestival
+    ? dhanterasSections
     : [
         { title: 'Story', value: rawStory },
         { title: 'About', value: rawAbout },
@@ -934,7 +969,11 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
         <View style={styles.sectionHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
             <Text style={styles.sectionHeading}>
-              {isKarvaChauthFestival ? 'करवा चौथ पावन मार्गदर्शिका' : 'Festival Guide Topics'}
+              {isKarvaChauthFestival
+                ? 'करवा चौथ पावन मार्गदर्शिका'
+                : isDhanterasFestival
+                ? 'धनतेरस पावन मार्गदर्शिका'
+                : 'Festival Guide Topics'}
             </Text>
             {sections.length > 0 && (
               <Text style={styles.sectionCount}>({sections.length})</Text>
