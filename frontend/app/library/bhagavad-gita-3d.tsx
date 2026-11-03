@@ -37,6 +37,8 @@ import { StoryAudioPlayer } from '../../src/components/StoryAudioPlayer';
 import { loadBhagavadGitaChapter, loadBhagavadGitaStoryChapter, prefetchBhagavadGitaChapters, cleanupBhagavadGitaChapters } from '../../src/services/bhagavad-geeta-service';
 import { useLanguageStore } from '../../src/utils/i18n';
 import { gitaSpeechService, SpeechLanguage } from '../../src/services/gita-speech-service';
+import { useGitaPlayerStore } from '../../src/store/gitaPlayerStore';
+import { GitaVisualizerView } from '../../src/components/library/GitaVisualizerView';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -238,6 +240,19 @@ export default function BhagavadGita3DPage() {
     }
   }, [storyChapterData, activeStoryScene, setIsPlaying]);
 
+  // Sync Story scene state with global Gita player store
+  useEffect(() => {
+    if (activeStoryScene && viewMode === 'story') {
+      const chMeta = GITA_CHAPTERS_META.find(m => m.num === currentChapter);
+      useGitaPlayerStore.getState().setStoryData({
+        chapter: currentChapter,
+        chapterNameHi: chMeta?.nameHi,
+        sceneTitle: activeStoryScene.title || activeStoryScene.scene_id,
+        isPlaying,
+      });
+    }
+  }, [activeStoryScene, isPlaying, viewMode, currentChapter]);
+
   // Audio Recitation State
   const [activeRecitingIndex, setActiveRecitingIndex] = useState<number | null>(null);
   const [isReciting, setIsReciting] = useState(false);
@@ -282,6 +297,7 @@ export default function BhagavadGita3DPage() {
     await gitaSpeechService.stop();
     setIsReciting(false);
     setActiveRecitingIndex(null);
+    useGitaPlayerStore.getState().stop();
   }, []);
 
   const startRecitingVerse = useCallback(async (
@@ -293,6 +309,7 @@ export default function BhagavadGita3DPage() {
     if (!verseList || targetIndex < 0 || targetIndex >= verseList.length) {
       setIsReciting(false);
       setActiveRecitingIndex(null);
+      useGitaPlayerStore.getState().setPlaying(false);
       return;
     }
 
@@ -311,6 +328,19 @@ export default function BhagavadGita3DPage() {
 
     const ch = Number(verse?.chapter) || currentChapter || 1;
     const v = Number(verse?.verse) || verse?.id || targetIndex + 1;
+    const chMeta = GITA_CHAPTERS_META.find(m => m.num === ch);
+
+    useGitaPlayerStore.getState().setVerseData({
+      chapter: ch,
+      chapterNameHi: chMeta?.nameHi,
+      chapterNameEn: chMeta?.nameEn,
+      verseIndex: targetIndex,
+      verseNum: v,
+      totalVerses: verseList.length,
+      text: text,
+      translation: secondaryText,
+      isPlaying: true,
+    });
 
     await gitaSpeechService.speak({
       text,
@@ -320,8 +350,12 @@ export default function BhagavadGita3DPage() {
       type: langType,
       rate: speed,
       voiceGender: 'female',
+      onSegmentChange: (segText, segIdx, totalSegs) => {
+        useGitaPlayerStore.getState().setCurrentSpokenText(segText, segIdx, totalSegs);
+      },
       onStart: () => {
         setIsReciting(true);
+        useGitaPlayerStore.getState().setPlaying(true);
       },
       onDone: () => {
         if (!isRecitingRef.current) return;
@@ -335,29 +369,62 @@ export default function BhagavadGita3DPage() {
         } else {
           setIsReciting(false);
           setActiveRecitingIndex(null);
+          useGitaPlayerStore.getState().setPlaying(false);
         }
       },
       onStopped: () => {
         setIsReciting(false);
         setActiveRecitingIndex(null);
+        useGitaPlayerStore.getState().setPlaying(false);
       },
       onError: (err) => {
         console.warn('Recitation error:', err);
         setIsReciting(false);
         setActiveRecitingIndex(null);
+        useGitaPlayerStore.getState().setPlaying(false);
       },
     });
-  }, []);
+  }, [currentChapter]);
 
   const togglePlayPauseAudio = useCallback(() => {
     if (isReciting) {
       gitaSpeechService.stop();
       setIsReciting(false);
+      useGitaPlayerStore.getState().setPlaying(false);
     } else {
       const idx = activeRecitingIndex ?? 0;
       startRecitingVerse(idx);
     }
   }, [isReciting, activeRecitingIndex, startRecitingVerse]);
+
+  // Handle remote actions from global floating player or visualizer
+  const gitaRequestAction = useGitaPlayerStore((state) => state.requestAction);
+  const clearGitaRequestAction = useGitaPlayerStore((state) => state.clearRequestAction);
+
+  useEffect(() => {
+    if (!gitaRequestAction) return;
+
+    if (gitaRequestAction === 'play') {
+      const idx = activeRecitingIndex ?? 0;
+      startRecitingVerse(idx);
+    } else if (gitaRequestAction === 'pause') {
+      gitaSpeechService.stop();
+      setIsReciting(false);
+      useGitaPlayerStore.getState().setPlaying(false);
+    } else if (gitaRequestAction === 'next') {
+      if (activeRecitingIndex !== null && activeRecitingIndex < verses.length - 1) {
+        startRecitingVerse(activeRecitingIndex + 1);
+      }
+    } else if (gitaRequestAction === 'prev') {
+      if (activeRecitingIndex !== null && activeRecitingIndex > 0) {
+        startRecitingVerse(activeRecitingIndex - 1);
+      }
+    } else if (gitaRequestAction === 'stop') {
+      stopRecitation();
+    }
+
+    clearGitaRequestAction();
+  }, [gitaRequestAction, activeRecitingIndex, verses.length, startRecitingVerse, stopRecitation, clearGitaRequestAction]);
 
   const cycleReciteSpeed = useCallback(() => {
     setReciteSpeed((prev) => {
@@ -502,11 +569,10 @@ export default function BhagavadGita3DPage() {
 
   // Animation values
 
-  // Flush pending DB writes and stop speech on unmount
+  // Flush pending DB writes on unmount (allow recitation to continue across all pages)
   useEffect(() => {
     return () => {
       commitProgress();
-      gitaSpeechService.stop();
     };
   }, []);
 
@@ -536,8 +602,6 @@ export default function BhagavadGita3DPage() {
       } else {
         commitProgress();
         cancelAnimation(floatingY);
-        gitaSpeechService.stop();
-        setIsReciting(false);
       }
     });
 
@@ -782,7 +846,7 @@ export default function BhagavadGita3DPage() {
               })}
             </ScrollView>
 
-            {/* Mode Switcher: Classical Verses vs Cosmic Storyteller Mode */}
+            {/* Mode Switcher: Classical Verses vs Cosmic Storyteller vs Sacred Visualizer */}
             <View style={[styles.modeSwitcherContainer, nightMode && styles.modeSwitcherContainerNight]}>
               <TouchableOpacity
                 style={[
@@ -807,7 +871,7 @@ export default function BhagavadGita3DPage() {
                     viewMode === 'classical' && styles.modeTabTextActive,
                   ]}
                 >
-                  शास्त्रीय श्लोक
+                  श्लोक
                 </Text>
               </TouchableOpacity>
 
@@ -829,7 +893,39 @@ export default function BhagavadGita3DPage() {
                     viewMode === 'story' && styles.modeTabTextStoryActive,
                   ]}
                 >
-                  कथा प्रवाह (मैं समय हूँ)
+                  कथा प्रवाह
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modeTabBtn,
+                  viewMode === 'visualizer' && styles.modeTabBtnActive,
+                  nightMode && styles.modeTabBtnNight,
+                  viewMode === 'visualizer' && nightMode && styles.modeTabBtnActiveNight,
+                ]}
+                onPress={() => {
+                  setViewMode('visualizer');
+                  if (!isReciting) {
+                    startRecitingVerse(activeRecitingIndex ?? 0);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="musical-notes"
+                  size={14}
+                  color={viewMode === 'visualizer' ? '#FFFFFF' : (nightMode ? '#E8D5C4' : '#743B27')}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    nightMode && styles.modeTabTextNight,
+                    viewMode === 'visualizer' && styles.modeTabTextActive,
+                  ]}
+                >
+                  🎧 श्रवण दृश्य
                 </Text>
               </TouchableOpacity>
             </View>
@@ -850,7 +946,35 @@ export default function BhagavadGita3DPage() {
             onContentSizeChange={(_, h) => setContentHeight(h)}
             onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
           >
-            {viewMode === 'story' ? (
+            {viewMode === 'visualizer' ? (
+              <GitaVisualizerView
+                nightMode={nightMode}
+                onSwitchToReading={() => setViewMode('classical')}
+                onPrevVerse={() => {
+                  if (activeRecitingIndex !== null && activeRecitingIndex > 0) {
+                    startRecitingVerse(activeRecitingIndex - 1);
+                  }
+                }}
+                onNextVerse={() => {
+                  if (activeRecitingIndex !== null && activeRecitingIndex < verses.length - 1) {
+                    startRecitingVerse(activeRecitingIndex + 1);
+                  }
+                }}
+                onTogglePlay={togglePlayPauseAudio}
+                onModeChange={(mode) => {
+                  setReciteMode(mode);
+                  if (activeRecitingIndex !== null) {
+                    startRecitingVerse(activeRecitingIndex, mode);
+                  }
+                }}
+                onSpeedChange={(speed) => {
+                  setReciteSpeed(speed);
+                  if (activeRecitingIndex !== null) {
+                    startRecitingVerse(activeRecitingIndex, undefined, speed);
+                  }
+                }}
+              />
+            ) : viewMode === 'story' ? (
               storyLoading && !storyChapterData ? (
                 <View style={styles.loadingContainer}>
                   <Text style={[styles.loadingText, { color: '#F59E0B' }]}>
@@ -860,6 +984,7 @@ export default function BhagavadGita3DPage() {
               ) : storyChapterData ? (
                 <GitaStoryView
                   chapterData={storyChapterData}
+                  nightMode={nightMode}
                   activeCueMark={activeCueMark}
                   activeCueSceneId={activeCueSceneId}
                   onPlayScene={(scene) => {
@@ -975,7 +1100,7 @@ export default function BhagavadGita3DPage() {
           </ScrollView>
 
           {/* ── Floating Sacred Audio Recitation Bar ── */}
-          {isAudioPlayerVisible && (
+          {isAudioPlayerVisible && viewMode !== 'visualizer' && (
             <View
               style={[
                 styles.floatingAudioBar,
@@ -1075,6 +1200,18 @@ export default function BhagavadGita3DPage() {
                 >
                   <Text style={[styles.audioPillText, nightMode && styles.audioPillTextNight]}>
                     {reciteSpeed === 0.85 ? '0.8x' : reciteSpeed === 1.0 ? '1.0x' : '1.2x'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Visualizer Mode Button */}
+                <TouchableOpacity
+                  style={[styles.audioPillBtn, { backgroundColor: '#FF8A00' }]}
+                  onPress={() => setViewMode('visualizer')}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="musical-notes" size={13} color="#FFF" style={{ marginRight: 2 }} />
+                  <Text style={[styles.audioPillText, { color: '#FFF', fontWeight: '800' }]}>
+                    दृश्य
                   </Text>
                 </TouchableOpacity>
 

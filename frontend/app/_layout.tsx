@@ -32,6 +32,7 @@ import { socketService } from '../src/services/socket';
 import { clearLegacyLibraryCache } from '../src/services/library-cdn';
 import { GlobalKathaAudioEngine } from '../src/components/katha/GlobalKathaAudioEngine';
 import { GlobalKathaFloatingPlayer } from '../src/components/katha/GlobalKathaFloatingPlayer';
+import { GlobalGitaFloatingPlayer } from '../src/components/library/GlobalGitaFloatingPlayer';
 
 import { originalAlert } from '../src/utils/nativeAlert';
 import { setAudioModeAsync } from 'expo-audio';
@@ -1496,6 +1497,7 @@ export default function RootLayout() {
           </Stack>
           <GlobalFAB />
           <GlobalKathaFloatingPlayer />
+          <GlobalGitaFloatingPlayer />
           <GlobalKathaAudioEngine />
           <UploadProgressBanner />
           <ToastContainer />

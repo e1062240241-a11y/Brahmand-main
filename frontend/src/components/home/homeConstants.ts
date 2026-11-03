@@ -22,6 +22,7 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
     lavender: ['rgba(245, 235, 255, 0.74)', 'rgba(220, 205, 250, 0.48)'],
 };
 
+export const dhanterasBannerImage = require('../../../assets/images/festivals/dhanteras_banner.jpg');
 export const shivaImage = { uri: 'https://brahmandfeed23.b-cdn.net/temples/SomnathTemple.webp' };
 export const navratriBannerImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/navratri_banner.webp' };
 export const maaDurgaIcon = { uri: 'https://brahmandfeed23.b-cdn.net/assets/maa_durga_icon.webp' };

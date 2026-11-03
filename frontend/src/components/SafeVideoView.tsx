@@ -164,7 +164,7 @@ export const useSafeVideoPlayer = (
 
 interface SafeVideoViewProps {
   player: any;
-  ExpoVideoModule: any;
+  ExpoVideoModule?: any;
   source?: string;
   posterSource?: any;
   style?: any;
@@ -201,16 +201,20 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
   }
 
   render() {
-    const { player, ExpoVideoModule, source, posterSource, fallback, ...restProps } = this.props;
+    const { player, ExpoVideoModule: propModule, source, posterSource, fallback, ...restProps } = this.props;
+    const effectiveExpoModule = propModule || ExpoVideoModule;
 
     if (Platform.OS === 'web' && source) {
       const fitMode = this.props.contentFit || 'fill';
       const cssObjectFit = fitMode === 'contain' ? 'contain' : (fitMode === 'cover' ? 'cover' : 'fill');
+      const resolvedSrc = typeof source === 'string' ? source : ((Image as any).resolveAssetSource?.(source)?.uri || source);
       return (
         <video
-          src={source}
+          src={resolvedSrc}
           controls={false}
           autoPlay
+          loop
+          muted
           playsInline
           style={{
             width: '100%',
@@ -223,7 +227,7 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
       );
     }
 
-    if (this.state.hasError || !ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    if (this.state.hasError || !effectiveExpoModule?.VideoView || !isPlayerValid(player)) {
       if (fallback) return fallback;
       if (posterSource) {
         const posterUri = typeof posterSource === 'string' ? posterSource : posterSource?.uri;
@@ -234,14 +238,24 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
       return <View style={[styles.defaultFallback, this.props.style]} />;
     }
 
-    const VideoViewComponent = ExpoVideoModule.VideoView;
+    const VideoViewComponent = effectiveExpoModule.VideoView;
 
     return (
-      <VideoViewComponent
-        player={player}
-        allowsVideoFrameAnalysis={this.props.allowsVideoFrameAnalysis ?? false}
-        {...restProps}
-      />
+      <View style={[styles.defaultFallback, this.props.style]}>
+        {posterSource && (
+          <Image
+            source={typeof posterSource === 'string' ? { uri: posterSource } : posterSource}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+        )}
+        <VideoViewComponent
+          player={player}
+          allowsVideoFrameAnalysis={this.props.allowsVideoFrameAnalysis ?? false}
+          style={StyleSheet.absoluteFillObject}
+          {...restProps}
+        />
+      </View>
     );
   }
 }

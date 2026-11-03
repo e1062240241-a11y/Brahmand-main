@@ -16,6 +16,7 @@ export interface ReciteOptions {
   onDone?: () => void;
   onStopped?: () => void;
   onError?: (error: any) => void;
+  onSegmentChange?: (segmentText: string, index: number, total: number) => void;
 }
 
 let ExpoSpeech: any = null;
@@ -124,6 +125,12 @@ export const cleanHindiForTTS = (text: string): string => {
   return t;
 };
 
+export interface SpeechSegment {
+  text: string;
+  pauseMs: number;
+  isSanskrit?: boolean;
+}
+
 /**
  * Split text into rhythmic chanting segments with natural breath pauses.
  * Breaks speaker headings, lines, dandas, and sentences into chunks with pause durations.
@@ -131,31 +138,31 @@ export const cleanHindiForTTS = (text: string): string => {
 export const splitIntoMeditativeSegments = (
   rawText: string,
   isSanskrit: boolean = true
-): Array<{ text: string; pauseMs: number }> => {
+): SpeechSegment[] => {
   if (!rawText || typeof rawText !== 'string') return [];
 
   if (isSanskrit) {
     const t = prepareSanskritForTTS(rawText);
     if (!t) return [];
 
-    const segments: Array<{ text: string; pauseMs: number }> = [];
+    const segments: SpeechSegment[] = [];
 
     // Speaker heading check (e.g. धृतराष्ट्र उवाच, सञ्जय उवाच, श्रीभगवानुवाच, अर्जुन उवाच)
     const speakerMatch = t.match(/^([^\n]+उवाच[^\n]*)(?:\n+|।+|\s+)/);
     let rest = t;
     if (speakerMatch) {
-      segments.push({ text: speakerMatch[1].trim(), pauseMs: 300 });
+      segments.push({ text: speakerMatch[1].trim(), pauseMs: 300, isSanskrit: true });
       rest = t.slice(speakerMatch[0].length).trim();
     }
 
-    // Split lines / dandas
+    // Split lines / dandas keeping punctuation
     const rawLines = rest.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     for (const line of rawLines) {
-      const subLines = line.split(/[।॥]/).map((s) => s.trim()).filter(Boolean);
+      const subLines = line.split(/(?<=[।॥])/).map((s) => s.trim()).filter(Boolean);
       if (!subLines.length) continue;
       for (let i = 0; i < subLines.length; i++) {
         const isLast = i === subLines.length - 1;
-        segments.push({ text: subLines[i], pauseMs: isLast ? 350 : 250 });
+        segments.push({ text: subLines[i], pauseMs: isLast ? 350 : 250, isSanskrit: true });
       }
     }
     return segments;
@@ -167,6 +174,7 @@ export const splitIntoMeditativeSegments = (
     return finalSentences.map((s, idx) => ({
       text: s,
       pauseMs: idx === finalSentences.length - 1 ? 350 : 250,
+      isSanskrit: false,
     }));
   }
 };
@@ -209,6 +217,7 @@ class GitaSpeechService {
   private currentAudioSubscription: any = null;
   private currentWebAudio: any = null;
   private isCancelled: boolean = false;
+  private segmentTimer: any = null;
 
   /**
    * Check if speech synthesis or audio playback is supported on this platform/runtime
@@ -227,6 +236,10 @@ class GitaSpeechService {
    */
   public async stop(): Promise<void> {
     this.isCancelled = true;
+    if (this.segmentTimer) {
+      clearTimeout(this.segmentTimer);
+      this.segmentTimer = null;
+    }
     try {
       if (Platform.OS === 'web') {
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -428,6 +441,7 @@ class GitaSpeechService {
       onDone,
       onStopped,
       onError,
+      onSegmentChange,
     } = options;
 
     await this.stop();
@@ -436,6 +450,24 @@ class GitaSpeechService {
     this.currentStopCallback = onStopped || null;
 
     const finalRate = rate ?? 1.0;
+
+    // Segment extraction: Primary (Sanskrit or Hindi) + Secondary (Hindi translation if 'both')
+    const isPrimarySanskrit = type === 'sanskrit';
+    const primarySegments = splitIntoMeditativeSegments(text, isPrimarySanskrit).map((s) => ({
+      ...s,
+      isSanskrit: isPrimarySanskrit,
+    }));
+    const secondarySegments = secondaryText
+      ? splitIntoMeditativeSegments(secondaryText, false).map((s) => ({
+          ...s,
+          isSanskrit: false,
+        }))
+      : [];
+    const allSegments = [...primarySegments, ...secondarySegments];
+
+    if (allSegments.length > 0 && onSegmentChange) {
+      onSegmentChange(allSegments[0].text, 0, allSegments.length);
+    }
 
     // Build the combined text if secondaryText is present
     const fullTextToSpeak = secondaryText
@@ -451,14 +483,35 @@ class GitaSpeechService {
     if (audioUrls.length > 0) {
       let playbackWorked = false;
 
+      const startSegmentProgression = () => {
+        if (!allSegments.length || !onSegmentChange) return;
+        let currentIdx = 0;
+        const tick = () => {
+          if (this.isCancelled) return;
+          currentIdx++;
+          if (currentIdx < allSegments.length) {
+            onSegmentChange(allSegments[currentIdx].text, currentIdx, allSegments.length);
+            const segDuration = Math.max(2200, allSegments[currentIdx].text.length * 85);
+            this.segmentTimer = setTimeout(tick, segDuration);
+          }
+        };
+        const firstDuration = Math.max(2200, allSegments[0].text.length * 85);
+        this.segmentTimer = setTimeout(tick, firstDuration);
+      };
+
       await this.playAudioFromUrlList(
         audioUrls,
         finalRate,
         () => {
           playbackWorked = true;
           if (onStart) onStart();
+          startSegmentProgression();
         },
         () => {
+          if (this.segmentTimer) {
+            clearTimeout(this.segmentTimer);
+            this.segmentTimer = null;
+          }
           this.isCurrentlySpeaking = false;
           this.currentStopCallback = null;
           if (onDone) onDone();
@@ -474,21 +527,21 @@ class GitaSpeechService {
     }
 
     // 2. Offline fallback with deliberate segment pauses ("ruk ruk ke")
-    await this.speakOfflineWithPauses(fullTextToSpeak, type, finalRate, onStart, onDone, onError);
+    await this.speakOfflineWithPauses(allSegments, type, finalRate, onStart, onDone, onError, onSegmentChange);
   }
 
   /**
    * Offline fallback: Speaks segments one-by-one with intentional pauses between lines
    */
   private async speakOfflineWithPauses(
-    rawText: string,
+    segments: SpeechSegment[],
     type: SpeechLanguage,
     rate: number,
     onStart?: () => void,
     onDone?: () => void,
-    onError?: (err: any) => void
+    onError?: (err: any) => void,
+    onSegmentChange?: (segmentText: string, index: number, total: number) => void
   ): Promise<void> {
-    const segments = splitIntoMeditativeSegments(rawText);
     if (!segments.length) {
       this.isCurrentlySpeaking = false;
       this.currentStopCallback = null;
@@ -496,7 +549,6 @@ class GitaSpeechService {
       return;
     }
 
-    const langCode = type === 'english' ? 'en-IN' : 'hi-IN';
     let index = 0;
 
     // Web Speech API
@@ -511,13 +563,17 @@ class GitaSpeechService {
         }
 
         const seg = segments[index];
+        const segIndex = index;
         index++;
 
+        onSegmentChange?.(seg.text, segIndex, segments.length);
+
+        const segLang = seg.isSanskrit ? 'hi-IN' : (type === 'english' ? 'en-IN' : 'hi-IN');
         const utterance = new SpeechSynthesisUtterance(seg.text);
-        utterance.lang = langCode;
+        utterance.lang = segLang;
         utterance.rate = Math.max(0.75, rate * 0.85); // Meditative, calm pace
         utterance.onstart = () => {
-          if (index === 1 && onStart) onStart();
+          if (segIndex === 0 && onStart) onStart();
         };
         utterance.onend = () => {
           if (this.isCancelled) return;
@@ -547,15 +603,19 @@ class GitaSpeechService {
         }
 
         const seg = segments[index];
+        const segIndex = index;
         index++;
 
+        onSegmentChange?.(seg.text, segIndex, segments.length);
+
+        const segLang = seg.isSanskrit ? 'hi-IN' : (type === 'english' ? 'en-IN' : 'hi-IN');
         try {
           ExpoSpeech.speak(seg.text, {
-            language: langCode,
+            language: segLang,
             rate: Math.max(0.75, rate * 0.85), // Meditative, calm pace
             pitch: 1.0,
             onStart: () => {
-              if (index === 1 && onStart) onStart();
+              if (segIndex === 0 && onStart) onStart();
             },
             onDone: () => {
               if (this.isCancelled) return;

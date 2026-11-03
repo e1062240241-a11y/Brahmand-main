@@ -14,8 +14,9 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, dhanterasBannerImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
+import { KalashCoinAnimation } from './KalashCoinAnimation';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
@@ -202,14 +203,26 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
     );
 });
 
-const StaticBannerCard = ({ source, width, onPress, onPressIn, onPressOut, children }: any) => (
+const StaticBannerCard = ({
+    source,
+    width,
+    height,
+    resizeMode = "cover",
+    onPress,
+    onPressIn,
+    onPressOut,
+    children,
+    accessibilityLabel,
+}: any) => (
     <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
         style={{
             width,
-            height: Platform.OS === 'ios' ? 185 : 160,
+            height: height || (Platform.OS === 'ios' ? 185 : 160),
             borderRadius: 16,
             overflow: 'hidden',
             alignSelf: 'center',
@@ -220,22 +233,24 @@ const StaticBannerCard = ({ source, width, onPress, onPressIn, onPressOut, child
     >
         <Image
             source={source}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 }}
-            resizeMode="cover"
+            style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+            resizeMode={resizeMode}
         />
-        <LinearGradient
-            colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
-            style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                zIndex: 2,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                justifyContent: 'space-between',
-            }}
-        >
-            {children}
-        </LinearGradient>
+        {children ? (
+            <LinearGradient
+                colors={['rgba(0,0,0,0.1)', 'transparent', 'rgba(0,0,0,0.25)']}
+                style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 2,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    justifyContent: 'space-between',
+                }}
+            >
+                {children}
+            </LinearGradient>
+        ) : null}
     </Pressable>
 );
 
@@ -401,7 +416,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
         const updatePlayback = (appState: string = AppState.currentState) => {
             if (!isPlayerValid(achPlayer)) return;
             const isAppActive = appState === 'active';
-            const targetBannerIdx = isHanumanActive ? 1 : 0;
+            const targetBannerIdx = 1;
             const shouldPlay = activeFocused && isAppActive && !videoError && activeBannerIndex === targetBannerIdx;
             if (shouldPlay) {
                 try {
@@ -457,25 +472,35 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             bottom: 0,
                             justifyContent: 'center',
                             alignItems: 'center',
-                            zIndex: -1,
-                        }} pointerEvents="none">
-                            <Text
-                                numberOfLines={1}
+                            zIndex: 1,
+                        }} pointerEvents="box-none">
+                            <View
                                 style={{
-                                    color: '#000',
-                                    textAlign: 'center',
-                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                    fontSize: Platform.OS === 'android' ? 24 : 27,
-                                    fontStyle: 'normal',
-                                    fontWeight: '400',
-                                    letterSpacing: 0.5,
-                                    includeFontPadding: false,
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                 }}
+                                pointerEvents="box-none"
                             >
-                                BRAHMAND
-                            </Text>
+                                <Text
+                                    numberOfLines={1}
+                                    style={{
+                                        color: '#000',
+                                        textAlign: 'center',
+                                        fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
+                                        fontSize: Platform.OS === 'android' ? 24 : 27,
+                                        fontStyle: 'normal',
+                                        fontWeight: '400',
+                                        letterSpacing: 0.5,
+                                        includeFontPadding: false,
+                                        paddingHorizontal: 4,
+                                        paddingVertical: 4,
+                                    }}
+                                >
+                                    BRAHMAND
+                                </Text>
+                                <KalashCoinAnimation />
+                            </View>
                         </View>
 
                         <View style={styles.headerRight}>
@@ -894,7 +919,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -904,17 +929,45 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             }}
                             scrollEventThrottle={32}
                         >
-                            {/* Helper components for Banner 1 & Banner 2 */}
                             {(() => {
-                                const renderHanumanBanner = (key: string) => (
-                                    <StaticBannerCard
-                                        key={key}
-                                        width={screenWidth - 40}
-                                        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
-                                        onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
-                                        onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                        onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                                    >
+                                const bannerCardWidth = screenWidth - 40;
+                                const bannerCardHeight = Math.min(Math.round(bannerCardWidth * 0.5), 200);
+
+                                return (
+                                    <>
+                                        {/* Banner 1: Dhanteras Special Banner (First Banner) */}
+                                        <StaticBannerCard
+                                            key="dhanteras_banner"
+                                            width={bannerCardWidth}
+                                            height={bannerCardHeight}
+                                            source={dhanterasBannerImage}
+                                            resizeMode="contain"
+                                            accessibilityLabel="Dhanteras Banner"
+                                            onPress={() => {
+                                                try {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                } catch (_e) { }
+                                                router.push({
+                                                    pathname: '/festival-detail',
+                                                    params: { name: 'Dhanteras' },
+                                                });
+                                            }}
+                                            onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                            onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                        />
+
+                                        {/* Helper components for Banner 2 & Banner 3 */}
+                                        {(() => {
+                                            const renderHanumanBanner = (key: string) => (
+                                                <StaticBannerCard
+                                                    key={key}
+                                                    width={bannerCardWidth}
+                                                    height={bannerCardHeight}
+                                                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
+                                                    onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                                    onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                                    onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                                >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                                             {/* Top Left Content */}
@@ -1088,7 +1141,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             })()}
 
                             <StaticBannerCard
-                                width={screenWidth - 40}
+                                key="shiva_banner"
+                                width={bannerCardWidth}
+                                height={bannerCardHeight}
                                 source={shivaImage}
                                 onPress={() => handleLiveJaapNavigation('shiva', 'Om Namah Shivay')}
                                 onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
@@ -1256,17 +1311,20 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     </Pressable>
                                 </View>
                             </StaticBannerCard>
+                                    </>
+                                );
+                            })()}
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1].map((idx) => (
+                            {[0, 1, 2].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
                                         width: activeBannerIndex === idx ? 16 : 6,
                                         height: 5,
                                         borderRadius: 3,
-                                        backgroundColor: activeBannerIndex === idx ? '#FFD700' : 'rgba(255, 255, 255, 0.35)',
+                                        backgroundColor: activeBannerIndex === idx ? '#FF8A00' : 'rgba(0, 0, 0, 0.18)',
                                     }}
                                 />
                             ))}

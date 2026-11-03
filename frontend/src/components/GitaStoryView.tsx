@@ -34,9 +34,14 @@ import {
   StorySpeaker,
 } from '../types/gitaStory';
 import { useStoryStore } from '../store/useStoryStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from './SafeVideoView';
+import { GITA_COSMIC_MEDIA } from '../constants/gitaCosmicMedia';
+import { CosmicAnimatedBackground } from './library/CosmicAnimatedBackground';
 
 interface GitaStoryViewProps {
   chapterData: GitaStoryChapter;
+  nightMode?: boolean;
   activeCueMark?: string | null;
   activeCueSceneId?: string | null;
   onPlayScene?: (scene: StoryScene) => void;
@@ -88,6 +93,7 @@ function getSpeakerEmotionTag(speaker: StorySpeaker | string): string {
 
 export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
   chapterData,
+  nightMode = false,
   activeCueMark,
   activeCueSceneId,
   onPlayScene,
@@ -95,6 +101,26 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
 }) => {
   const [isDisclaimerExpanded, setIsDisclaimerExpanded] = useState<boolean>(false);
   const { currentPlayingSceneId, isPlaying } = useStoryStore();
+  const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
+
+  const videoPlayer = useSafeVideoPlayer(GITA_COSMIC_MEDIA.videoLocal, (player) => {
+    player.loop = true;
+    player.muted = true;
+    try {
+      player.play();
+    } catch (_e) {}
+  });
+
+  React.useEffect(() => {
+    if (!isPlayerValid(videoPlayer)) return;
+    try {
+      if (isVideoEnabled) {
+        videoPlayer.play();
+      } else {
+        videoPlayer.pause();
+      }
+    } catch (_e) {}
+  }, [isVideoEnabled, videoPlayer]);
 
   const fullStoryScene: StoryScene = useMemo(() => ({
     scene_id: 'full',
@@ -131,7 +157,12 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
       {/* =========================================================================
           HERO SECTION: THEOLOGICAL FRAMING DISCLAIMER
          ========================================================================= */}
-      <View style={styles.heroDisclaimerCard}>
+      <View
+        style={[
+          styles.heroDisclaimerCard,
+          !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.15)' },
+        ]}
+      >
         <View style={styles.disclaimerTopRow}>
           <View style={styles.disclaimerTitleGroup}>
             <View style={styles.timeBadgeIcon}>
@@ -141,7 +172,12 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
               <Text style={styles.disclaimerBadgeText}>
                 {GITA_THEOLOGICAL_FRAMING.SHORT_BADGE_HI}
               </Text>
-              <Text style={styles.disclaimerMainTitle}>
+              <Text
+                style={[
+                  styles.disclaimerMainTitle,
+                  !nightMode && { color: '#3E1A0E' },
+                ]}
+              >
                 {GITA_THEOLOGICAL_FRAMING.TIME_TITLE_HI}
               </Text>
             </View>
@@ -160,11 +196,21 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
 
         {isDisclaimerExpanded && (
           <View style={styles.disclaimerBody}>
-            <Text style={styles.disclaimerHindiText}>
+            <Text
+              style={[
+                styles.disclaimerHindiText,
+                !nightMode && { color: '#5D2B1B' },
+              ]}
+            >
               {'“'}{chapterData.theological_framing_disclaimer || GITA_THEOLOGICAL_FRAMING.DISCLAIMER_HI}{'”'}
             </Text>
             <View style={styles.disclaimerDivider} />
-            <Text style={styles.disclaimerEnglishText}>
+            <Text
+              style={[
+                styles.disclaimerEnglishText,
+                !nightMode && { color: '#78716C' },
+              ]}
+            >
               {GITA_THEOLOGICAL_FRAMING.DISCLAIMER_EN}
             </Text>
           </View>
@@ -174,18 +220,62 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
       {/* =========================================================================
           OPENING MONOLOGUE: VOICE OF TIME (मैं समय हूँ...)
          ========================================================================= */}
-      <View style={styles.openingMonologueCard}>
-        <View style={styles.monologueBadge}>
-          <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600' }}>
-            ☸ {GITA_THEOLOGICAL_FRAMING.TIME_SUBTITLE_HI}
-          </Text>
+      <View
+        style={[
+          styles.openingMonologueCard,
+          (isOpeningPlaying || isOpeningActive) && styles.openingMonologueCardActive,
+        ]}
+      >
+        {/* Divine Cosmic Animation Backdrop for Monologue (CSS + JavaScript) */}
+        {isVideoEnabled && (
+          <View style={styles.monologueVideoWrapper} pointerEvents="none">
+            <CosmicAnimatedBackground
+              style={StyleSheet.absoluteFillObject}
+              showKaalChakra={true}
+              speed={1.0}
+              overlayOpacity={0.25}
+            />
+          </View>
+        )}
+
+        <View style={styles.monologueTopBadgeRow}>
+          <View style={styles.monologueBadge}>
+            <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600' }}>
+              ☸ {GITA_THEOLOGICAL_FRAMING.TIME_SUBTITLE_HI}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.monologueVideoToggle}
+            onPress={() => setIsVideoEnabled((prev) => !prev)}
+            activeOpacity={0.7}
+            accessibilityLabel="Toggle monologue cosmic video background"
+          >
+            <Ionicons
+              name={isVideoEnabled ? 'videocam' : 'videocam-off-outline'}
+              size={13}
+              color={isVideoEnabled ? '#F59E0B' : '#A8A29E'}
+            />
+            <Text style={[styles.monologueVideoToggleText, !isVideoEnabled && { color: '#A8A29E' }]}>
+              {isVideoEnabled ? 'काल-दृश्य' : 'सादा'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.monologueChapterTitle}>
+        <Text
+          style={[
+            styles.monologueChapterTitle,
+            !isVideoEnabled && !nightMode && { color: '#3E1A0E' },
+          ]}
+        >
           अध्याय {chapterData.chapter} : {chapterData.title_hindi}
         </Text>
 
-        <Text style={styles.monologueSanskritTitle}>
+        <Text
+          style={[
+            styles.monologueSanskritTitle,
+            !isVideoEnabled && !nightMode && { color: '#8D3C08' },
+          ]}
+        >
           {chapterData.title_sanskrit} • {chapterData.title_english}
         </Text>
 
@@ -212,8 +302,17 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                   key={lIdx}
                   style={[
                     styles.monologueSentenceText,
-                    lIdx === 0 && styles.firstMonologueSentence,
-                    lIdx === lArr.length - 1 && styles.lastMonologueSentence,
+                    !isVideoEnabled && !nightMode && { color: '#3E1A0E' },
+                    lIdx === 0 && (
+                      isVideoEnabled || nightMode
+                        ? styles.firstMonologueSentence
+                        : styles.firstMonologueSentenceLight
+                    ),
+                    lIdx === lArr.length - 1 && (
+                      isVideoEnabled || nightMode
+                        ? styles.lastMonologueSentence
+                        : styles.lastMonologueSentenceLight
+                    ),
                   ]}
                 >
                   {line.trim()}
@@ -241,6 +340,7 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
               style={[
                 styles.playFullStoryBtnText,
                 (isFullPlaying || isOpeningPlaying) && styles.playFullStoryBtnTextActive,
+                !nightMode && !(isFullPlaying || isOpeningPlaying) && { color: '#8D3C08' },
               ]}
             >
               {(isFullPlaying || isOpeningPlaying)
@@ -258,11 +358,26 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
       {/* =========================================================================
           SCENE LIST: DRAMATIC EPISODES & DIALOGUES
          ========================================================================= */}
-      <View style={styles.actsHeaderRow}>
-        <Text style={styles.actsHeaderTitle}>
+      <View
+        style={[
+          styles.actsHeaderRow,
+          !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.15)' },
+        ]}
+      >
+        <Text
+          style={[
+            styles.actsHeaderTitle,
+            !nightMode && { color: '#78350F' },
+          ]}
+        >
           🎭 {STORY_UI_LABELS.CHAPTER_ACTS_TITLE_HI}
         </Text>
-        <Text style={styles.actsHeaderCount}>
+        <Text
+          style={[
+            styles.actsHeaderCount,
+            !nightMode && { color: '#8D3C08' },
+          ]}
+        >
           Chapter {chapterData.chapter} Narrative
         </Text>
       </View>
@@ -280,22 +395,54 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
             key={scene.scene_id}
             style={[
               styles.sceneCard,
+              !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.12)' },
               isThisScenePlaying && styles.sceneCardActive,
             ]}
           >
             {/* Scene Header */}
-            <View style={styles.sceneHeaderRow}>
+            <View
+              style={[
+                styles.sceneHeaderRow,
+                !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.1)' },
+              ]}
+            >
               <View style={{ flex: 1 }}>
                 <View style={styles.sceneBadgeRow}>
                   <View style={styles.seqBadge}>
                     <Text style={styles.seqBadgeText}>प्रसंग {scene.seq}</Text>
                   </View>
-                  <View style={styles.rangeBadge}>
-                    <Text style={styles.rangeBadgeText}>श्लोक {scene.display_range}</Text>
+                  <View
+                    style={[
+                      styles.rangeBadge,
+                      !nightMode && { backgroundColor: 'rgba(116, 59, 39, 0.08)' },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.rangeBadgeText,
+                        !nightMode && { color: '#78350F' },
+                      ]}
+                    >
+                      श्लोक {scene.display_range}
+                    </Text>
                   </View>
                 </View>
-                <Text style={styles.sceneTitleHi}>{scene.title_hi}</Text>
-                <Text style={styles.sceneTitleEn}>{scene.title_en}</Text>
+                <Text
+                  style={[
+                    styles.sceneTitleHi,
+                    !nightMode && { color: '#3E1A0E' },
+                  ]}
+                >
+                  {scene.title_hi}
+                </Text>
+                <Text
+                  style={[
+                    styles.sceneTitleEn,
+                    !nightMode && { color: '#78350F' },
+                  ]}
+                >
+                  {scene.title_en}
+                </Text>
               </View>
 
               {onPlayScene && (
@@ -317,6 +464,7 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                     style={[
                       styles.playSceneBtnText,
                       isThisScenePlaying && styles.playSceneBtnTextActive,
+                      !nightMode && !isThisScenePlaying && { color: '#8D3C08' },
                     ]}
                   >
                     {isThisScenePlaying ? 'विराम' : 'कथा सुनें'}
@@ -332,13 +480,25 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                 isNarrativeActive && styles.narrativeBoxActive,
               ]}
             >
-              <View style={styles.narrativeTagRow}>
+              <View
+                style={[
+                  styles.narrativeTagRow,
+                  !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.1)' },
+                ]}
+              >
                 <View style={styles.narrativeIconGroup}>
                   <Text style={{ fontSize: 13 }}>⏳</Text>
                   <Text style={styles.narrativeTagText}>काल का कथन (सूत्रधार)</Text>
                 </View>
                 <View style={styles.narrativeToneBadge}>
-                  <Text style={styles.narrativeToneText}>गंभीर • विहंगम दृष्टि</Text>
+                  <Text
+                    style={[
+                      styles.narrativeToneText,
+                      !nightMode && { color: '#8D3C08' },
+                    ]}
+                  >
+                    गंभीर • विहंगम दृष्टि
+                  </Text>
                 </View>
               </View>
 
@@ -351,8 +511,9 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                       key={sIdx}
                       style={[
                         styles.narrativeSentence,
-                        sIdx === 0 && styles.firstNarrativeSentence,
-                        sIdx === sArr.length - 1 && styles.lastNarrativeSentence,
+                        !nightMode && { color: '#3E1A0E' },
+                        sIdx === 0 && (nightMode ? styles.firstNarrativeSentence : styles.firstNarrativeSentenceLight),
+                        sIdx === sArr.length - 1 && (nightMode ? styles.lastNarrativeSentence : styles.lastNarrativeSentenceLight),
                       ]}
                     >
                       {sentence.trim()}
@@ -364,7 +525,12 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
             {/* Dialogues Array */}
             {scene.dialogues && scene.dialogues.length > 0 && (
               <View style={styles.dialoguesContainer}>
-                <Text style={styles.dialoguesSectionTitle}>
+                <Text
+                  style={[
+                    styles.dialoguesSectionTitle,
+                    !nightMode && { color: '#78350F' },
+                  ]}
+                >
                   संवाद एवं श्लोक (Dramatized Dialogues)
                 </Text>
 
@@ -379,6 +545,7 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                       key={`${scene.scene_id}_diag_${diagIdx}`}
                       style={[
                         styles.dialogueCard,
+                        !nightMode && { borderBottomColor: 'rgba(116, 59, 39, 0.08)' },
                         isDialogueActive && styles.dialogueCardActive,
                       ]}
                     >
@@ -405,15 +572,33 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                             </Text>
                           </View>
 
-                          <View style={styles.dialogueEmotionPill}>
-                            <Text style={styles.dialogueEmotionText}>
+                          <View
+                            style={[
+                              styles.dialogueEmotionPill,
+                              !nightMode && {
+                                backgroundColor: 'rgba(116, 59, 39, 0.08)',
+                                borderColor: 'rgba(116, 59, 39, 0.15)',
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.dialogueEmotionText,
+                                !nightMode && { color: '#8D3C08' },
+                              ]}
+                            >
                               🎭 {getSpeakerEmotionTag(dialogue.speaker)}
                             </Text>
                           </View>
                         </View>
 
                         {dialogue.verse_ref && (
-                          <Text style={styles.verseRefPill}>
+                          <Text
+                            style={[
+                              styles.verseRefPill,
+                              !nightMode && { color: '#8D3C08' },
+                            ]}
+                          >
                             श्लोक {dialogue.verse_ref}
                           </Text>
                         )}
@@ -425,7 +610,13 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                           .split(/(?<=[।!?])\s+/)
                           .filter((d) => d.trim().length > 0)
                           .map((dSentence, dIdx, dArr) => (
-                            <Text key={dIdx} style={styles.dialogueSentenceItem}>
+                            <Text
+                              key={dIdx}
+                              style={[
+                                styles.dialogueSentenceItem,
+                                !nightMode && { color: '#2C1810' },
+                              ]}
+                            >
                               {dIdx === 0 ? '“' : ''}
                               {dSentence.trim()}
                               {dIdx === dArr.length - 1 ? '”' : ''}
@@ -439,7 +630,12 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                           <Text style={styles.sanskritShlokaHeader}>
                             ॥ मूल संस्कृत श्लोक ॥
                           </Text>
-                          <Text style={styles.sanskritShlokaText}>
+                          <Text
+                            style={[
+                              styles.sanskritShlokaText,
+                              !nightMode && { color: '#5C240E' },
+                            ]}
+                          >
                             {dialogue.sanskrit_shloka}
                           </Text>
                         </View>
@@ -452,7 +648,12 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
 
             {/* Chintan Bindu: Vedantic Contemplation Card */}
             {scene.chintan_bindu && (
-              <View style={styles.chintanCard}>
+              <View
+                style={[
+                  styles.chintanCard,
+                  !nightMode && { borderTopColor: 'rgba(217, 119, 6, 0.25)' },
+                ]}
+              >
                 <View style={styles.chintanHeaderRow}>
                   <Text style={{ fontSize: 16 }}>🪔</Text>
                   <Text style={styles.chintanTag}>
@@ -460,22 +661,42 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
                   </Text>
                 </View>
 
-                <Text style={styles.chintanSutraTitle}>
+                <Text
+                  style={[
+                    styles.chintanSutraTitle,
+                    !nightMode && { color: '#3E1A0E' },
+                  ]}
+                >
                   {scene.chintan_bindu.sutra_title}
                 </Text>
 
-                <Text style={styles.chintanConcept}>
+                <Text
+                  style={[
+                    styles.chintanConcept,
+                    !nightMode && { color: '#8D3C08' },
+                  ]}
+                >
                   तत्त्व विचार: {scene.chintan_bindu.vedantic_concept}
                 </Text>
 
-                <Text style={styles.chintanReflection}>
+                <Text
+                  style={[
+                    styles.chintanReflection,
+                    !nightMode && { color: '#5D4037' },
+                  ]}
+                >
                   {'“'}{scene.chintan_bindu.inner_reflection}{'”'}
                 </Text>
               </View>
             )}
 
             {/* Deeper Study Action Link */}
-            <View style={styles.studyFooterRow}>
+            <View
+              style={[
+                styles.studyFooterRow,
+                !nightMode && { borderTopColor: 'rgba(116, 59, 39, 0.1)' },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.studyBtn}
                 onPress={() => handleStudyNavigation(scene.deeper_study_ref)}
@@ -497,16 +718,16 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 40,
+    backgroundColor: 'transparent',
   },
   heroDisclaimerCard: {
-    borderRadius: 16,
-    backgroundColor: '#1E1611',
-    borderColor: '#78350F',
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 20,
+    paddingVertical: 10,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.25)',
+    backgroundColor: 'transparent',
   },
   disclaimerTopRow: {
     flexDirection: 'row',
@@ -520,9 +741,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timeBadgeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderWidth: 1,
     borderColor: '#F59E0B',
@@ -537,7 +758,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   disclaimerMainTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#FDE68A',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
@@ -554,10 +775,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disclaimerBody: {
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(120, 53, 15, 0.4)',
+    borderTopColor: 'rgba(120, 53, 15, 0.3)',
   },
   disclaimerHindiText: {
     fontSize: 13,
@@ -577,13 +798,52 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
   },
   openingMonologueCard: {
-    borderRadius: 20,
-    backgroundColor: '#1C1510',
-    borderColor: '#92400E',
-    borderWidth: 1,
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
+    backgroundColor: '#0E0C14',
+    borderRadius: 20,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  openingMonologueCardActive: {
+    borderColor: '#F59E0B',
+    elevation: 6,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
+  monologueVideoWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  monologueTopBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 10,
+  },
+  monologueVideoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  monologueVideoToggleText: {
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '600',
   },
   monologueBadge: {
     paddingHorizontal: 12,
@@ -610,30 +870,27 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   goldSeparator: {
-    width: 80,
+    width: 60,
     height: 2,
     backgroundColor: '#F59E0B',
-    marginVertical: 14,
+    marginVertical: 12,
     opacity: 0.6,
   },
   monologueQuoteBox: {
-    backgroundColor: 'rgba(10, 8, 6, 0.6)',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    backgroundColor: 'transparent',
+    paddingVertical: 8,
     width: '100%',
   },
   monologueQuoteBoxActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: 'rgba(120, 53, 15, 0.35)',
-    borderWidth: 1.5,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+    paddingLeft: 12,
   },
   monologueIntroTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 8,
     alignSelf: 'center',
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     paddingHorizontal: 10,
@@ -657,9 +914,18 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     marginVertical: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   firstMonologueSentence: {
     color: '#FDE68A',
+    fontWeight: '700',
+    fontSize: 16.5,
+    marginBottom: 6,
+  },
+  firstMonologueSentenceLight: {
+    color: '#78350F',
     fontWeight: '700',
     fontSize: 16.5,
     marginBottom: 6,
@@ -668,17 +934,21 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: '#FCD34D',
   },
+  lastMonologueSentenceLight: {
+    marginTop: 6,
+    color: '#92400E',
+  },
   playFullStoryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     borderWidth: 1.5,
     borderColor: '#F59E0B',
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 16,
-    marginTop: 16,
+    marginTop: 14,
     width: '100%',
   },
   playFullStoryBtnActive: {
@@ -695,7 +965,7 @@ const styles = StyleSheet.create({
     color: '#140E0C',
   },
   monologueMetaFooter: {
-    marginTop: 14,
+    marginTop: 12,
     fontSize: 11,
     color: '#D97706',
     letterSpacing: 0.5,
@@ -719,23 +989,22 @@ const styles = StyleSheet.create({
     color: '#A8A29E',
   },
   sceneCard: {
-    borderRadius: 20,
-    backgroundColor: '#18120E',
-    borderColor: '#442817',
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 20,
+    paddingVertical: 16,
+    marginBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'transparent',
   },
   sceneCardActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#20150E',
-    borderWidth: 1.5,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+    paddingLeft: 10,
   },
   sceneHeaderRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -801,22 +1070,20 @@ const styles = StyleSheet.create({
     color: '#140E0C',
   },
   narrativeBox: {
-    backgroundColor: 'rgba(10, 8, 6, 0.7)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 14,
-    marginVertical: 14,
+    backgroundColor: 'transparent',
+    paddingVertical: 10,
+    marginVertical: 10,
   },
   narrativeBoxActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: 'rgba(120, 53, 15, 0.3)',
+    borderLeftWidth: 2.5,
+    borderLeftColor: '#F59E0B',
+    paddingLeft: 8,
   },
   narrativeTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
     paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
@@ -859,8 +1126,15 @@ const styles = StyleSheet.create({
     color: '#FEF3C7',
     fontWeight: '600',
   },
+  firstNarrativeSentenceLight: {
+    color: '#6B2D10',
+    fontWeight: '600',
+  },
   lastNarrativeSentence: {
     color: '#E7E5E4',
+  },
+  lastNarrativeSentenceLight: {
+    color: '#5D2B1B',
   },
   dialoguesContainer: {
     marginVertical: 8,
@@ -874,22 +1148,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   dialogueCard: {
-    borderRadius: 14,
-    backgroundColor: 'rgba(10, 8, 6, 0.5)',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'transparent',
   },
   dialogueCardActive: {
-    borderColor: '#F59E0B',
-    backgroundColor: 'rgba(120, 53, 15, 0.25)',
+    borderLeftWidth: 2.5,
+    borderLeftColor: '#F59E0B',
+    paddingLeft: 8,
   },
   speakerBadgeRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
     gap: 8,
   },
   speakerBadgeLeftCol: {
@@ -940,12 +1214,12 @@ const styles = StyleSheet.create({
     marginVertical: 3,
   },
   sanskritShlokaBox: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(120, 53, 15, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingLeft: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: '#F59E0B',
+    backgroundColor: 'transparent',
   },
   sanskritShlokaHeader: {
     fontSize: 10,
@@ -960,13 +1234,12 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   chintanCard: {
-    borderRadius: 14,
-    backgroundColor: 'rgba(40, 20, 10, 0.6)',
-    borderColor: 'rgba(245, 158, 11, 0.35)',
-    borderWidth: 1,
-    padding: 14,
+    paddingVertical: 12,
     marginTop: 10,
     marginBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(245, 158, 11, 0.25)',
+    backgroundColor: 'transparent',
   },
   chintanHeaderRow: {
     flexDirection: 'row',

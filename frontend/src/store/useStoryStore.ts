@@ -11,7 +11,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORY_AUDIO_DEFAULTS } from '../constants/gitaStoryFraming';
 
-export type StoryViewMode = 'classical' | 'story';
+export type StoryViewMode = 'classical' | 'story' | 'visualizer';
 
 export interface StoryState {
   // State

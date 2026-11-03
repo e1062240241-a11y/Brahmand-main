@@ -152,3 +152,36 @@ async def get_gita_story_scene_audio(request: Request, chapter: int, scene_id: s
         range_header=range_header,
         extra_headers=extra_headers,
     )
+
+
+@story_router.get("/cosmic-video", summary="Stream cosmic looping background video for Katha narration")
+async def get_cosmic_background_video(request: Request):
+    """
+    Stream optimized H.264 MP4 cosmic Kurukshetra background video loop.
+    Supports HTTP 206 Partial Content for mobile streaming and video element looping.
+    """
+    video_path = Path(__file__).resolve().parent.parent / "data" / "media" / "gita_cosmic_katha_loop.mp4"
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Cosmic video loop not found.")
+
+    range_header = request.headers.get("range") or request.headers.get("Range")
+    return _cache_manager.stream_file(
+        file_path=str(video_path),
+        range_header=range_header,
+        extra_headers={
+            "Content-Type": "video/mp4",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
+@story_router.get("/cosmic-poster", summary="Get high-res cosmic Kurukshetra poster image")
+async def get_cosmic_poster():
+    """
+    Return high-definition atmospheric cosmic Kurukshetra poster image.
+    """
+    poster_path = Path(__file__).resolve().parent.parent / "data" / "media" / "gita_cosmic_katha.jpg"
+    if not poster_path.exists():
+        raise HTTPException(status_code=404, detail="Cosmic poster not found.")
+    from fastapi.responses import FileResponse
+    return FileResponse(poster_path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=2592000"})
