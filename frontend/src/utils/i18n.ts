@@ -168,7 +168,9 @@ export const translations = {
     personalMalaProgress: 'Personal Mala Progress',
     beads: 'Beads',
     deepBreath: 'Have a deep breath.',
-    nextJaapStartingSoon: 'Next jaap is starting soon...',
+    // 🧡 Engagement: Reframed passive waiting text to devotional invitation
+    // Lever: Reframing + Sanskara/Sankalpa (Cultural Devotion over Passive Broadcast)
+    nextJaapStartingSoon: 'Next jaap starting soon — Take Sankalpa 🚩',
     remaining: 'remaining',
     line: 'LINE',
     session: 'Session',
@@ -201,7 +203,9 @@ export const translations = {
     notifyMe: 'Notify me',
     cityCommunity: 'CITY COMMUNITY',
     foodSharing: 'FOOD SHARING',
-    noPostsYet: 'No posts yet',
+    // 🧡 Engagement: Reframed empty feed text to devotional sharing
+    // Lever: Reframing (Transactional -> Devotional)
+    noPostsYet: 'No devotional posts shared yet ✨',
     approved: 'Approved',
     pending: 'Pending',
     free: 'Free',
@@ -467,7 +471,10 @@ export const translations = {
     personalMalaProgress: 'व्यक्तिगत माला प्रगति',
     beads: 'मनके',
     deepBreath: 'एक गहरी सांस लें।',
-    nextJaapStartingSoon: 'अगला जाप जल्द ही शुरू हो रहा है...',
+    // 🧡 Engagement: Reframed passive waiting text ("अगला जाप जल्द ही शुरू हो रहा है...") to devotional Sankalpa invitation ("अगला जाप शीघ्र प्रारंभ — संकल्प लें 🚩")
+    // Lever: Reframing + Sanskara/Sankalpa (Culture & Habit over Passive Broadcast)
+    // Why: "संकल्प" (Sacred Vow) invites user to form a daily spiritual intention rather than treating the app like a passive broadcast.
+    nextJaapStartingSoon: 'अगला जाप शीघ्र प्रारंभ — संकल्प लें 🚩',
     remaining: 'शेष',
     line: 'पंक्ति',
     session: 'सत्र',
@@ -500,7 +507,10 @@ export const translations = {
     notifyMe: 'सूचित करें',
     cityCommunity: 'शहर समुदाय',
     foodSharing: 'भोजन साझाकरण',
-    noPostsYet: 'अभी तक कोई पोस्ट नहीं है',
+    // 🧡 Engagement: Reframed empty feed text ("अभी तक कोई पोस्ट नहीं है") to devotional sharing ("अभी कोई भक्ति भाव साझा नहीं हुआ है ✨")
+    // Lever: Reframing (Transactional -> Devotional)
+    // Why: "भक्ति भाव" honors the spiritual nature of shared content, encouraging users to contribute with reverence.
+    noPostsYet: 'अभी कोई भक्ति भाव साझा नहीं हुआ है ✨',
     approved: 'स्वीकृत',
     pending: 'लंबित',
     free: 'मुफ़्त',
