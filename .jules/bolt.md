@@ -16,3 +16,7 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+
+## 2025-03-09 - [Firestore Field Masking for High-Throughput Watch Events]
+**Learning:** High-throughput endpoints like video watch events (`record_watch_event`) can suffer from memory and network bottlenecks when using standard Firestore document fetches (`db.get_document`), as entire heavy document payloads are loaded just to read a few primitive values. Firestore supports field masking through internal DB methods like `db.get_document_fields` which should be prioritized for read-heavy operations where only a subset of fields are used for math or conditional logic.
+**Action:** When working on backend endpoints that compute score updates based on document states, verify if `get_document_fields` can be used instead of `get_document` to retrieve only the required subset of fields.
