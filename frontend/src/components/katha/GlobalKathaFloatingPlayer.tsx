@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useKathaPlayerStore } from '../../store/kathaPlayerStore';
+import { useLanguageStore } from '../../utils/i18n';
 
 const shamikPathakCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' };
 const MINI_BARS_COUNT = 5;
@@ -27,6 +28,7 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
   const isPlaying = useKathaPlayerStore((state) => state.isPlaying);
   const togglePlayPause = useKathaPlayerStore((state) => state.togglePlayPause);
   const stop = useKathaPlayerStore((state) => state.stop);
+  const language = useLanguageStore((state) => state.language);
 
   // If no episode is playing or user is already on the full Katha screen, don't show floating bar
   const isInsideKathaScreen = pathname?.includes('/library/katha') || pathname === 'library/katha';
@@ -144,6 +146,8 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
         style={styles.cardTouchable}
         onPress={handleOpenFullKatha}
         activeOpacity={0.92}
+        accessibilityRole="button"
+        accessibilityLabel={language === 'hi' ? 'कथा खोलें' : 'Open Katha'}
       >
         <LinearGradient
           colors={['#241208', '#140803']}
@@ -213,6 +217,8 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
             }}
             activeOpacity={0.8}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? (language === 'hi' ? 'रोकें' : 'Pause') : (language === 'hi' ? 'चलाएं' : 'Play')}
           >
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
@@ -230,6 +236,8 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
             }}
             activeOpacity={0.8}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={language === 'hi' ? 'बंद करें' : 'Close'}
           >
             <Ionicons name="close" size={18} color="#FFB300" />
           </TouchableOpacity>
