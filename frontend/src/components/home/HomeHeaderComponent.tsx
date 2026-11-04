@@ -152,7 +152,11 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             ])
         );
         loop.start();
-        return () => loop.stop();
+        return () => {
+            loop.stop();
+            pulseAnim.stopAnimation();
+            pulseOpacity.stopAnimation();
+        };
     }, [isLive, pulseAnim, pulseOpacity]);
 
     let badgeBg = 'rgba(216, 90, 0, 0.9)';

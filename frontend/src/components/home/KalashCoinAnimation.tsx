@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Platform,
+  AppState,
 } from 'react-native';
 import Svg, {
   Path,
@@ -390,7 +391,10 @@ const FallingStreamCoin = React.memo(function FallingStreamCoin({
       ),
     ]);
     loop.start();
-    return () => loop.stop();
+    return () => {
+      loop.stop();
+      anim.stopAnimation();
+    };
   }, [anim, cfg]);
 
   // Y trajectory: starts inside cavity (-3), rises slightly over lip (3), then falls down (fallDistance)
@@ -443,13 +447,14 @@ const FallingStreamCoin = React.memo(function FallingStreamCoin({
             { translateX },
             { translateY },
             { rotate },
-            { scaleX },
             { scale },
           ],
         },
       ]}
     >
-      <GoldCoin size={cfg.coinSize} />
+      <Animated.View style={{ transform: [{ scaleX }] }}>
+        <GoldCoin size={cfg.coinSize} />
+      </Animated.View>
     </Animated.View>
   );
 });
@@ -476,7 +481,10 @@ const BurstStreamCoin = React.memo(function BurstStreamCoin({
       }),
     ]);
     burst.start();
-    return () => burst.stop();
+    return () => {
+      burst.stop();
+      bAnim.stopAnimation();
+    };
   }, [bAnim, delay]);
 
   const translateY = bAnim.interpolate({
@@ -523,13 +531,14 @@ const BurstStreamCoin = React.memo(function BurstStreamCoin({
             { translateX },
             { translateY },
             { rotate },
-            { scaleX },
             { scale },
           ],
         },
       ]}
     >
-      <GoldCoin size={cfg.coinSize} />
+      <Animated.View style={{ transform: [{ scaleX }] }}>
+        <GoldCoin size={cfg.coinSize} />
+      </Animated.View>
     </Animated.View>
   );
 });
@@ -557,9 +566,22 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
     const sparkleAnim1 = useRef(new Animated.Value(0)).current;
     const sparkleAnim2 = useRef(new Animated.Value(0)).current;
 
-    // 3. Tap Burst State
+    // 3. Tap Burst State & AppState Pause Guard
     const [burstKey, setBurstKey] = useState(0);
     const [isBursting, setIsBursting] = useState(false);
+    const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
+    const burstTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Pause heavy continuous stream rendering when app is backgrounded to protect memory & CPU
+    useEffect(() => {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        setIsAppActive(nextAppState === 'active');
+      });
+      return () => {
+        subscription.remove();
+        if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+      };
+    }, []);
 
     // --- Continuous Looping Animation for Kalash Floating & Aura ---
     useEffect(() => {
@@ -616,6 +638,9 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
         hoverLoop.stop();
         tiltLoop.stop();
         auraLoop.stop();
+        kalashHoverY.stopAnimation();
+        kalashTilt.stopAnimation();
+        auraPulse.stopAnimation();
       };
     }, [kalashHoverY, kalashTilt, auraPulse]);
 
@@ -658,6 +683,8 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
       return () => {
         loop1.stop();
         loop2.stop();
+        sparkleAnim1.stopAnimation();
+        sparkleAnim2.stopAnimation();
       };
     }, [sparkleAnim1, sparkleAnim2]);
 
@@ -665,7 +692,7 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
     const handlePress = useCallback(() => {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch (_e) {}
+      } catch (_e) { }
 
       // Joyful Kalash bounce & slight pour nod
       Animated.sequence([
@@ -700,7 +727,8 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
       // Trigger Burst of Extra Gold Coins Shower
       setBurstKey((prev) => prev + 1);
       setIsBursting(true);
-      setTimeout(() => {
+      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = setTimeout(() => {
         setIsBursting(false);
       }, 1400);
 
@@ -780,10 +808,11 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
               ]}
               pointerEvents="none"
             >
-              {/* Continuous Stream of Coins Emerging from Inside the Open Mouth */}
-              {STREAM_COINS.map((cfg) => (
-                <FallingStreamCoin key={cfg.id} cfg={cfg} />
-              ))}
+              {/* Continuous Stream of Coins Emerging from Inside the Open Mouth (active when app active) */}
+              {isAppActive &&
+                STREAM_COINS.map((cfg) => (
+                  <FallingStreamCoin key={cfg.id} cfg={cfg} />
+                ))}
 
               {/* Extra Burst Coins on Tap from Inside the Open Mouth */}
               {isBursting &&

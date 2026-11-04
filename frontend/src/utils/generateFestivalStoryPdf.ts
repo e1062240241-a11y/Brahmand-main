@@ -1774,7 +1774,13 @@ let cachedKuberBytes: Uint8Array | null = null;
 // Track active PDF generation promises to dedup concurrent calls
 const inProgressPdfPromises = new Map<string, Promise<string>>();
 
-export async function loadPdfFonts(doc: PDFDocument) {
+export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string) {
+  const festLower = (festivalThemeName || '').toLowerCase();
+  const needDussehra = !festivalThemeName || festLower.includes('dussehra') || festLower.includes('vijaya') || festLower.includes('dasara');
+  const needSharad = !festivalThemeName || festLower.includes('sharad');
+  const needKarwa = !festivalThemeName || festLower.includes('karwa');
+  const needDhanteras = !festivalThemeName || festLower.includes('dhanteras');
+
   let fontCinzel: any = null;
   let fontRozha: any = null;
   let fontPoppins: any = null;
@@ -1907,107 +1913,117 @@ export async function loadPdfFonts(doc: PDFDocument) {
   }
 
   let shamiLeafImage: any = null;
-  try {
-    if (!cachedLeafBytes) {
-      const leafAsset = Asset.fromModule(require('../../assets/images/festivals/shami_leaf.png'));
-      await leafAsset.downloadAsync();
-      const leafUri = leafAsset.localUri || leafAsset.uri;
-      if (leafUri) {
-        const base64 = await FileSystem.readAsStringAsync(leafUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        cachedLeafBytes = decodeBase64ToUint8(base64);
+  if (needDussehra) {
+    try {
+      if (!cachedLeafBytes) {
+        const leafAsset = Asset.fromModule(require('../../assets/images/festivals/shami_leaf.png'));
+        await leafAsset.downloadAsync();
+        const leafUri = leafAsset.localUri || leafAsset.uri;
+        if (leafUri) {
+          const base64 = await FileSystem.readAsStringAsync(leafUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedLeafBytes = decodeBase64ToUint8(base64);
+        }
       }
+      if (cachedLeafBytes) {
+        shamiLeafImage = await doc.embedPng(cachedLeafBytes);
+      }
+    } catch (leafErr) {
+      console.warn('[PDF] Shami leaf embedding fallback:', leafErr);
     }
-    if (cachedLeafBytes) {
-      shamiLeafImage = await doc.embedPng(cachedLeafBytes);
-    }
-  } catch (leafErr) {
-    console.warn('[PDF] Shami leaf embedding fallback:', leafErr);
   }
 
   let sharadPurnimaBgImage: any = null;
-  try {
-    if (!cachedSharadBgBytes) {
-      const sharadBgAsset = Asset.fromModule(require('../../assets/images/festivals/sharad_purnima_hero.jpg'));
-      await sharadBgAsset.downloadAsync();
-      const bgUri = sharadBgAsset.localUri || sharadBgAsset.uri;
-      if (bgUri) {
-        const base64 = await FileSystem.readAsStringAsync(bgUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        cachedSharadBgBytes = decodeBase64ToUint8(base64);
+  if (needSharad) {
+    try {
+      if (!cachedSharadBgBytes) {
+        const sharadBgAsset = Asset.fromModule(require('../../assets/images/festivals/sharad_purnima_hero.jpg'));
+        await sharadBgAsset.downloadAsync();
+        const bgUri = sharadBgAsset.localUri || sharadBgAsset.uri;
+        if (bgUri) {
+          const base64 = await FileSystem.readAsStringAsync(bgUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedSharadBgBytes = decodeBase64ToUint8(base64);
+        }
       }
+      if (cachedSharadBgBytes) {
+        sharadPurnimaBgImage = await doc.embedJpg(cachedSharadBgBytes);
+      }
+    } catch (sharadBgErr) {
+      console.warn('[PDF] Sharad Purnima background image embedding fallback:', sharadBgErr);
     }
-    if (cachedSharadBgBytes) {
-      sharadPurnimaBgImage = await doc.embedJpg(cachedSharadBgBytes);
-    }
-  } catch (sharadBgErr) {
-    console.warn('[PDF] Sharad Purnima background image embedding fallback:', sharadBgErr);
   }
 
   let karwaChauthBgImage: any = null;
-  try {
-    if (!cachedKarwaBgBytes) {
-      const karwaBgAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_page_bg.jpg'));
-      await karwaBgAsset.downloadAsync();
-      const bgUri = karwaBgAsset.localUri || karwaBgAsset.uri;
-      if (bgUri) {
-        const base64 = await FileSystem.readAsStringAsync(bgUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        cachedKarwaBgBytes = decodeBase64ToUint8(base64);
+  if (needKarwa) {
+    try {
+      if (!cachedKarwaBgBytes) {
+        const karwaBgAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_page_bg.jpg'));
+        await karwaBgAsset.downloadAsync();
+        const bgUri = karwaBgAsset.localUri || karwaBgAsset.uri;
+        if (bgUri) {
+          const base64 = await FileSystem.readAsStringAsync(bgUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedKarwaBgBytes = decodeBase64ToUint8(base64);
+        }
       }
+      if (cachedKarwaBgBytes) {
+        karwaChauthBgImage = await doc.embedJpg(cachedKarwaBgBytes);
+      }
+    } catch (karwaBgErr) {
+      console.warn('[PDF] Karwa Chauth background image embedding fallback:', karwaBgErr);
     }
-    if (cachedKarwaBgBytes) {
-      karwaChauthBgImage = await doc.embedJpg(cachedKarwaBgBytes);
-    }
-  } catch (karwaBgErr) {
-    console.warn('[PDF] Karwa Chauth background image embedding fallback:', karwaBgErr);
   }
 
   let karwaChauthWomanImage: any = null;
-  try {
-    if (!cachedKarwaWomanBytes) {
-      const karwaWomanAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_hero.png'));
-      await karwaWomanAsset.downloadAsync();
-      const womanUri = karwaWomanAsset.localUri || karwaWomanAsset.uri;
-      if (womanUri) {
-        const base64 = await FileSystem.readAsStringAsync(womanUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        cachedKarwaWomanBytes = decodeBase64ToUint8(base64);
+  if (needKarwa) {
+    try {
+      if (!cachedKarwaWomanBytes) {
+        const karwaWomanAsset = Asset.fromModule(require('../../assets/images/festivals/karwa_chauth_hero.png'));
+        await karwaWomanAsset.downloadAsync();
+        const womanUri = karwaWomanAsset.localUri || karwaWomanAsset.uri;
+        if (womanUri) {
+          const base64 = await FileSystem.readAsStringAsync(womanUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedKarwaWomanBytes = decodeBase64ToUint8(base64);
+        }
       }
+      if (cachedKarwaWomanBytes) {
+        karwaChauthWomanImage = await doc.embedPng(cachedKarwaWomanBytes);
+      }
+    } catch (karwaWomanErr) {
+      console.warn('[PDF] Karwa Chauth woman image embedding fallback:', karwaWomanErr);
     }
-    if (cachedKarwaWomanBytes) {
-      karwaChauthWomanImage = await doc.embedPng(cachedKarwaWomanBytes);
-    }
-  } catch (karwaWomanErr) {
-    console.warn('[PDF] Karwa Chauth woman image embedding fallback:', karwaWomanErr);
   }
 
   let dhanterasKuberImage: any = null;
-  try {
-    if (!cachedKuberBytes) {
-      if (typeof DHANTERAS_KUBER_GOLD_BASE64 === 'string' && DHANTERAS_KUBER_GOLD_BASE64.length > 100) {
-        cachedKuberBytes = decodeBase64ToUint8(DHANTERAS_KUBER_GOLD_BASE64);
-      } else {
-        const kuberAsset = Asset.fromModule(require('../../assets/images/festivals/dhanteras_kuber_gold.png'));
-        await kuberAsset.downloadAsync();
-        const kuberUri = kuberAsset.localUri || kuberAsset.uri;
-        if (kuberUri) {
-          const base64 = await FileSystem.readAsStringAsync(kuberUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          cachedKuberBytes = decodeBase64ToUint8(base64);
+  if (needDhanteras) {
+    try {
+      if (!cachedKuberBytes) {
+        if (typeof DHANTERAS_KUBER_GOLD_BASE64 === 'string' && DHANTERAS_KUBER_GOLD_BASE64.length > 100) {
+          cachedKuberBytes = decodeBase64ToUint8(DHANTERAS_KUBER_GOLD_BASE64);
+        } else {
+          const kuberAsset = Asset.fromModule(require('../../assets/images/festivals/dhanteras_kuber_gold.png'));
+          await kuberAsset.downloadAsync();
+          const kuberUri = kuberAsset.localUri || kuberAsset.uri;
+          if (kuberUri) {
+            const base64 = await FileSystem.readAsStringAsync(kuberUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            cachedKuberBytes = decodeBase64ToUint8(base64);
+          }
         }
       }
+      if (cachedKuberBytes) {
+        dhanterasKuberImage = await doc.embedPng(cachedKuberBytes);
+      }
+    } catch (kuberErr) {
+      console.warn('[PDF] Dhanteras Kuber image embedding fallback:', kuberErr);
     }
-    if (cachedKuberBytes) {
-      dhanterasKuberImage = await doc.embedPng(cachedKuberBytes);
-    }
-  } catch (kuberErr) {
-    console.warn('[PDF] Dhanteras Kuber image embedding fallback:', kuberErr);
   }
 
   return {
@@ -3233,7 +3249,7 @@ export async function generateUniversalFestivalArtworkPdf(festival: any, section
   doc.setSubject(`${cleanTextForPdf(theme.name)} Celebration Artwork`);
   doc.setCreator('Brahmand Platform');
 
-  const fonts = await loadPdfFonts(doc);
+  const fonts = await loadPdfFonts(doc, theme?.name);
 
   const pageWidth = 595.28;
   const pageHeight = 841.89;
@@ -4242,18 +4258,6 @@ export async function generateFestivalStoryPdf(
   const rawUri = `${targetDir}${filename}`;
   const fileUri = rawUri.startsWith('file://') ? rawUri : `file://${rawUri}`;
 
-  // Purge any stale unversioned Dhanteras cache files
-  if (isDhanterasTheme) {
-    try {
-      const senderName = getPdfPersonalFirstName();
-      const oldRaw = `${targetDir}Dhanteras_Katha_with_love_from_${(senderName || '').replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand.pdf`;
-      const oldCheck = await FileSystem.getInfoAsync(oldRaw);
-      if (oldCheck.exists) {
-        await FileSystem.deleteAsync(oldRaw, { idempotent: true });
-      }
-    } catch (_oldCleanErr) {}
-  }
-
   // 1. Fast path: If already generated on disk, return instantly
   if (!options?.forceRegenerate) {
     try {
@@ -4263,6 +4267,18 @@ export async function generateFestivalStoryPdf(
         return fileUri;
       }
     } catch (_checkErr) {}
+  }
+
+  // Purge any stale unversioned Dhanteras cache files (only in slow generation path)
+  if (isDhanterasTheme) {
+    try {
+      const senderName = getPdfPersonalFirstName();
+      const oldRaw = `${targetDir}Dhanteras_Katha_with_love_from_${(senderName || '').replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand.pdf`;
+      const oldCheck = await FileSystem.getInfoAsync(oldRaw);
+      if (oldCheck.exists) {
+        await FileSystem.deleteAsync(oldRaw, { idempotent: true });
+      }
+    } catch (_oldCleanErr) {}
   }
 
   // 2. Dedup path: Reuse active generation promise if another caller (e.g. background prewarm) is running
@@ -4280,7 +4296,7 @@ export async function generateFestivalStoryPdf(
     doc.setSubject(`${cleanTextForPdf(theme.name)} Katha, Puja Vidhi & Mantra`);
     doc.setCreator('Brahmand Platform');
 
-    const fonts = await loadPdfFonts(doc);
+    const fonts = await loadPdfFonts(doc, theme?.name);
 
     const pageWidth = 595.28;
     const pageHeight = 841.89;
@@ -4728,11 +4744,11 @@ export async function shareFestivalStoryPdf(
   sectionValue?: string
 ): Promise<{ success: boolean; uri?: string; audioShared?: boolean; error?: string }> {
   try {
-    const fileUri = await generateFestivalStoryPdf(festival, sectionValue);
+    const [fileUri, audioInfo] = await Promise.all([
+      generateFestivalStoryPdf(festival, sectionValue),
+      getFestivalAudioUri(festival),
+    ]);
     const theme = getFestivalTheme(festival, sectionValue);
-
-    // Check for associated audio narration
-    const audioInfo = await getFestivalAudioUri(festival);
 
     const isKarwaChauth = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
     const isSharadPurnima = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);

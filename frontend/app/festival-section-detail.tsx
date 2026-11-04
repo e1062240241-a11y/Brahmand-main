@@ -14,6 +14,7 @@ import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
 import { shareFestivalStoryPdf, generateFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
 import { getFestivalImage } from '../src/constants/festivalImages';
+import * as Haptics from 'expo-haptics';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   console.log('[FestivalSectionDetail Debug] safeCaptureRef called');
@@ -181,12 +182,12 @@ const FestivalSectionDetailPage = () => {
     loadFestival();
   }, [festivalIndex, targetId, targetName]);
 
-  // Pre-generate PDF into cache in the background so user sharing is near-instantaneous
+  // Pre-generate PDF into cache in the background early so user sharing is instantaneous
   useEffect(() => {
     if (festival && isStorySection) {
       const timer = setTimeout(() => {
         generateFestivalStoryPdf(festival, decodedSection).catch(() => {});
-      }, 500);
+      }, 80);
       return () => clearTimeout(timer);
     }
   }, [festival, decodedSection, isStorySection]);
@@ -194,6 +195,7 @@ const FestivalSectionDetailPage = () => {
   const handleSharePdf = async () => {
     if (!festival || isSharing) return;
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       setIsSharing(true);
       await shareFestivalStoryPdf(festival, decodedSection);
     } catch (err) {
@@ -205,6 +207,7 @@ const FestivalSectionDetailPage = () => {
 
   const handleSharePress = () => {
     if (!festival || isSharing) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const festivalName = (festival?.festival_name || festival?.name || '').toLowerCase();
     if (festivalName.includes('dussehra') || festivalName.includes('vijaya')) {
