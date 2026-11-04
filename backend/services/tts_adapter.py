@@ -6,7 +6,6 @@ emotional speaker attributions, and SSML <mark> timing manifest generation.
 """
 
 from abc import ABC, abstractmethod
-import asyncio
 from pathlib import Path
 import re
 from typing import Any, Dict, List
