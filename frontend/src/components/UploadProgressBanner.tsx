@@ -86,6 +86,8 @@ export const UploadProgressBanner = () => {
 
   return (
     <Animated.View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
       style={[
         styles.container,
         {
@@ -103,7 +105,11 @@ export const UploadProgressBanner = () => {
             ) : status === 'error' ? (
               <Ionicons name="alert-circle" size={24} color={COLORS.error} />
             ) : isCompressing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
+              <ActivityIndicator
+                size="small"
+                color={COLORS.primary}
+                accessibilityLabel={t('language') === 'hi' ? 'प्रक्रिया चल रही है...' : 'Processing...'}
+              />
             ) : (
               <Ionicons
                 name={mediaType === 'video' ? 'videocam' : 'image'}
