@@ -36,7 +36,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
 import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
-import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
+import HomeHeaderComponent, { HomeHeaderComponent as NamedHomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
+
+const ResolvedHomeHeader = (HomeHeaderComponent || NamedHomeHeaderComponent) as React.ComponentType<any>;
 
 let FileSystemModule: any = null;
 try {
@@ -1642,7 +1644,7 @@ export default function HomeScreen() {
   const localSubgroup = resolvedLocalComm.type || 'city';
 
   const memoizedHeader = useMemo(() => (
-    <HomeHeaderComponent
+    <ResolvedHomeHeader
       user={user}
       firstName={firstName}
       avatarUri={avatarUri}

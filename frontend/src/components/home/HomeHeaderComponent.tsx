@@ -1477,3 +1477,5 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
             </View>
             );
 });
+
+export default HomeHeaderComponent;

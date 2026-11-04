@@ -692,7 +692,7 @@ export const KalashCoinAnimation: React.FC<KalashCoinAnimationProps> = React.mem
     const handlePress = useCallback(() => {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch (_e) { }
+      } catch (_e) {}
 
       // Joyful Kalash bounce & slight pour nod
       Animated.sequence([
