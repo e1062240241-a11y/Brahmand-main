@@ -12973,7 +12973,6 @@ async def send_blood_request_otp(request: OTPRequest, _: bool = Depends(auth_rat
     # Generate OTP securely (4 digits)
     import secrets
     otp_code = f"{secrets.randbelow(9000) + 1000}"
-    logger.info(f"[Blood Request OTP] Generated OTP {otp_code} for mobile {mobile}")
 
     # Call NattyFish to send SMS
     from services.nattyfish_service import NattyFishService
@@ -13066,7 +13065,7 @@ async def verify_blood_request_otp(request: OTPVerify, _: bool = Depends(auth_ra
     
     # Verify OTP backend-side
     stored_otp = record.get("otp")
-    logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: input={otp}, stored={stored_otp}, attempt={attempts}")
+    logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: attempt={attempts}")
     
     import secrets
     stored_otp_bytes = str(stored_otp).encode("utf-8") if stored_otp else b""
