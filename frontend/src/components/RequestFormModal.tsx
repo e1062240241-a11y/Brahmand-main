@@ -17,6 +17,11 @@ import { HospitalSearchInput } from './HospitalSearchInput';
 import { sendBloodRequestOTP, verifyBloodRequestOTP } from '../services/api';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
+const RIPPLE_VISIBILITY = { color: COLORS.primary + '20', borderless: false };
+const RIPPLE_BLOOD = { color: '#E74C3C20', borderless: false };
+const RIPPLE_WHITE_20 = { color: 'rgba(255,255,255,0.2)', borderless: false };
+const RIPPLE_CLOSE = { color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 };
+
 interface CommunityOption {
   id: string;
   name: string;
@@ -408,10 +413,10 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             style={({ pressed }) => [
               styles.visibilityOption,
               visibility === option.key && styles.visibilityOptionSelected,
-              pressed && { opacity: 0.8 }
+              pressed && styles.pressed08
             ]}
             onPress={() => setVisibility(option.key)}
-            android_ripple={{ color: COLORS.primary + '20', borderless: false }}
+            android_ripple={RIPPLE_VISIBILITY}
           >
             <View style={styles.radioOuter}>
               {visibility === option.key && <View style={styles.radioInner} />}
@@ -442,10 +447,10 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 style={({ pressed }) => [
                   styles.bloodGroupBtn,
                   bloodGroup === bg && styles.bloodGroupBtnSelected,
-                  pressed && { opacity: 0.8 }
+                  pressed && styles.pressed08
                 ]}
                 onPress={() => setBloodGroup(bg)}
-                android_ripple={{ color: '#E74C3C20', borderless: false }}
+                android_ripple={RIPPLE_BLOOD}
               >
                 <Text style={[
                   styles.bloodGroupText,
@@ -535,10 +540,10 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 style={({ pressed }) => [
                   styles.communityOption,
                   selectedCommunityId === community?.id && styles.communityOptionActive,
-                  pressed && { opacity: 0.8 }
+                  pressed && styles.pressed08
                 ]}
                 onPress={() => setSelectedCommunityId(community?.id)}
-                android_ripple={{ color: COLORS.primary + '20', borderless: false }}
+                android_ripple={RIPPLE_VISIBILITY}
               >
                 <Text
                   style={[
@@ -563,7 +568,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             style={({ pressed }) => [
               styles.urgencyBtn,
               urgency === option.key && { backgroundColor: `${option.color}15`, borderColor: option.color },
-              pressed && { opacity: 0.8 }
+              pressed && styles.pressed08
             ]}
             onPress={() => setUrgency(option.key)}
             android_ripple={{ color: option.color + '20', borderless: false }}
@@ -651,11 +656,11 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               style={({ pressed }) => [
                 styles.otpButton,
                 (phoneSending || phoneVerifying) && styles.otpButtonDisabled,
-                pressed && !(phoneSending || phoneVerifying) && { opacity: 0.8 }
+                pressed && !(phoneSending || phoneVerifying) && styles.pressed08
               ]}
               onPress={handleSendPhoneOtp}
               disabled={phoneSending || phoneVerifying}
-              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+              android_ripple={RIPPLE_WHITE_20}
             >
               {phoneSending ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -682,11 +687,11 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 style={({ pressed }) => [
                   styles.otpButton,
                   (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled,
-                  pressed && !(phoneVerifying || !phoneOtp.trim()) && { opacity: 0.8 }
+                  pressed && !(phoneVerifying || !phoneOtp.trim()) && styles.pressed08
                 ]}
                 onPress={handleVerifyPhoneOtp}
                 disabled={phoneVerifying || !phoneOtp.trim()}
-                android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+                android_ripple={RIPPLE_WHITE_20}
               >
                 {phoneVerifying ? (
                   <ActivityIndicator color="#FFFFFF" />
@@ -719,8 +724,8 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           <View style={styles.header}>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) => [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+              style={({ pressed }) => [{ marginRight: 15 }, pressed && styles.pressed07]}
+              android_ripple={RIPPLE_CLOSE}
               accessibilityRole="button"
               accessibilityLabel="Back"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -740,8 +745,8 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </View>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) => [pressed && { opacity: 0.7 }]}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
+              style={({ pressed }) => [pressed && styles.pressed07]}
+              android_ripple={RIPPLE_CLOSE}
             >
               <Ionicons name="close" size={24} color={COLORS.text} />
             </Pressable>
@@ -759,11 +764,11 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
               style={({ pressed }) => [
                 styles.submitBtn,
                 loading && styles.submitBtnDisabled,
-                pressed && !loading && { opacity: 0.85 }
+                pressed && !loading && styles.pressed085
               ]}
               onPress={handleSubmit}
               disabled={loading}
-              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+              android_ripple={RIPPLE_WHITE_20}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -1043,4 +1048,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  pressed07: { opacity: 0.7 },
+  pressed08: { opacity: 0.8 },
+  pressed085: { opacity: 0.85 },
 });
