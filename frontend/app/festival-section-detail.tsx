@@ -12,7 +12,7 @@ import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatal
 import { ShamiLeafWishCard } from '../src/components/ShamiLeafWishCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
-import { shareFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
+import { shareFestivalStoryPdf, generateFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
 import { getFestivalImage } from '../src/constants/festivalImages';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
@@ -181,15 +181,36 @@ const FestivalSectionDetailPage = () => {
     loadFestival();
   }, [festivalIndex, targetId, targetName]);
 
+  // Pre-generate PDF into cache in the background so user sharing is near-instantaneous
+  useEffect(() => {
+    if (festival && isStorySection) {
+      const timer = setTimeout(() => {
+        generateFestivalStoryPdf(festival, decodedSection).catch(() => {});
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [festival, decodedSection, isStorySection]);
+
   const handleSharePdf = async () => {
     if (!festival || isSharing) return;
     try {
       setIsSharing(true);
-      await shareFestivalStoryPdf(festival);
+      await shareFestivalStoryPdf(festival, decodedSection);
     } catch (err) {
       console.warn('Failed to share festival PDF', err);
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  const handleSharePress = () => {
+    if (!festival || isSharing) return;
+
+    const festivalName = (festival?.festival_name || festival?.name || '').toLowerCase();
+    if (festivalName.includes('dussehra') || festivalName.includes('vijaya')) {
+      handleShareImage('whatsapp');
+    } else {
+      handleSharePdf();
     }
   };
 
@@ -301,6 +322,7 @@ const FestivalSectionDetailPage = () => {
           />
         </View>
 
+
         {/* Master Catalog Card fallback */}
         <View
           collapsable={false}
@@ -358,7 +380,7 @@ const FestivalSectionDetailPage = () => {
           {/* Share Button - Only visible in Story section */}
           {isStorySection && (
             <TouchableOpacity 
-              onPress={handleSharePdf}
+              onPress={handleSharePress}
               activeOpacity={0.8}
               disabled={isSharing}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
@@ -423,7 +445,7 @@ const FestivalSectionDetailPage = () => {
             section={decodeURIComponent(section)}
             onBack={() => router.back()}
             onSharePdf={handleSharePdf}
-            onShareImage={handleSharePdf}
+            onShareImage={handleSharePress}
           />
         ) : (
           <ScrollView
@@ -437,7 +459,7 @@ const FestivalSectionDetailPage = () => {
               section={decodeURIComponent(section)}
               onBack={() => router.back()}
               onSharePdf={handleSharePdf}
-              onShareImage={handleSharePdf}
+              onShareImage={handleSharePress}
             />
           </ScrollView>
         )}

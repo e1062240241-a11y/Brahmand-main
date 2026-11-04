@@ -136,6 +136,12 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     const isDiwali = lowerName.includes('diwali') || lowerName.includes('deepavali') || lowerName.includes('lakshmi');
     const isShivratri = lowerName.includes('shivratri') || lowerName.includes('mahadev');
     const isSharadPurnima = lowerName.includes('sharad purnima') || lowerName.includes('kojagiri') || lowerName.includes('kojagara');
+    const isDhanteras =
+      lowerName.includes('dhanteras') ||
+      lowerName.includes('dhanatrayodashi') ||
+      lowerName.includes('dhantrayodashi') ||
+      /धनतेरस|धनत्रयोदशी/i.test(festivalName) ||
+      (festival.id && String(festival.id).toLowerCase().includes('dhanteras'));
 
     // Audio story narration enabled for Sharad Purnima & Karwa Chauth katha
     const storyAudioSource = isSharadPurnima
@@ -226,6 +232,8 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       ? KARWA_CHAUTH_HERO
       : isSharadPurnima
       ? SHARAD_PURNIMA_IMG
+      : isDhanteras
+      ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/dhanteras.webp' }
       : isHariyaliTeej
       ? { uri: 'https://brahmandfeed23.b-cdn.net/festivals/hariyali_teej_story_hero.webp' }
       : isKajariTeej
@@ -325,12 +333,16 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Return to Ayodhya'
           : isShivratri
           ? 'Tandava & Lingam'
+          : isDhanteras
+          ? 'देव-दानव संघर्ष एवं दुर्वासा शाप'
           : isSharadPurnima
           ? 'ऋषि वालखिल्य एवं वलित'
-          : 'Sacred Origin',
+          : 'Divine Origin',
         icon: isJanmashtami ? 'leaf' : 'leaf',
         content: isKarvaChauth
-          ? 'Queen Veervati, the only beloved sister among seven caring brothers, visited her parents\' home on Karva Chauth. Adhering to the sacred vow of fasting for her husband\'s longevity, she went the entire day without food or water, waiting devotedly for the moonrise.'
+          ? 'Queen Veervati, the only beloved sister among seven caring brothers, visited her parents\' home on Karva Chauth. Adhering to the devoted vow of fasting for her husband\'s longevity, she went the entire day without food or water, waiting devotedly for the moonrise.'
+          : isDhanteras
+          ? 'एक समय देवताओं और असुरों में त्रिलोक के स्वामित्व को लेकर संघर्ष चल रहा था। देवताओं को अपना बल क्षीण लग रहा था, क्योंकि ऋषि दुर्वासा के शाप के कारण उनकी शक्ति और श्री दोनों चली गई थीं। तब ब्रह्मा जी के परामर्श से सभी देवता भगवान विष्णु के पास पहुँचे और अपनी व्यथा कही।'
           : isSharadPurnima
           ? 'ऋषि वालखिल्य के शिष्यों ने उनसे पूछा, “गुरुदेव! कार्तिक मास के उपांग व्रत कौन-से हैं, जिनके करने से कार्तिक का व्रत पूर्ण हो जाता है?” ऋषि वालखिल्य ने कहा, “पुत्रो! आश्विन मास की शुक्ल पक्ष की पूर्णिमा को रात्रि में जागरण करते हुए श्रद्धापूर्वक माता लक्ष्मी की पूजा-अर्चना करनी चाहिए। इस रात भगवान विष्णु के साथ माता लक्ष्मी पृथ्वी पर भ्रमण करती हैं, और जो भक्त उन्हें जागता हुआ मिलता है, उसे वे अपार धन-वैभव का आशीर्वाद देती हैं। इस व्रत की महिमा बताने के लिए मैं वलित नाम के दरिद्र ब्राह्मण की कथा सुनाता हूँ।”\n\nमगध देश में वलित नाम का एक ब्राह्मण रहता था। वह अनेक विद्याओं का ज्ञाता था और नित्य संध्या-स्नान करता था, किंतु आर्थिक रूप से अत्यंत निर्धन था। यदि कोई उसके घर आकर कुछ दान दे जाता, तो वह स्वीकार कर लेता, अन्यथा वह स्वयं किसी से कुछ नहीं माँगता था — उसके लिए माँगना मृत्यु के समान था।'
           : isDussehra
@@ -365,7 +377,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isHariyaliTeej
           ? 'Tapasya'
           : isKajariTeej
-          ? 'Sacred Sattu'
+          ? 'Filial Devotion & Sattu'
           : isNagPanchami
           ? 'Samudra Manthan'
           : isOnam
@@ -384,12 +396,16 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Lakshmi Pujan'
           : isShivratri
           ? 'Shiva-Parvati Marriage'
+          : isDhanteras
+          ? 'क्षीरसागर मंथन का परामर्श'
           : isSharadPurnima
           ? 'पत्नी चंडी एवं श्राद्ध'
           : 'Divine Penance',
         icon: isJanmashtami ? 'drop' : 'flame',
         content: isKarvaChauth
           ? 'Distressed seeing their sister faint from extreme hunger and thirst, the brothers lit a massive fire behind a distant Pipal tree and placed a round sieve in front of it, tricking Veervati into believing the glowing flame was the rising full moon.'
+          : isDhanteras
+          ? 'भगवान विष्णु ने कहा — “क्षीरसागर का मंथन करो। उससे अमृत निकलेगा, जिसके पान से तुम्हारी शक्ति लौट आएगी और मृत्यु का भय भी मिट जाएगा। परंतु यह कार्य अकेले देवताओं से नहीं होगा, इसलिए असुरों को भी साथ लो, और मंथन में मंदराचल पर्वत को मथानी और वासुकि नाग को रस्सी बनाओ।”'
           : isSharadPurnima
           ? 'उसकी पत्नी चंडी कलहप्रिय थी। वह प्रतिदिन झगड़ा करती कि उसकी बहनें धनवान घरों में ब्याही हैं और वह एक निर्धन के घर पड़ गई। उसने प्रण ले रखा था कि जब तक वे धनवान नहीं होंगे, वह पति की हर आज्ञा का उल्टा ही करेगी।\n\nएक बार पितृ पक्ष में वलित ने मित्र गणपति की सलाह पर पत्नी से कहा, “परसों मेरे पिता का श्राद्ध है, तुम कोई व्यवस्था मत करना और भोजन के लिए जुआरियों व बुरे चरित्र वालों को बुला लेना।” उल्टा करने की धुन में पत्नी ने उत्तम व्यंजन बनाकर नगर के सर्वश्रेष्ठ ब्राह्मणों को आमंत्रित किया और विधि-विधान से श्राद्ध संपन्न हुआ। किंतु अंत में पिंडदान के बाद जब वलित ने कहा कि वह पिंड गंगा जल में बहाना भूल गई है, तो उल्टे स्वभाव के कारण उसने पिंडों को गंदे कुएँ में फेंक दिया। इस आघात से दुखी वलित घर त्यागकर धर्मा नदी तट पर माता लक्ष्मी की तपस्या में बैठ गया और आश्विन पूर्णिमा आ गई।'
           : isDussehra
@@ -399,7 +415,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isKajariTeej
           ? 'When caught by temple guards, the poor Brahmin lad explained his mother’s holy vow to worship Neem Mata and break fast only with Sattu. Touched by his filial piety and devotion, the King rewarded the family with golden vessels and sattu for lifetime.'
           : isNagPanchami
-          ? 'During the churning of the ocean (Samudra Manthan), deadly Halahala poison emerged. Lord Shiva drank the poison to save the cosmos, and King Vasuki aided in holding the cosmic energy. Shiva adorned snakes as sacred ornaments, blessing them forever.'
+          ? 'During the churning of the ocean (Samudra Manthan), deadly Halahala poison emerged. Lord Shiva drank the poison to save the cosmos, and King Vasuki aided in holding the cosmic energy. Shiva adorned snakes as divine ornaments, blessing them forever.'
           : isOnam
           ? 'Vamana grew into a colossal form, covering the earth with his first step and the heavens with his second. Mahabali offered his own head for the third step, proving his supreme devotion and humility.'
           : isRakshaBandhan
@@ -443,16 +459,20 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Govardhan & Bhai Dooj'
           : isShivratri
           ? 'Neelkanth Poison'
+          : isDhanteras
+          ? 'समुद्र मंथन एवं 14 रत्न'
           : isSharadPurnima
           ? 'नाग कन्याएँ एवं चौसर'
           : 'Cosmic Event',
         icon: 'om',
         content: isKarvaChauth
           ? 'As she swallowed the first morsel of food, news arrived that her husband, the king, had suddenly fallen critically ill. Realizing her fast was broken under a false moon, she wept inconsolably and prayed with pure devotion. Goddess Parvati appeared, advising her to undertake the fast again with unwavering sanctity.'
+          : isDhanteras
+          ? 'मंथन आरंभ हुआ। समुद्र में से एक के बाद एक रत्न प्रकट होते गए — कामधेनु, उच्चैःश्रवा घोड़ा, ऐरावत हाथी, कौस्तुभ मणि, पारिजात वृक्ष, अप्सराएँ, और स्वयं माँ लक्ष्मी। दोनों पक्षों ने मंथन जारी रखा और संपूर्ण ब्रह्मांड उस दिव्य घटना का साक्षी बना।'
           : isSharadPurnima
           ? 'धर्मा नदी के तट पर कालिय नाग वंश की कन्याएँ माता लक्ष्मी को प्रसन्न करने के लिए व्रत कर रही थीं। उन्होंने पंचामृत, रत्न और दर्पण अर्पित कर माता लक्ष्मी का श्रद्धापूर्वक पूजन किया। रात्रि में चौसर खेलने की तैयारी हुई, किंतु चार खिलाड़ियों की आवश्यकता थी और वे तीन ही थीं। उन्होंने नदी तट पर बैठे वलित को चौसर खेलने के लिए आमंत्रित किया।\n\nवलित ने कहा कि चौसर अर्थात जुआ खेलने से लक्ष्मी का क्षय और धर्म का नाश होता है। तब कन्याओं ने बताया कि आश्विन पूर्णिमा की रात माता लक्ष्मी चौसर खेलने से प्रसन्न होती हैं। वे वलित को मंदिर ले गईं, प्रसाद व नारियल-पानी दिया और चौसर का खेल आरंभ हुआ। नाग कन्याओं ने अमूल्य रत्न दाँव पर लगाए, जबकि निर्धन वलित ने पहले लंगोट, फिर जनेऊ, और अंत में अपनी देह भी दाँव पर लगा दी और सब कुछ हारकर खाली हाथ बैठ गया।'
           : isDussehra
-          ? 'In the Mahabharata, the Pandavas concealed their celestial weapons inside the hollow of a sacred Shami tree before starting their one-year incognito exile (Agyatvas). On Vijayadashami, they returned victorious, retrieved their arms undamaged from the Shami tree, and defeated the Kaurava army.'
+          ? 'In the Mahabharata, the Pandavas concealed their celestial weapons inside the hollow of a Shami tree before starting their one-year incognito exile (Agyatvas). On Vijayadashami, they returned victorious, retrieved their arms undamaged from the Shami tree, and defeated the Kaurava army.'
           : isHariyaliTeej
           ? 'Moved by her unyielding love, Lord Shiva manifested before her on the third day (Tritiya) of Shravan. He accepted Parvati as his eternal divine consort, filling the universe with cosmic celebration and monsoon blooms.'
           : isKajariTeej
@@ -462,7 +482,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isOnam
           ? 'Lord Vishnu granted King Mahabali a boon to visit his beloved subjects in Kerala once every year during Chingam month, which is celebrated joyfully as Onam.'
           : isRakshaBandhan
-          ? 'In history, Queen Karnavati of Chittor sent a Rakhi thread to Emperor Humayun when facing attack, seeking protection. Humayun immediately honored the sacred thread and marched to defend her.'
+          ? 'In history, Queen Karnavati of Chittor sent a Rakhi thread to Emperor Humayun when facing attack, seeking protection. Humayun immediately honored the protective thread and marched to defend her.'
           : isJanmashtami
           ? 'Little Krishna enchanted Vrindavan with his divine flute melodies, stole Makhan (fresh butter) with his gopa friends, and performed miraculous Leelas.'
           : isGaneshChaturthi
@@ -479,7 +499,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       {
         id: 3,
         title: isKarvaChauth
-          ? 'The Sacred Sieve'
+          ? 'The Chalni (Sieve)'
           : isHariyaliTeej
           ? 'Blessings'
           : isKajariTeej
@@ -489,7 +509,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isOnam
           ? 'Pookalam & Feasts'
           : isRakshaBandhan
-          ? 'Sacred Thread'
+          ? 'Rakhi Thread'
           : isJanmashtami
           ? 'Flute & Devotion'
           : isGaneshChaturthi
@@ -502,16 +522,20 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Lighting Diyas'
           : isShivratri
           ? 'Maha Abhishekam'
+          : isDhanteras
+          ? 'भगवान धन्वंतरि एवं अमृत कलश'
           : isSharadPurnima
           ? 'माँ लक्ष्मी की दिव्य कृपा'
           : 'Spiritual Grace',
         icon: isJanmashtami ? 'gear' : 'flower',
         content: isKarvaChauth
           ? 'Veervati observed the fast following all strict traditions. At night, married women gather in festive circles for the Karva Chauth Katha ritual, rotating earthen thalis while singing verses of auspiciousness before offering Arghya water to the moon through a decorative chalni (sieve).'
+          : isDhanteras
+          ? 'अंत में समुद्र की गहराइयों से भगवान धन्वंतरि प्रकट हुए। उनके हाथों में अमृत से भरा कलश था और उनका तेज सूर्य के समान दमक रहा था। वे आयुर्वेद के आदि आचार्य, रोगों को मिटाने वाले, देवताओं के वैद्य कहे जाते हैं।'
           : isSharadPurnima
           ? 'मध्यरात्रि में चंद्रमा अपनी सोलह कलाओं से दीप्तिमान था। तभी देवी लक्ष्मी भगवान श्री विष्णु के साथ संसार का भ्रमण करते हुए वहाँ से गुजरीं। उन्होंने देखा कि एक ब्राह्मण कौपीन और यज्ञोपवीत से विहीन होकर घोर चिंता और निराशा में डूबा बैठा है। यह दृश्य देखकर भगवान विष्णु द्रवित हो उठे और उन्होंने लक्ष्मी जी से कहा, “देवि! यह ब्राह्मण आपका भक्त है और आपके इस व्रत का पालन कर रहा है, कृपया इसके कष्टों का निवारण करें।”\n\nमाता लक्ष्मी ने वलित पर अपनी करुणामयी दृष्टि डाली, जिससे उसकी समस्त दरिद्रता तत्काल नष्ट हो गई। लक्ष्मी जी की कृपा से उसका रूप कामदेव के समान तेजस्वी हो गया, हारे हुए रत्न और धन वापस मिल गए। नाग कन्याओं ने उससे गंधर्व विवाह किया और नाना प्रकार के रत्नों के साथ वलित ससम्मान अपने घर लौटा।'
           : isDussehra
-          ? 'On this auspicious day, people worship the sacred Shami (Apta) tree and exchange its leaves as gold ("सोनं घ्या, सोन्यासारखे राहा!"). Legend tells of the young scholar Kautsa, whose teacher guru dakshina was fulfilled by Lord Kubera showering gold coins upon the Shami and Apta trees on Dussehra.'
+          ? 'On this auspicious day, people worship the auspicious Shami (Apta) tree and exchange its leaves as gold ("सोनं घ्या, सोन्यासारखे राहा!"). Legend tells of the young scholar Kautsa, whose teacher guru dakshina was fulfilled by Lord Kubera showering gold coins upon the Shami and Apta trees on Dussehra.'
           : isHariyaliTeej
           ? 'Goddess Parvati decreed that any woman observing fasts, wearing festive green bangles, and offering prayers on this holy day will be blessed with lifelong marital harmony, prosperity, and joy.'
           : isKajariTeej
@@ -561,12 +585,16 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           ? 'Fireworks & Sweets'
           : isShivratri
           ? 'Peace & Moksha'
+          : isDhanteras
+          ? 'धनतेरस — त्रि-देव पूजन'
           : isSharadPurnima
           ? 'फलश्रुति एवं कोजागर महिमा'
           : 'Festive Joy',
         icon: 'star',
         content: isKarvaChauth
           ? 'Her husband was restored to full health by divine grace. Today, women commence the fast at dawn with Sargi gifted by mothers-in-law, adorn exquisite red attire and henna, and break the fast by receiving water from their husbands, celebrating eternal love.'
+          : isDhanteras
+          ? 'इसी दिन को कार्तिक मास के कृष्ण पक्ष की त्रयोदशी तिथि कहा गया। धन्वंतरि जी का अमृत कलश के साथ प्रकट होना ही “धन्वंतरि जयंती” या “धनतेरस” कहलाया। इसीलिए इस दिन धन्वंतरि, माँ लक्ष्मी और कुबेर देव — तीनों की पूजा होती है: धन्वंतरि से आरोग्य और दीर्घायु, लक्ष्मी से समृद्धि, और कुबेर से धन की रक्षा।'
           : isSharadPurnima
           ? 'घर लौटकर वलित ने पत्नी का सम्मान किया, जिससे वह भी कलह त्यागकर आज्ञाकारी हो गई।\n\nऋषि वालखिल्य ने कहा, “इसीलिए पुत्रो! आश्विन पूर्णिमा को कोजागर व्रत अवश्य करना चाहिए। रात भर जागरण करते हुए माता लक्ष्मी का भजन-पूजन करें और नारियल-पानी तथा चौसर से उन्हें प्रसन्न करें। जो भक्त इस रात जागता हुआ माता को मिलता है, वह सदा ऐश्वर्य-संपन्न रहता है।”\n\nयह कथा सिखाती है कि जो भक्त श्रद्धा और जागरण के साथ माता लक्ष्मी का स्मरण करता है, उसकी दरिद्रता दूर होती है और घर में धन-धान्य की वृद्धि होती है। हे माता लक्ष्मी! जैसे आपने दरिद्र वलित ब्राह्मण पर कृपा की, वैसे ही इस व्रत कथा को श्रद्धापूर्वक सुनने और पढ़ने वाले सभी भक्तों पर अपनी कृपादृष्टि बनाए रखें। जय माता लक्ष्मी! जय भगवान विष्णु! जय कोजागर व्रत! मंगल कामना — आपका व्रत सफल हो।'
           : isDussehra
@@ -580,7 +608,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isOnam
           ? 'Kerala comes alive with traditional Pulikali tiger dances, Kathakali performances, folk music, and vibrant village festivities honoring King Mahabali.'
           : isRakshaBandhan
-          ? 'Brothers and sisters exchange gifts, share heartfelt memories, pray for each other’s well-being, and celebrate the sacred bond of sibling affection.'
+          ? 'Brothers and sisters exchange gifts, share heartfelt memories, pray for each other’s well-being, and celebrate the divine bond of sibling affection.'
           : isJanmashtami
           ? 'Youth groups form human pyramids across cities during Dahi Handi competitions to break clay pots of curd suspended high in the air, echoing Krishna’s childhood antics.'
           : isGaneshChaturthi
@@ -634,17 +662,17 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     }, [audioTime, audioPlaying, audioDur, chapterCount]);
 
     const subtitleText = isKarvaChauth
-      ? 'The Sacred Katha of Queen Veervati & Moon Worship'
+      ? 'The Katha of Queen Veervati & Moon Worship'
       : isHariyaliTeej 
       ? 'The Divine Union of Shiva & Parvati'
       : isKajariTeej
       ? 'Neem Mata Vrat, Sattu Offerings & Moon Worship'
       : isNagPanchami
-      ? 'Sacred Worship of Nag Devta & Lord Shiva'
+      ? 'Worship of Nag Devta & Lord Shiva'
       : isOnam
       ? 'Homecoming of King Mahabali & Vamana Avatar'
       : isRakshaBandhan
-      ? 'Sacred Bond of Sibling Protection & Krishna Grace'
+      ? 'Divine Bond of Sibling Protection & Krishna Grace'
       : isJanmashtami
       ? 'Divine Nativity of Lord Krishna & Vrindavan Leelas'
       : isGaneshChaturthi
@@ -652,7 +680,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       : isNavratri
       ? 'Victory of Goddess Durga over Mahishasura'
       : isDussehra
-      ? 'Triumph of Lord Rama, Mahishasura Vadh & Sacred Shami Puja'
+      ? 'Triumph of Lord Rama, Mahishasura Vadh & Shami Puja'
       : isDiwali
       ? 'Return of Lord Rama & Worship of Goddess Lakshmi'
       : isShivratri

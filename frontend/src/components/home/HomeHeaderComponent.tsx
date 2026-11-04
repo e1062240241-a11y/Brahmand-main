@@ -952,7 +952,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             width={bannerCardWidth}
                                             height={bannerCardHeight}
                                             source={dhanterasBannerImage}
-                                            resizeMode="contain"
+                                            resizeMode="cover"
                                             accessibilityLabel="Dhanteras Banner"
                                             onPress={() => {
                                                 try {
@@ -965,7 +965,60 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             }}
                                             onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
                                             onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                                        />
+                                        >
+                                            {/* Top spacer (badge removed) — keeps bottom button pinned via space-between */}
+                                            <View style={{ width: '100%' }} />
+
+                                            {/* Bottom Button Row */}
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        styles.joinJaapButton,
+                                                        {
+                                                            backgroundColor: '#FF5100',
+                                                            height: 36,
+                                                            paddingHorizontal: 14,
+                                                            flexDirection: 'row',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            borderRadius: 20,
+                                                            borderWidth: 1,
+                                                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                                                            shadowColor: '#FF5100',
+                                                            shadowOffset: { width: 0, height: 2 },
+                                                            shadowOpacity: 0.6,
+                                                            shadowRadius: 5,
+                                                            elevation: 4,
+                                                            transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                        }
+                                                    ]}
+                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                    onPressIn={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                    }}
+                                                    onPressOut={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                    }}
+                                                    onPress={() => {
+                                                        try {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                        } catch (_e) { }
+                                                        router.push({
+                                                            pathname: '/festival-detail',
+                                                            params: { name: 'Dhanteras' },
+                                                        });
+                                                    }}
+                                                    accessibilityRole="button"
+                                                    accessibilityLabel={t('language') === 'hi' ? 'धनतेरस पर्व देखें' : 'Explore Dhanteras Festival'}
+                                                >
+                                                    <Text style={[styles.joinJaapText, { fontSize: 13, fontWeight: '700' }]}>
+                                                        {t('language') === 'hi' ? 'धनतेरस पर्व देखें' : 'Explore Dhanteras'}
+                                                    </Text>
+                                                    <Ionicons name="chevron-forward" size={13} color="#FFF" />
+                                                </Pressable>
+                                            </View>
+                                        </StaticBannerCard>
 
                                         {/* Helper components for Banner 2 & Banner 3 */}
                                         {(() => {

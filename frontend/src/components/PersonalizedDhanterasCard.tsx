@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Platform,
-  TouchableOpacity,
-  Image as RNImage,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../store/authStore';
 import {
   DHANTERAS_CITIES,
@@ -17,29 +13,11 @@ import {
   DhanterasCityMuhurat,
   detectUserDhanterasCity,
 } from '../utils/dhanterasMuhurat';
-import { DhanterasShareCard } from './DhanterasShareCard';
-import { shareFestivalCard } from '../utils/shareFestivalCard';
-
-const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
-  try {
-    const ViewShot = require('react-native-view-shot');
-    const capture = ViewShot?.captureRef || ViewShot?.default?.captureRef || ViewShot;
-    if (typeof capture === 'function') {
-      const uri = await capture(ref, options);
-      return { uri };
-    }
-    return { uri: null, error: 'captureRef is not a function' };
-  } catch (e: any) {
-    return { uri: null, error: e?.message || String(e) };
-  }
-};
 
 export const PersonalizedDhanterasCard: React.FC<{ festival?: any }> = React.memo(
   function PersonalizedDhanterasCard() {
     const user = useAuthStore((state) => state.user);
     const [selectedCity, setSelectedCity] = useState<DhanterasCityMuhurat>(DHANTERAS_CITIES[0]);
-    const [isSharing, setIsSharing] = useState<boolean>(false);
-    const shareCardRef = useRef<any>(null);
 
     useEffect(() => {
       let isMounted = true;
@@ -52,53 +30,6 @@ export const PersonalizedDhanterasCard: React.FC<{ festival?: any }> = React.mem
         isMounted = false;
       };
     }, [user]);
-
-    const handleShareDhanteras = async () => {
-      if (isSharing) return;
-      try {
-        setIsSharing(true);
-        try {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } catch (_e) {}
-
-        const sender = user?.name ? `${user.name} जी` : 'आपके परिवार';
-        const msg = `🪙 *शुभ धनतेरस की हार्दिक शुभकामनाएं!* ✨\n\n📍 हमारे शहर *${selectedCity.hindiCity}* में धनतेरस पूजा शुभ मुहूर्त: *${selectedCity.muhurat}* (शुक्रवार, 6 नवंबर 2026)\n\n🪔 *प्रदोष काल:* ${selectedCity.pradoshKaal}\n✨ *स्थिर वृषभ लग्न:* ${selectedCity.vrishabhaLagna}\n🛍️ *खरीदारी चौघड़िया:* दोपहर 12:02 – 1:24 PM (शुभ) • रात 8:46 – 10:24 PM (लाभ)\n\n— *${sender}* की ओर से आरोग्य, सुख व समृद्धि की अनंत मंगलकामनाएं 🙏\n\n📲 *और जानने के लिए डाउनलोड करें ब्रह्मांड ऐप:*\nhttps://play.google.com/store/apps/details?id=com.brahmand.app`;
-
-        let imageUri: string | null = null;
-        if (shareCardRef.current) {
-          await new Promise((res) => setTimeout(res, 350));
-          const captureResult = await safeCaptureRef(shareCardRef, {
-            format: 'png',
-            quality: 0.95,
-            result: 'tmpfile',
-          });
-          imageUri = captureResult.uri;
-        }
-
-        // Guaranteed fallback to pre-rendered Dhanteras Gold Coin card
-        if (!imageUri) {
-          try {
-            const fallbackSource = RNImage.resolveAssetSource(
-              require('../../assets/images/festivals/dhanteras_share_card_fallback.jpg')
-            );
-            if (fallbackSource?.uri) {
-              imageUri = fallbackSource.uri;
-            }
-          } catch (_err) {}
-        }
-
-        await shareFestivalCard(
-          imageUri,
-          'Dhanteras',
-          msg,
-          'whatsapp'
-        );
-      } catch (err) {
-        console.warn('[PersonalizedDhanterasCard] Share error:', err);
-      } finally {
-        setIsSharing(false);
-      }
-    };
 
     return (
       <View style={styles.container}>
@@ -150,29 +81,6 @@ export const PersonalizedDhanterasCard: React.FC<{ festival?: any }> = React.mem
               प्रदोष काल में स्थिर वृषभ लग्न के दौरान मां लक्ष्मी और कुबेर देव की पूजा करने से घर में धन-समृद्धि का स्थाई वास होता है।
             </Text>
           </View>
-
-          {/* Share Happy Dhanteras Gold Coin Card Button */}
-          <TouchableOpacity
-            style={styles.shareCardButton}
-            onPress={handleShareDhanteras}
-            activeOpacity={0.85}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Share Happy Dhanteras Card on WhatsApp"
-          >
-            <LinearGradient
-              colors={['#D97706', '#92400E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.shareBtnGradient}
-            >
-              <Ionicons name="logo-whatsapp" size={19} color="#FFFFFF" />
-              <Text style={styles.shareBtnText}>
-                {isSharing ? 'कार्ड तैयार हो रहा है...' : 'शुभ धनतेरस कार्ड शेयर करें'}
-              </Text>
-              <Ionicons name="share-social-outline" size={16} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.sectionDivider} />
@@ -338,20 +246,6 @@ export const PersonalizedDhanterasCard: React.FC<{ festival?: any }> = React.mem
             </View>
           </View>
         </View>
-
-        {/* Off-screen Render of Dhanteras Gold Coin Share Card */}
-        <View style={styles.offscreenShareContainer} pointerEvents="none">
-          <View collapsable={false} style={{ width: 440, height: 780, backgroundColor: 'transparent' }}>
-            <DhanterasShareCard
-              ref={shareCardRef}
-              userName={user?.name || ''}
-              cityName={selectedCity.hindiCity}
-              muhurat={selectedCity.muhurat}
-              pradoshKaal={selectedCity.pradoshKaal}
-              vrishabhaLagna={selectedCity.vrishabhaLagna}
-            />
-          </View>
-        </View>
       </View>
     );
   }
@@ -454,37 +348,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     flex: 1,
     fontWeight: '500',
-  },
-  shareCardButton: {
-    width: '100%',
-    marginTop: 14,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#D97706',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  shareBtnGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  shareBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  offscreenShareContainer: {
-    position: 'absolute',
-    left: -9999,
-    top: -9999,
-    opacity: 0,
   },
 
   // Divider

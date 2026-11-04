@@ -27,6 +27,7 @@ import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import { ShamiLeafWishCard } from './ShamiLeafWishCard';
 import { ChandDikhaScratchCard } from './ChandDikhaScratchCard';
 import { PersonalizedKarwaCard } from './PersonalizedKarwaCard';
+import { DhanterasCoinShareButton } from './DhanterasCoinShareButton';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
@@ -851,7 +852,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      ) : isKarvaChauthFestival ? null : (
+      ) : isKarvaChauthFestival || isDhanterasFestival ? null : (
         /* Progress Bar for Other Festivals */
         totalCount > 0 && (
           <View style={styles.progressContainer}>
@@ -873,6 +874,11 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       {/* For Karwa Chauth: Highly Personalized Devotee Card & Day Tracker */}
       {isKarvaChauthFestival && (
         <PersonalizedKarwaCard festival={festival} />
+      )}
+
+      {/* For Dhanteras: Only the "Share your digital gold coin today" Button Outside */}
+      {isDhanterasFestival && (
+        <DhanterasCoinShareButton />
       )}
 
       {/* For Non-Karwa Moon Festivals (Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}
