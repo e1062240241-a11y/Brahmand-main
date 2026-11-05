@@ -1,6 +1,5 @@
 import React, { forwardRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Image as RNImage } from 'react-native';
 import { FONTS } from '../constants/theme';
 
 export interface DhanterasShareCardProps {
@@ -26,19 +25,19 @@ export const DhanterasShareCard = forwardRef<any, DhanterasShareCardProps>(
       <View ref={ref} collapsable={false} style={styles.cardContainer}>
         {/* Pure Transparent Container - Absolutely NO background behind the coin */}
         <View style={styles.coinWrapper}>
-          <Image
+          <RNImage
             source={require('../../assets/images/festivals/dhanteras_gold_coin.png')}
             style={styles.coinImage}
-            contentFit="contain"
+            resizeMode="contain"
           />
 
           {/* Minted Logo, Brand, Auspicious Muhurat, Shopping, Wishes & Sender directly on Coin Face */}
           <View style={styles.coinCenterContent} pointerEvents="none">
             {/* Brahmand Logo */}
-            <Image
+            <RNImage
               source={require('../../assets/images/brahmand_logo_transparent.png')}
               style={styles.coinLogo}
-              contentFit="contain"
+              resizeMode="contain"
             />
 
             {/* Brand Name */}

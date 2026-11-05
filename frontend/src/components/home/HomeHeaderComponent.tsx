@@ -1010,7 +1010,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         } catch (_e) { }
                                                         router.push({
                                                             pathname: '/festival-detail',
-                                                            params: { name: 'Dhanteras' },
+                                                            params: { name: 'Dhanteras', id: 'dhanteras' },
                                                         });
                                                     }}
                                                     accessibilityRole="button"

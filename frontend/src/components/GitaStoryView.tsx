@@ -12,15 +12,24 @@
  * - Deep study navigation back to classical shlokas.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import {
   GITA_THEOLOGICAL_FRAMING,
   STORY_SPEAKER_METAS,
@@ -146,6 +155,23 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
   const isOpeningPlaying = (currentPlayingSceneId === 'opening' || (isFullPlaying && (!activeCueSceneId || activeCueSceneId === 'opening'))) && isPlaying;
   const isOpeningActive = isOpeningPlaying && (activeCueMark === 'mark_narrative' || !activeCueSceneId || activeCueSceneId === 'opening');
 
+  const playPulse = useSharedValue(1);
+  useEffect(() => {
+    playPulse.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, [playPulse]);
+
+  const haloAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: playPulse.value }],
+    opacity: 0.35 + (playPulse.value - 1) * 2.2,
+  }));
+
   const handleStudyNavigation = (ref: string) => {
     if (onNavigateToStudy) {
       onNavigateToStudy(ref);
@@ -154,6 +180,102 @@ export const GitaStoryView: React.FC<GitaStoryViewProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* =========================================================================
+          HERO KATHA PRAVAH CARD: BACKGROUND IMAGE + IMMEDIATE PLAY BUTTON
+         ========================================================================= */}
+      <View style={styles.heroKathaCard}>
+        {/* Background Image */}
+        <Image
+          source={GITA_COSMIC_MEDIA.posterLocal}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+
+        {/* Cinematic Gradient Overlays */}
+        <LinearGradient
+          colors={[
+            'rgba(14, 10, 24, 0.45)',
+            'rgba(18, 12, 32, 0.65)',
+            'rgba(8, 5, 16, 0.94)',
+          ]}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        {/* Top Badges */}
+        <View style={styles.heroKathaTopRow}>
+          <View style={styles.heroKathaBadge}>
+            <Text style={{ fontSize: 13, marginRight: 4 }}>⏳</Text>
+            <Text style={styles.heroKathaBadgeText}>कथा प्रवाह</Text>
+          </View>
+          <View style={styles.heroKathaChapterBadge}>
+            <Text style={styles.heroKathaChapterBadgeText}>
+              अध्याय {chapterData.chapter}
+            </Text>
+          </View>
+        </View>
+
+        {/* Center Play Button with Glowing Halo */}
+        <View style={styles.heroKathaCenter}>
+          <TouchableOpacity
+            style={styles.heroPlayBtnWrapper}
+            onPress={() => {
+              if (onPlayScene) {
+                onPlayScene(fullStoryScene);
+              }
+            }}
+            activeOpacity={0.85}
+            accessibilityLabel={(isFullPlaying || isOpeningPlaying) ? "कथा रोकें" : "कथा शुरू करें"}
+          >
+            {/* Pulsing golden halo ring */}
+            <Animated.View style={[styles.heroPlayBtnHalo, haloAnimatedStyle]} />
+
+            {/* Glowing play button */}
+            <LinearGradient
+              colors={['#FDE68A', '#F59E0B', '#D97706']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroPlayBtn}
+            >
+              <Ionicons
+                name={(isFullPlaying || isOpeningPlaying) ? 'pause' : 'play'}
+                size={34}
+                color="#140E0C"
+                style={(isFullPlaying || isOpeningPlaying) ? undefined : { marginLeft: 4 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <Text style={styles.heroPlayActionLabel}>
+            {(isFullPlaying || isOpeningPlaying)
+              ? 'कथा प्रवाहित है • रोकने के लिए टैप करें'
+              : 'कथा शुरू करने के लिए टैप करें'}
+          </Text>
+        </View>
+
+        {/* Bottom Metadata */}
+        <View style={styles.heroKathaBottom}>
+          <Text style={styles.heroKathaTitle}>
+            अध्याय {chapterData.chapter} : {chapterData.title_hindi}
+          </Text>
+          <Text style={styles.heroKathaSubtitle}>
+            {chapterData.title_sanskrit} • {chapterData.title_english}
+          </Text>
+          <View style={styles.heroKathaMetaRow}>
+            <View style={styles.heroKathaMetaItem}>
+              <Ionicons name="mic-outline" size={13} color="#F59E0B" />
+              <Text style={styles.heroKathaMetaText}>काल (समय) की वाणी</Text>
+            </View>
+            <Text style={styles.heroKathaMetaDot}>•</Text>
+            <View style={styles.heroKathaMetaItem}>
+              <Ionicons name="time-outline" size={13} color="#F59E0B" />
+              <Text style={styles.heroKathaMetaText}>
+                {chapterData.total_verses} श्लोक · {chapterData.scenes?.length || 0} प्रसंग
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
       {/* =========================================================================
           HERO SECTION: THEOLOGICAL FRAMING DISCLAIMER
          ========================================================================= */}
@@ -721,6 +843,150 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 40,
     backgroundColor: 'transparent',
+  },
+  heroKathaCard: {
+    width: '100%',
+    minHeight: 280,
+    borderRadius: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#0E0C14',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  heroKathaTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  heroKathaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  heroKathaBadgeText: {
+    color: '#FDE68A',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  heroKathaChapterBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  heroKathaChapterBadgeText: {
+    color: '#FFFBEB',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  heroKathaCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  heroPlayBtnWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 84,
+    height: 84,
+  },
+  heroPlayBtnHalo: {
+    position: 'absolute',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(245, 158, 11, 0.35)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(253, 230, 138, 0.6)',
+  },
+  heroPlayBtn: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  heroPlayActionLabel: {
+    marginTop: 10,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FDE68A',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroKathaBottom: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  heroKathaTitle: {
+    fontSize: 21,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 6,
+  },
+  heroKathaSubtitle: {
+    fontSize: 13,
+    color: '#FCD34D',
+    marginTop: 3,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroKathaMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  heroKathaMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  heroKathaMetaText: {
+    fontSize: 11.5,
+    color: '#FDE68A',
+    fontWeight: '500',
+  },
+  heroKathaMetaDot: {
+    color: '#F59E0B',
+    fontSize: 12,
   },
   heroDisclaimerCard: {
     paddingVertical: 10,

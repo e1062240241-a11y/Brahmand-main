@@ -13,6 +13,7 @@ import {
   Modal,
   AppState,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -654,6 +655,73 @@ export default function BhagavadGita3DPage() {
     }, 1200);
   };
 
+  const handleCloseBook = useCallback(() => {
+    openProgress.value = withTiming(0, { duration: 500 });
+    floatingY.value = withRepeat(
+      withSequence(
+        withTiming(-8, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(8, { duration: 2500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+    setIsOpened(false);
+  }, [openProgress, floatingY]);
+
+  const handleHeaderBack = useCallback(() => {
+    if (kathaPravahOpen) {
+      setKathaPravahOpen(false);
+      return;
+    }
+    if (showChapterIndex) {
+      setShowChapterIndex(false);
+      return;
+    }
+    if (viewMode === 'story') {
+      setViewMode('classical');
+      return;
+    }
+    if (isOpened) {
+      handleCloseBook();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  }, [kathaPravahOpen, showChapterIndex, viewMode, isOpened, handleCloseBook, router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (kathaPravahOpen) {
+        setKathaPravahOpen(false);
+        return true;
+      }
+      if (showChapterIndex) {
+        setShowChapterIndex(false);
+        return true;
+      }
+      if (viewMode === 'story') {
+        setViewMode('classical');
+        return true;
+      }
+      if (isOpened) {
+        handleCloseBook();
+        return true;
+      }
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/home');
+      }
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [kathaPravahOpen, showChapterIndex, viewMode, isOpened, handleCloseBook, router]);
+
   const bookAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(openProgress.value, [0, 1], [0, -110]);
     const translateX = interpolate(openProgress.value, [0, 1], [0, -SCREEN_WIDTH * 0.6]);
@@ -709,7 +777,7 @@ export default function BhagavadGita3DPage() {
 
           {/* Opening Header */}
           <View style={[styles.header, { position: 'absolute', top: insets.top + 10, left: 0, right: 0 }]}>
-            <TouchableOpacity style={styles.backBtnCover} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backBtnCover} onPress={handleHeaderBack}>
               <Ionicons name="chevron-back" size={24} color="#5C250A" />
             </TouchableOpacity>
           </View>
@@ -745,7 +813,7 @@ export default function BhagavadGita3DPage() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 style={[styles.compactBackBtn, nightMode && styles.compactBackBtnNight]}
-                onPress={() => router.back()}
+                onPress={handleHeaderBack}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
                 <Ionicons name="chevron-back" size={22} color={nightMode ? '#E8D5C4' : '#743B27'} />
@@ -901,7 +969,6 @@ export default function BhagavadGita3DPage() {
                 ]}
                 onPress={() => {
                   setViewMode('story');
-                  openKathaPravah(null);
                 }}
                 activeOpacity={0.8}
               >

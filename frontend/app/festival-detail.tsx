@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONTS } from '../src/constants/theme';
-import { getFestivalList } from '../src/services/api';
+import { getFestivalList, getFestivalFromIndexO1 } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
@@ -52,8 +52,13 @@ const FestivalDetailPage: React.FC = () => {
   const targetId = params?.id ? decodeURIComponent(params.id).trim() : '';
   const targetName = params?.name ? decodeURIComponent(params.name).trim() : '';
 
-  const [festival, setFestival] = useState<FestivalRawItem | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  // O(1) Instant Hash Map Resolution — eliminates loading screen for known & pre-cached festivals
+  const initialFestival = React.useMemo(() => {
+    return getFestivalFromIndexO1(targetId) || getFestivalFromIndexO1(targetName);
+  }, [targetId, targetName]);
+
+  const [festival, setFestival] = useState<FestivalRawItem | null>(() => initialFestival);
+  const [loading, setLoading] = useState<boolean>(() => !initialFestival);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabled] = useState<boolean>(false);
@@ -63,17 +68,18 @@ const FestivalDetailPage: React.FC = () => {
   // Load selected festival details on mount / param change / refresh
   const loadFestival = useCallback(async (forceRefresh = false) => {
     try {
-      if (!forceRefresh) {
+      if (!initialFestival && !forceRefresh) {
         setLoading(true);
       }
       setError(null);
       const response = await getFestivalList(forceRefresh);
       const items: FestivalRawItem[] = response?.data || response || [];
 
-      let selected: FestivalRawItem | undefined;
+      // 0. High-speed O(1) indexed lookup
+      let selected: FestivalRawItem | undefined = getFestivalFromIndexO1(targetId) || getFestivalFromIndexO1(targetName) || undefined;
 
       // 1. Primary lookup: Exact ID match
-      if (targetId) {
+      if (!selected && targetId) {
         selected = items.find((f) => f.id && String(f.id).trim().toLowerCase() === targetId.toLowerCase());
       }
 

@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform, Animated, Easing } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -275,6 +275,16 @@ const FestivalSectionDetailPage = () => {
     }
   };
 
+  const handleSafeBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      const festId = festival?.id ? String(festival.id) : targetId;
+      const festName = festival?.festival_name || festival?.name || festival?.title || targetName;
+      router.replace(`/festival-detail?index=${festivalIndex}&id=${encodeURIComponent(festId)}&name=${encodeURIComponent(festName)}`);
+    }
+  }, [router, festival, targetId, targetName, festivalIndex]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -350,15 +360,7 @@ const FestivalSectionDetailPage = () => {
               styles.backButton,
               isStorySection && styles.storyHeaderButtonCircle
             ]}
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                const festId = festival?.id ? String(festival.id) : targetId;
-                const festName = festival?.festival_name || festival?.name || festival?.title || targetName;
-                router.replace(`/festival-detail?index=${festivalIndex}&id=${encodeURIComponent(festId)}&name=${encodeURIComponent(festName)}`);
-              }
-            }}
+            onPress={handleSafeBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessible={true}
             accessibilityRole="button"
@@ -446,7 +448,7 @@ const FestivalSectionDetailPage = () => {
             key={`story-${decodeURIComponent(section)}`}
             festival={festival}
             section={decodeURIComponent(section)}
-            onBack={() => router.back()}
+            onBack={handleSafeBack}
             onSharePdf={handleSharePdf}
             onShareImage={handleSharePress}
           />
@@ -460,7 +462,7 @@ const FestivalSectionDetailPage = () => {
               key={`detail-${decodeURIComponent(section)}`}
               festival={festival}
               section={decodeURIComponent(section)}
-              onBack={() => router.back()}
+              onBack={handleSafeBack}
               onSharePdf={handleSharePdf}
               onShareImage={handleSharePress}
             />

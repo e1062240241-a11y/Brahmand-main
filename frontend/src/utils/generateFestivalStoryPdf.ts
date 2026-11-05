@@ -1777,9 +1777,9 @@ const inProgressPdfPromises = new Map<string, Promise<string>>();
 export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string) {
   const festLower = (festivalThemeName || '').toLowerCase();
   const needDussehra = !festivalThemeName || festLower.includes('dussehra') || festLower.includes('vijaya') || festLower.includes('dasara');
-  const needSharad = !festivalThemeName || festLower.includes('sharad');
-  const needKarwa = !festivalThemeName || festLower.includes('karwa');
-  const needDhanteras = !festivalThemeName || festLower.includes('dhanteras');
+  const needSharad = !festivalThemeName || isSharadPurnimaThemeCheck(festivalThemeName) || festLower.includes('sharad');
+  const needKarwa = !festivalThemeName || isKarwaChauthThemeCheck(festivalThemeName) || festLower.includes('karwa');
+  const needDhanteras = !festivalThemeName || isDhanterasThemeCheck(festivalThemeName) || festLower.includes('dhanteras');
 
   let fontCinzel: any = null;
   let fontRozha: any = null;
@@ -4241,7 +4241,7 @@ export async function generateFestivalStoryPdf(
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
-  const PDF_BUILD_REV = 'v3_kuber';
+  const PDF_BUILD_REV = 'v4_kuber';
   let filename = `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_Sampoorna_Katha_${PDF_BUILD_REV}.pdf`;
   if (isKarwaChauthTheme) {
     filename = `Karwa_Chauth_Akhand_Saubhagya_Katha_${PDF_BUILD_REV}.pdf`;

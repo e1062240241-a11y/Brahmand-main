@@ -62,7 +62,7 @@ export const DhanterasCoinShareButton: React.FC = React.memo(function DhanterasC
 
       let imageUri: string | null = null;
       if (shareCardRef.current) {
-        await new Promise((res) => setTimeout(res, 350));
+        await new Promise((res) => setTimeout(res, 400));
         const captureResult = await safeCaptureRef(shareCardRef, {
           format: 'png',
           quality: 0.95,
@@ -117,7 +117,12 @@ export const DhanterasCoinShareButton: React.FC = React.memo(function DhanterasC
             style={styles.coinIcon}
             resizeMode="contain"
           />
-          <Text style={styles.shareBtnText}>
+          <Text
+            style={styles.shareBtnText}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.85}
+          >
             {isSharing ? 'गोल्ड कॉइन तैयार हो रहा है...' : 'Share your digital gold coin today'}
           </Text>
           <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
@@ -143,7 +148,6 @@ export const DhanterasCoinShareButton: React.FC = React.memo(function DhanterasC
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
     marginVertical: 10,
     width: '100%',
   },
@@ -161,8 +165,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     gap: 8,
   },
   coinIcon: {
@@ -171,15 +175,20 @@ const styles = StyleSheet.create({
   },
   shareBtnText: {
     color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   offscreenShareContainer: {
     position: 'absolute',
     left: -9999,
     top: -9999,
-    opacity: 0,
+    width: 500,
+    height: 500,
+    opacity: 1,
+    zIndex: -999,
   },
 });
 

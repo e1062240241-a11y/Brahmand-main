@@ -7,6 +7,7 @@ import {
   Alert,
   InteractionManager,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -445,8 +446,21 @@ const FestivalPage: React.FC = () => {
   }, []);
 
   const handleBackPress = useCallback(() => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
   }, [router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBackPress();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [handleBackPress]);
 
   const userName = useMemo(() => user?.name?.split(' ')[0] || (isHindi ? 'मित्र' : 'Friend'), [user?.name, isHindi]);
   const nextFestivalName = useMemo(() => getFestivalDisplayName(festivals[0], isHindi), [festivals, isHindi]);

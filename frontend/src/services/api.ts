@@ -2739,16 +2739,117 @@ export const getGitaShloka = async (chapter: number, verse: number) => {
 
 export const getNextFestival = () => api.get("/spiritual/festival/next");
 
+// =================== FESTIVAL O(1) HASH MAP INDEX ===================
+
+export interface FestivalRawItem {
+  id?: string;
+  name?: string;
+  festival_name?: string;
+  name_hi?: string;
+  title?: string;
+  date?: string;
+  summary?: string;
+  story?: string;
+  deity?: string;
+  image?: string | number;
+  image_url?: string | number;
+  photo?: string;
+  imageUrl?: string;
+  [key: string]: unknown;
+}
+
+// Pre-seeded high-speed static catalogue records for instant zero-latency loading
+export const STATIC_DHANTERAS_FESTIVAL: FestivalRawItem = {
+  id: 'dhanteras',
+  festival_name: 'Dhanteras',
+  name: 'Dhanteras',
+  name_hi: 'धनतेरस',
+  title: 'Dhanteras',
+  date: '2026-11-06',
+  deity: 'Lord Dhanvantari & Goddess Lakshmi',
+  origin: 'Dhanteras is dedicated to Lord Dhanvantari, the god of Ayurveda and health, who emerged during Samudra Manthan.',
+  summary: 'Festival of wealth, health, and prosperity.',
+  story: 'Dhanteras marks the auspicious appearance of Lord Dhanvantari with the pot of Amrita, alongside Goddess Mahalakshmi and Lord Kubera.',
+};
+
+const festivalIndexMap = new Map<string, FestivalRawItem>();
+
+// Seed default fast-paths
+festivalIndexMap.set('dhanteras', STATIC_DHANTERAS_FESTIVAL);
+festivalIndexMap.set('dhantrayodashi', STATIC_DHANTERAS_FESTIVAL);
+festivalIndexMap.set('धनतेरस', STATIC_DHANTERAS_FESTIVAL);
+
+export const indexFestivalItems = (items: FestivalRawItem[]): void => {
+  if (!Array.isArray(items)) return;
+  for (const item of items) {
+    if (item.id) {
+      festivalIndexMap.set(String(item.id).trim().toLowerCase(), item);
+    }
+    const rawName = item.festival_name || item.name || item.title;
+    if (rawName) {
+      const clean = String(rawName).toLowerCase().replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+      festivalIndexMap.set(clean, item);
+      festivalIndexMap.set(String(rawName).trim().toLowerCase(), item);
+      if (clean.includes('dhanteras')) {
+        festivalIndexMap.set('dhanteras', item);
+      }
+      if (clean.includes('karva') || clean.includes('karwa')) {
+        festivalIndexMap.set('karwachauth', item);
+        festivalIndexMap.set('karvachauth', item);
+      }
+    }
+  }
+};
+
+export const getFestivalFromIndexO1 = (key?: string | null): FestivalRawItem | null => {
+  if (!key) return null;
+  const trimmed = key.trim().toLowerCase();
+  const direct = festivalIndexMap.get(trimmed);
+  if (direct) return direct;
+  const clean = trimmed.replace(/[^a-z0-9]/g, '').replace(/w/g, 'v');
+  const normalized = festivalIndexMap.get(clean);
+  if (normalized) return normalized;
+  if (clean.includes('dhanteras') || clean.includes('dhantrayodashi') || trimmed.includes('धनतेरस')) {
+    return festivalIndexMap.get('dhanteras') || STATIC_DHANTERAS_FESTIVAL;
+  }
+  return null;
+};
+
 let festivalListCache: { data: any; timestamp: number } | null = null;
-const FESTIVAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+const FESTIVAL_CACHE_TTL = 30 * 60 * 1000; // 30 minutes in-memory cache
+const FESTIVAL_STORAGE_KEY = 'brahmand_festivals_cache_v1';
 
 export const getFestivalList = async (forceRefresh = false) => {
   const now = Date.now();
   if (!forceRefresh && festivalListCache && (now - festivalListCache.timestamp < FESTIVAL_CACHE_TTL)) {
+    const cachedItems = festivalListCache.data?.data || festivalListCache.data;
+    if (Array.isArray(cachedItems)) indexFestivalItems(cachedItems);
     return festivalListCache.data;
   }
+
+  // Hydrate from persistent cache if available
+  if (!forceRefresh && !festivalListCache) {
+    try {
+      const persisted = await AsyncStorage.getItem(FESTIVAL_STORAGE_KEY);
+      if (persisted) {
+        const parsed = JSON.parse(persisted);
+        if (parsed && parsed.timestamp && (now - parsed.timestamp < 24 * 60 * 60 * 1000) && parsed.data) {
+          festivalListCache = parsed;
+          const items = parsed.data?.data || parsed.data;
+          if (Array.isArray(items)) indexFestivalItems(items);
+          return parsed.data;
+        }
+      }
+    } catch {}
+  }
+
   const res = await api.get("/spiritual/festivals/all");
   festivalListCache = { data: res, timestamp: now };
+  const items = res?.data || res;
+  if (Array.isArray(items)) indexFestivalItems(items);
+  try {
+    await AsyncStorage.setItem(FESTIVAL_STORAGE_KEY, JSON.stringify(festivalListCache));
+  } catch {}
   return res;
 };
 

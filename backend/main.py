@@ -16655,6 +16655,16 @@ async def get_next_festival():
 async def get_all_festivals():
     """Get full festival list from JSON data with accurate multi-year Panchang dates"""
     today = datetime.utcnow()
+    date_key = today.strftime("%Y-%m-%d")
+    cache_key = f"festivals:all:{date_key}"
+
+    try:
+        cached = await cache_manager.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception as e:
+        logger.warning(f"Cache get error for festivals: {e}")
+
     festivals = load_festival_json()
     response_items = []
 
@@ -16678,6 +16688,10 @@ async def get_all_festivals():
         })
 
     sorted_items = sorted(response_items, key=lambda item: item["days_until"])
+    try:
+        await cache_manager.set(cache_key, sorted_items, ttl=86400)
+    except Exception as e:
+        logger.warning(f"Cache set error for festivals: {e}")
     return sorted_items
 
 RASHI_TO_ENGLISH = {

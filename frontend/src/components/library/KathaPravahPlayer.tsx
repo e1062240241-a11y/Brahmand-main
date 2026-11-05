@@ -23,6 +23,8 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Image,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +52,7 @@ import {
   STORY_SPEAKER_METAS,
   SpeakerMeta,
 } from '../../constants/gitaStoryFraming';
+import { GITA_COSMIC_MEDIA } from '../../constants/gitaCosmicMedia';
 import { useStoryStore } from '../../store/useStoryStore';
 import { api } from '../../services/api';
 
@@ -518,6 +521,24 @@ export const KathaPravahPlayer: React.FC<KathaPravahPlayerProps> = ({
     );
   }, [pulse, floatY]);
 
+  const handleClose = useCallback(() => {
+    try {
+      audioPlayer.pause();
+    } catch {}
+    setIsPlayingStore(false);
+    setCurrentPlayingSceneId(null);
+    onClose();
+  }, [audioPlayer, onClose, setIsPlayingStore, setCurrentPlayingSceneId]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, handleClose]);
+
   const pulseStyle = useAnimatedStyle(() => ({ opacity: 0.35 + pulse.value * 0.65 }));
   const floatStyle = useAnimatedStyle(() => ({ transform: [{ translateY: floatY.value }] }));
 
@@ -606,11 +627,16 @@ export const KathaPravahPlayer: React.FC<KathaPravahPlayerProps> = ({
       visible={visible}
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.root}>
         {/* ── Ambient divine wallpaper ── */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Image
+            source={GITA_COSMIC_MEDIA.posterLocal}
+            style={[StyleSheet.absoluteFillObject, { opacity: 0.32 }]}
+            resizeMode="cover"
+          />
           <CosmicAnimatedBackground
             style={StyleSheet.absoluteFillObject}
             showKaalChakra
@@ -639,11 +665,11 @@ export const KathaPravahPlayer: React.FC<KathaPravahPlayerProps> = ({
         <View style={[styles.topHud, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             style={styles.hudIconBtn}
-            onPress={onClose}
+            onPress={handleClose}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="कथा प्रवाह बंद करें"
           >
-            <Ionicons name="chevron-down" size={22} color="#FDE68A" />
+            <Ionicons name="chevron-back" size={24} color="#FDE68A" />
           </TouchableOpacity>
 
           <View style={styles.hudTitleCol}>
@@ -750,7 +776,12 @@ export const KathaPravahPlayer: React.FC<KathaPravahPlayerProps> = ({
                     {onSwitchToClassical && (
                       <TouchableOpacity
                         style={styles.completeGhostBtn}
-                        onPress={onSwitchToClassical}
+                        onPress={() => {
+                          try { audioPlayer.pause(); } catch {}
+                          setIsPlayingStore(false);
+                          setCurrentPlayingSceneId(null);
+                          onSwitchToClassical();
+                        }}
                         activeOpacity={0.85}
                       >
                         <Text style={styles.completeGhostText}>श्लोक पाठ देखें</Text>
