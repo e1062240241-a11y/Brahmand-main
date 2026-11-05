@@ -293,6 +293,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.trackContainer}
           onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
           onPress={handleSeekPress}
+          accessibilityRole="adjustable"
+          accessibilityLabel="Playback progress"
         >
           <View style={styles.trackBackground}>
             <View style={[styles.trackFill, { width: `${progressPercent}%` }]} />
@@ -307,6 +309,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.secondaryControlBtn}
           onPress={cycleSpeed}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Playback speed ${playbackRate}x`}
         >
           <Text style={styles.speedText}>{playbackRate}x</Text>
         </TouchableOpacity>
@@ -315,6 +319,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.skipBtn}
           onPress={() => seekBy(-10)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Rewind 10 seconds"
         >
           <MaterialCommunityIcons name="rewind-10" size={30} color="#FFD54F" />
         </TouchableOpacity>
@@ -323,6 +329,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.playPauseBtn}
           onPress={togglePlayPause}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? 'Pause katha' : 'Play katha'}
         >
           <LinearGradient
             colors={['#FF9800', '#F57C00', '#E65100']}
@@ -341,6 +349,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.skipBtn}
           onPress={() => seekBy(10)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Fast forward 10 seconds"
         >
           <MaterialCommunityIcons name="fast-forward-10" size={30} color="#FFD54F" />
         </TouchableOpacity>
@@ -349,6 +359,8 @@ export const KathaVisualizerView: React.FC<KathaVisualizerViewProps> = ({
           style={styles.secondaryControlBtn}
           onPress={() => seekTo(0)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Restart katha"
         >
           <MaterialCommunityIcons name="restart" size={24} color="#FFD54F" />
         </TouchableOpacity>
