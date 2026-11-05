@@ -37,7 +37,11 @@ import { useAuthStore } from '../store/authStore';
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 const QUICK_EMOJIS = ['✨', '🙏', '🕉️', '🌸', '🚩', '📿'];
 
-
+// ⚡ Bolt: Extracted static ripple configurations to prevent inline object allocations on every render
+const RIPPLE_MENU_BTN_LIGHT = { color: 'rgba(0, 0, 0, 0.12)', borderless: false, radius: 20 };
+const RIPPLE_MENU_BTN_DARK = { color: 'rgba(255, 255, 255, 0.2)', borderless: false, radius: 20 };
+const RIPPLE_MENU_DEFAULT = { color: 'rgba(0, 0, 0, 0.08)', borderless: false };
+const RIPPLE_MENU_DANGER = { color: 'rgba(224, 62, 62, 0.12)', borderless: false };
 
 type PostFeedCardProps = {
   distanceFromActive?: number;
@@ -658,11 +662,7 @@ const PostFeedCardComponent = ({
                   styles.menuBtn,
                   pressed && ((theme === 'light' || isFirstReel) ? styles.menuBtnPressedLight : styles.menuBtnPressedDark)
                 ]}
-                android_ripple={{
-                  color: (theme === 'light' || isFirstReel) ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.2)',
-                  borderless: false,
-                  radius: 20,
-                }}
+                android_ripple={(theme === 'light' || isFirstReel) ? RIPPLE_MENU_BTN_LIGHT : RIPPLE_MENU_BTN_DARK}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={toggleMenu}
                 accessibilityRole="button"
@@ -701,9 +701,9 @@ const PostFeedCardComponent = ({
                       style={({ pressed }) => [
                         styles.dropdownItem,
                         styles.dropdownItemBorder,
-                        pressed && { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
+                        pressed && styles.dropdownItemPressed,
                       ]}
-                      android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', borderless: false }}
+                      android_ripple={RIPPLE_MENU_DEFAULT}
                       onPress={() => closeMenu(() => onEdit?.(post))}
                     >
                       <Ionicons name="pencil-outline" size={15} color="#3A3835" />
@@ -716,9 +716,9 @@ const PostFeedCardComponent = ({
                     style={({ pressed }) => [
                       styles.dropdownItem,
                       styles.dropdownItemBorder,
-                      pressed && { backgroundColor: 'rgba(224, 62, 62, 0.08)' },
+                      pressed && styles.dropdownItemDangerPressed,
                     ]}
-                    android_ripple={{ color: 'rgba(224, 62, 62, 0.12)', borderless: false }}
+                    android_ripple={RIPPLE_MENU_DANGER}
                     onPress={() => closeMenu(() => onPostMenuPress?.(post))}
                   >
                     <Ionicons
@@ -735,9 +735,9 @@ const PostFeedCardComponent = ({
                   <Pressable
                     style={({ pressed }) => [
                       styles.dropdownItem,
-                      pressed && { backgroundColor: 'rgba(0, 0, 0, 0.06)' },
+                      pressed && styles.dropdownItemPressed,
                     ]}
-                    android_ripple={{ color: 'rgba(0, 0, 0, 0.08)', borderless: false }}
+                    android_ripple={RIPPLE_MENU_DEFAULT}
                     onPress={() => closeMenu()}
                   >
                     <Ionicons name="close-circle-outline" size={15} color="#75716B" />
@@ -1203,6 +1203,13 @@ const styles = StyleSheet.create({
     color: '#75716B',
     fontSize: 13.5,
     fontWeight: '600',
+  },
+  // ⚡ Bolt: Static styles for pressed states
+  dropdownItemPressed: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  dropdownItemDangerPressed: {
+    backgroundColor: 'rgba(224, 62, 62, 0.08)',
   },
   mediaWrap: { backgroundColor: '#000', overflow: 'hidden', position: 'relative' },
   videoContainer: { width: '100%', height: '100%', position: 'relative' },
