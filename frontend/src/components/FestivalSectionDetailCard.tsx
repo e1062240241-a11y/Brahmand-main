@@ -1086,6 +1086,76 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     }
   }
 
+  // Dedicated Govardhan Puja Muhurat Renderer
+  const isGovardhan =
+    festivalName.toLowerCase().includes('govardhan') ||
+    festivalName.toLowerCase().includes('annakut') ||
+    festivalName.toLowerCase().includes('annakoot') ||
+    /गोवर्धन|अन्नकूट/i.test(festivalName) ||
+    (festival.id && /govardhan|annakut/i.test(String(festival.id)));
+
+  if (isGovardhan) {
+    const secLower = section.toLowerCase();
+    if (section === 'Muhurat' || secLower.includes('muhurat') || /मुहूर्त/i.test(section)) {
+      return (
+        <View style={styles.page}>
+          <View style={styles.contentCard}>
+            <View style={styles.sectionHeaderBadge}>
+              <Ionicons name="time-outline" size={18} color="#D97706" />
+              <Text style={styles.blockTitle}>श्री गोवर्धन पूजा 2026 शुभ मुहूर्त</Text>
+            </View>
+
+            <View style={styles.introBox}>
+              <Text style={styles.introText}>
+                गोवर्धन पूजा (अन्नकूट) 2026 मंगलवार, 10 नवंबर 2026 को मनाई जाएगी। दृक पंचांग अनुसार प्रातःकाल पूजा का शुभ मुहूर्त 2 घंटे 10 मिनट की पावन अवधि में रहेगा।
+              </Text>
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.blockTitleRow}>
+                <Ionicons name="sunny-outline" size={18} color="#D97706" />
+                <Text style={styles.blockTitle}>प्रातःकाल पूजा मुहूर्त (Pratahkala Window)</Text>
+              </View>
+              <View style={styles.meaningBox}>
+                <Text style={[styles.meaningText, { fontWeight: '700', color: '#B45309', fontSize: 16 }]}>
+                  ⏰ प्रातः 6:40 AM से 8:50 AM
+                </Text>
+                <Text style={[styles.meaningText, { marginTop: 6 }]}>
+                  कुल शुभ अवधि: 2 घंटे 10 मिनट
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.blockTitleRow}>
+                <Ionicons name="calendar-outline" size={18} color="#D97706" />
+                <Text style={styles.blockTitle}>कार्तिक शुक्ल प्रतिपदा तिथि</Text>
+              </View>
+              <View style={styles.takeawayCard}>
+                <Ionicons name="checkmark-circle" size={16} color="#D97706" />
+                <Text style={styles.takeawayText}>प्रतिपदा तिथि प्रारंभ: 9 नवंबर 2026 को दोपहर 12:31 PM</Text>
+              </View>
+              <View style={styles.takeawayCard}>
+                <Ionicons name="checkmark-circle" size={16} color="#D97706" />
+                <Text style={styles.takeawayText}>प्रतिपदा तिथि समाप्त: 10 नवंबर 2026 को दोपहर 2:00 PM</Text>
+              </View>
+            </View>
+
+            <View style={styles.didYouKnowBox}>
+              <View style={styles.factTitleRow}>
+                <Ionicons name="bulb" size={18} color="#D4AF37" />
+                <Text style={styles.factTitle}>पंचांग निर्णय</Text>
+              </View>
+              <Text style={styles.factText}>
+                कार्तिक शुक्ल प्रतिपदा तिथि 9 नवंबर की दोपहर 12:31 PM से शुरू होकर 10 नवंबर की दोपहर 2:00 PM तक व्याप्त रहेगी। दृक पंचांग के अनुसार प्रातःकाल का समय 10 नवंबर की सुबह में ही प्राप्त होता है, इसलिए गोवर्धन पूजा 10 नवंबर को प्रातःकाल 6:40 AM से 8:50 AM के बीच की जाएगी।
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+  }
+
   // Dedicated Nav Durga Renderer (Navratri Special 9 Days Guide)
   if (section === 'Nav Durga' || section === 'Navdurga') {
     return (

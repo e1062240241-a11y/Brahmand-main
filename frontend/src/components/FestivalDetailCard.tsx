@@ -552,6 +552,13 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     /दीपावली|दिवाली/i.test(festivalName) ||
     (festival.id && /diwali|deepavali/i.test(String(festival.id)));
 
+  const isGovardhanFestival =
+    festivalName.toLowerCase().includes('govardhan') ||
+    festivalName.toLowerCase().includes('annakut') ||
+    festivalName.toLowerCase().includes('annakoot') ||
+    /गोवर्धन|अन्नकूट/i.test(festivalName) ||
+    (festival.id && /govardhan|annakut/i.test(String(festival.id)));
+
   const isSharadPurnimaFestival =
     festivalName.toLowerCase().includes('sharad') ||
     festivalName.toLowerCase().includes('kojagiri') ||
@@ -753,13 +760,57 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     },
   ];
 
+  const govardhanSections = [
+    {
+      title: 'Muhurat',
+      customHeading: 'प्रातःकाल शुभ मुहूर्त व पंचांग',
+      subtitle: 'प्रातः 6:40 AM – 8:50 AM (अवधि 2 घंटे 10 मिनट), प्रतिपदा तिथि',
+      value:
+        'गोवर्धन पूजा 2026: मंगलवार 10 नवंबर 2026। दृक पंचांग अनुसार प्रातःकाल पूजा का शुभ मुहूर्त 6:40 AM से 8:50 AM तक है (अवधि 2 घंटे 10 मिनट)। कार्तिक शुक्ल प्रतिपदा तिथि 9 नवंबर 12:31 PM से 10 नवंबर 2:00 PM तक है।',
+    },
+    {
+      title: 'Puja Vidhi',
+      customHeading: 'गाय के गोबर से गोवर्धन निर्माण व अन्नकूट विधि',
+      subtitle: 'गोवर्धन पर्वत निर्माण, 56 भोग अन्नकूट समर्पण व 7 परिक्रमा',
+      value:
+        rawPujaVidhi ||
+        'गाय के शुद्ध गोबर से लेटे हुए गोवर्धन पर्वत का स्वरूप बनाएं। नाभि पर दीपक व दूध अर्पित कर धूप, दीप, नैवेद्य व 56 भोग अन्नकूट का भोग लगाएं तथा 7 बार सपरिवार परिक्रमा करें।',
+    },
+    {
+      title: 'Story',
+      customHeading: 'श्री गिरिराज धरण एवं पावन कथा',
+      subtitle: 'भगवान श्रीकृष्ण द्वारा कनिष्ठिका उंगली पर 7 दिन गोवर्धन पर्वत धारण',
+      value:
+        rawStory ||
+        'देवराज इंद्र के कोप व मूसलाधार वर्षा से ब्रजवासियों व गोधन की रक्षा हेतु भगवान श्रीकृष्ण ने 7 दिनों तक गोवर्धन पर्वत को अपनी कनिष्ठिका उंगली पर धारण कर इंद्र का अहंकार नष्ट किया।',
+    },
+    {
+      title: 'About',
+      customHeading: 'प्रकृति, गोधन संवर्धन व अन्नकूट का आध्यात्मिक महत्व',
+      subtitle: 'दीपावली पंचपर्व का चौथा पावन दिवस, प्रकृति व गो-माता के प्रति कृतज्ञता',
+      value:
+        rawAbout ||
+        'गोवर्धन पूजा प्रकृति, पर्वत, वृक्ष और गोधन (गायों) के संवर्धन तथा भगवान श्रीकृष्ण के प्रति अनन्य शरणागति का महापर्व है।',
+    },
+    {
+      title: 'Mantra',
+      customHeading: 'गोवर्धन व कृष्ण सिद्ध मंत्र',
+      subtitle: 'ॐ गोवर्धनधराय नमः • ॐ नमो भगवते वासुदेवाय',
+      value:
+        rawMantra ||
+        'ॐ गोवर्धनधराय नमः • ॐ नमो भगवते वासुदेवाय • गोवर्धनधरो धीरो गोपीगोपैकभूषणः। ददतु मे वरं कृष्णः सर्वकामफलप्रदः॥',
+    },
+  ];
+
   const sections = isKarvaChauthFestival
     ? karwaChauthSections
     : isDhanterasFestival
       ? dhanterasSections
       : isDiwaliFestival
         ? diwaliSections
-        : [
+        : isGovardhanFestival
+          ? govardhanSections
+          : [
           { title: 'Story', value: rawStory },
           { title: 'About', value: rawAbout },
           ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
@@ -793,7 +844,14 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     onGuidePress?.(sectionTitle);
   };
 
-  const deity = festival.deity || festival.deity_name || (festivalName.toLowerCase().includes('shiva') || festivalName.toLowerCase().includes('teej') ? 'Goddess Parvati & Lord Shiva' : 'Vedic Deities');
+  const deity =
+    festival.deity ||
+    festival.deity_name ||
+    (isGovardhanFestival
+      ? 'Lord Krishna & Shri Giriraj Govardhan'
+      : festivalName.toLowerCase().includes('shiva') || festivalName.toLowerCase().includes('teej')
+        ? 'Goddess Parvati & Lord Shiva'
+        : 'Vedic Deities');
   const daysRemaining = calculateDaysRemaining(festival.date || '2026-08-15');
   const festivalImgAsset = getFestivalImage(festival);
 
@@ -1078,7 +1136,9 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
                   ? 'धनतेरस पावन मार्गदर्शिका'
                   : isDiwaliFestival
                     ? 'दीपावली 2026 सम्पूर्ण मार्गदर्शिका'
-                    : 'Festival Guide Topics'}
+                    : isGovardhanFestival
+                      ? 'श्री गोवर्धन पूजा सम्पूर्ण मार्गदर्शिका'
+                      : 'Festival Guide Topics'}
             </Text>
             {sections.length > 0 && (
               <Text style={styles.sectionCount}>({sections.length})</Text>
