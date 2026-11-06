@@ -1,3 +1,6 @@
 ## 2024-05-19 - Adding accessibility to dynamic modal states
 **Learning:** In React Native, `ActivityIndicator` and dynamic modal state changes (like moving from a form to a loading state to a success state) are often entirely silent to screen readers by default.
 **Action:** Always add an `accessibilityLabel` to `ActivityIndicator` components. For dynamically rendering success/error views within a modal, apply `accessibilityLiveRegion="polite"` and `accessibilityRole="alert"` to the parent container to force screen readers to announce the state change correctly.
+## 2024-05-15 - Add ARIA Labels to Global Katha Floating Player Controls
+**Learning:** Icon-only controls such as the Play/Pause and Close buttons within floating players or sticky overlays can easily be missed by screen readers without explicit `accessibilityRole="button"` and `accessibilityLabel` attributes. These labels should reflect their state, such as toggling "Play" and "Pause".
+**Action:** Always verify that icon-only buttons (`TouchableOpacity`, `Pressable`) have clear, localized `accessibilityLabel`s and appropriate `accessibilityRole`s to ensure the component is discoverable and meaningful for visually impaired users.
