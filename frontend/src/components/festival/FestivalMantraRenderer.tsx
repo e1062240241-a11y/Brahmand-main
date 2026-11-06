@@ -82,21 +82,84 @@ export const DHANTERAS_MANTRAS: MantraItem[] = [
   },
 ];
 
+export const DIWALI_MANTRAS: MantraItem[] = [
+  {
+    id: 'diwali-ganesh',
+    deity: 'भगवान श्री गणेश (Lord Ganesha)',
+    hindiTitle: 'गणेश विघ्नहर्ता व कार्यसिद्धि मंत्र',
+    typeBadge: 'प्रथम पूज्य महामंत्र',
+    badgeColor: '#D97706',
+    mantra: 'ॐ गं गणपतये नमः॥',
+    beejMantra: 'ॐ गं',
+    transliteration: 'Om Gam Ganapataye Namah',
+    chantCount: '11 या 108 बार',
+    rosary: 'रुद्राक्ष या स्फटिक की माला',
+    direction: 'उत्तर या पूर्व दिशा',
+    benefit: 'लक्ष्मी पूजा निर्विघ्न संपन्न होना, सर्व विघ्न-बाधा निवारण एवं रिद्धि-सिद्धि की प्राप्ति।',
+  },
+  {
+    id: 'diwali-lakshmi',
+    deity: 'मां महालक्ष्मी (Maa Mahalakshmi)',
+    hindiTitle: 'महालक्ष्मी दारिद्र्य नाशक महामंत्र',
+    typeBadge: 'दारिद्र्य नाशक सिद्ध मंत्र',
+    badgeColor: '#B91C1C',
+    mantra: 'ॐ श्रीं ह्रीं क्लीं त्रिभुवन महालक्ष्म्यै अस्मांक दारिद्र्य नाशय प्रचुर धन देहि देहि क्लीं ह्रीं श्रीं ॐ॥',
+    beejMantra: 'ॐ श्रीं महालक्ष्म्यै नमः',
+    transliteration: 'Om Shreem Hreem Kleem Tribhuvana Mahalakshmyai Asmank Daridrya Nashaya Prachura Dhana Dehi Dehi Kleem Hreem Shreem Om',
+    chantCount: '108 बार (1 माला)',
+    rosary: 'कमलगट्टे की माला (तर्जनी से स्पर्श न करें)',
+    direction: 'उत्तर या पूर्व दिशा',
+    benefit: 'दारिद्र्य का जड़ से विनाश, घर में स्थायी लक्ष्मी वास और अष्ट ऐश्वर्य की प्राप्ति।',
+  },
+  {
+    id: 'diwali-lakshmi-ganesh',
+    deity: 'लक्ष्मी-गणेश संयुक्त (Lakshmi-Ganesh)',
+    hindiTitle: 'लक्ष्मी-गणेश सौम्य वशीकरण व कृपा मंत्र',
+    typeBadge: 'सर्वजन सौहार्द व सिद्धि',
+    badgeColor: '#C2410C',
+    mantra: 'ॐ श्रीं गं सौम्याय गणपतये वर वरद सर्वजनं मे वशमानय स्वाहा॥',
+    transliteration: 'Om Shreem Gam Saumyaya Ganapataye Vara Varada Sarvajanam Me Vashamanaya Swaha',
+    chantCount: '11 बार',
+    rosary: 'कमलगट्टे अथवा स्फटिक माला',
+    direction: 'उत्तर दिशा',
+    benefit: 'व्यापार व परिवार में सर्वजन सौहार्द, मान-सम्मान एवं गणेश-लक्ष्मी की संयुक्त कृपा।',
+  },
+  {
+    id: 'diwali-kuber',
+    deity: 'भगवान कुबेर (Lord Kuber)',
+    hindiTitle: 'कुबेर धन-समृद्धि महामंत्र',
+    typeBadge: 'अमोघ महामंत्र',
+    badgeColor: '#059669',
+    mantra: 'ॐ यक्षाय कुबेराय वैश्रवणाय धनधान्याधिपतये धनधान्यसमृद्धिं मे देहि दापय स्वाहा॥',
+    beejMantra: 'ॐ ह्रीं कुबेराय नमः',
+    transliteration: 'Om Yakshaya Kuberaya Vaishravanaya Dhana-Dhanyadhipataye Dhana-Dhanya Samriddhim Me Dehi Dapaya Swaha',
+    chantCount: '108 बार (1 माला)',
+    rosary: 'कमलगट्टे या स्फटिक की माला',
+    direction: 'उत्तर दिशा (कुबेर देव की दिशा)',
+    benefit: 'स्थिर संपत्ति, संचित धन की सुरक्षा, तिजोरी व व्यापार में निरंतर बरकत।',
+  },
+];
+
 interface FestivalMantraRendererProps {
   festivalName: string;
   rawMantra?: string;
   isDhanteras?: boolean;
+  isDiwali?: boolean;
 }
 
 export const FestivalMantraRenderer: React.FC<FestivalMantraRendererProps> = ({
   festivalName,
   rawMantra = '',
   isDhanteras = false,
+  isDiwali = false,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Extract mantras cleanly without repetition
   const mantraList: MantraItem[] = React.useMemo(() => {
+    if (isDiwali) {
+      return DIWALI_MANTRAS;
+    }
     if (isDhanteras) {
       return DHANTERAS_MANTRAS;
     }
@@ -161,7 +224,7 @@ export const FestivalMantraRenderer: React.FC<FestivalMantraRendererProps> = ({
             chantCount: '108 बार',
           },
         ];
-  }, [festivalName, rawMantra, isDhanteras]);
+  }, [festivalName, rawMantra, isDhanteras, isDiwali]);
 
   const handleCopy = async (id: string, text: string) => {
     try {
@@ -185,11 +248,38 @@ export const FestivalMantraRenderer: React.FC<FestivalMantraRendererProps> = ({
         </View>
         <Text style={styles.pageTitle}>वैदिक एवं सिद्ध मंत्र</Text>
         <Text style={styles.pageSubtitle}>
-          {isDhanteras
+          {isDiwali
+            ? 'दीपावली की पावन रात्रि स्थिर लग्न में श्री गणेश, मां लक्ष्मी व कुबेर देव के इन सिद्ध मंत्रों का जप 11 या 108 बार करना अमोघ फलदायी है।'
+            : isDhanteras
             ? 'धनतेरस के पावन अवसर पर भगवान कुबेर, मां लक्ष्मी, भगवान धन्वंतरि एवं यमराज के इन सिद्ध मंत्रों का जप करना विशेष फलदायी है।'
             : `${festivalName} के पावन अवसर पर इन पवित्र मंत्रों का श्रद्धापूर्वक जप करने से दैवीय कृपा और मनोवांछित फल की प्राप्ति होती है।`}
         </Text>
       </View>
+
+      {/* Diwali Japa Guidelines from PDF */}
+      {isDiwali && (
+        <View style={{
+          backgroundColor: '#FFFBEB',
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: '#FDE68A',
+          padding: 14,
+          marginBottom: 16,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <Ionicons name="information-circle" size={18} color="#D97706" />
+            <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#92400E' }}>
+              मंत्र जप के शास्त्रसम्मत नियम (PDF गाइड अनुसार)
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12.5, color: '#78350F', lineHeight: 18 }}>
+            • <Text style={{ fontWeight: '700' }}>जप संख्या:</Text> 11 या 108 बार रखें।{'\n'}
+            • <Text style={{ fontWeight: '700' }}>माला चयन:</Text> लक्ष्मी जी के लिए कमलगट्टे की माला सर्वोत्तम है। गणेश व कुबेर के लिए रुद्राक्ष/स्फटिक।{'\n'}
+            • <Text style={{ fontWeight: '700' }}>सावधानी:</Text> जप करते समय तर्जनी (index) उंगली से माला को कभी न छुएं, केवल अंगूठे और मध्यमा का उपयोग करें।{'\n'}
+            • <Text style={{ fontWeight: '700' }}>दिशा:</Text> अपना मुख उत्तर या पूर्व दिशा की ओर रखें।
+          </Text>
+        </View>
+      )}
 
       {/* Mantra Cards (Single occurrence, clean typography) */}
       <View style={styles.mantraCardsList}>

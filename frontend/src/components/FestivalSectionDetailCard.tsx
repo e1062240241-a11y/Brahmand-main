@@ -15,6 +15,11 @@ import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
 import { PersonalizedDhanterasCard } from './PersonalizedDhanterasCard';
+import {
+  PersonalizedDiwaliMuhuratCard,
+  DiwaliRulesNiyamCard,
+  DiwaliSpecialNotesCard,
+} from './PersonalizedDiwaliMuhuratCard';
 import { FestivalMantraRenderer } from './festival/FestivalMantraRenderer';
 
 // ponytail: local bundle, upload to BunnyCDN /audio/sharad_purnima.mp3 if size matters
@@ -330,7 +335,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Cosmic Shakti'
           : isDiwali
-          ? 'Return to Ayodhya'
+          ? "King Bali & Vamana's Three Steps"
           : isShivratri
           ? 'Tandava & Lingam'
           : isDhanteras
@@ -364,7 +369,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Navratri honors Goddess Durga’s victory over Mahishasura. The combined cosmic energies of Brahma, Vishnu, and Shiva manifested the ten-armed Mother Goddess armed with celestial weapons.'
           : isDiwali
-          ? 'Diwali marks Lord Rama’s triumphant return to Ayodhya with Sita and Lakshman after 14 years of exile and defeating Ravana. The citizens illuminated Ayodhya with millions of earthen diyas.'
+          ? "Long ago, King Bali ruled the three worlds. He was powerful, generous to a fault, and utterly devoted to Lord Vishnu — so devoted that the gods themselves grew afraid. No one in Bali's kingdom went hungry, no guest was ever turned away, and every yagna he performed seemed to make him stronger. Indra and the devas went to Vishnu and pleaded for help.\n\nVishnu took the form of Vamana, a small brahmin boy, and came to Bali's court during a great sacrifice. Bali welcomed him and asked what gift he wished for. Vamana asked only for three steps of land. Bali laughed and agreed — a boy asking for three steps, when he ruled the three worlds."
           : isShivratri
           ? 'Maha Shivratri marks the cosmic night Lord Shiva performed the Anand Tandava dance and manifested as Lingodbhava—the infinite pillar of cosmic light.'
           : sentences.slice(0, 2).join(' ') || storyText,
@@ -393,7 +398,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? '9 Divine Forms'
           : isDiwali
-          ? 'Lakshmi Pujan'
+          ? 'The Supreme Surrender to Patala'
           : isShivratri
           ? 'Shiva-Parvati Marriage'
           : isDhanteras
@@ -427,7 +432,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Devotees worship the Navadurga—Shailaputri, Brahmacharini, Chandraghanta, Kushmanda, Skandamata, Katyayani, Kalaratri, Mahagauri, and Siddhidatri—over nine auspicious nights.'
           : isDiwali
-          ? 'Goddess Lakshmi, the deity of wealth and auspiciousness, emerged during the churning of the cosmic ocean (Samudra Manthan) and chose Lord Vishnu as her divine consort on Kartik Amavasya.'
+          ? "The moment Bali poured the water of promise into Vamana's hands, the boy grew vast, filling the heavens. With one step he covered the earth; with the second, the sky. There was nowhere left for the third. Bali, understanding who stood before him, bowed his head and offered his own body. Vamana placed his foot on Bali's head and sent him down to Patala, the netherworld — granting him one boon in return: he would rule there as its king, and Vishnu himself would stand guard at his gate."
           : isShivratri
           ? 'Maha Shivratri is also celebrated as the holy wedding night of Lord Shiva and Goddess Parvati, symbolizing the eternal union of Purusha and Prakriti.'
           : sentences.slice(2, 4).join(' ') || storyText,
@@ -456,7 +461,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Mahishasura Mardini'
           : isDiwali
-          ? 'Govardhan & Bhai Dooj'
+          ? "Goddess Lakshmi's Refuge in Patala"
           : isShivratri
           ? 'Neelkanth Poison'
           : isDhanteras
@@ -490,7 +495,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'On Vijayadashami (Dussehra), Goddess Durga annihilated Mahishasura after a 9-day battle, establishing righteous order and peace across all realms.'
           : isDiwali
-          ? 'Diwali celebrations span 5 holy days: Dhanteras, Naraka Chaturdashi, Lakshmi Pujan, Govardhan Puja, and Bhai Dooj celebrating prosperity and bonds.'
+          ? "Now, in Vaikuntha, Goddess Lakshmi noticed that Vishnu was gone. She learned what had happened and was troubled. Bali, she thought, was no sinner — he was the finest of devotees, and the finest of householders. She decided to see for herself.\n\nShe came to Patala as a woman with no family, a poor soul whose husband had abandoned her. Bali, true to his nature, could not turn her away. He gave her a place in his palace, and in time her gentle presence made the whole of Patala prosper. Ganga-like, she became the mother of his household; his granaries overflowed, his people were content."
           : isShivratri
           ? 'During Samudra Manthan, Shiva held the deadly Halahala poison in his throat to save creation, earning the name Neelkanth.'
           : sentences.slice(4, 6).join(' ') || storyText,
@@ -519,7 +524,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Garba & Fasting'
           : isDiwali
-          ? 'Lighting Diyas'
+          ? "The Divine Reunion & Bali's Boon"
           : isShivratri
           ? 'Maha Abhishekam'
           : isDhanteras
@@ -553,7 +558,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Communities perform Garba and Dandiya Raas in traditional vibrant attire, observing fasts and chanting Durga Saptashati hymns.'
           : isDiwali
-          ? 'Homes are cleaned, decorated with Rangoli patterns, and lit up with earthen lamps to welcome Goddess Lakshmi and seek prosperity.'
+          ? "In Vaikuntha, meanwhile, Vishnu was lonely. He went searching for Lakshmi and found her in Patala, happy and honoured in Bali's home. He disguised himself as a brahmin and came to the palace gates. When Lakshmi realised who was at the door, a quarrel broke out between them — she would not abandon the home that had given her refuge, and he would not return without her. Bali, caught between his guest and his god, offered to do whatever was needed.\n\nAt last, the reckoning came. Vishnu and Lakshmi were reconciled, and Bali was granted what he had asked for: that those who remember him in charity, and give freely, would never want for prosperity. Lakshmi returned to Vaikuntha, and Bali's kingdom was blessed."
           : isShivratri
           ? 'Devotees observe all-night vigil (Jagran), performing continuous Abhishekam on Shivling with milk, honey, Ganga water, and Belpatra leaves.'
           : sentences.slice(6, 8).join(' ') || storyText,
@@ -582,7 +587,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'Kanya Pujan'
           : isDiwali
-          ? 'Fireworks & Sweets'
+          ? 'The Eternal Lesson of Diwali'
           : isShivratri
           ? 'Peace & Moksha'
           : isDhanteras
@@ -616,7 +621,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
           : isNavratri
           ? 'On Ashtami and Navami, young girls are worshipped as Kanya Pujan embodiments of Durga, offered Halwa, Puri, and gifts.'
           : isDiwali
-          ? 'Families exchange sweets, light sparklers, wear new clothes, and celebrate joyful reunions with loved ones.'
+          ? "This is why, on Diwali night, we clean and light the house, place the lamp and the offerings before Lakshmi, and give generously to those who come to our door. The katha's lesson is simple: abundance does not follow from hoarding but from giving, and the goddess of wealth resides where there is hospitality, humility and devotion."
           : isShivratri
           ? 'Devotees break fast after sunrise, blessed with inner peace, liberation (Moksha), and removal of past karmic burdens.'
           : sentences.slice(8).join(' ') || storyText,
@@ -682,7 +687,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
       : isDussehra
       ? 'Triumph of Lord Rama, Mahishasura Vadh & Shami Puja'
       : isDiwali
-      ? 'Return of Lord Rama & Worship of Goddess Lakshmi'
+      ? 'King Bali, Goddess Lakshmi & Lord Vishnu — The Sacred Diwali Katha'
       : isShivratri
       ? 'Anand Tandava & Cosmic Light of Shivling'
       : isSharadPurnima
@@ -734,25 +739,53 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
               },
             ]}
           >
-            <View style={styles.dropCapStoryRow}>
-              {isSharadPurnima ? (
-                <Text style={[styles.storyBodyText, { fontSize: 16.5, lineHeight: 28, color: '#F3F4F6' }]}>
-                  {currentChapter.content}
-                </Text>
-              ) : (
-                <>
-                  <Text style={styles.dropCapLetter}>
-                    {(currentChapter.content || '').charAt(0)}
-                  </Text>
-                  <Text style={styles.storyBodyText}>
-                    <Text style={styles.storyFirstWord}>
-                      {(currentChapter.content || '').slice(1).split(' ')[0] || ''}
-                    </Text>{' '}
-                    {(currentChapter.content || '').slice(1).split(' ').slice(1).join(' ')}
-                  </Text>
-                </>
-              )}
-            </View>
+            {(() => {
+              const fullContent = currentChapter.content || '';
+              const paragraphs = fullContent.split(/\n\n+/).filter(Boolean);
+              const firstPara = paragraphs[0] || fullContent;
+              const remainingParas = paragraphs.slice(1);
+
+              return (
+                <View style={{ width: '100%' }}>
+                  <View style={styles.dropCapStoryRow}>
+                    {isSharadPurnima ? (
+                      <Text style={[styles.storyBodyText, { fontSize: 16.5, lineHeight: 28, color: '#F3F4F6' }]}>
+                        {firstPara}
+                      </Text>
+                    ) : (
+                      <>
+                        <Text style={styles.dropCapLetter}>
+                          {firstPara.charAt(0)}
+                        </Text>
+                        <Text style={styles.storyBodyText}>
+                          <Text style={styles.storyFirstWord}>
+                            {firstPara.slice(1).split(' ')[0] || ''}
+                          </Text>{' '}
+                          {firstPara.slice(1).split(' ').slice(1).join(' ')}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+
+                  {remainingParas.map((para: string, pIdx: number) => (
+                    <Text
+                      key={pIdx}
+                      style={[
+                        styles.storyBodyText,
+                        {
+                          marginTop: 14,
+                          fontSize: isSharadPurnima ? 16.5 : 17,
+                          lineHeight: 28,
+                          color: isSharadPurnima ? '#F3F4F6' : '#F9FAFB',
+                        },
+                      ]}
+                    >
+                      {para}
+                    </Text>
+                  ))}
+                </View>
+              );
+            })()}
 
             {/* Next Chapter Preview Peek */}
             {chapters[activeTab + 1] && (
@@ -1001,6 +1034,58 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
     );
   }
 
+  // Dedicated Diwali Custom Interactive Guide Sections (Muhurat, Choghadiya, Niyam, Special)
+  const isDiwali =
+    festivalName.toLowerCase().includes('diwali') ||
+    festivalName.toLowerCase().includes('deepavali') ||
+    /दीपावली|दिवाली/i.test(festivalName) ||
+    (festival.id && /diwali|deepavali/i.test(String(festival.id)));
+
+  if (isDiwali) {
+    const secLower = section.toLowerCase();
+    if (
+      section === 'Muhurat' ||
+      section === 'Muhurat & 5 Days' ||
+      secLower.includes('muhurat') ||
+      secLower.includes('5 day') ||
+      secLower.includes('5-day') ||
+      /मुहूर्त/i.test(section)
+    ) {
+      return (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+          <PersonalizedDiwaliMuhuratCard festival={festival} />
+        </View>
+      );
+    }
+
+    if (
+      section === 'Rules & Niyam' ||
+      secLower.includes('niyam') ||
+      secLower.includes('rule') ||
+      secLower.includes('don') ||
+      /नियम/i.test(section)
+    ) {
+      return (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+          <DiwaliRulesNiyamCard />
+        </View>
+      );
+    }
+
+    if (
+      section === 'Diwali 2026 Special' ||
+      secLower.includes('special') ||
+      secLower.includes('adhik') ||
+      /विशेष/i.test(section)
+    ) {
+      return (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+          <DiwaliSpecialNotesCard />
+        </View>
+      );
+    }
+  }
+
   // Dedicated Nav Durga Renderer (Navratri Special 9 Days Guide)
   if (section === 'Nav Durga' || section === 'Navdurga') {
     return (
@@ -1093,6 +1178,7 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
         festivalName={festivalName}
         rawMantra={typeof sectionValue === 'string' ? sectionValue : ''}
         isDhanteras={isDhanteras}
+        isDiwali={isDiwali}
       />
     );
   }
@@ -1374,7 +1460,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   journeyScrollableContentInner: {
-    paddingBottom: 0,
+    paddingBottom: Platform.OS === 'android' ? 220 : 200,
   },
   journeyFullScreenImage: {
     position: 'absolute',
@@ -1398,8 +1484,9 @@ const styles = StyleSheet.create({
   journeyContentSection: {
     paddingHorizontal: 22,
     paddingTop: 0,
-    paddingBottom: 0,
+    paddingBottom: 24,
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   dropCapStoryRow: {
     flexDirection: 'row',

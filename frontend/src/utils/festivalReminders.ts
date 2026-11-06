@@ -151,6 +151,14 @@ async function scheduleNotificationsForFestival(
     festivalName.toLowerCase().includes('karva') ||
     festivalName.includes('करवा');
 
+  // Check if this festival is Diwali / Deepavali
+  const isDiwali =
+    festivalId.toLowerCase().includes('diwali') ||
+    festivalId.toLowerCase().includes('deepavali') ||
+    festivalName.toLowerCase().includes('diwali') ||
+    festivalName.toLowerCase().includes('deepavali') ||
+    /दीपावली|दिवाली/i.test(festivalName);
+
   if (isNavratri) {
     // Schedule dedicated Day 1 to Day 9 notifications for Navratri
     for (const dayNotif of NAVRATRI_DAY_NOTIFICATIONS) {
@@ -359,6 +367,78 @@ async function scheduleNotificationsForFestival(
           '🌙 शुभ करवा चौथ!',
           'करवा चौथ की पावन मंगलकामनाएं! अपने परिजनों व मित्रों के साथ पावन शुभकामना कार्ड साझा करें और खुशियां बांटें। 🌸',
           karwaNotifData,
+          immediateTrigger,
+          `fest_${festivalId}_immediate_${now.toDateString()}`
+        );
+        if (id) notificationIds.push(id);
+      }
+    }
+  } else if (isDiwali) {
+    // Specialized Diwali & Deepavali reminders with wishing card prompt
+    const diwaliNotifData = {
+      type: 'festival_reminder',
+      subType: 'diwali_wish',
+      festivalId,
+      route: '/festival-detail',
+      target: 'diwali',
+    };
+
+    // 1. Eve of Diwali - Evening (7:30 PM)
+    const dayBeforeEve = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+    dayBeforeEve.setHours(19, 30, 0, 0);
+    if (dayBeforeEve > now) {
+      const id = await scheduleLocalNotif(
+        '🪔 कल है प्रकाश पर्व दीपावली!',
+        'माँ महालक्ष्मी, माँ सरस्वती व गणेश जी के पूजन की तैयारी करें व अपनों को शुभ दीपावली कार्ड भेजने की तैयारी करें।',
+        diwaliNotifData,
+        dayBeforeEve,
+        `fest_${festivalId}_eve_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 2. Diwali Morning - 7:30 AM (Diwali Wishing Card Sharing)
+    const morning730AM = new Date(festivalDate.getTime());
+    morning730AM.setHours(7, 30, 0, 0);
+    if (morning730AM > now) {
+      const id = await scheduleLocalNotif(
+        '🪔 शुभ दीपावली! अपनों को भेजें पावन शुभकामना कार्ड',
+        'माँ महालक्ष्मी, माँ सरस्वती व भगवान गणेश जी का आशीर्वाद पाएं! अपने परिजनों व मित्रों संग सुंदर शुभकामना कार्ड साझा करें। ✨',
+        diwaliNotifData,
+        morning730AM,
+        `fest_${festivalId}_morning_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 3. Diwali Evening - 5:30 PM (Lakshmi Puja Muhurat & Deep Daan)
+    const evening530PM = new Date(festivalDate.getTime());
+    evening530PM.setHours(17, 30, 0, 0);
+    if (evening530PM > now) {
+      const id = await scheduleLocalNotif(
+        '✨ शुभ लक्ष्मी पूजन मुहूर्त प्रारंभ!',
+        'प्रदोष काल व स्थिर वृषभ लग्न में करें माँ लक्ष्मी-गणेश पूजन! घर-आंगन में प्रज्वलित करें दिव्य दीप व खुशियां बांटें। 🪔',
+        diwaliNotifData,
+        evening530PM,
+        `fest_${festivalId}_evening_${festDateStr}`
+      );
+      if (id) notificationIds.push(id);
+    }
+
+    // 4. Fallback Immediate Trigger if reminder toggled on Diwali day or eve
+    const isTomorrow = now.toDateString() === new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000).toDateString();
+    const isToday = now.toDateString() === festivalDate.toDateString();
+
+    if ((isTomorrow || isToday) && notificationIds.length === 0) {
+      const festivalEnd = new Date(festivalDate.getTime());
+      festivalEnd.setHours(23, 59, 59, 999);
+
+      if (now < festivalEnd) {
+        const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+        const id = await scheduleLocalNotif(
+          '🪔 शुभ दीपावली की पावन मंगलकामनाएं!',
+          'दीपावली की हार्दिक शुभकामनाएं! अपने परिजनों संग पवित्र शुभकामना कार्ड साझा करें और खुशियां फैलाएं। ✨',
+          diwaliNotifData,
           immediateTrigger,
           `fest_${festivalId}_immediate_${now.toDateString()}`
         );

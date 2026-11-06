@@ -28,6 +28,7 @@ import { ShamiLeafWishCard } from './ShamiLeafWishCard';
 import { ChandDikhaScratchCard } from './ChandDikhaScratchCard';
 import { PersonalizedKarwaCard } from './PersonalizedKarwaCard';
 import { DhanterasCoinShareButton } from './DhanterasCoinShareButton';
+import { DiwaliWishShareButton } from './DiwaliWishShareButton';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
@@ -149,6 +150,48 @@ const SECTION_CONFIG: Record<string, {
     accent: '#6B21A8',
     bgGradient: ['#F3E8FF', '#E9D5FF'],
     emoji: '🕉',
+    stripColor: '#7E22CE',
+  },
+  'Muhurat & Shopping': {
+    icon: 'cart',
+    accent: '#B45309',
+    bgGradient: ['#FEF3C7', '#FDE68A'],
+    emoji: '🛍️',
+    stripColor: '#D97706',
+  },
+  Muhurat: {
+    icon: 'flame',
+    accent: '#D97706',
+    bgGradient: ['#FFFBEB', '#FEF3C7'],
+    emoji: '🪔',
+    stripColor: '#F59E0B',
+  },
+  'Muhurat & 5 Days': {
+    icon: 'flame',
+    accent: '#D97706',
+    bgGradient: ['#FFFBEB', '#FEF3C7'],
+    emoji: '🪔',
+    stripColor: '#F59E0B',
+  },
+  'Choghadiya & Timings': {
+    icon: 'hourglass',
+    accent: '#EA580C',
+    bgGradient: ['#FFF7ED', '#FFEDD5'],
+    emoji: '⏳',
+    stripColor: '#C2410C',
+  },
+  'Rules & Niyam': {
+    icon: 'shield-checkmark',
+    accent: '#047857',
+    bgGradient: ['#ECFDF5', '#D1FAE5'],
+    emoji: '📜',
+    stripColor: '#059669',
+  },
+  'Diwali 2026 Special': {
+    icon: 'sparkles',
+    accent: '#6B21A8',
+    bgGradient: ['#F3E8FF', '#E9D5FF'],
+    emoji: '✨',
     stripColor: '#7E22CE',
   },
   'Fun Facts': {
@@ -413,8 +456,12 @@ const GuideItem = ({
         {/* Text Details */}
         <View style={styles.guideTextContainer}>
           <View style={styles.guideHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.guideTitle, { color: cfg.accent }]}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 6 }}>
+              <Text
+                style={[styles.guideTitle, { color: cfg.accent }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {section.customHeading || section.title}
               </Text>
             </View>
@@ -427,6 +474,7 @@ const GuideItem = ({
           </View>
           <Text
             numberOfLines={2}
+            ellipsizeMode="tail"
             onTextLayout={handleTextLayout}
             style={styles.guideDescription}
             maxFontSizeMultiplier={1.3}
@@ -498,6 +546,12 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     /धनतेरस/i.test(festivalName) ||
     (festival.id && String(festival.id).toLowerCase().includes('dhanteras'));
 
+  const isDiwaliFestival =
+    festivalName.toLowerCase().includes('diwali') ||
+    festivalName.toLowerCase().includes('deepavali') ||
+    /दीपावली|दिवाली/i.test(festivalName) ||
+    (festival.id && /diwali|deepavali/i.test(String(festival.id)));
+
   const isSharadPurnimaFestival =
     festivalName.toLowerCase().includes('sharad') ||
     festivalName.toLowerCase().includes('kojagiri') ||
@@ -523,7 +577,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const handleShareFestivalPdf = async () => {
     if (isSharingPdf) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
       setIsSharingPdf(true);
       await shareFestivalStoryPdf(festival);
     } catch (err) {
@@ -536,7 +590,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const handleShareShamiLeaf = async () => {
     if (isSharingLeaf) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
       setIsSharingLeaf(true);
       const name = (festival.festival_name || festival.name || festival.title || 'Dussehra').toUpperCase();
 
@@ -587,7 +641,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
   const handleShareChandDikha = async () => {
     if (isSharingMoonCard) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { });
       setIsSharingMoonCard(true);
 
       const senderText = chandSenderName.trim() || currentUserName || 'शुभचिंतक';
@@ -660,19 +714,60 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     },
   ];
 
+  const diwaliSections = [
+    {
+      title: 'Muhurat',
+      customHeading: 'शुभ मुहूर्त',
+      subtitle: 'लक्ष्मी पूजा 5:54–7:50 PM, स्थिर वृषभ लग्न व प्रदोष काल',
+      value: 'दिवाली 2026 मुख्य लक्ष्मी पूजन मुहूर्त 5:54 PM – 7:50 PM, स्थिर वृषभ लग्न एवं प्रदोष काल विवरण।',
+    },
+    {
+      title: 'Puja Vidhi',
+      customHeading: 'सम्पूर्ण 10-चरणीय पूजा विधि व थाली',
+      subtitle: 'पवित्र वेदी, कलश स्थापना, 10 क्रमबद्ध सोपान व थाली सामग्री',
+      value: rawPujaVidhi || 'सर्वप्रथम वेदी तैयार कर गणेश-लक्ष्मी व कुबेर देव का षोडशोपचार पूजन, कलश स्थापना, दीप प्रज्वलन व 10 चरण की शास्त्रसम्मत पूजा विधि।',
+    },
+    {
+      title: 'Story',
+      customHeading: 'दीपावली पावन कथा',
+      subtitle: 'राजा बलि का त्याग, भगवान वामन के तीन पग व माँ लक्ष्मी का आगमन',
+      value: rawStory || 'दीपावली की पावन कथा: राजा बलि का त्याग, भगवान वामन के तीन पग और माँ लक्ष्मी द्वारा पाताल लोक में वास। दान और आतिथ्य की अमर गाथा।',
+    },
+    {
+      title: 'Mantra',
+      customHeading: 'लक्ष्मी, गणेश व कुबेर सिद्ध मंत्र',
+      subtitle: '11 या 108 जप हेतु सिद्ध वैदिक महामंत्र एवं जप नियम',
+      value: rawMantra || 'ॐ श्रीं ह्रीं क्लीं त्रिभुवन महालक्ष्म्यै... • ॐ गं गणपतये नमः • ॐ यक्षाय कुबेराय वैश्रवणाय धनधान्याधिपतये नमः।',
+    },
+    {
+      title: 'Rules & Niyam',
+      customHeading: 'पूजा की 14 जरूरी बातें (Do’s & Don’ts)',
+      subtitle: '14 महत्वपूर्ण शास्त्रसम्मत निर्देश, दिशा, दीपक संख्या व सावधानियाँ',
+      value: 'लक्ष्मी पूजा की 14 महत्वपूर्ण बातें: दिशा, झाड़ू, तांबे की थाली में दूध निषेध, दीपक की संख्या, तेल या घी व अखंड ज्योति।',
+    },
+    {
+      title: 'Diwali 2026 Special',
+      customHeading: '2026 में दिवाली विशेष क्यों है?',
+      subtitle: 'अधिक मास (ज्येष्ठ) का प्रभाव व गोवर्धन-भाई दूज पर पंचांग भेद विश्लेषण',
+      value: '2026 में अधिक मास के कारण दिवाली नवंबर में आई है। गोवर्धन पूजा (9 व 10 Nov) एवं भाई दूज (11 व 12 Nov) पर पंचांग भेद का शास्त्रीय समाधान।',
+    },
+  ];
+
   const sections = isKarvaChauthFestival
     ? karwaChauthSections
     : isDhanterasFestival
-    ? dhanterasSections
-    : [
-        { title: 'Story', value: rawStory },
-        { title: 'About', value: rawAbout },
-        ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
-        { title: 'Importance', value: rawImportance },
-        { title: 'Puja Vidhi', value: rawPujaVidhi },
-        ...(!isKarvaChauthFestival ? [{ title: 'Mantra', value: rawMantra }] : []),
-        { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
-      ].filter((s) => Boolean(s.value));
+      ? dhanterasSections
+      : isDiwaliFestival
+        ? diwaliSections
+        : [
+          { title: 'Story', value: rawStory },
+          { title: 'About', value: rawAbout },
+          ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
+          { title: 'Importance', value: rawImportance },
+          { title: 'Puja Vidhi', value: rawPujaVidhi },
+          ...(!isKarvaChauthFestival ? [{ title: 'Mantra', value: rawMantra }] : []),
+          { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
+        ].filter((s) => Boolean(s.value));
 
   // Load visited sections progress
   useEffect(() => {
@@ -732,17 +827,14 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
           <View style={styles.heroGradientOverlay} />
 
           {/* Top Badges Row */}
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>🪔 SACRED FESTIVAL GUIDE</Text>
-            </View>
-            {daysRemaining && (
+          {daysRemaining ? (
+            <View style={[styles.heroTopRow, { justifyContent: 'flex-end' }]}>
               <View style={styles.countdownBadge}>
                 <Ionicons name="time" size={12} color="#FFD700" />
                 <Text style={styles.countdownText}>{daysRemaining}</Text>
               </View>
-            )}
-          </View>
+            </View>
+          ) : null}
 
           {/* Title */}
           <Text
@@ -852,7 +944,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      ) : isKarvaChauthFestival || isDhanterasFestival ? null : (
+      ) : isKarvaChauthFestival || isDhanterasFestival || isDiwaliFestival ? null : (
         /* Progress Bar for Other Festivals */
         totalCount > 0 && (
           <View style={styles.progressContainer}>
@@ -879,6 +971,11 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       {/* For Dhanteras: Only the "Share your digital gold coin today" Button Outside */}
       {isDhanterasFestival && (
         <DhanterasCoinShareButton />
+      )}
+
+      {/* For Diwali: Special Diwali Wishing Card & Share Button */}
+      {isDiwaliFestival && (
+        <DiwaliWishShareButton />
       )}
 
       {/* For Non-Karwa Moon Festivals (Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}
@@ -978,8 +1075,10 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
               {isKarvaChauthFestival
                 ? 'करवा चौथ पावन मार्गदर्शिका'
                 : isDhanterasFestival
-                ? 'धनतेरस पावन मार्गदर्शिका'
-                : 'Festival Guide Topics'}
+                  ? 'धनतेरस पावन मार्गदर्शिका'
+                  : isDiwaliFestival
+                    ? 'दीपावली 2026 सम्पूर्ण मार्गदर्शिका'
+                    : 'Festival Guide Topics'}
             </Text>
             {sections.length > 0 && (
               <Text style={styles.sectionCount}>({sections.length})</Text>
@@ -1395,6 +1494,7 @@ const styles = StyleSheet.create({
   },
   guideTextContainer: {
     flex: 1,
+    overflow: 'hidden',
   },
   guideHeaderRow: {
     flexDirection: 'row',

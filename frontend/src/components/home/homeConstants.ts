@@ -23,6 +23,9 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
 };
 
 export const dhanterasBannerImage = require('../../../assets/images/festivals/dhanteras_banner.jpg');
+export const diwaliBannerImage = require('../../../assets/images/festivals/diwali_banner.jpg');
+export const diwaliLanternImage = require('../../../assets/images/festivals/diwali_kandil_lantern.png');
+export const diwaliPujaDiyaImage = require('../../../assets/images/festivals/diwali_puja_diya.png');
 export const shivaImage = { uri: 'https://brahmandfeed23.b-cdn.net/temples/SomnathTemple.webp' };
 export const navratriBannerImage = { uri: 'https://brahmandfeed23.b-cdn.net/assets/navratri_banner.webp' };
 export const maaDurgaIcon = { uri: 'https://brahmandfeed23.b-cdn.net/assets/maa_durga_icon.webp' };

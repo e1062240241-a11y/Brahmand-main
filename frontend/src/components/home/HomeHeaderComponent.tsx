@@ -14,12 +14,64 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, dhanterasBannerImage } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, dhanterasBannerImage, diwaliLanternImage, FEATURE_CARD_WIDTH } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
-import { KalashCoinAnimation } from './KalashCoinAnimation';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
+import { DiwaliGreetingBanner } from '../festival/DiwaliGreetingBanner';
+import { FestiveCardBallsDecoration } from '../festival/FestiveCardBallsDecoration';
+import { DiwaliCornerAvatarCracker } from '../festival/DiwaliCornerAvatarCracker';
 
 const dhanterasKalashAvatar = require('../../../assets/images/festivals/dhanteras_kalash_avatar.png');
+
+const FestiveHeaderLantern = React.memo(({ direction = 1 }: { direction?: 1 | -1 }) => {
+    const swayAnim = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(swayAnim, {
+                    toValue: 1,
+                    duration: 1800,
+                    useNativeDriver: Platform.OS !== 'web',
+                }),
+                Animated.timing(swayAnim, {
+                    toValue: -1,
+                    duration: 1800,
+                    useNativeDriver: Platform.OS !== 'web',
+                }),
+            ])
+        );
+        loop.start();
+        return () => loop.stop();
+    }, [swayAnim]);
+
+    const rotate = swayAnim.interpolate({
+        inputRange: [-1, 1],
+        outputRange: direction === 1 ? ['-3deg', '3deg'] : ['3deg', '-3deg'],
+    });
+
+    const lanternWidth = Platform.OS === 'android' ? 17 : 18;
+    const lanternHeight = Platform.OS === 'android' ? 37 : 39;
+
+    return (
+        <Animated.View
+            style={{
+                transform: [{ rotate }],
+                width: lanternWidth,
+                height: lanternHeight,
+                justifyContent: 'center',
+                alignItems: 'center',
+            }}
+            pointerEvents="none"
+        >
+            <Image
+                source={diwaliLanternImage}
+                style={{ width: lanternWidth, height: lanternHeight }}
+                resizeMode="contain"
+            />
+        </Animated.View>
+    );
+});
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
@@ -459,24 +511,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={styles.profileButton}
+                            <DiwaliCornerAvatarCracker
+                                size={Platform.OS === 'android' ? 42 : 46}
                                 onPress={() => {
-                                    try {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    } catch (_e) {}
                                     router.push('/(tabs)/profile');
                                 }}
-                                accessibilityRole="button"
-                                accessibilityLabel="View your profile"
-                            >
-                                <Image
-                                    source={dhanterasKalashAvatar}
-                                    style={{ width: '100%', height: '100%' }}
-                                    resizeMode="contain"
-                                />
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         <View style={{
@@ -494,27 +534,29 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     justifyContent: 'center',
+                                    gap: 5,
                                 }}
                                 pointerEvents="box-none"
                             >
+                                <FestiveHeaderLantern direction={1} />
                                 <Text
                                     numberOfLines={1}
                                     style={{
                                         color: '#000',
                                         textAlign: 'center',
                                         fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                        fontSize: Platform.OS === 'android' ? 24 : 27,
+                                        fontSize: Platform.OS === 'android' ? 22 : 24,
                                         fontStyle: 'normal',
                                         fontWeight: '400',
-                                        letterSpacing: 0.5,
+                                        letterSpacing: 0.3,
                                         includeFontPadding: false,
-                                        paddingHorizontal: 4,
-                                        paddingVertical: 4,
+                                        paddingHorizontal: 2,
+                                        paddingVertical: 2,
                                     }}
                                 >
                                     BRAHMAND
                                 </Text>
-                                <KalashCoinAnimation />
+                                <FestiveHeaderLantern direction={-1} />
                             </View>
                         </View>
 
@@ -700,7 +742,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 showsHorizontalScrollIndicator={false}
                                 snapToInterval={featureSnapInterval}
                                 decelerationRate="fast"
-                                contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
+                                contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING, paddingTop: 10, paddingBottom: 6 }}
                                 style={{ width: '100%' }}
                                 onTouchStart={() => {
                                     if (isHoldingTopFeaturesRef) isHoldingTopFeaturesRef.current = true;
@@ -802,6 +844,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 else if (item.label === 'Brahmand Library') router.push('/library');
                                             }}
                                         >
+                                            {/* Authentic Paytm-Style Diwali Marigold Toran: Red & Yellow Balls */}
+                                            <FestiveCardBallsDecoration width={Platform.OS === 'android' ? featureCardWidth : FEATURE_CARD_WIDTH} />
                                             {item.label === 'SOS' ? (
                                                 <View style={Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
                                                     <View style={Platform.OS === 'android' ? { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' } : { width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
@@ -855,7 +899,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     <Text style={[styles.featureSubtitle, Platform.OS === 'android' && { fontSize: 9.5, lineHeight: 11.5 }]} numberOfLines={undefined}>{displaySubtitle}</Text>
                                                 ) : null}
                                             </View>
-                                            <Ionicons name="chevron-forward" size={10} color="#999" style={{ marginLeft: 'auto' }} />
+                                            <Ionicons name="chevron-forward" size={11} color="#D97706" style={{ marginLeft: 'auto' }} />
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -957,14 +1001,14 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             height={bannerCardHeight}
                                             source={dhanterasBannerImage}
                                             resizeMode="cover"
-                                            accessibilityLabel="Dhanteras Banner"
+                                            accessibilityLabel="Diwali Festival Banner"
                                             onPress={() => {
                                                 try {
                                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                 } catch (_e) { }
                                                 router.push({
                                                     pathname: '/festival-detail',
-                                                    params: { name: 'Dhanteras' },
+                                                    params: { name: 'Diwali', id: 'diwali' },
                                                 });
                                             }}
                                             onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
@@ -973,27 +1017,27 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             {/* Top spacer (badge removed) — keeps bottom button pinned via space-between */}
                                             <View style={{ width: '100%' }} />
 
-                                            {/* Bottom Button Row */}
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                            {/* Bottom Button Row - Aligned to bottom-right to keep Lakshmi, Ganesh & Saraswati clear */}
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: '100%', paddingBottom: 0 }}>
                                                 <Pressable
                                                     style={({ pressed }) => [
                                                         styles.joinJaapButton,
                                                         {
-                                                            backgroundColor: '#FF5100',
+                                                            backgroundColor: '#D84315',
                                                             height: 36,
-                                                            paddingHorizontal: 14,
+                                                            paddingHorizontal: 15,
                                                             flexDirection: 'row',
                                                             justifyContent: 'center',
                                                             alignItems: 'center',
                                                             gap: 6,
                                                             borderRadius: 20,
-                                                            borderWidth: 1,
-                                                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                                                            shadowColor: '#FF5100',
+                                                            borderWidth: 1.5,
+                                                            borderColor: '#FFD700',
+                                                            shadowColor: '#FF6F00',
                                                             shadowOffset: { width: 0, height: 2 },
-                                                            shadowOpacity: 0.6,
+                                                            shadowOpacity: 0.7,
                                                             shadowRadius: 5,
-                                                            elevation: 4,
+                                                            elevation: 5,
                                                             transform: [{ scale: pressed ? 0.95 : 1 }],
                                                         }
                                                     ]}
@@ -1010,16 +1054,17 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         } catch (_e) { }
                                                         router.push({
                                                             pathname: '/festival-detail',
-                                                            params: { name: 'Dhanteras', id: 'dhanteras' },
+                                                            params: { name: 'Diwali', id: 'diwali' },
                                                         });
                                                     }}
                                                     accessibilityRole="button"
-                                                    accessibilityLabel={t('language') === 'hi' ? 'धनतेरस पर्व देखें' : 'Explore Dhanteras Festival'}
+                                                    accessibilityLabel={t('language') === 'hi' ? 'शुभ दीपावली देखें' : 'Explore Diwali Festival'}
                                                 >
-                                                    <Text style={[styles.joinJaapText, { fontSize: 13, fontWeight: '700' }]}>
-                                                        {t('language') === 'hi' ? 'धनतेरस पर्व देखें' : 'Explore Dhanteras'}
+                                                    <Text style={{ fontSize: 13, marginRight: 1 }}>🪔</Text>
+                                                    <Text style={[styles.joinJaapText, { fontSize: 13, fontWeight: '800', color: '#FFF' }]}>
+                                                        {t('language') === 'hi' ? 'शुभ दीपावली देखें' : 'Explore Diwali'}
                                                     </Text>
-                                                    <Ionicons name="chevron-forward" size={13} color="#FFF" />
+                                                    <Ionicons name="chevron-forward" size={13} color="#FFE082" />
                                                 </Pressable>
                                             </View>
                                         </StaticBannerCard>
@@ -1399,6 +1444,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         </View>
                     </View>
                 </View>
+
+                {/* Diwali Celebration Greeting (Right after the Banner, zero background) */}
+                <DiwaliGreetingBanner />
 
                 <ActionCardsRow t={t} safeCommunityRequests={safeCommunityRequests} />
 

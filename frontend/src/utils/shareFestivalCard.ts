@@ -120,6 +120,22 @@ const buildSharePayload = (
   festivalDescription: string = 'May this auspicious occasion bring joy and prosperity.'
 ): SharePayload => {
   const cleanTitle = festivalName.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Festival';
+  const isDiwali = /diwali|deepavali|दीपावली|दिवाली/i.test(festivalName);
+
+  if (isDiwali) {
+    const greetingHeader = '🪔 शुभ दीपावली';
+    const isCustomCompleteMessage =
+      festivalDescription.includes('http://') ||
+      festivalDescription.includes('https://') ||
+      festivalDescription.includes('Brahmand App');
+
+    const shareMessage = isCustomCompleteMessage
+      ? festivalDescription
+      : `🪔 *शुभ दीपावली की हार्दिक शुभकामनाएं!* ✨\n👉 ${PLAY_STORE_URL}`;
+
+    return { cleanTitle, greetingHeader, shareMessage };
+  }
+
   const greetingHeader = `✨ Wishing you and your family a very Happy ${festivalName}! ✨`;
 
   const isCustomCompleteMessage =

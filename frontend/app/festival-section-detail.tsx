@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform, Animated, Easing } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity, Share, StatusBar, Platform, Animated, Easing, Image as RNImage } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,10 @@ import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
 import { FestivalMasterCatalogCard } from '../src/components/FestivalMasterCatalogCard';
 import { ShamiLeafWishCard } from '../src/components/ShamiLeafWishCard';
+import { DiwaliShareCard } from '../src/components/DiwaliShareCard';
+import { useAuthStore } from '../src/store/authStore';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 import { CustomLoader } from '../src/components/CustomLoader';
 import { shareFestivalCard } from '../src/utils/shareFestivalCard';
 import { shareFestivalStoryPdf, generateFestivalStoryPdf, getTrackedBrahmandUrl } from '../src/utils/generateFestivalStoryPdf';
@@ -94,6 +98,8 @@ const FestivalSectionDetailPage = () => {
 
   const catalogRef = useRef<any>(null);
   const leafWishRef = useRef<any>(null);
+  const diwaliWishRef = useRef<any>(null);
+  const currentUser = useAuthStore((state) => state.user);
   const loadingAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -210,7 +216,10 @@ const FestivalSectionDetailPage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const festivalName = (festival?.festival_name || festival?.name || '').toLowerCase();
-    if (festivalName.includes('dussehra') || festivalName.includes('vijaya')) {
+    if (
+      festivalName.includes('dussehra') ||
+      festivalName.includes('vijaya')
+    ) {
       handleShareImage('whatsapp');
     } else {
       handleSharePdf();
@@ -222,20 +231,80 @@ const FestivalSectionDetailPage = () => {
 
     try {
       setIsSharing(true);
-      const festivalName = (festival.festival_name || festival.name || festival.title || 'Sacred Festival').toUpperCase();
+      const rawFestName = festival.festival_name || festival.name || festival.title || 'Sacred Festival';
+      const festivalName = rawFestName.toUpperCase();
+      const festNameLower = rawFestName.toLowerCase();
+      const isDiwali = festNameLower.includes('diwali') || festNameLower.includes('deepavali');
 
       let imageUri: string | null = null;
-      // Capture the pure Shami Leaf Wish Card (only the leaf with inscribed blessings, nothing outside)
-      const targetRef = leafWishRef.current ? leafWishRef : catalogRef;
-      if (targetRef && targetRef.current) {
-        // Allow brief delay for view mounting & rendering
-        await new Promise((res) => setTimeout(res, 350));
-        const captureResult = await safeCaptureRef(targetRef, {
-          format: 'png',
-          quality: 0.98,
-          result: 'tmpfile',
-        });
-        imageUri = captureResult.uri;
+
+      if (isDiwali) {
+        // 1. Primary: Capture pure Diwali Wish Card with full personalized wishes
+        if (diwaliWishRef && diwaliWishRef.current) {
+          try {
+            await new Promise((res) => setTimeout(res, 350));
+            const captureResult = await safeCaptureRef(diwaliWishRef, {
+              format: 'png',
+              quality: 0.98,
+              result: 'tmpfile',
+            });
+            if (captureResult?.uri) {
+              imageUri = captureResult.uri;
+            }
+          } catch (_capErr) {
+            console.warn('[FestivalSectionDetail] Diwali wish card capture error:', _capErr);
+          }
+        }
+
+        // 2. Fallback: High-resolution card with full inscribed wishes
+        if (!imageUri) {
+          try {
+            const diwaliAsset = Asset.fromModule(require('../assets/images/festivals/diwali_card_with_wishes.jpg'));
+            await diwaliAsset.downloadAsync();
+            const assetUri = diwaliAsset.localUri || diwaliAsset.uri;
+            if (assetUri) {
+              const friendlyFileName = `Shubh_Diwali_Greeting.jpg`;
+              const baseDir =
+                (Platform.OS === 'android'
+                  ? FileSystem.cacheDirectory
+                  : FileSystem.documentDirectory || FileSystem.cacheDirectory) || FileSystem.cacheDirectory;
+              const targetPath = `${baseDir}${friendlyFileName}`;
+              try {
+                const info = await FileSystem.getInfoAsync(targetPath);
+                if (info.exists) {
+                  await FileSystem.deleteAsync(targetPath, { idempotent: true });
+                }
+                await FileSystem.copyAsync({
+                  from: assetUri,
+                  to: targetPath,
+                });
+                imageUri = targetPath;
+              } catch {
+                imageUri = assetUri;
+              }
+            }
+          } catch (_diwaliErr) {
+            console.warn('[FestivalSectionDetail] Diwali image resolve error:', _diwaliErr);
+          }
+        }
+      }
+
+      if (!imageUri) {
+        // Capture the pure Wish Card (Diwali Share Card or Shami Leaf Wish Card)
+        const targetRef = isDiwali
+          ? (diwaliWishRef.current ? diwaliWishRef : catalogRef)
+          : (leafWishRef.current ? leafWishRef : catalogRef);
+
+        if (targetRef && targetRef.current) {
+          // Allow brief delay for view mounting & rendering
+          await new Promise((res) => setTimeout(res, 350));
+          const captureResult = await safeCaptureRef(targetRef, {
+            format: 'png',
+            quality: 0.98,
+            result: 'tmpfile',
+          });
+          imageUri = captureResult.uri;
+        }
       }
 
       // Robust fallback if view capture was null or failed
@@ -252,7 +321,10 @@ const FestivalSectionDetailPage = () => {
       }
 
       const webUrl = getTrackedBrahmandUrl(festivalName, targetApp === 'whatsapp' ? 'whatsapp_status' : 'whatsapp_share');
-      const message = `🌿 *विजयादशमी की हार्दिक शुभकामनाएं* 🌿\n\n✨ "सोनं घ्या, सोन्यासारखे राहा!" ✨\n\n🍃 *Share virtual Shami leaves with your loved ones & spread divine blessings!* 🍃\n\nDiscover the profound divine story, rituals & sacred significance on Brahmand:\n${webUrl}`;
+      const senderText = currentUser?.name ? `${currentUser.name} जी एवं परिवार` : 'सपरिवार';
+      const message = isDiwali
+        ? `🪔 *शुभ दीपावली की हार्दिक शुभकामनाएं!* ✨\n👉 https://play.google.com/store/apps/details?id=com.brahmand.app`
+        : `🌿 *विजयादशमी की हार्दिक शुभकामनाएं* 🌿\n\n✨ "सोनं घ्या, सोन्यासारखे राहा!" ✨\n\n🍃 *Share virtual Shami leaves with your loved ones & spread divine blessings!* 🍃\n\nDiscover the profound divine story, rituals & sacred significance on Brahmand:\n${webUrl}`;
 
       const shareResult = await safeShareFile(imageUri, {
         mimeType: 'image/png',
@@ -332,6 +404,14 @@ const FestivalSectionDetailPage = () => {
           <ShamiLeafWishCard
             ref={leafWishRef}
             festival={festival}
+          />
+        </View>
+
+        {/* Pure Diwali Wish Card (captured for sharing) */}
+        <View collapsable={false} style={{ width: 735, height: 490, backgroundColor: '#FBF8F2' }}>
+          <DiwaliShareCard
+            ref={diwaliWishRef}
+            userName={currentUser?.name}
           />
         </View>
 

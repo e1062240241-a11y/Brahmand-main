@@ -578,3 +578,59 @@ export async function scheduleDussehraShamiLeafNotification(options?: { immediat
   }
 }
 
+/**
+ * Schedule or immediately trigger Diwali Wishing & Lakshmi Puja push notification
+ */
+export async function scheduleDiwaliWishingNotification(options?: { immediate?: boolean; delaySeconds?: number }) {
+  if (Platform.OS === 'web') return null;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+
+    const soundFile = __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell');
+    const delay = options?.immediate ? 1 : (options?.delaySeconds ?? 5);
+    const identifier = 'diwali_wishing_festival_annual';
+
+    // Deduplication: cancel any existing scheduled diwali wishing notification first
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch (_) {}
+
+    const notifId = await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: '🪔 शुभ दीपावली की पावन मंगलकामनाएं!',
+        body: 'माँ महालक्ष्मी, माँ सरस्वती व भगवान गणेश जी का दिव्य आशीर्वाद पाएं! अपने परिजनों संग सुंदर शुभकामना कार्ड साझा करें। ✨',
+        data: {
+          type: 'festival_reminder',
+          subType: 'diwali_wish',
+          festivalId: 'diwali',
+          route: '/festival-detail',
+          target: 'diwali',
+        },
+        sound: soundFile,
+        priority: Notifications.AndroidNotificationPriority?.HIGH,
+      },
+      trigger: {
+        type: 'timeInterval',
+        seconds: Math.max(1, delay),
+        channelId: 'default_v4',
+      } as any,
+    });
+
+    console.log(`[Push] Diwali wishing notification scheduled (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule Diwali wishing notification:', e);
+    return null;
+  }
+}
+
