@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useKathaPlayerStore } from '../../store/kathaPlayerStore';
+import { useTranslation } from '../../utils/i18n';
 
 const shamikPathakCover = { uri: 'https://brahmandfeed23.b-cdn.net/assets/shamik_pathak_ji.webp' };
 const MINI_BARS_COUNT = 5;
@@ -22,6 +23,7 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const activeEpisode = useKathaPlayerStore((state) => state.activeEpisode);
   const isPlaying = useKathaPlayerStore((state) => state.isPlaying);
@@ -212,7 +214,17 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
               togglePlayPause();
             }}
             activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isPlaying
+                ? t('language') === 'hi'
+                  ? 'रोकें'
+                  : 'Pause'
+                : t('language') === 'hi'
+                ? 'चलाएं'
+                : 'Play'
+            }
           >
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
@@ -229,7 +241,9 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
               stop();
             }}
             activeOpacity={0.8}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('language') === 'hi' ? 'बंद करें' : 'Close'}
           >
             <Ionicons name="close" size={18} color="#FFB300" />
           </TouchableOpacity>
