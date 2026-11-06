@@ -5688,7 +5688,8 @@ async def record_watch_event(
     completion = min(1.0, watch_seconds / duration_seconds)
 
     try:
-        post = await db.get_document('posts', post_id)
+        # ⚡ Bolt Optimization: Only fetch needed fields to reduce memory/network overhead
+        post = await db.get_document_fields('posts', post_id, ['views_count', 'watch_time', 'completion_rate', 'rewatches', 'likes_count', 'category'])
         if not post:
             raise HTTPException(status_code=404, detail='Post not found')
 
