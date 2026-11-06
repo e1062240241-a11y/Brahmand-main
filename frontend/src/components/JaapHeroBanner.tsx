@@ -26,6 +26,8 @@ const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 
+const ANDROID_RIPPLE_CONFIG = { color: 'rgba(255, 107, 0, 0.2)', borderless: false };
+
 export interface JaapHeroBannerProps {
   now?: Date;
   onPress?: () => void;
@@ -137,9 +139,9 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
               <Pressable
                 style={({ pressed }) => [
                   styles.mockupJoinNowBtn,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                  pressed && Platform.OS === 'ios' && styles.iosPressed
                 ]}
-                android_ripple={{ color: 'rgba(255, 107, 0, 0.2)', borderless: false }}
+                android_ripple={ANDROID_RIPPLE_CONFIG}
                 onPress={handleJoinPress}
               >
                 <LinearGradient
@@ -290,6 +292,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     flexShrink: 1,
   },
+  iosPressed: {
+    opacity: 0.8,
+  },
 });
+
+JaapHeroBanner.displayName = 'JaapHeroBanner';
 
 export default JaapHeroBanner;
