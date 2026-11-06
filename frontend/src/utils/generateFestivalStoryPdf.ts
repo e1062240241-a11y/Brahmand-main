@@ -3781,8 +3781,8 @@ function drawMarketingCardOnPage(
   theme: FestivalTheme,
   fonts: any,
   pMargin: number,
-  overrideCardY?: number,
-  qrAnchorY?: number
+  cardTopY?: number,
+  _unused?: number
 ) {
   const { fontCinzel, fontPoppins, fontHimalaya, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
@@ -3798,13 +3798,14 @@ function drawMarketingCardOnPage(
   const colSub = isDarkBgTheme ? rgb(0.98, 0.92, 0.78) : colTerracottaDk;
 
   // Center-aligned marketing & download block with dedicated contrast card for dark patterned backgrounds
-  const baseY = overrideCardY !== undefined ? overrideCardY : 110;
+  // Elements are positioned cleanly DOWNWARD from topY to prevent any collision with content above
+  const topY = cardTopY !== undefined ? cardTopY : 215;
 
   if (isDarkBgTheme) {
     const cardW = pageWidth - pMargin * 2;
-    const cardH = 196;
+    const cardH = 138;
     const cardX = pMargin;
-    const cardY = baseY - 24;
+    const cardY = topY - cardH;
     page.drawRectangle({
       x: cardX,
       y: cardY,
@@ -3819,11 +3820,12 @@ function drawMarketingCardOnPage(
 
   // 1. BRAND HEADER (Centered)
   const eyebrowText = 'BRAHMAND APP';
-  const ebW = measureTextWidth(brandFont, eyebrowText, 13.0);
+  const ebSize = 12.0;
+  const ebW = measureTextWidth(brandFont, eyebrowText, ebSize);
   safeDrawText(page, eyebrowText, {
     x: (pageWidth - ebW) / 2,
-    y: baseY + 144,
-    size: 13.0,
+    y: topY - 14,
+    size: ebSize,
     font: brandFont,
     fallbackFont: fontPoppins,
     color: colHead,
@@ -3834,20 +3836,21 @@ function drawMarketingCardOnPage(
     ? 'दैनिक पंचांग  ·  सम्पूर्ण पावन कथाएं  ·  लाइव जाप'
     : 'Daily Vedic Panchang  ·  Divine Katha Library  ·  Live Jaap';
   const tagFont = fontPoppins || textFont;
-  const tagW = measureTextWidth(tagFont, taglineText, 10.5);
+  const tagSize = 9.2;
+  const tagW = measureTextWidth(tagFont, taglineText, tagSize);
   safeDrawText(page, taglineText, {
     x: (pageWidth - tagW) / 2,
-    y: baseY + 128,
-    size: 10.5,
+    y: topY - 27,
+    size: tagSize,
     font: tagFont,
     fallbackFont: fontPoppins,
     color: colSub,
   });
 
   // 3. CENTERED QR CODE (No background box / container border behind QR)
-  const qrSize = 78;
+  const qrSize = 64;
   const qrBoxX = (pageWidth - qrSize) / 2;
-  const qrBoxY = baseY + 36;
+  const qrBoxY = topY - 96;
 
   const referralQrUrl = getTrackedBrahmandUrl(theme.name, 'pdf_qr_scan');
   drawQrCodeMatrix(
@@ -3866,29 +3869,30 @@ function drawMarketingCardOnPage(
     ? '॥ फोन कैमरे से स्कैन करें एवं निःशुल्क डाउनलोड करें ॥'
     : 'Scan with Phone Camera to Download Free';
   const cFont = fontPoppins || brandFont;
-  const capW = measureTextWidth(cFont, qrCaption, 9.6);
+  const capSize = 8.5;
+  const capW = measureTextWidth(cFont, qrCaption, capSize);
   safeDrawText(page, qrCaption, {
     x: (pageWidth - capW) / 2,
-    y: qrBoxY - 14,
-    size: 9.6,
+    y: qrBoxY - 10,
+    size: capSize,
     font: cFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
 
   // 5. OFFICIAL STORE BADGES (Centered Row)
-  const storeRowY = qrBoxY - 33;
-  const playScale = 0.40;
+  const storeRowY = qrBoxY - 25;
+  const playScale = 0.36;
   const playIconW = 24 * playScale;
-  const playTextW = fontHelveticaBold.widthOfTextAtSize('Google Play', 9.8);
-  const playBtnW = playIconW + 5 + playTextW;
+  const playTextW = fontHelveticaBold.widthOfTextAtSize('Google Play', 9.0);
+  const playBtnW = playIconW + 4 + playTextW;
 
-  const appleScale = 0.40;
+  const appleScale = 0.36;
   const appleIconW = 24 * appleScale;
-  const appleTextW = fontHelveticaBold.widthOfTextAtSize('App Store', 9.8);
-  const appleBtnW = appleIconW + 5 + appleTextW;
+  const appleTextW = fontHelveticaBold.widthOfTextAtSize('App Store', 9.0);
+  const appleBtnW = appleIconW + 4 + appleTextW;
 
-  const storeGap = 20;
+  const storeGap = 18;
   const totalStoreRowW = playBtnW + storeGap + appleBtnW;
   const storeStartX = (pageWidth - totalStoreRowW) / 2;
 
@@ -3900,12 +3904,12 @@ function drawMarketingCardOnPage(
     { p: 'M 15.56 9.38 L 4.80 3.28 C 4.15 2.91 3.59 2.96 3.25 3.32 L 12.44 12.51 Z', c: rgb(0.18, 0.73, 0.42) },
   ];
   for (const seg of playIconPaths) {
-    page.drawSvgPath(seg.p, { x: storeStartX, y: storeRowY + 7, scale: playScale, color: seg.c });
+    page.drawSvgPath(seg.p, { x: storeStartX, y: storeRowY + 6, scale: playScale, color: seg.c });
   }
   page.drawText('Google Play', {
-    x: storeStartX + playIconW + 5,
+    x: storeStartX + playIconW + 4,
     y: storeRowY,
-    size: 9.8,
+    size: 9.0,
     font: fontHelveticaBold,
     color: isDarkBgTheme ? rgb(0.98, 0.96, 0.92) : rgb(0.10, 0.07, 0.05),
   });
@@ -3916,14 +3920,14 @@ function drawMarketingCardOnPage(
     'M 18.71 19.5 C 17.88 20.74 17.00 21.93 15.66 21.97 C 14.32 22.01 13.88 21.20 12.37 21.20 C 10.84 21.20 10.37 21.93 9.09 21.97 C 7.79 22.01 6.80 20.69 5.96 19.47 C 4.25 17.00 2.94 12.48 4.70 9.42 C 5.57 7.91 7.13 6.95 8.82 6.93 C 10.10 6.91 11.31 7.79 12.10 7.79 C 12.87 7.79 14.33 6.72 15.89 6.89 C 16.55 6.92 18.39 7.15 19.56 8.87 C 19.46 8.93 17.37 10.15 17.39 12.63 C 17.42 15.60 20.00 16.59 20.03 16.60 C 20.00 16.70 19.61 18.06 18.71 19.5 Z M 14.97 4.57 C 15.65 3.75 16.11 2.61 15.98 1.46 C 14.99 1.50 13.79 2.12 13.08 2.95 C 12.45 3.68 11.90 4.85 12.05 5.97 C 13.16 6.06 14.29 5.39 14.97 4.57 Z';
   page.drawSvgPath(appleGlyphPath, {
     x: appleStartX,
-    y: storeRowY + 7,
+    y: storeRowY + 6,
     scale: appleScale,
     color: isDarkBgTheme ? rgb(1.0, 0.84, 0.45) : rgb(0.10, 0.07, 0.05),
   });
   page.drawText('App Store', {
-    x: appleStartX + appleIconW + 5,
+    x: appleStartX + appleIconW + 4,
     y: storeRowY,
-    size: 9.8,
+    size: 9.0,
     font: fontHelveticaBold,
     color: isDarkBgTheme ? rgb(0.98, 0.96, 0.92) : rgb(0.10, 0.07, 0.05),
   });
@@ -3933,11 +3937,12 @@ function drawMarketingCardOnPage(
     ? 'Google Play एवं App Store पर निःशुल्क उपलब्ध'
     : 'Available Free on Google Play & App Store';
   const subFont = fontPoppins || fontHelveticaBold;
-  const subW = measureTextWidth(subFont, storeSubLabel, 9.0);
+  const subSize = 7.8;
+  const subW = measureTextWidth(subFont, storeSubLabel, subSize);
   safeDrawText(page, storeSubLabel, {
     x: (pageWidth - subW) / 2,
-    y: storeRowY - 14,
-    size: 9.0,
+    y: storeRowY - 11,
+    size: subSize,
     font: subFont,
     fallbackFont: fontPoppins,
     color: isDarkBgTheme ? rgb(0.95, 0.88, 0.72) : colTerracottaDk,
@@ -3948,20 +3953,20 @@ function drawMarketingCardOnPage(
   const appStoreUri = 'https://apps.apple.com/in/app/brahmand-app/id6765467224';
 
   addClickableLink(doc, page, playStoreUri, [
-    storeStartX - 6,
-    storeRowY - 8,
-    storeStartX + playBtnW + 6,
-    storeRowY + 20,
+    storeStartX - 4,
+    storeRowY - 4,
+    storeStartX + playBtnW + 4,
+    storeRowY + 16,
   ]);
   addClickableLink(doc, page, appStoreUri, [
-    appleStartX - 6,
-    storeRowY - 8,
-    appleStartX + appleBtnW + 6,
-    storeRowY + 20,
+    appleStartX - 4,
+    storeRowY - 4,
+    appleStartX + appleBtnW + 4,
+    storeRowY + 16,
   ]);
   addClickableLink(doc, page, referralQrUrl, [
     qrBoxX,
-    qrBoxY - 16,
+    qrBoxY - 12,
     qrBoxX + qrSize,
     qrBoxY + qrSize,
   ]);
@@ -4184,60 +4189,60 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec1Heading, {
     x: pMargin,
     y: curY,
-    size: 12.5,
+    size: 12.0,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
-  curY -= 18;
+  curY -= 15;
 
   // Introduction text with comfortable leading & generous breathing room
-  const introLines = wrapText(introText, bodyTextFont, 10.5, contentWidth);
-  for (const iLine of introLines.slice(0, 3)) {
+  const introLines = wrapText(introText, bodyTextFont, 10.0, contentWidth);
+  for (const iLine of introLines.slice(0, 2)) {
     safeDrawText(page, iLine, {
       x: pMargin,
       y: curY,
-      size: 10.5,
+      size: 10.0,
       font: bodyTextFont,
       fallbackFont: fontPoppins,
       color: colBody,
     });
-    curY -= 15.0;
+    curY -= 14.0;
   }
-  curY -= 10;
+  curY -= 6;
 
   // Key Highlights (3 bullets)
   const hlTitle = (isSharadPurnimaTheme || isDiwaliTheme) ? 'मुख्य विशेषताएं एवं महत्व:' : 'KEY HIGHLIGHTS & SPIRITUAL ESSENCE:';
   safeDrawText(page, hlTitle, {
     x: pMargin,
     y: curY,
-    size: 10.2,
+    size: 9.8,
     font: bodyBoldFont,
     fallbackFont: fontPoppins,
     color: colSub,
   });
-  curY -= 15;
+  curY -= 13;
 
   for (const hl of highlights) {
-    page.drawCircle({ x: pMargin + 4, y: curY + 2.5, size: 2.4, color: colHead });
-    const hlLines = wrapText(hl, bodyTextFont, 9.8, contentWidth - 14);
+    page.drawCircle({ x: pMargin + 4, y: curY + 2.5, size: 2.2, color: colHead });
+    const hlLines = wrapText(hl, bodyTextFont, 9.2, contentWidth - 14);
     for (const hLine of hlLines.slice(0, 1)) {
       safeDrawText(page, hLine, {
         x: pMargin + 12,
         y: curY,
-        size: 9.8,
+        size: 9.2,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: colBody,
       });
-      curY -= 14.5;
+      curY -= 13.0;
     }
   }
-  curY -= 10;
+  curY -= 8;
 
   if (isDiwaliTheme && laxmiYantraImage) {
     // Dedicated Sacred Shri Maha Lakshmi Yantra Box on Page 3
-    const yBoxH = 92;
+    const yBoxH = 76;
     const yBoxY = curY - yBoxH + 4;
     page.drawRectangle({
       x: pMargin,
@@ -4246,11 +4251,11 @@ async function renderFestivalGuideAndQuizPage(
       height: yBoxH,
       color: rgb(0.995, 0.970, 0.925), // Warm sanctum ivory
       borderColor: rgb(0.85, 0.55, 0.15), // Antique gold border
-      borderWidth: 0.9,
+      borderWidth: 0.8,
     });
 
     // Draw the Laxmi Yantra medallion on the left
-    const yDim = 78;
+    const yDim = 62;
     page.drawImage(laxmiYantraImage, {
       x: pMargin + 10,
       y: yBoxY + (yBoxH - yDim) / 2,
@@ -4266,8 +4271,8 @@ async function renderFestivalGuideAndQuizPage(
     const yTitle = '॥ सिद्ध श्री महालक्ष्मी यन्त्रम् (Shri Maha Lakshmi Yantra) ॥';
     safeDrawText(page, yTitle, {
       x: yTextX,
-      y: yBoxY + yBoxH - 17,
-      size: 11.2,
+      y: yBoxY + yBoxH - 14,
+      size: 10.5,
       font: pageHeadFont,
       fallbackFont: fontPoppins,
       color: rgb(0.58, 0.14, 0.08),
@@ -4277,8 +4282,8 @@ async function renderFestivalGuideAndQuizPage(
     const ySub = 'धन, धान्य, ऐश्वर्य, व्यापार वृद्धि एवं सर्व-संकट निवारक महायन्त्र';
     safeDrawText(page, ySub, {
       x: yTextX,
-      y: yBoxY + yBoxH - 32,
-      size: 9.2,
+      y: yBoxY + yBoxH - 26,
+      size: 8.5,
       font: bodyBoldFont,
       fallbackFont: fontPoppins,
       color: rgb(0.48, 0.18, 0.08),
@@ -4286,12 +4291,12 @@ async function renderFestivalGuideAndQuizPage(
 
     // Description
     const yDesc = 'दीपावली की पावन रात्रि को स्थिर लग्न में इस दिव्य यन्त्र का पूजन व दर्शन करने से दरिद्रता का नाश होता है तथा माँ लक्ष्मी का स्थायी वास होता है।';
-    const yDescLines = wrapText(yDesc, bodyTextFont, 8.8, yTextW);
-    for (let di = 0; di < Math.min(yDescLines.length, 2); di++) {
-      safeDrawText(page, yDescLines[di], {
+    const yDescLines = wrapText(yDesc, bodyTextFont, 8.2, yTextW);
+    if (yDescLines[0]) {
+      safeDrawText(page, yDescLines[0], {
         x: yTextX,
-        y: yBoxY + yBoxH - 46 - di * 11.5,
-        size: 8.8,
+        y: yBoxY + yBoxH - 38,
+        size: 8.2,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: rgb(0.25, 0.18, 0.12),
@@ -4302,20 +4307,20 @@ async function renderFestivalGuideAndQuizPage(
     const yMantra = '॥ सिद्ध वैदिक महामंत्र: ॐ श्रीं ह्रीं क्लीं श्रीं सिद्धलक्ष्म्यै नमः ॥';
     safeDrawText(page, yMantra, {
       x: yTextX,
-      y: yBoxY + 10,
-      size: 9.6,
+      y: yBoxY + 8,
+      size: 9.0,
       font: pageHeadFont,
       fallbackFont: fontPoppins,
       color: rgb(0.70, 0.22, 0.06),
     });
 
-    curY -= (yBoxH + 16);
+    curY -= (yBoxH + 12);
   } else {
     // Did You Know box with theme-aware styling & comfortable padding
     const dykPrefix = isSharadPurnimaTheme ? 'क्या आप जानते हैं? ' : 'Did You Know? ';
     const dykFull = `${dykPrefix}${didYouKnowText}`;
-    const dykLines = wrapText(dykFull, bodyTextFont, 9.8, contentWidth - 18);
-    const dykBoxH = 18 + Math.min(dykLines.length, 2) * 12.5;
+    const dykLines = wrapText(dykFull, bodyTextFont, 9.2, contentWidth - 18);
+    const dykBoxH = 14 + Math.min(dykLines.length, 2) * 11.5;
     page.drawRectangle({
       x: pMargin,
       y: curY - dykBoxH + 4,
@@ -4332,14 +4337,14 @@ async function renderFestivalGuideAndQuizPage(
     dykLines.slice(0, 2).forEach((ln, i) => {
       safeDrawText(page, ln, {
         x: pMargin + 9,
-        y: curY - 7 - i * 12.5,
-        size: 9.8,
+        y: curY - 6 - i * 11.5,
+        size: 9.2,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.88, 0.68) : colTerracottaDk,
       });
     });
-    curY -= (dykBoxH + 20);
+    curY -= (dykBoxH + 14);
   }
 
   // --- SECTION 2: DIVINE RITUALS & PUJA VIDHI ---
@@ -4351,19 +4356,19 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec2Heading, {
     x: pMargin,
     y: curY,
-    size: 12.5,
+    size: 12.0,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
-  curY -= 17;
+  curY -= 15;
 
   for (let rIdx = 0; rIdx < ritualsList.length; rIdx++) {
     const r = ritualsList[rIdx];
     const badgeNum = `${rIdx + 1}`;
-    const badgeRadius = 7.5;
+    const badgeRadius = 6.5;
     const badgeX = pMargin + badgeRadius;
-    const badgeY = curY - 2;
+    const badgeY = curY - 1;
 
     page.drawCircle({
       x: badgeX,
@@ -4371,11 +4376,11 @@ async function renderFestivalGuideAndQuizPage(
       size: badgeRadius,
       color: colHead,
     });
-    const bnW = fontHelveticaBold.widthOfTextAtSize(badgeNum, 8.8);
+    const bnW = fontHelveticaBold.widthOfTextAtSize(badgeNum, 8.0);
     page.drawText(badgeNum, {
       x: badgeX - bnW / 2,
-      y: badgeY - 3.0,
-      size: 8.8,
+      y: badgeY - 2.8,
+      size: 8.0,
       font: fontHelveticaBold,
       color: rgb(1, 1, 1),
     });
@@ -4384,29 +4389,29 @@ async function renderFestivalGuideAndQuizPage(
     safeDrawText(page, r.title, {
       x: ritualTitleX,
       y: curY,
-      size: 10.5,
+      size: 10.0,
       font: bodyBoldFont,
       fallbackFont: fontPoppins,
       color: colSub,
     });
-    curY -= 14.0;
+    curY -= 12.5;
 
-    const rDescLines = wrapText(r.desc, bodyTextFont, 9.8, contentWidth - 24);
+    const rDescLines = wrapText(r.desc, bodyTextFont, 9.2, contentWidth - 24);
     for (const dLine of rDescLines.slice(0, 1)) {
       safeDrawText(page, dLine, {
         x: ritualTitleX,
         y: curY,
-        size: 9.8,
+        size: 9.2,
         font: bodyTextFont,
         fallbackFont: fontPoppins,
         color: colBody,
       });
-      curY -= 14.0;
+      curY -= 13.0;
     }
-    curY -= 8;
+    curY -= 6;
   }
 
-  curY -= 16;
+  curY -= 12;
 
   // --- SECTION 3: FESTIVAL PUJA & PREPARATION CHECKLIST ---
   const sec3Heading = isSharadPurnimaTheme
@@ -4417,12 +4422,12 @@ async function renderFestivalGuideAndQuizPage(
   safeDrawText(page, sec3Heading, {
     x: pMargin,
     y: curY,
-    size: 12.5,
+    size: 12.0,
     font: pageSubFont,
     fallbackFont: fontPoppins,
     color: colHead,
   });
-  curY -= 18;
+  curY -= 15;
 
   const checklistItems = isSharadPurnimaTheme
     ? [
@@ -4451,11 +4456,11 @@ async function renderFestivalGuideAndQuizPage(
       { title: 'Festival katha & stotra books for family', sub: 'Devotional chanting & satsang' },
     ];
 
-  // 2-column checklist layout with generous row spacing and breathing room
+  // 2-column checklist layout with comfortable row spacing
   const colW = (contentWidth - 20) / 2;
   const leftX = pMargin + 2;
   const rightX = pMargin + colW + 20;
-  const rowSpacing = 32;
+  const rowSpacing = 25;
 
   for (let ci = 0; ci < checklistItems.length; ci++) {
     const item = checklistItems[ci];
@@ -4465,7 +4470,7 @@ async function renderFestivalGuideAndQuizPage(
     const itemY = curY - rowIdx * rowSpacing;
 
     // Checkbox square with checkmark accent
-    const boxSize = 9.5;
+    const boxSize = 8.5;
     page.drawRectangle({
       x: itemX,
       y: itemY - 1,
@@ -4477,23 +4482,23 @@ async function renderFestivalGuideAndQuizPage(
     });
     // Check mark tick
     page.drawLine({
-      start: { x: itemX + 2, y: itemY + 3.5 },
-      end: { x: itemX + 4, y: itemY + 1 },
-      thickness: 1.2,
+      start: { x: itemX + 1.8, y: itemY + 3.0 },
+      end: { x: itemX + 3.6, y: itemY + 0.8 },
+      thickness: 1.1,
       color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.84, 0.45) : colCrimson,
     });
     page.drawLine({
-      start: { x: itemX + 4, y: itemY + 1 },
-      end: { x: itemX + 8, y: itemY + 7 },
-      thickness: 1.2,
+      start: { x: itemX + 3.6, y: itemY + 0.8 },
+      end: { x: itemX + 7.2, y: itemY + 6.2 },
+      thickness: 1.1,
       color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.84, 0.45) : colCrimson,
     });
 
     // Item title
     safeDrawText(page, item.title, {
-      x: itemX + 15,
+      x: itemX + 13,
       y: itemY,
-      size: 10.0,
+      size: 9.5,
       font: bodyBoldFont,
       fallbackFont: fontPoppins,
       color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.99, 0.95, 0.88) : colSub,
@@ -4501,21 +4506,21 @@ async function renderFestivalGuideAndQuizPage(
 
     // Sub note
     safeDrawText(page, item.sub, {
-      x: itemX + 15,
-      y: itemY - 12.0,
-      size: 8.8,
+      x: itemX + 13,
+      y: itemY - 10.5,
+      size: 8.2,
       font: bodyTextFont,
       fallbackFont: fontPoppins,
       color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.84, 0.72) : colBody,
     });
   }
 
-  curY -= (3 * rowSpacing + 18);
+  curY -= (2 * rowSpacing + 22);
 
-  // SECTION 4: Centered Brahmand App & QR Download Section without background box
-  // Dynamically position comfortably above footer line (y = 64) with ample clearance
-  const mktBaseY = Math.max(106, Math.min(115, curY - 170));
-  drawMarketingCardOnPage(doc, page, pageWidth, theme, fonts, pMargin, mktBaseY);
+  // SECTION 4: Centered Brahmand App & QR Download Section
+  // Positioned cleanly with ample clearance below Checklist and above Footer line (y = 58)
+  const mktTopY = Math.max(204, Math.min(215, curY - 14));
+  drawMarketingCardOnPage(doc, page, pageWidth, theme, fonts, pMargin, mktTopY);
 
   // Footer on Page 3
   drawPageFooter(doc, page, pageWidth, theme, fonts, pageNum, totalPages);
