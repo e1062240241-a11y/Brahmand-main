@@ -13,7 +13,6 @@ import {
   DIWALI_RULES_NIYAM,
   DIWALI_2026_SPECIAL_NOTES,
 } from '../utils/diwaliMuhurat';
-import { DiwaliWishShareButton } from './DiwaliWishShareButton';
 
 /**
  * Muhurat & 5-Day Festive Calendar component (Non-overlapping, only 2 tabs)
@@ -104,10 +103,6 @@ export const PersonalizedDiwaliMuhuratCard: React.FC<{ festival?: any }> = React
                   <Text style={styles.snanTitle}>अमावस्या तिथि:</Text>
                   <Text style={styles.snanTime}>8 Nov 11:27 AM से 9 Nov 12:31 PM</Text>
                 </View>
-              </View>
-
-              <View style={{ marginTop: 12 }}>
-                <DiwaliWishShareButton />
               </View>
             </View>
           </View>
