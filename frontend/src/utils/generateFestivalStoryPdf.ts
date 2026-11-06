@@ -28,6 +28,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { getFestivalImage } from '../constants/festivalImages';
 import { POPPINS_REGULAR_BASE64, ROZHA_ONE_REGULAR_BASE64, HIMALAYA_TT_REGULAR_BASE64 } from '../constants/devanagariPdfFonts';
 import { DHANTERAS_KUBER_GOLD_BASE64 } from '../constants/dhanterasKuberBase64';
+import { GOVARDHAN_KRISHNA_BASE64 } from '../constants/govardhanKrishnaBase64';
 import { useAuthStore } from '../store/authStore';
 import * as Location from 'expo-location';
 import { getPanchang } from '../services/api';
@@ -73,6 +74,12 @@ export function isDhanterasThemeCheck(themeOrFestivalName?: string, altName?: st
 export function isDiwaliThemeCheck(themeOrFestivalName?: string, altName?: string): boolean {
   const combined = `${themeOrFestivalName || ''} ${altName || ''}`;
   return /diwali|deepavali|दीपावली|दिवाली/i.test(combined);
+}
+
+// Check if festival or theme is Govardhan Puja / Annakut (matching English and Hindi names)
+export function isGovardhanThemeCheck(themeOrFestivalName?: string, altName?: string): boolean {
+  const combined = `${themeOrFestivalName || ''} ${altName || ''}`;
+  return /govardhan|annakut|annakoot|गोवर्धन|अन्नकूट/i.test(combined);
 }
 
 // First name of the signed-in user for the page-1 blessing greeting ("" when signed out / unusable)
@@ -962,6 +969,51 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
     };
   }
 
+  if (lower.includes('govardhan') || lower.includes('annakut') || lower.includes('annakoot') || /गोवर्धन|अन्नकूट/i.test(lower)) {
+    return {
+      name: 'गोवर्धन पूजा',
+      hindiName: 'श्री गोवर्धन पूजा एवं अन्नकूट',
+      devanagariRoman: 'GOVARDHAN PUJA',
+      primaryAccent: rgb(0.18, 0.44, 0.18), // Sacred Forest Giriraj Green #2E702E
+      secondaryAccent: rgb(0.85, 0.45, 0.08), // Radiant Saffron Gold #D97314
+      gold: antiqueGold,
+      cream: creamBg,
+      charcoal: deepCharcoal,
+      heroGradientTop: rgb(0.15, 0.38, 0.15),
+      heroGradientBottom: rgb(0.85, 0.50, 0.10),
+      date: dateFromData || 'मंगलवार, 10 नवंबर 2026',
+      tithi: 'कार्तिक शुक्ल प्रतिपदा • प्रातःकाल मुहूर्त 6:40 – 8:50 AM',
+      greeting: 'गोवर्धन पूजा व अन्नकूट महापर्व पर भगवान श्री गिरिराज धरण का दिव्य आशीर्वाद आपके जीवन में सुख, शांति, समृद्धि और आरोग्य की वर्षा करे।',
+      deity: 'भगवान श्रीकृष्ण एवं श्री गिरिराज गोवर्धन',
+      tradition: 'गोबर से गोवर्धन पर्वत निर्माण, अन्नकूट 56 भोग समर्पण, सप्त परिक्रमा व गौ पूजन',
+      subtitle: 'श्री गिरिराज धरण, इंद्र का मानमर्दन व अन्नकूट महाप्रसाद पावन कथा',
+      chapters: [
+        {
+          id: 1,
+          title: 'इंद्र पूजा का निषेध एवं गिरिराज पूजन का संकल्प',
+          icon: 'mountain',
+          content: 'द्वापर युग में ब्रजवासी देवराज इंद्र को प्रसन्न करने के लिए प्रतिवर्ष विशाल यज्ञ का आयोजन करते थे। भगवान श्रीकृष्ण ने देखा कि लोग इंद्र के भय से यज्ञ करते हैं, जबकि प्रत्यक्ष रूप से उनका पालन-पोषण, गोधन की रक्षा और जल-घास गिरिराज गोवर्धन से ही प्राप्त होता है। तब कन्हैया ने नंदबाबा और समस्त गोप-ग्वालों को समझाया कि हमें प्रकृति, गौ-माता और गोवर्धन पर्वत का पूजन करना चाहिए। सभी ब्रजवासियों ने कान्हा की बात मानकर गोवर्धन पर्वत की पूजा आरंभ कर दी।'
+        },
+        {
+          id: 2,
+          title: 'इंद्र का कोप एवं मूसलाधार जल-प्रलय',
+          icon: 'cloud-rain',
+          content: 'जब देवराज इंद्र को ज्ञात हुआ कि ब्रजवासियों ने उनकी पारंपरिक पूजा बंद करके एक पर्वत की पूजा प्रारंभ कर दी है, तो उनका अहंकार जाग उठा। कुपित होकर इंद्र ने प्रलयंकारी संवर्तक मेघों को ब्रज पर प्रचंड वर्षा करने की आज्ञा दी। घनघोर गर्जना के साथ मूसलाधार वर्षा और आकाशीय बिजली गिरने लगी। चारों ओर त्राहि-त्राहि मच गई, पशु-पक्षी और ब्रजवासी भयभीत होकर कन्हैया की शरण में दौड़े।'
+        },
+        {
+          id: 3,
+          title: 'कनिष्ठिका पर गिरिराज धारण एवं 56 भोग अन्नकूट',
+          icon: 'sparkles',
+          content: 'ब्रजवासियों की रक्षा हेतु भगवान श्रीकृष्ण ने अपनी बाईं हाथ की नन्हीं कनिष्ठिका (छोटी) उंगली पर विशाल गोवर्धन पर्वत को एक छत्र के समान उठा लिया। लगातार सात दिन और सात रात तक समस्त ब्रजवासी और उनकी गायें गोवर्धन की छत्रछाया में सुरक्षित रहे। इंद्र का सारा अहंकार धूल में मिल गया और उन्होंने भगवान से क्षमा याचना की। इसके उपरांत कृतज्ञ ब्रजवासियों ने भगवान को 56 प्रकार के दिव्य व्यंजनों का अन्नकूट महाप्रसाद अर्पित किया।'
+        }
+      ],
+      blessing: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे। हरे राम हरे राम राम राम हरे हरे॥ भगवान श्री गिरिराज धरण आपके सम्पूर्ण परिवार की रक्षा करें और जीवन में सुख-समृद्धि भर दें।',
+      mantraText: 'ॐ गोवर्धनधराय नमः • ॐ नमो भगवते वासुदेवाय',
+      shloka1: 'गोवर्धनधरो धीरो गोपीजनमनोहरः। पातु वो वामबाहुश्च धारयन् पर्वतं महत्॥',
+      shloka2: 'नमामि देवं गिरिराजधारिणं कृपाकटाक्षैः परिपालिताखिलम्॥',
+    };
+  }
+
   if (lower.includes('janmashtami') || lower.includes('krishna')) {
     return {
       name: 'Janmashtami',
@@ -1778,6 +1830,7 @@ let cachedKarwaWomanBytes: Uint8Array | null = null;
 let cachedKuberBytes: Uint8Array | null = null;
 let cachedDiwaliBgBytes: Uint8Array | null = null;
 let cachedLaxmiYantraBytes: Uint8Array | null = null;
+let cachedGovardhanKrishnaBytes: Uint8Array | null = null;
 
 // Track active PDF generation promises to dedup concurrent calls
 const inProgressPdfPromises = new Map<string, Promise<string>>();
@@ -1789,6 +1842,7 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
   const needKarwa = !festivalThemeName || isKarwaChauthThemeCheck(festivalThemeName) || festLower.includes('karwa');
   const needDhanteras = !festivalThemeName || isDhanterasThemeCheck(festivalThemeName) || festLower.includes('dhanteras');
   const needDiwali = !festivalThemeName || isDiwaliThemeCheck(festivalThemeName) || festLower.includes('diwali') || festLower.includes('deepavali');
+  const needGovardhan = !festivalThemeName || isGovardhanThemeCheck(festivalThemeName) || festLower.includes('govardhan') || festLower.includes('annakut');
 
   let fontCinzel: any = null;
   let fontRozha: any = null;
@@ -2079,6 +2133,32 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
     }
   }
 
+  let govardhanKrishnaImage: any = null;
+  if (needGovardhan) {
+    try {
+      if (!cachedGovardhanKrishnaBytes) {
+        if (typeof GOVARDHAN_KRISHNA_BASE64 === 'string' && GOVARDHAN_KRISHNA_BASE64.length > 100) {
+          cachedGovardhanKrishnaBytes = decodeBase64ToUint8(GOVARDHAN_KRISHNA_BASE64);
+        } else {
+          const govardhanAsset = Asset.fromModule(require('../../assets/images/festivals/govardhan_krishna_clean.png'));
+          await govardhanAsset.downloadAsync();
+          const gUri = govardhanAsset.localUri || govardhanAsset.uri;
+          if (gUri) {
+            const base64 = await FileSystem.readAsStringAsync(gUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            cachedGovardhanKrishnaBytes = decodeBase64ToUint8(base64);
+          }
+        }
+      }
+      if (cachedGovardhanKrishnaBytes) {
+        govardhanKrishnaImage = await doc.embedPng(cachedGovardhanKrishnaBytes);
+      }
+    } catch (gErr) {
+      console.warn('[PDF] Govardhan Krishna image embedding fallback:', gErr);
+    }
+  }
+
   return {
     fontCinzel,
     fontRozha,
@@ -2098,6 +2178,7 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
     dhanterasKuberImage,
     diwaliBgImage,
     laxmiYantraImage,
+    govardhanKrishnaImage,
   };
 }
 
@@ -2199,6 +2280,24 @@ async function resolveFestivalHeroImage(doc: PDFDocument, theme: FestivalTheme, 
       }
     } catch (err) {
       console.warn('[PDF] Could not embed local Diwali hero:', err);
+    }
+  }
+
+  // 1e. If Govardhan Puja / Annakut: use high-res local Govardhan Krishna lifting hill hero image
+  if (lower.includes('govardhan') || lower.includes('annakut') || lower.includes('annakoot') || /गोवर्धन|अन्नकूट/i.test(lower)) {
+    try {
+      if (typeof GOVARDHAN_KRISHNA_BASE64 === 'string' && GOVARDHAN_KRISHNA_BASE64.length > 100) {
+        return await doc.embedPng(decodeBase64ToUint8(GOVARDHAN_KRISHNA_BASE64));
+      }
+      const govardhanAsset = Asset.fromModule(require('../../assets/images/festivals/govardhan_krishna_clean.png'));
+      await govardhanAsset.downloadAsync();
+      const uri = govardhanAsset.localUri || govardhanAsset.uri;
+      if (uri) {
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        return await doc.embedPng(decodeBase64ToUint8(b64));
+      }
+    } catch (err) {
+      console.warn('[PDF] Could not embed local Govardhan hero:', err);
     }
   }
 
@@ -2343,7 +2442,7 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage, karwaChauthWomanImage, dhanterasKuberImage, diwaliBgImage } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage, karwaChauthWomanImage, dhanterasKuberImage, diwaliBgImage, govardhanKrishnaImage } = fonts;
   const brandFont = fontCinzel || displayFont;
   const devanagariFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
   const hindiTitleFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
@@ -2353,6 +2452,7 @@ export async function renderDynamicFestivalPage1(
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const panchangInfo = await fetchFestivalPanchangInfo(festival);
 
   // Dynamic Royal Theme Palette (adapts to festival/day color)
@@ -2524,7 +2624,7 @@ export async function renderDynamicFestivalPage1(
     };
 
     drawCornerFan(14, pageHeight - 14, 1, -1, colCrimson, colPeachDeep, colTerracotta);
-    if (!isDhanterasTheme) {
+    if (!isDhanterasTheme && !isGovardhanTheme) {
       drawCornerFan(pageWidth - 14, pageHeight - 14, -1, -1, colCrimson, colPeachDeep, colTerracotta);
     }
     drawCornerFan(14, 14, 1, 1, colTerracotta, colSage, colAmber);
@@ -2540,6 +2640,19 @@ export async function renderDynamicFestivalPage1(
       y: pageHeight - 18 - kuberH,
       width: kuberW,
       height: kuberH,
+      opacity: 0.98,
+    });
+  }
+
+  // Sacred Lord Krishna Govardhan Artwork in Top-Right Corner for Govardhan Puja (Background-Free)
+  if (isGovardhanTheme && (govardhanKrishnaImage || fonts.govardhanKrishnaImage)) {
+    const gImg = govardhanKrishnaImage || fonts.govardhanKrishnaImage;
+    const gDim = 114;
+    page1.drawImage(gImg, {
+      x: pageWidth - 14 - gDim,
+      y: pageHeight - 14 - gDim,
+      width: gDim,
+      height: gDim,
       opacity: 0.98,
     });
   }
@@ -3995,12 +4108,13 @@ async function renderFestivalGuideAndQuizPage(
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
-  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, laxmiYantraImage } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, laxmiYantraImage, govardhanKrishnaImage } = fonts;
   const brandFont = fontCinzel || displayFont;
   const isAboutDevanagari = hasDevanagariChar(theme.name) || hasDevanagariChar(theme.subtitle || '');
-  const pageHeadFont = (isSharadPurnimaTheme || isDiwaliTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
-  const pageSubFont = (isSharadPurnimaTheme || isDiwaliTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
+  const pageHeadFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
+  const pageSubFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
   const bodyTextFont = fontPoppins || fontHimalaya || fontTimes;
   const bodyBoldFont = fontPoppins || fontHimalaya || fontHelveticaBold;
 
@@ -4012,17 +4126,19 @@ async function renderFestivalGuideAndQuizPage(
   const colAmber = theme.gold || rgb(0.85, 0.70, 0.40);
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
   // Readable palette over the Sharad night-sky and Karwa Chauth red damask background
-  const colHead = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : colCrimson;
+  const colHead = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (isGovardhanTheme ? rgb(0.18, 0.44, 0.18) : colCrimson);
   const colSub = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.87, 0.64) : colTerracottaDk;
   const colBody = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.97, 0.94, 0.90) : colInk;
-  const colSep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : colPeachDeep;
+  const colSep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : (isGovardhanTheme ? rgb(0.35, 0.55, 0.25) : colPeachDeep);
 
   const festClean = cleanTextForPdf(theme.name);
   const page3HeaderTitle = isSharadPurnimaTheme
     ? 'शरद पूर्णिमा — परिचय, तिथि एवं पूजा विधि'
     : isDiwaliTheme
       ? 'शुभ दीपावली — परिचय, सिद्ध लक्ष्मी यन्त्र व सम्पूर्ण पूजा विधि'
-      : `${festClean.toUpperCase()} — ABOUT & DIVINE RITUALS`;
+      : isGovardhanTheme
+        ? 'श्री गोवर्धन पूजा — परिचय, गिरिराज महात्म्य व संपूर्ण पूजा विधि'
+        : `${festClean.toUpperCase()} — ABOUT & DIVINE RITUALS`;
   let curY = drawPageBrandHeader(page, pageWidth, pageHeight, theme, fonts, false, page3HeaderTitle);
 
   // 1. Fetch full About content and enrichment data
@@ -4146,6 +4262,21 @@ async function renderFestivalGuideAndQuizPage(
       {
         title: 'दीपावली दीपदान एवं मिष्ठान वितरण',
         desc: 'मुख्य द्वार, तिजोरी व तुलसी पर शुद्ध घी-तेल के दीप जलाएं और परिवार व प्रियजनों में प्रसाद बांटें।',
+      },
+    ];
+  } else if (isGovardhanTheme) {
+    ritualsList = [
+      {
+        title: 'गाय के गोबर से गोवर्धन पर्वत निर्माण',
+        desc: 'प्रातःकाल स्नान कर आंगन में गोबर से लेटे हुए गिरिराज पर्वत व श्रीकृष्ण की पावन आकृति बनाएं और पुष्पों से सजाएं।',
+      },
+      {
+        title: 'अन्नकूट व 56 भोग समर्पण (प्रातः 6:40–8:50 AM)',
+        desc: 'कढ़ी, बाजरा, विविध सब्जियां और 56 भोग का अन्नकूट बनाकर गिरिराज धरण को तुलसी दल सहित भोग लगाएं।',
+      },
+      {
+        title: 'सप्त परिक्रमा (7 फेरे) व गौ-माता पूजन',
+        desc: 'हाथ में जल का लोटा लेकर परिवार सहित गोवर्धन जी की सात परिक्रमा लगाएं, आरती उतारें और गायों की सेवा-पूजन करें।',
       },
     ];
   } else if (isKarwaChauthTheme) {
@@ -4315,6 +4446,82 @@ async function renderFestivalGuideAndQuizPage(
     });
 
     curY -= (yBoxH + 12);
+  } else if (isGovardhanTheme && (govardhanKrishnaImage || fonts.govardhanKrishnaImage)) {
+    const gImg = govardhanKrishnaImage || fonts.govardhanKrishnaImage;
+    // Dedicated Sacred Shri Giriraj Govardhan Mahatmya Box on Page 3
+    const gBoxH = 76;
+    const gBoxY = curY - gBoxH + 4;
+    page.drawRectangle({
+      x: pMargin,
+      y: gBoxY,
+      width: contentWidth,
+      height: gBoxH,
+      color: rgb(0.995, 0.970, 0.925), // Warm sanctum ivory
+      borderColor: rgb(0.32, 0.52, 0.22), // Forest Giriraj green border
+      borderWidth: 0.8,
+    });
+
+    // Draw the Krishna Govardhan artwork on the left
+    const gDim = 66;
+    page.drawImage(gImg, {
+      x: pMargin + 10,
+      y: gBoxY + (gBoxH - gDim) / 2,
+      width: gDim,
+      height: gDim,
+    });
+
+    // Text on the right of Krishna Govardhan
+    const gTextX = pMargin + 10 + gDim + 12;
+    const gTextW = contentWidth - (10 + gDim + 12) - 10;
+
+    // Title
+    const gTitle = '॥ श्री गिरिराज गोवर्धन महात्म्य (Lord Krishna & Govardhan) ॥';
+    safeDrawText(page, gTitle, {
+      x: gTextX,
+      y: gBoxY + gBoxH - 14,
+      size: 10.5,
+      font: pageHeadFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.18, 0.40, 0.16),
+    });
+
+    // Subtitle
+    const gSub = 'प्रकृति संरक्षण, गौ सेवा, इंद्र का मानमर्दन व अनन्य शरणागति का महापर्व';
+    safeDrawText(page, gSub, {
+      x: gTextX,
+      y: gBoxY + gBoxH - 26,
+      size: 8.5,
+      font: bodyBoldFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.38, 0.22, 0.10),
+    });
+
+    // Description
+    const gDesc = 'भगवान श्रीकृष्ण ने 7 दिनों तक कनिष्ठिका पर गोवर्धन पर्वत धारण कर ब्रज की रक्षा की थी। इस दिन 56 भोग अन्नकूट समर्पण व सात परिक्रमा से सर्व सुख-समृद्धि मिलती है।';
+    const gDescLines = wrapText(gDesc, bodyTextFont, 8.2, gTextW);
+    if (gDescLines[0]) {
+      safeDrawText(page, gDescLines[0], {
+        x: gTextX,
+        y: gBoxY + gBoxH - 38,
+        size: 8.2,
+        font: bodyTextFont,
+        fallbackFont: fontPoppins,
+        color: rgb(0.25, 0.18, 0.12),
+      });
+    }
+
+    // Mantra pill / text
+    const gMantra = '॥ सिद्ध महामंत्र: ॐ गोवर्धनधराय नमः • प्रातः मुहूर्त: 6:40 AM – 8:50 AM ॥';
+    safeDrawText(page, gMantra, {
+      x: gTextX,
+      y: gBoxY + 8,
+      size: 9.0,
+      font: pageHeadFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.18, 0.44, 0.18),
+    });
+
+    curY -= (gBoxH + 12);
   } else {
     // Did You Know box with theme-aware styling & comfortable padding
     const dykPrefix = isSharadPurnimaTheme ? 'क्या आप जानते हैं? ' : 'Did You Know? ';
@@ -4639,6 +4846,7 @@ export async function generateFestivalStoryPdf(
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
   const PDF_BUILD_REV = 'v11_maroon_brand_no_cross';
   let filename = `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_Sampoorna_Katha_${PDF_BUILD_REV}.pdf`;
@@ -4656,6 +4864,11 @@ export async function generateFestivalStoryPdf(
     filename = senderName
       ? `Diwali_Sampoorna_Katha_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand_${PDF_BUILD_REV}.pdf`
       : `Diwali_Sampoorna_Katha_via_Brahmand_${PDF_BUILD_REV}.pdf`;
+  } else if (isGovardhanTheme) {
+    const senderName = getPdfPersonalFirstName();
+    filename = senderName
+      ? `Govardhan_Puja_Katha_Wishes_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand_${PDF_BUILD_REV}.pdf`
+      : `Govardhan_Puja_Sampoorna_Katha_via_Brahmand_${PDF_BUILD_REV}.pdf`;
   }
 
   const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
@@ -4673,15 +4886,16 @@ export async function generateFestivalStoryPdf(
     } catch (_checkErr) { }
   }
 
-  // Purge any stale unversioned Dhanteras / Diwali cache files (only in slow generation path)
-  if (targetDir && (isDhanterasTheme || isDiwaliTheme)) {
+  // Purge any stale unversioned Dhanteras / Diwali / Govardhan cache files (only in slow generation path)
+  if (targetDir && (isDhanterasTheme || isDiwaliTheme || isGovardhanTheme)) {
     try {
       const dirContents = await FileSystem.readDirectoryAsync(targetDir);
       for (const f of dirContents) {
         const fLower = f.toLowerCase();
         if (
           ((isDhanterasTheme && fLower.includes('dhanteras')) ||
-           (isDiwaliTheme && fLower.includes('diwali'))) &&
+           (isDiwaliTheme && fLower.includes('diwali')) ||
+           (isGovardhanTheme && (fLower.includes('govardhan') || fLower.includes('annakut')))) &&
           !f.includes(PDF_BUILD_REV)
         ) {
           await FileSystem.deleteAsync(`${targetDir}${f}`, { idempotent: true });

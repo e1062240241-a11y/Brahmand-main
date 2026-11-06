@@ -708,23 +708,30 @@
   },
   {
     "festival_name": "Govardhan Puja",
-    "date": "9 November 2026",
-    "origin": "Based on Lord Krishna lifting Govardhan Hill to protect villagers from Indra’s wrath.",
-    "how_started": "It began when Krishna advised villagers to worship Govardhan Hill instead of Indra. When Indra caused heavy rains, Krishna lifted the hill to protect people. This became celebrated as Govardhan Puja.",
+    "deity": "Lord Krishna & Shri Giriraj Govardhan",
+    "date": "10 November 2026",
+    "day": "Tuesday",
+    "muhurat": "6:40 AM – 8:50 AM",
+    "muhurat_duration": "2 hours 10 mins",
+    "tithi": "Kartik Shukla Pratipada (9 Nov 12:31 PM to 10 Nov 2:00 PM)",
+    "origin": "Based on Lord Krishna lifting Mount Govardhan on his little finger for seven days to protect the people and cattle of Braj from Indra’s wrath.",
+    "how_started": "Lord Krishna persuaded the villagers of Braj to express gratitude to Mount Govardhan, nature, and their cows for sustaining life instead of appeasing Indra. When Indra unleashed a devastating storm, Krishna lifted the hill on his little finger to provide divine shelter, inspiring the eternal tradition of Govardhan Puja and Annakut.",
     "rituals": [
-      "Govardhan hill or its symbolic form is worshipped.",
-      "Food offerings (Annakut) are prepared in large quantities.",
-      "Devotees perform parikrama (circumambulation).",
-      "Krishna temples hold special prayers.",
-      "Communities distribute food as prasad."
+      "गोबर से गोवर्धन पर्वत निर्माण: शुद्ध गाय के गोबर से खुले आंगन में गिरिराज महाराज की लेटी हुई सुंदर आकृति बनाएं।",
+      "नाभि पर दीप व दुग्ध अर्पण: गोवर्धन जी की नाभि पर मिट्टी का दीपक जलाएं और कटोरी में कच्चा दूध, बताशे व गंगाजल अर्पित करें।",
+      "गौ-माता पूजन व सेवा: गायों और बछड़ों को स्नान कराकर रोली-हल्दी का तिलक लगाएं, फूलों की माला पहनाएं और गुड़-रोटी खिलाएं।",
+      "अन्नकूट 56 भोग समर्पण: कढ़ी-बाजरा, पूड़ी, खीर, सब्जियां और 56 भोग की विभिन्न मिठाइयां तैयार कर भगवान श्रीकृष्ण को अर्पित करें।",
+      "सपरिवार सात परिक्रमा: हाथ में जल का लोटा व खील-बताशे लेकर 'ॐ गोवर्धनधराय नमः' का जाप करते हुए 7 बार दक्षिणावर्त परिक्रमा करें।",
+      "अन्नकूट महाप्रसाद वितरण: पूजा व आरती के बाद अन्नकूट का पावन प्रसाद परिवार, पड़ोसियों और जरूरतमंदों में बांटें।"
     ],
-    "purpose": "Nature worship.",
-    "importance": "Faith.",
-    "celebration": "Food offering.",
-    "summary": "Festival honoring Krishna’s protection and nature worship.",
+    "purpose": "Nature and cattle worship, environmental gratitude, community sharing through Annakut, and loving surrender to Lord Krishna.",
+    "importance": "Symbol of divine protection, ecological reverence, humility over ritualistic pride, and the fourth day of the 5-day Diwali celebrations.",
+    "celebration": "Cow dung Govardhan deity worship, Gomata sewa, 56 Bhog Annakut preparation, parikrama, and festive distribution of prasad.",
+    "summary": "Govardhan Puja (Annakut) is celebrated on Kartik Shukla Pratipada as the fourth sacred day of Diwali, commemorating Lord Krishna lifting Mount Govardhan to protect Vrindavan. Devotees honor Mother Nature, Gomata, and offer 56 Bhog Chhappan Bhog to Giriraj Maharaj. In 2026, it falls on Tuesday, 10 November with the auspicious Pratahkala Muhurat from 6:40 AM to 8:50 AM.",
+    "mantra": "ॐ गोवर्धनधराय नमः • ॐ नमो भगवते वासुदेवाय • गोवर्धनधरो धीरो गोपीगोपैकभूषणः। ददतु मे वरं कृष्णः सर्वकामफलप्रदः॥",
     "date_2027": "30 October 2027",
     "dates": {
-      "2026": "9 November 2026",
+      "2026": "10 November 2026",
       "2027": "30 October 2027"
     }
   },
