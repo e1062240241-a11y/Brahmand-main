@@ -1058,7 +1058,8 @@ async def _is_admin_user(db: FirestoreDB, user_id: str) -> bool:
     if user_id in admin_user_ids:
         return True
 
-    user = await db.get_document('users', user_id)
+    # Bolt: Performance optimization - only fetch required fields for role check
+    user = await db.get_document_fields('users', user_id, ['is_admin', 'role'])
     if not user:
         return False
 
