@@ -26,11 +26,20 @@ const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 
+const ANDROID_RIPPLE_CONFIG = { color: 'rgba(255, 107, 0, 0.2)', borderless: false };
+
 export interface JaapHeroBannerProps {
   now?: Date;
   onPress?: () => void;
 }
 
+/**
+ * 🎨 Varnish Code Quality & Performance Optimization:
+ * 1. Extracted module-level `ANDROID_RIPPLE_CONFIG` to prevent re-allocating ripple objects on every timer-driven render pass.
+ * 2. Moved inline pressed style (`Platform.OS === 'ios' && { opacity: 0.8 }`) to `StyleSheet.create` (`styles.mockupJoinNowBtnPressed`).
+ * 3. Added `accessibilityRole="button"` and informative `accessibilityLabel` to the CTA button for screen readers.
+ * 4. Explicitly added `JaapHeroBanner.displayName` for debugging and ESLint compliance.
+ */
 export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHeroBannerProps) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -137,10 +146,16 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
               <Pressable
                 style={({ pressed }) => [
                   styles.mockupJoinNowBtn,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                  pressed && Platform.OS === 'ios' && styles.mockupJoinNowBtnPressed,
                 ]}
-                android_ripple={{ color: 'rgba(255, 107, 0, 0.2)', borderless: false }}
+                android_ripple={ANDROID_RIPPLE_CONFIG}
                 onPress={handleJoinPress}
+                accessibilityRole="button"
+                accessibilityLabel={`${heroTitle} - ${
+                  liveActive
+                    ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap')
+                    : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')
+                }`}
               >
                 <LinearGradient
                   colors={['#FF6B00', '#FF8800']}
@@ -276,6 +291,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF6B00',
     overflow: 'hidden',
   },
+  mockupJoinNowBtnPressed: {
+    opacity: 0.8,
+  },
   mockupJoinGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,5 +309,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 });
+
+JaapHeroBanner.displayName = 'JaapHeroBanner';
 
 export default JaapHeroBanner;
