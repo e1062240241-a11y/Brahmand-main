@@ -16,3 +16,7 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+
+## 2024-11-08 - Extract inline allocations in React Native Modals
+**Learning:** React Native Modals containing numerous Pressable components with inline `android_ripple` configs and conditional inline pressed styles (e.g. `pressed && { opacity: 0.8 }`) can cause significant garbage collection pressure during renders.
+**Action:** Always hoist static object allocations, like `android_ripple` configurations and static style objects, to module-level constants or `StyleSheet.create` blocks rather than creating them inline within the component's render function.
