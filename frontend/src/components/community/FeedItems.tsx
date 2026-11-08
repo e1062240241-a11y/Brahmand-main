@@ -445,6 +445,8 @@ export const EventItem: React.FC<EventItemProps> = React.memo(({
             onPress={() => onAttend(item.id, rsvp !== 'yes', item)}
             style={rsvp === 'yes' ? feedItemStyles.attendBtnActive : feedItemStyles.attendBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={rsvp === 'yes' ? 'Cancel attendance' : 'RSVP to attend event'}
           >
             <Text style={rsvp === 'yes' ? feedItemStyles.attendBtnTextActive : feedItemStyles.attendBtnText}>
               I will attend
