@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 import { PassportJourney } from '../../src/types/passport';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
@@ -102,6 +103,7 @@ function PassportTimelineScreen({
   observedCertificates?: any[];
 }) {
   const router = useRouter();
+  const language = useLanguageStore((state) => state.language);
   const zustandBadges = usePassportStore((state) => state.badges) || [];
   const allBadges = [...observedBadges, ...zustandBadges];
 
@@ -370,7 +372,9 @@ function PassportTimelineScreen({
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>Passport Timeline</Text>
+        {/* 🧡 Engagement: Reframed header title for Hindi primary language support */}
+        {/* Lever: Reframing / Mother Tongue Connection */}
+        <Text style={styles.pageTitle}>{language === 'hi' ? 'साधना समयरेखा' : 'Passport Timeline'}</Text>
         {observedJourneys.length > 0 ? (
           <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAllJourneys} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="trash-outline" size={22} color="#000" />
@@ -382,14 +386,21 @@ function PassportTimelineScreen({
 
       <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Subtitle */}
+        {/* 🧡 Engagement: Reframed subtitle to evoke devotional Yatra, Jaap, and Swadhyaya Sanskara */}
+        {/* Lever: Reframing + Devotion + Sanskara */}
         <Text style={styles.pageSubtitle}>
-          Your Yatra memories, jaap milestones and reading badges
+          {language === 'hi'
+            ? 'आपकी तीर्थ यात्रा स्मृतियां, साधना जाप और स्वाध्याय बैज ✨'
+            : 'Your Yatra memories, jaap milestones and reading badges'}
         </Text>
 
         {/* Stats Card */}
+        {/* 🧡 Engagement: Reframed transactional stat labels ("Journeys", "Total Jaap", "Books") into devotional pilgrimage, jaap offering, and scriptural study framing */}
+        {/* Lever: Reframing + Devotion + Mother Tongue Connection */}
+        {/* UI: Text-only change, no new visual elements or components added. */}
         <View style={styles.statsGrid}>
           <View style={styles.statBoxJourneys}>
-            <Text style={styles.statLabel}>Journeys</Text>
+            <Text style={styles.statLabel}>{language === 'hi' ? 'तीर्थ यात्राएं' : 'Journeys'}</Text>
             <Text style={styles.statValue}>{journeysCount}</Text>
           </View>
           
@@ -398,7 +409,7 @@ function PassportTimelineScreen({
           </View>
 
           <View style={styles.statBoxJaap}>
-            <Text style={styles.statLabel}>Total Jaap</Text>
+            <Text style={styles.statLabel}>{language === 'hi' ? 'साधना जाप' : 'Total Jaap'}</Text>
             <Text style={styles.statValue}>{jaapCount}</Text>
           </View>
 
@@ -407,7 +418,7 @@ function PassportTimelineScreen({
           </View>
 
           <View style={styles.statBoxBooks}>
-            <Text style={styles.statLabel}>Books</Text>
+            <Text style={styles.statLabel}>{language === 'hi' ? 'स्वाध्याय ग्रंथ' : 'Books'}</Text>
             <Text style={styles.statValue}>{booksCount}</Text>
           </View>
         </View>
