@@ -6,7 +6,6 @@ emotional speaker attributions, and SSML <mark> timing manifest generation.
 """
 
 from abc import ABC, abstractmethod
-import asyncio
 from pathlib import Path
 import re
 from typing import Any, Dict, List
@@ -98,10 +97,10 @@ class EdgeTTSAdapter(TTSAdapter):
         at the start of the narrative and each character dialogue block.
         """
         ssml_parts = [
-            f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='hi-IN'>",
+            "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='hi-IN'>",
             f"<voice name='{self.voice}'>",
             f"<prosody rate='{self.rate}' pitch='{self.pitch}'>",
-            f"<mark name='mark_narrative'/>",
+            "<mark name='mark_narrative'/>",
             f"{scene.narrative_hindi}",
         ]
 

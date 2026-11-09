@@ -6,7 +6,6 @@ and provides robust HTTP Range chunk streaming for media players.
 """
 
 import json
-import os
 from pathlib import Path
 import re
 from typing import Any, AsyncGenerator, Dict, Optional, Tuple
