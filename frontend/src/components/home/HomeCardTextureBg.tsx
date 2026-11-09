@@ -11,18 +11,33 @@ export interface HomeCardTextureBgProps {
     children?: React.ReactNode;
 }
 
-export function HomeCardTextureBg({
+const DEFAULT_OVERLAY_COLORS = ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)'];
+const GRADIENT_START = { x: 0, y: 0 };
+const GRADIENT_END = { x: 1, y: 1 };
+const DEFAULT_BORDER_RADIUS = 15;
+
+// ⚡ Bolt: Wrapped in React.memo and extracted inline allocations to prevent unnecessary memory churn during parent re-renders.
+// Expected Impact: Reduces garbage collection pressure and prevents re-renders when parent active index timers change.
+export const HomeCardTextureBg = React.memo(function HomeCardTextureBg({
     texture,
-    borderRadius = 15,
+    borderRadius = DEFAULT_BORDER_RADIUS,
     children,
 }: HomeCardTextureBgProps) {
-    const overlayColors = CARD_TEXTURE_OVERLAY[texture] || ['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)'];
+    const overlayColors = CARD_TEXTURE_OVERLAY[texture] || DEFAULT_OVERLAY_COLORS;
+
+    const containerStyle = borderRadius === DEFAULT_BORDER_RADIUS
+        ? [localStyles.container, localStyles.defaultBorderRadius]
+        : [localStyles.container, { borderRadius }];
+
+    const imageStyle = borderRadius === DEFAULT_BORDER_RADIUS
+        ? localStyles.defaultImageStyle
+        : { borderRadius, resizeMode: 'cover' as const };
 
     return (
         <ImageBackground
             source={HOME_CARD_TEXTURES[texture]}
-            style={[localStyles.container, { borderRadius }]}
-            imageStyle={{ borderRadius, resizeMode: 'cover' }}
+            style={containerStyle}
+            imageStyle={imageStyle}
             resizeMode="cover"
         >
             {Platform.OS === 'web' ? (
@@ -32,14 +47,16 @@ export function HomeCardTextureBg({
             )}
             <LinearGradient
                 colors={overlayColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                start={GRADIENT_START}
+                end={GRADIENT_END}
                 style={StyleSheet.absoluteFill}
             />
             <View style={homeStyles.cardTextureContent}>{children}</View>
         </ImageBackground>
     );
-}
+});
+
+HomeCardTextureBg.displayName = 'HomeCardTextureBg';
 
 const localStyles = StyleSheet.create({
     container: {
@@ -51,5 +68,12 @@ const localStyles = StyleSheet.create({
     },
     webBlurFallback: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    defaultBorderRadius: {
+        borderRadius: DEFAULT_BORDER_RADIUS,
+    },
+    defaultImageStyle: {
+        borderRadius: DEFAULT_BORDER_RADIUS,
+        resizeMode: 'cover',
     },
 });
