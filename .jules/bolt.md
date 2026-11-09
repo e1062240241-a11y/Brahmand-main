@@ -16,3 +16,6 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+## 2026-11-09 - React Native Inline Allocations and Memoization
+**Learning:** Inline allocations (like arrays, gradient coordinate objects, or style objects) inside frequently rendered React Native components cause memory churn and garbage collection pressure, negating the benefits of React.memo if not careful.
+**Action:** Always extract static configuration objects, fallback arrays, and default style combinations into module-level constants and StyleSheet.create.
