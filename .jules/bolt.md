@@ -16,3 +16,7 @@
 ## 2024-05-18 - Optimized view_post to use Firestore field masking
 **Learning:** Checking ownership of a post doesn't require fetching the whole document.
 **Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking ownership and view counts, reducing memory and network overhead.
+
+## 2025-02-27 - Optimized record_watch_event to use Firestore field masking
+**Learning:** Checking fields for tracking endpoints (like watch events) doesn't require fetching the whole document.
+**Action:** Replaced `db.get_document` with `db.get_document_fields` which prevents fetching unnecessary large document payloads when checking tracking metrics (views_count, watch_time, etc.), reducing memory and network overhead.
