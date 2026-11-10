@@ -213,6 +213,8 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
             }}
             activeOpacity={0.8}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
           >
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
@@ -230,6 +232,8 @@ export const GlobalKathaFloatingPlayer: React.FC = () => {
             }}
             activeOpacity={0.8}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close player"
           >
             <Ionicons name="close" size={18} color="#FFB300" />
           </TouchableOpacity>
