@@ -151,7 +151,8 @@ export const translations = {
     yourCount: 'Your Count',
     malaCount: 'Mala Count',
     liveChanting: 'Live Chanting',
-    liveJaapOffline: 'Communal Live Jaap is currently offline',
+    // 🧡 Engagement: Reframed transactional system status "offline" to devotional anticipation "Sacred pause — Next collective sadhana begins soon ✨"
+    liveJaapOffline: 'Sacred pause — Next collective sadhana begins soon ✨',
     nextSessionStartsIn: 'NEXT LIVE SESSION STARTS IN',
     // 🧡 Engagement: Reframed database metric label "Your Completed Chanting Count" to devotional offering "Your Devotional Chants Offered 🙏"
     completedChantingCount: 'Your Devotional Chants Offered 🙏',
@@ -450,7 +451,11 @@ export const translations = {
     yourCount: 'आपकी संख्या',
     malaCount: 'माला संख्या',
     liveChanting: 'लाइव कीर्तन/जाप',
-    liveJaapOffline: 'सामूहिक लाइव जाप अभी बंद है',
+    // 🧡 Engagement: Reframed transactional status "अभी बंद है" to devotional anticipation "सामूहिक साधना की पावन प्रतीक्षा ✨"
+    // Lever: Reframing + Satsang / Collective Devotion
+    // Why: "बंद है" sounds like a store closing; "पावन प्रतीक्षा" frames the quiet gap as sacred anticipation for satsang.
+    // UI: Copy-only change, zero new components.
+    liveJaapOffline: 'सामूहिक साधना की पावन प्रतीक्षा ✨',
     nextSessionStartsIn: 'अगला लाइव सत्र शुरू होगा',
     // 🧡 Engagement: Reframed database metric label "आपका कुल पूर्ण जाप संख्या" to devotional offering "आपकी समर्पित साधना संख्या 🙏"
     completedChantingCount: 'आपकी समर्पित साधना संख्या 🙏',
