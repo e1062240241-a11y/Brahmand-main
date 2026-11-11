@@ -272,6 +272,8 @@ export const SadhanaStreakCard: React.FC<SadhanaStreakCardProps> = React.memo(
         >
           <Pressable
             onPress={handleCardPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Sadhana Streak Card. Current streak is ${currentStreak} days. Tap to view more.`}
             style={({ pressed }) => [styles.outerContainer, pressed && styles.cardPressed]}
           >
             <LinearGradient
