@@ -82,12 +82,18 @@ interface UpcomingJaapCardProps {
   onPress: (jaap: UpcomingJaapItem) => void;
 }
 
+const ANDROID_RIPPLE_CONFIG = {
+  color: 'rgba(255, 255, 255, 0.3)',
+  borderless: false,
+};
+
 /**
  * 🎨 Varnish Code Quality & Performance Fix:
  * 1. Extracted `UpcomingJaapCard` sub-component wrapped in `React.memo` to eliminate unnecessary card re-renders during parent state updates.
  * 2. Moved inline style allocations (`cardWidth`/`cardHeight`, `cardFillWrapper`, `cardImage`, and Pressable state styles) to `StyleSheet.create`.
- * 3. Added `fadeDuration={0}` to `<Image>` to eliminate flash during re-renders.
- * 4. Added `accessibilityRole="button"` and `accessibilityLabel` for screen readers.
+ * 3. Extracted module-level `ANDROID_RIPPLE_CONFIG` to eliminate object allocation on every render pass.
+ * 4. Added `fadeDuration={0}` to `<Image>` to eliminate flash during re-renders.
+ * 5. Added `accessibilityRole="button"` and `accessibilityLabel` for screen readers.
  */
 const UpcomingJaapCard = React.memo(({ jaap, isHindi, onPress }: UpcomingJaapCardProps) => {
   const displayName = isHindi ? jaap.titleHi : jaap.title;
@@ -126,7 +132,7 @@ const UpcomingJaapCard = React.memo(({ jaap, isHindi, onPress }: UpcomingJaapCar
               styles.upcomingReminderBtn,
               pressed && styles.upcomingReminderBtnPressed,
             ]}
-            android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: false }}
+            android_ripple={ANDROID_RIPPLE_CONFIG}
             onPress={handleCardPress}
             accessibilityRole="button"
             accessibilityLabel={`${displayName} - ${comingSoonText}`}
