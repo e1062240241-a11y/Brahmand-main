@@ -23,6 +23,8 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
 };
 
 export const dhanterasBannerImage = require('../../../assets/images/festivals/dhanteras_banner.jpg');
+export const chhathPujaBannerImage = require('../../../assets/images/festivals/chhath_puja_banner.jpg');
+export const chhathPujaCornerImage = require('../../../assets/images/festivals/chhath_puja_corner_facing_right.png');
 export const diwaliBannerImage = require('../../../assets/images/festivals/diwali_banner.jpg');
 export const diwaliLanternImage = require('../../../assets/images/festivals/diwali_kandil_lantern.png');
 export const diwaliPujaDiyaImage = require('../../../assets/images/festivals/diwali_puja_diya.png');

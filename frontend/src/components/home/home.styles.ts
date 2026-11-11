@@ -95,10 +95,12 @@ export const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'android' ? 4 : 0,
     },
     headerLeft: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
-        flex: Platform.OS === 'android' ? undefined : 1,
-        marginRight: 10,
+        justifyContent: 'center',
+        marginLeft: Platform.OS === 'android' ? -2 : -4,
+        marginRight: 6,
+        zIndex: 10,
     },
     headerRight: {
         flexDirection: 'row',

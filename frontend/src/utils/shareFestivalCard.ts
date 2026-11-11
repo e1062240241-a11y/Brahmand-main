@@ -121,6 +121,7 @@ const buildSharePayload = (
 ): SharePayload => {
   const cleanTitle = festivalName.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Festival';
   const isDiwali = /diwali|deepavali|दीपावली|दिवाली/i.test(festivalName);
+  const isChhath = /chhath|chath|छठ|षष्ठी/i.test(festivalName);
 
   if (isDiwali) {
     const greetingHeader = '🪔 शुभ दीपावली';
@@ -132,6 +133,22 @@ const buildSharePayload = (
     const shareMessage = isCustomCompleteMessage
       ? festivalDescription
       : `🪔 *शुभ दीपावली की हार्दिक शुभकामनाएं!* ✨\n👉 ${PLAY_STORE_URL}`;
+
+    return { cleanTitle, greetingHeader, shareMessage };
+  }
+
+  if (isChhath) {
+    const greetingHeader = '🌅 शुभ छठ पूजा';
+    const isCustomCompleteMessage =
+      festivalDescription.includes('http://') ||
+      festivalDescription.includes('https://') ||
+      festivalDescription.includes('Brahmand App');
+
+    const shareMessage = isCustomCompleteMessage
+      ? festivalDescription
+      : `🌅 *लोक आस्था के महापर्व छठ पूजा की हार्दिक शुभकामनाएं!* 🎋✨\n` +
+        `भगवान भुवन-भास्कर एवं षष्ठी मइया आपके परिवार को अखंड आरोग्य, सुख-समृद्धि और दीर्घायु प्रदान करें। 🙏☀️\n` +
+        `👉 ${PLAY_STORE_URL}`;
 
     return { cleanTitle, greetingHeader, shareMessage };
   }

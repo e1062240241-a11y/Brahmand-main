@@ -634,3 +634,94 @@ export async function scheduleDiwaliWishingNotification(options?: { immediate?: 
   }
 }
 
+/**
+ * 4-Day Chhath Puja Mahaparv Notification Definitions
+ */
+export const CHHATH_PUJA_NOTIFICATIONS = [
+  {
+    day: 1,
+    dayName: 'Nahay Khay',
+    title: '🌿 छठ की शुरुआत आज से',
+    body: 'आज Nahay Khay है। Brahmand पर आज की पूजा-विधि और तैयारी देखें।',
+  },
+  {
+    day: 2,
+    dayName: 'Kharna',
+    title: '🌙 आज Kharna है',
+    body: 'शाम की पूजा और Kharna प्रसाद की तैयारी के लिए Brahmand खोलें।',
+  },
+  {
+    day: 3,
+    dayName: 'Sandhya Arghya',
+    title: '🌇 अर्घ्य का समय करीब है',
+    body: 'आज सूर्यास्त के समय Sandhya Arghya है।\nआपके स्थान के अनुसार समय: 5:59 PM',
+  },
+  {
+    day: 4,
+    dayName: 'Usha Arghya',
+    title: '🌅 सूर्योदय होने वाला है',
+    body: 'आज Usha Arghya के साथ छठ महापर्व का समापन होगा।',
+  },
+] as const;
+
+/**
+ * Schedule or immediately trigger a Chhath Puja daily push notification (Day 1 to Day 4)
+ */
+export async function scheduleChhathPujaNotification(
+  day: 1 | 2 | 3 | 4,
+  options?: { immediate?: boolean; delaySeconds?: number }
+) {
+  if (Platform.OS === 'web') return null;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+
+    const notifDef = CHHATH_PUJA_NOTIFICATIONS.find((n) => n.day === day) || CHHATH_PUJA_NOTIFICATIONS[0];
+    const soundFile = __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell');
+    const delay = options?.immediate ? 1 : (options?.delaySeconds ?? 5);
+    const identifier = `chhath_puja_day_${day}_notification`;
+
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch (_) {}
+
+    const notifId = await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: notifDef.title,
+        body: notifDef.body,
+        data: {
+          type: 'festival_reminder',
+          subType: 'chhath_puja',
+          day,
+          dayName: notifDef.dayName,
+          festivalId: 'chhath_puja',
+          route: '/festival-detail',
+          target: 'chhath_puja',
+        },
+        sound: soundFile,
+        priority: Notifications.AndroidNotificationPriority?.HIGH,
+      },
+      trigger: {
+        type: 'timeInterval',
+        seconds: Math.max(1, delay),
+        channelId: 'default_v4',
+      } as any,
+    });
+
+    console.log(`[Push] Chhath Puja Day ${day} notification scheduled (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn(`[Push] Failed to schedule Chhath Puja Day ${day} notification:`, e);
+    return null;
+  }
+}
+

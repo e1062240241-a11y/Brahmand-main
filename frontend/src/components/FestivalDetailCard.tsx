@@ -29,9 +29,10 @@ import { ChandDikhaScratchCard } from './ChandDikhaScratchCard';
 import { PersonalizedKarwaCard } from './PersonalizedKarwaCard';
 import { DhanterasCoinShareButton } from './DhanterasCoinShareButton';
 import { DiwaliWishShareButton } from './DiwaliWishShareButton';
+import { ChhathWishShareButton } from './ChhathWishShareButton';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
-import { getTrackedBrahmandUrl, shareFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
+import { getTrackedBrahmandUrl, shareFestivalStoryPdf, prewarmFestivalStoryPdf } from '../utils/generateFestivalStoryPdf';
 
 const safeCaptureRef = async (ref: any, options: any): Promise<{ uri: string | null; error?: string }> => {
   try {
@@ -193,6 +194,13 @@ const SECTION_CONFIG: Record<string, {
     bgGradient: ['#F3E8FF', '#E9D5FF'],
     emoji: '✨',
     stripColor: '#7E22CE',
+  },
+  '4-Day Mahaparv Guide': {
+    icon: 'sunny',
+    accent: '#EA580C',
+    bgGradient: ['#FFF7ED', '#FED7AA'],
+    emoji: '🌅',
+    stripColor: '#F97316',
   },
   'Fun Facts': {
     icon: 'bulb',
@@ -559,6 +567,12 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     /गोवर्धन|अन्नकूट/i.test(festivalName) ||
     (festival.id && /govardhan|annakut/i.test(String(festival.id)));
 
+  const isChhathPujaFestival =
+    festivalName.toLowerCase().includes('chhath') ||
+    festivalName.toLowerCase().includes('chath') ||
+    /छठ/i.test(festivalName) ||
+    (festival.id && String(festival.id).toLowerCase().includes('chhath'));
+
   const isSharadPurnimaFestival =
     festivalName.toLowerCase().includes('sharad') ||
     festivalName.toLowerCase().includes('kojagiri') ||
@@ -802,6 +816,48 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
     },
   ];
 
+  const chhathSections = [
+    {
+      title: '4-Day Mahaparv Guide',
+      customHeading: 'चार दिवसीय महापर्व दैनिक विधि (13 – 16 Nov)',
+      subtitle: 'नहाय-खाय, लोहंडा-खरना, संध्या अर्घ्य व उषा अर्घ्य पारण की सम्पूर्ण प्रामाणिक विधि',
+      value:
+        'Day 1 — Nahay Khay (13 Nov): Purifying river bath, Lauki Bhaat • Day 2 — Lohanda & Kharna (14 Nov): Fast, Gud ki Kheer & start of 36-hr Nirjala Vrat • Day 3 — Sandhya Arghya (15 Nov): Sunset Arghya in river & Kosi vigil • Day 4 — Usha Arghya & Parana (16 Nov): Sunrise Arghya, breaking fast & prasad.',
+    },
+    {
+      title: 'Puja Vidhi',
+      customHeading: 'सम्पूर्ण पूजा सामग्री व सूप सजाने की विधि',
+      subtitle: 'बांस का सूप, दौरा, शुद्ध घी का ठेकुआ, ईख, नारियल व अर्घ्य विधान',
+      value:
+        rawPujaVidhi ||
+        'बांस का सूप व दौरा, शुद्ध घी का ठेकुआ, पूरा ईख (गन्ना), नारियल, मौसमी फल, अदरक, सुथनी व जल में खड़े होकर अस्ताचलगामी एवं उदीयमान सूर्य को दूध व जल से अर्घ्य समर्पण।',
+    },
+    {
+      title: 'Story',
+      customHeading: 'छठी मइया व सूर्य उपासना की पावन कथा',
+      subtitle: 'ऋग्वेद काल, सूर्यपुत्र दानवीर कर्ण व प्रभु श्रीराम-सीता के सूर्य पूजन का इतिहास',
+      value:
+        rawStory ||
+        'छठ महापर्व का इतिहास वैदिक काल से जुड़ा है। महाभारत में सूर्यपुत्र कर्ण प्रतिदिन जल में खड़े होकर सूर्यदेव को अर्घ्य देते थे। लंका विजय के उपरांत प्रभु श्रीराम व माता सीता ने अयोध्या लौटकर कार्तिक शुक्ल षष्ठी को सूर्यदेव की विधिवत उपासना की थी।',
+    },
+    {
+      title: 'Importance',
+      customHeading: '36 घंटे का निर्जला व्रत व आध्यात्मिक महत्व',
+      subtitle: 'प्रकृति, जल व सूर्य कृतज्ञता, शुद्धता के नियम एवं अखंड संतान व परिवार कल्याण',
+      value:
+        rawImportance ||
+        'छठ पूजा स्वच्छता, पवित्रता और तपस्या का महापर्व है। 36 घंटे का निर्जला व्रत रखने वाली व्रती को परवैतिन कहा जाता है। यह पर्व प्रत्यक्ष देवता भगवान सूर्य और षष्ठी माता के प्रति कृतज्ञता प्रकट करने और परिवार के आरोग्य एवं सौभाग्य हेतु किया जाता है।',
+    },
+    {
+      title: 'Mantra',
+      customHeading: 'सूर्य देव व षष्ठी माता पावन मंत्र व लोकगीत',
+      subtitle: 'ॐ सूर्याय नमः • एहि सूर्य सहस्त्रांशो... • कांच ही बांस के बहंगिया लोकगीत',
+      value:
+        rawMantra ||
+        'ॐ सूर्याय नमः • ॐ घृणि सूर्याय नमः • ॐ ह्रीं ह्रीं सूर्याय सहस्रकिरणाय मनोवांछित फलम् देहि देहि स्वाहा॥ • एहि सूर्य सहस्त्रांशो तेजोराशे जगत्पते। अनुकम्पय मां भक्त्या गृहाणार्घ्यं दिवाकर॥',
+    },
+  ];
+
   const sections = isKarvaChauthFestival
     ? karwaChauthSections
     : isDhanterasFestival
@@ -810,7 +866,9 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
         ? diwaliSections
         : isGovardhanFestival
           ? govardhanSections
-          : [
+          : isChhathPujaFestival
+            ? chhathSections
+            : [
           { title: 'Story', value: rawStory },
           { title: 'About', value: rawAbout },
           ...(isNavratriFestival ? [{ title: 'Nav Durga', value: '९ देवियों के पावन स्वरूप, शुभ रंग, दैनिक भोग, प्रिय पुष्प व सिद्ध मंत्र जानें' }] : []),
@@ -820,7 +878,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
           { title: 'Fun Facts', value: funFacts && funFacts.length > 0 ? funFacts.join(' • ') : null },
         ].filter((s) => Boolean(s.value));
 
-  // Load visited sections progress
+  // Load visited sections progress & prewarm festival PDF silently in background
   useEffect(() => {
     const loadProgress = async () => {
       try {
@@ -833,6 +891,9 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       }
     };
     loadProgress();
+    if (festival) {
+      prewarmFestivalStoryPdf(festival);
+    }
   }, [festivalId]);
 
   const handleGuideSectionClick = (sectionTitle: string) => {
@@ -1002,7 +1063,7 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      ) : isKarvaChauthFestival || isDhanterasFestival || isDiwaliFestival ? null : (
+      ) : isKarvaChauthFestival || isDhanterasFestival || isDiwaliFestival || isChhathPujaFestival ? null : (
         /* Progress Bar for Other Festivals */
         totalCount > 0 && (
           <View style={styles.progressContainer}>
@@ -1034,6 +1095,11 @@ const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalP
       {/* For Diwali: Special Diwali Wishing Card & Share Button */}
       {isDiwaliFestival && (
         <DiwaliWishShareButton />
+      )}
+
+      {/* For Chhath Puja: Chhath Puja Sampoorna Katha & Wishes PDF Share Button */}
+      {isChhathPujaFestival && (
+        <ChhathWishShareButton festival={festival} />
       )}
 
       {/* For Non-Karwa Moon Festivals (Sharad Purnima, Purnima): Interactive "चाँद दिखा" Scratch Card Banner & Live Card */}

@@ -2785,6 +2785,19 @@ export const STATIC_BHAI_DOOJ_FESTIVAL: FestivalRawItem = {
   story: 'On Bhai Dooj (Yama Dwitiya), Yamuna fed her brother Yama, the god of death, who granted a boon that any brother who receives tilak and blessings from his sister on this day shall be blessed with longevity and prosperity.',
 };
 
+export const STATIC_CHHATH_PUJA_FESTIVAL: FestivalRawItem = {
+  id: 'chhath_puja',
+  festival_name: 'Chhath Puja',
+  name: 'Chhath Puja',
+  name_hi: 'छठ पूजा',
+  title: 'Chhath Puja',
+  date: '2026-11-15',
+  deity: 'Lord Surya & Chhathi Maiya (Usha & Pratyusha)',
+  origin: 'Chhath Puja is an ancient Vedic festival dedicated to the Sun God Surya and Chhathi Maiya for sustaining life on Earth.',
+  summary: 'Auspicious 4-day Mahaparv of purity, strict fasting, and gratitude to Surya Dev & Chhathi Maiya with evening and morning Arghya.',
+  story: 'Chhath Puja has ancient origins tracing back to the Rigveda, Lord Rama and Sita performing rituals upon returning to Ayodhya, and Karna worshipping Surya with devotion.',
+};
+
 const festivalIndexMap = new Map<string, FestivalRawItem>();
 
 // Seed default fast-paths
@@ -2796,6 +2809,12 @@ festivalIndexMap.set('bhai_dooj', STATIC_BHAI_DOOJ_FESTIVAL);
 festivalIndexMap.set('bhai dooj', STATIC_BHAI_DOOJ_FESTIVAL);
 festivalIndexMap.set('भाई दूज', STATIC_BHAI_DOOJ_FESTIVAL);
 festivalIndexMap.set('bhaiduj', STATIC_BHAI_DOOJ_FESTIVAL);
+festivalIndexMap.set('chhath', STATIC_CHHATH_PUJA_FESTIVAL);
+festivalIndexMap.set('chhathpuja', STATIC_CHHATH_PUJA_FESTIVAL);
+festivalIndexMap.set('chhath_puja', STATIC_CHHATH_PUJA_FESTIVAL);
+festivalIndexMap.set('chhath puja', STATIC_CHHATH_PUJA_FESTIVAL);
+festivalIndexMap.set('छठ पूजा', STATIC_CHHATH_PUJA_FESTIVAL);
+festivalIndexMap.set('छठ', STATIC_CHHATH_PUJA_FESTIVAL);
 
 export const indexFestivalItems = (items: FestivalRawItem[]): void => {
   if (!Array.isArray(items)) return;
@@ -2832,6 +2851,9 @@ export const getFestivalFromIndexO1 = (key?: string | null): FestivalRawItem | n
   }
   if (clean.includes('bhaidooj') || clean.includes('bhaiduj') || clean.includes('bhaibeej') || trimmed.includes('भाई दूज')) {
     return festivalIndexMap.get('bhai_dooj') || STATIC_BHAI_DOOJ_FESTIVAL;
+  }
+  if (clean.includes('chhath') || trimmed.includes('छठ')) {
+    return festivalIndexMap.get('chhath_puja') || STATIC_CHHATH_PUJA_FESTIVAL;
   }
   return null;
 };

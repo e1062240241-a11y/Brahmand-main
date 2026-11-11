@@ -82,6 +82,12 @@ export function isGovardhanThemeCheck(themeOrFestivalName?: string, altName?: st
   return /govardhan|annakut|annakoot|गोवर्धन|अन्नकूट/i.test(combined);
 }
 
+// Check if festival or theme is Chhath Puja (matching English and Hindi names)
+export function isChhathPujaThemeCheck(themeOrFestivalName?: string, altName?: string): boolean {
+  const combined = `${themeOrFestivalName || ''} ${altName || ''}`;
+  return /chhath|chath|छठ|षष्ठी/i.test(combined);
+}
+
 // First name of the signed-in user for the page-1 blessing greeting ("" when signed out / unusable)
 export function getPdfPersonalFirstName(): string {
   try {
@@ -434,7 +440,7 @@ export function measureTextWidth(font: any, text: string, fontSize: number): num
   try {
     if (font.embedder && font.embedder.font && typeof font.embedder.font.layout === 'function' && hasDevanagariChar(text)) {
       const fkFont = font.embedder.font;
-      const run = fkFont.layout(text);
+      const run = fkFont.layout(text, undefined, 'deva');
       const scale = fontSize / fkFont.unitsPerEm;
       // Extra space per word gap to prevent Hindi text from looking crammed together
       const extraSpacePerWord = fontSize * DEVANAGARI_WORD_SPACE;
@@ -471,19 +477,15 @@ function drawShapedDevanagari(
     return false;
   }
   try {
-    if (!targetFont || !targetFont.embedder || !targetFont.embedder.font || typeof targetFont.embedder.font.layout !== 'function') {
-      return false;
-    }
-    if (typeof targetFont.encodeText !== 'function') return false;
-
     const fkFont = targetFont.embedder.font;
-    const run = fkFont.layout(text);
+    const isDev = hasDevanagariChar(text);
+    const run = fkFont.layout(text, undefined, isDev ? 'deva' : undefined);
     if (!run || !run.glyphs || run.glyphs.length === 0) return false;
 
-    // pdf-lib embeds only a subset and remaps glyph IDs. encodeText() registers
-    // every glyph used by this run and returns the *subset* IDs — using the
-    // original fontkit IDs here draws random/duplicate glyphs (broken matras).
-    const encodedHex = targetFont.encodeText(text).asString();
+    // Register font with page and encode characters to ensure CID font dictionary is loaded
+    if (typeof targetFont.encodeText === 'function') {
+      try { targetFont.encodeText(text); } catch (_e) {}
+    }
     const fontRefKey = `F_Dev_${String(targetFont.name || 'Custom').replace(/[^A-Za-z0-9_-]/g, '')}`;
     page.node.setFontDictionary(PDFName.of(fontRefKey), targetFont.ref);
 
@@ -505,7 +507,7 @@ function drawShapedDevanagari(
       const xOff = pos.xOffset * scale;
       const yOff = pos.yOffset * scale;
 
-      const hex = encodedHex.slice(i * 4, i * 4 + 4) || g.id.toString(16).padStart(4, '0');
+      const hex = g.id.toString(16).padStart(4, '0');
 
       ops.push(setTextMatrix(1, 0, 0, 1, curX + xOff, y + yOff));
       ops.push(showText(PDFHexString.of(hex)));
@@ -819,7 +821,7 @@ export interface StoryChapter {
   id: number;
   title: string;
   content: string;
-  icon?: 'lotus' | 'diya' | 'star' | 'hands' | 'swing' | 'flower' | 'anjali';
+  icon?: 'lotus' | 'diya' | 'star' | 'hands' | 'swing' | 'flower' | 'anjali' | 'mountain' | 'cloud-rain' | 'sparkles';
 }
 
 export interface FestivalTheme {
@@ -1505,6 +1507,58 @@ export function getFestivalTheme(festival: any, sectionValue?: string): Festival
     };
   }
 
+  if (lower.includes('chhath') || lower.includes('chath') || /छठ|षष्ठी/i.test(lower)) {
+    return {
+      name: 'छठ पूजा',
+      hindiName: 'छठ महापर्व',
+      devanagariRoman: 'CHHATH PUJA',
+      primaryAccent: rgb(0.85, 0.35, 0.05), // Sacred Surya Ochre / Saffron
+      secondaryAccent: rgb(0.92, 0.55, 0.10), // Golden Surya Ray
+      gold: antiqueGold,
+      cream: creamBg,
+      charcoal: deepCharcoal,
+      heroGradientTop: rgb(0.85, 0.35, 0.05),
+      heroGradientBottom: rgb(0.95, 0.65, 0.15),
+      date: dateFromData || '13 – 16 नवंबर 2026',
+      tithi: 'कार्तिक शुक्ल चतुर्थी से सप्तमी',
+      greeting: 'छठी मइया व प्रत्यक्ष देव भगवान सूर्य नारायण की कृपा से आपके घर में सुख, समृद्धि, अखंड स्वास्थ्य और आरोग्य का वास हो।',
+      deity: 'भगवान सूर्य देव एवं छठी मइया (उषा व प्रत्युषा)',
+      tradition: 'चार दिवसीय निर्जला महापर्व, बांस का सूप, ठेकुआ व अस्ताचलगामी एवं उदीयमान सूर्य को अर्घ्य',
+      subtitle: 'चार दिवसीय लोक आस्था का महापर्व • नहाय-खाय से उषा अर्घ्य पारण तक',
+      chapters: [
+        {
+          id: 1,
+          title: 'प्रथम दिवस — नहाय-खाय (शुद्धिकरण एवं संकल्प)',
+          icon: 'lotus',
+          content: 'नहाय-खाय के साथ चार दिवसीय छठ महापर्व का शुभारंभ होता है। व्रती (परवैतिन) पवित्र नदी या सरोवर में स्नान कर शुद्ध मिट्टी के चूल्हे पर अरवा चावल, चने की दाल और कद्दू (लौकी) का सात्विक प्रसाद बनाती हैं। इस दिन केवल एक बार भोजन ग्रहण कर व्रत का संकल्प लिया जाता है।',
+        },
+        {
+          id: 2,
+          title: 'द्वितीय दिवस — लोहंडा व खरना (36 घंटे निर्जला व्रत आरंभ)',
+          icon: 'diya',
+          content: 'दिनभर निर्जला उपवास के पश्चात सायंकाल मिट्टी के नए चूल्हे पर आम की लकड़ी से गुड़ की खीर और घी लगी रोटी का प्रसाद बनाया जाता है। छठी मइया को भोग अर्पण के उपरांत व्रती इसे ग्रहण करती हैं। इसके बाद से 36 घंटे का अखंड निर्जला व्रत आरंभ हो जाता है।',
+        },
+        {
+          id: 3,
+          title: 'तृतीय दिवस — संध्या अर्घ्य (डूबते सूर्य की वंदना व कोसी)',
+          icon: 'star',
+          content: 'कार्तिक शुक्ल षष्ठी को बांस के सूप व दौरा में ठेकुआ, मौसमी फल, गन्ना व नारियल सजाकर व्रती व परिवार घाट पर पहुंचते हैं। कमर तक पवित्र जल में खड़े होकर अस्ताचलगामी सूर्य को प्रथम अर्घ्य समर्पित किया जाता है। रात्रि में गन्ने के मंडप में कोसी भरकर जागरण किया जाता है।',
+        },
+        {
+          id: 4,
+          title: 'चतुर्थ दिवस — उषा अर्घ्य एवं पारण (महापर्व की पूर्णता)',
+          icon: 'sparkles',
+          content: 'सप्तमी के प्रभात में उदीयमान भुवन-भास्कर सूर्य नारायण को दूसरा अर्घ्य अर्पित किया जाता है। भगवान सूर्य के दर्शन व अर्घ्य समर्पण के साथ 36 घंटे का निर्जला व्रत पूर्ण होता है। इसके पश्चात व्रती कच्चा दूध और ठेकुआ प्रसाद ग्रहण कर पारण करती हैं और सभी में प्रसाद वितरित होता है।',
+        },
+      ],
+      blessing: 'ॐ सूर्याय नमः • एहि सूर्य सहस्त्रांशो तेजोराशे जगत्पते। अनुकम्पय मां भक्त्या गृहाणार्घ्यं दिवाकर॥ छठी मइया आपके सम्पूर्ण परिवार को आरोग्य, सौभाग्य एवं दीर्घायु प्रदान करें।',
+      mantraHead: '॥ सूर्य अर्घ्य एवं षष्ठी देवी महामंत्र ॥',
+      mantraText: 'ॐ घृणि सूर्याय नमः • ॐ ह्रीं ह्रीं सूर्याय सहस्रकिरणाय मनोवांछित फलम् देहि देहि स्वाहा॥',
+      shloka1: 'एहि सूर्य सहस्त्रांशो तेजोराशे जगत्पते। अनुकम्पय मां भक्त्या गृहाणार्घ्यं दिवाकर॥',
+      shloka2: 'नमः सवित्रे जगदेकचक्षुषे जगत्प्रसूतिस्थितिनाशहेतवे। त्रयीमयाय त्रिगुणात्मधारिणे विरिञ्चिनारायणशंकरात्मने॥',
+    };
+  }
+
   // Dynamic lookup in festival-enrichments (46+ festivals like Maha Shivratri, Karva Chauth, Chhath, etc.)
   try {
     const festivalEnrichments = require('../data/festival-enrichments').default;
@@ -1831,11 +1885,17 @@ let cachedKuberBytes: Uint8Array | null = null;
 let cachedDiwaliBgBytes: Uint8Array | null = null;
 let cachedLaxmiYantraBytes: Uint8Array | null = null;
 let cachedGovardhanKrishnaBytes: Uint8Array | null = null;
+let cachedChhathCoverBgBytes: Uint8Array | null = null;
+let cachedChhathPageBgBytes: Uint8Array | null = null;
 
 // Track active PDF generation promises to dedup concurrent calls
 const inProgressPdfPromises = new Map<string, Promise<string>>();
 
-export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string) {
+export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string, forceRegenerate?: boolean) {
+  if (forceRegenerate) {
+    cachedChhathCoverBgBytes = null;
+    cachedChhathPageBgBytes = null;
+  }
   const festLower = (festivalThemeName || '').toLowerCase();
   const needDussehra = !festivalThemeName || festLower.includes('dussehra') || festLower.includes('vijaya') || festLower.includes('dasara');
   const needSharad = !festivalThemeName || isSharadPurnimaThemeCheck(festivalThemeName) || festLower.includes('sharad');
@@ -1843,6 +1903,7 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
   const needDhanteras = !festivalThemeName || isDhanterasThemeCheck(festivalThemeName) || festLower.includes('dhanteras');
   const needDiwali = !festivalThemeName || isDiwaliThemeCheck(festivalThemeName) || festLower.includes('diwali') || festLower.includes('deepavali');
   const needGovardhan = !festivalThemeName || isGovardhanThemeCheck(festivalThemeName) || festLower.includes('govardhan') || festLower.includes('annakut');
+  const needChhath = !festivalThemeName || isChhathPujaThemeCheck(festivalThemeName) || festLower.includes('chhath') || festLower.includes('chath');
 
   let fontCinzel: any = null;
   let fontRozha: any = null;
@@ -2159,6 +2220,48 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
     }
   }
 
+  let chhathPujaCoverBgImage: any = null;
+  let chhathPujaPageBgImage: any = null;
+  if (needChhath) {
+    try {
+      if (!cachedChhathCoverBgBytes) {
+        const chhathBgAsset = Asset.fromModule(require('../../assets/images/festivals/chhath_puja_share_bg.jpg'));
+        await chhathBgAsset.downloadAsync();
+        const bgUri = chhathBgAsset.localUri || chhathBgAsset.uri;
+        if (bgUri) {
+          const base64 = await FileSystem.readAsStringAsync(bgUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedChhathCoverBgBytes = decodeBase64ToUint8(base64);
+        }
+      }
+      if (cachedChhathCoverBgBytes) {
+        chhathPujaCoverBgImage = await doc.embedJpg(cachedChhathCoverBgBytes);
+      }
+    } catch (chhathBgErr) {
+      console.warn('[PDF] Chhath Puja cover background image embedding fallback:', chhathBgErr);
+    }
+
+    try {
+      if (!cachedChhathPageBgBytes) {
+        const pageAsset = Asset.fromModule(require('../../assets/images/festivals/chhath_puja_page_bg.jpg'));
+        await pageAsset.downloadAsync();
+        const pUri = pageAsset.localUri || pageAsset.uri;
+        if (pUri) {
+          const base64 = await FileSystem.readAsStringAsync(pUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          cachedChhathPageBgBytes = decodeBase64ToUint8(base64);
+        }
+      }
+      if (cachedChhathPageBgBytes) {
+        chhathPujaPageBgImage = await doc.embedJpg(cachedChhathPageBgBytes);
+      }
+    } catch (pageErr) {
+      console.warn('[PDF] Chhath Puja page background image embedding fallback:', pageErr);
+    }
+  }
+
   return {
     fontCinzel,
     fontRozha,
@@ -2179,6 +2282,9 @@ export async function loadPdfFonts(doc: PDFDocument, festivalThemeName?: string)
     diwaliBgImage,
     laxmiYantraImage,
     govardhanKrishnaImage,
+    chhathPujaBgImage: chhathPujaCoverBgImage,
+    chhathPujaCoverBgImage,
+    chhathPujaPageBgImage,
   };
 }
 
@@ -2298,6 +2404,21 @@ async function resolveFestivalHeroImage(doc: PDFDocument, theme: FestivalTheme, 
       }
     } catch (err) {
       console.warn('[PDF] Could not embed local Govardhan hero:', err);
+    }
+  }
+
+  // 1f. If Chhath Puja: use high-res local Chhath Puja banner hero image
+  if (lower.includes('chhath') || lower.includes('chath') || /छठ/i.test(lower)) {
+    try {
+      const chhathAsset = Asset.fromModule(require('../../assets/images/festivals/chhath_puja_banner.jpg'));
+      await chhathAsset.downloadAsync();
+      const uri = chhathAsset.localUri || chhathAsset.uri;
+      if (uri) {
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        return await doc.embedJpg(decodeBase64ToUint8(b64));
+      }
+    } catch (err) {
+      console.warn('[PDF] Could not embed local Chhath hero:', err);
     }
   }
 
@@ -2442,10 +2563,11 @@ export async function renderDynamicFestivalPage1(
   const pageHeight = 841.89;
   const cx = pageWidth / 2;
 
-  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage, karwaChauthWomanImage, dhanterasKuberImage, diwaliBgImage, govardhanKrishnaImage } = fonts;
+  const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelveticaBold, displayFont, brahmandLogo, shamiLeafImage, sharadPurnimaBgImage, karwaChauthBgImage, karwaChauthWomanImage, dhanterasKuberImage, diwaliBgImage, govardhanKrishnaImage, chhathPujaBgImage, chhathPujaCoverBgImage, chhathPujaPageBgImage } = fonts;
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const brandFont = fontCinzel || displayFont;
-  const devanagariFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
-  const hindiTitleFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
+  const devanagariFont = (isChhathPujaTheme ? fontPoppins : (fontRozha || fontPoppins)) || fontHimalaya || brandFont;
+  const hindiTitleFont = (isChhathPujaTheme ? fontPoppins : (fontRozha || fontPoppins)) || fontHimalaya || brandFont;
   const hindiBodyFont = fontPoppins || fontHimalaya || fontTimes;
 
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
@@ -2453,7 +2575,7 @@ export async function renderDynamicFestivalPage1(
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
-  const panchangInfo = await fetchFestivalPanchangInfo(festival);
+  const panchangInfo = isChhathPujaTheme ? null : await fetchFestivalPanchangInfo(festival);
 
   // Dynamic Royal Theme Palette (adapts to festival/day color)
   const colPeachSoft = rgb(1.0, 0.910, 0.827);     // #FFE8D3
@@ -2474,7 +2596,7 @@ export async function renderDynamicFestivalPage1(
   const colInk = rgb(0.10, 0.07, 0.05);            // #1A120D - solid deep black-brown ink
   const colInkSoft = rgb(0.18, 0.13, 0.10);        // #2E211A - crisp dark readable ink
 
-  // 1. Warm Sunrise & Festive Background / Nocturnal Full Moon Sky for Sharad Purnima / Floral Parchment for Karwa Chauth
+  // 1. Warm Sunrise & Festive Background / Nocturnal Full Moon Sky for Sharad Purnima / Floral Parchment for Karwa Chauth / Divine Sanctum for Chhath Puja
   if (isSharadPurnimaTheme && sharadPurnimaBgImage) {
     // Full bleed celestial night sky with glowing autumn moon & starry clouds
     page1.drawImage(sharadPurnimaBgImage, {
@@ -2496,6 +2618,15 @@ export async function renderDynamicFestivalPage1(
   } else if (isDiwaliTheme && diwaliBgImage) {
     // Full bleed divine Ganesha, Saraswati & Lakshmi festive background for Diwali
     page1.drawImage(diwaliBgImage, {
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      opacity: 1.0,
+    });
+  } else if (isChhathPujaTheme && (chhathPujaCoverBgImage || chhathPujaBgImage)) {
+    // Full bleed divine Chhath Puja bells, toran, mandala & arghya woman background
+    page1.drawImage(chhathPujaCoverBgImage || chhathPujaBgImage, {
       x: 0,
       y: 0,
       width: pageWidth,
@@ -2534,6 +2665,8 @@ export async function renderDynamicFestivalPage1(
     // Karwa Chauth background image already contains its own authentic floral frame and side lines.
   } else if (isDiwaliTheme) {
     // Diwali has its own dedicated cover and sacred sanctum artwork — skip Navratri torans and corner fans
+  } else if (isChhathPujaTheme) {
+    // Chhath Puja background image already contains its own authentic hanging brass bells, toran, and puja artwork — skip Navratri torans and corner fans
   } else {
     // 1c. Festive Navratri Toran (Top Marigold & Mango Leaves Garland)
     const toranPendantCount = 13;
@@ -2882,6 +3015,211 @@ export async function renderDynamicFestivalPage1(
       font: fFont,
       fallbackFont: fontPoppins,
       color: rgb(1.0, 0.96, 0.86),
+    });
+
+    // Page 1 is complete! Exit cleanly to avoid default text collision
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // CHHATH PUJA CUSTOM COVER LAYOUT (Sacred Bells, Toran & Devotee Sanctum)
+  // -------------------------------------------------------------
+  if (isChhathPujaTheme) {
+    // 0. Top Brand Header: Brahmand Logo + B R A H M A N D (Placed at very top above bells arch)
+    const brandName = 'B R A H M A N D';
+    const brandFontSize = 26.0; // Scaled up as requested
+    const bW = brandFont.widthOfTextAtSize(brandName, brandFontSize);
+    const logoDim = 38; // Scaled up as requested
+    const logoGap = 12;
+    const totalHeaderW = brahmandLogo ? (logoDim + logoGap + bW) : bW;
+    const headerStartX = (pageWidth - totalHeaderW) / 2;
+    const topBrandY = pageHeight - 44;
+
+    if (brahmandLogo) {
+      page1.drawImage(brahmandLogo, {
+        x: headerStartX,
+        y: topBrandY - (logoDim - brandFontSize) / 2 - 2,
+        width: logoDim,
+        height: logoDim,
+      });
+    }
+
+    page1.drawText(brandName, {
+      x: brahmandLogo ? headerStartX + logoDim + logoGap : headerStartX,
+      y: topBrandY,
+      size: brandFontSize,
+      font: brandFont,
+      color: rgb(0, 0, 0), // Pure Black as requested
+    });
+
+    const senderName = getPdfPersonalFirstName();
+    const formattedSender = senderName ? `${senderName} जी एवं परिवार` : 'सपरिवार';
+
+    // 1. Devotee / Sender Greeting Banner (Elevated to y=680, perfectly centered in open upper parchment)
+    const senderText = `॥  ${cleanTextForPdf(formattedSender)} की ओर से छठ महापर्व की हार्दिक शुभकामनाएं  ॥`;
+    const sFont = hindiTitleFont || devanagariFont;
+    const sSize = 12.5;
+    const sW = measureTextWidth(sFont, senderText, sSize);
+    safeDrawText(page1, senderText, {
+      x: (pageWidth - sW) / 2,
+      y: 680,
+      size: sSize,
+      font: sFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0, 0, 0), // Pure Black as requested ("brahmand ka text black colour kar do har jagah")
+    });
+
+    // 2. Top Title Badge (y=644)
+    const badgeText = 'लोक आस्था व सूर्य उपासना का महापर्व';
+    const bSize = 11.5;
+    const bFont = hindiBodyFont || fontPoppins;
+    const badgeW = measureTextWidth(bFont, badgeText, bSize);
+    safeDrawText(page1, badgeText, {
+      x: (pageWidth - badgeW) / 2,
+      y: 644,
+      size: bSize,
+      font: bFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.75, 0.35, 0.05),
+    });
+
+    // 3. Main Title: छठ पूजा (y=598)
+    const chhathTitle = '॥  छठ पूजा  ॥';
+    const tSize = 36.0;
+    const tW = measureTextWidth(hindiTitleFont, chhathTitle, tSize);
+    safeDrawText(page1, chhathTitle, {
+      x: (pageWidth - tW) / 2,
+      y: 598,
+      size: tSize,
+      font: hindiTitleFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.48, 0.14, 0.05),
+    });
+
+    // 4. Subtitle (y=566)
+    const subTitleText = 'नहाय-खाय, लोहंडा-खरना, संध्या अर्घ्य व उषा अर्घ्य पारण की सम्पूर्ण अमर गाथा';
+    const subSize = 10.0;
+    const subFont = hindiBodyFont || fontPoppins;
+    const subW = measureTextWidth(subFont, subTitleText, subSize);
+    safeDrawText(page1, subTitleText, {
+      x: (pageWidth - subW) / 2,
+      y: 566,
+      size: subSize,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.35, 0.22, 0.15),
+    });
+
+    // 5. Sacred Dates & Muhurat Header (y=520)
+    const pHead = '॥  चार दिवसीय पावन तिथियां व सूर्य अर्घ्य मुहूर्त  ॥';
+    const phSize = 10.5;
+    const phW = measureTextWidth(subFont, pHead, phSize);
+    safeDrawText(page1, pHead, {
+      x: (pageWidth - phW) / 2,
+      y: 520,
+      size: phSize,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.60, 0.20, 0.07),
+    });
+
+    // Dates Line (y=498)
+    const pDates = '13 Nov (नहाय-खाय)   ·   14 Nov (लोहंडा-खरना)   ·   15 Nov (संध्या अर्घ्य)   ·   16 Nov (उषा अर्घ्य)';
+    const pdSize = 9.5;
+    const pdW = measureTextWidth(subFont, pDates, pdSize);
+    safeDrawText(page1, pDates, {
+      x: (pageWidth - pdW) / 2,
+      y: 498,
+      size: pdSize,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.25, 0.18, 0.12),
+    });
+
+    // 6. Divine Blessing Header (y=448)
+    const blHead = '॥ प्रत्यक्ष देव भुवन-भास्कर एवं छठी मइया का पावन आशीर्वाद ॥';
+    const blhSize = 10.5;
+    const blhW = measureTextWidth(hindiTitleFont, blHead, blhSize);
+    safeDrawText(page1, blHead, {
+      x: (pageWidth - blhW) / 2,
+      y: 448,
+      size: blhSize,
+      font: hindiTitleFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.50, 0.14, 0.07),
+    });
+
+    const bLine1 = 'छठी मइया और प्रत्यक्ष देव सूर्य नारायण आपके सम्पूर्ण परिवार को आरोग्य, सौभाग्य,';
+    const bLine2 = 'सुख-समृद्धि एवं तेजस्विता का पावन वरदान प्रदान करें!';
+    const blSize = 9.5;
+    const bl1W = measureTextWidth(subFont, bLine1, blSize);
+    const bl2W = measureTextWidth(subFont, bLine2, blSize);
+    safeDrawText(page1, bLine1, {
+      x: (pageWidth - bl1W) / 2,
+      y: 426,
+      size: blSize,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.20, 0.15, 0.10),
+    });
+    safeDrawText(page1, bLine2, {
+      x: (pageWidth - bl2W) / 2,
+      y: 410,
+      size: blSize,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.20, 0.15, 0.10),
+    });
+
+    // 7. Vedic Mantra Header (y=362)
+    const mHead = '॥  सूर्य अर्घ्य एवं षष्ठी देवी महामंत्र  ॥';
+    const mhSize = 10.2;
+    const mhW = measureTextWidth(hindiTitleFont, mHead, mhSize);
+    safeDrawText(page1, mHead, {
+      x: (pageWidth - mhW) / 2,
+      y: 362,
+      size: mhSize,
+      font: hindiTitleFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.55, 0.18, 0.05),
+    });
+
+    const mLine1 = 'ॐ सूर्याय नमः  ·  ॐ घृणि सूर्याय नमः  ·  ॐ ह्रीं सूर्याय नमः';
+    const ml1Size = 9.5;
+    const ml1W = measureTextWidth(hindiTitleFont, mLine1, ml1Size);
+    safeDrawText(page1, mLine1, {
+      x: (pageWidth - ml1W) / 2,
+      y: 340,
+      size: ml1Size,
+      font: hindiTitleFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.45, 0.15, 0.05),
+    });
+
+    const mLine2 = 'एहि सूर्य सहस्त्रांशो तेजोराशे जगत्पते। अनुकम्पय मां भक्त्या गृहाणार्घ्यं दिवाकर॥';
+    const ml2Size = 9.0;
+    const ml2W = measureTextWidth(subFont, mLine2, ml2Size);
+    safeDrawText(page1, mLine2, {
+      x: (pageWidth - ml2W) / 2,
+      y: 320,
+      size: ml2Size,
+      font: subFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0.30, 0.18, 0.10),
+    });
+
+    // 8. Footer line (y=28) - Safe at very bottom edge
+    const footerText = 'ब्रह्मांड (Brahmand) App  ·  brahmand.app  ·  दैनिक पंचांग व पावन कथा';
+    const fFont = subFont || fontPoppins;
+    const fSize = 8.0;
+    const fW = measureTextWidth(fFont, footerText, fSize);
+    safeDrawText(page1, footerText, {
+      x: (pageWidth - fW) / 2,
+      y: 28,
+      size: fSize,
+      font: fFont,
+      fallbackFont: fontPoppins,
+      color: rgb(0, 0, 0), // Pure Black as requested
     });
 
     // Page 1 is complete! Exit cleanly to avoid default text collision
@@ -3664,6 +4002,7 @@ function drawPageParchmentFrame(
   const isSharad = isSharadPurnimaThemeCheck(theme.name);
   const isKarwa = isKarwaChauthThemeCheck(theme.name);
   const isDiwali = isDiwaliThemeCheck(theme.name);
+  const isChhath = isChhathPujaThemeCheck(theme.name);
   if (isSharad && fonts.sharadPurnimaBgImage) {
     // Same celestial night sky as page 1 (outer rectangle border removed for clean open look)
     page.drawImage(fonts.sharadPurnimaBgImage, {
@@ -3700,6 +4039,15 @@ function drawPageParchmentFrame(
       width: pageWidth,
       height: pageHeight,
       opacity: 0.16,
+    });
+  } else if (isChhath && fonts.chhathPujaPageBgImage) {
+    // Full bleed clean illuminated mandala parchment for narrative & guide pages (NO bells at top, NO woman at bottom)
+    page.drawImage(fonts.chhathPujaPageBgImage, {
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: pageHeight,
+      opacity: 1.0,
     });
   } else {
     // Same warm cream + festive gradient as page 1 for non-Sharad festivals (outer rectangle border removed for clean open look)
@@ -3740,8 +4088,9 @@ function drawPageBrandHeader(
 ): number {
   const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, displayFont, fontHelveticaBold, fontTimesItalic, brahmandLogo } = fonts;
   const brandFont = fontCinzel || displayFont;
-  const devanagariFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
-  const hindiTitleFont = fontRozha || fontPoppins || fontHimalaya || brandFont;
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name);
+  const devanagariFont = (isChhathPujaTheme ? fontPoppins : (fontRozha || fontPoppins)) || fontHimalaya || brandFont;
+  const hindiTitleFont = (isChhathPujaTheme ? fontPoppins : (fontRozha || fontPoppins)) || fontHimalaya || brandFont;
   const hindiBodyFont = fontPoppins || fontHimalaya || fontTimesItalic;
 
   const colCrimson = theme.primaryAccent || rgb(0.56, 0.11, 0.08);
@@ -3781,7 +4130,7 @@ function drawPageBrandHeader(
     size: brandFontSize,
     font: brandFont,
     fallbackFont: hindiBodyFont,
-    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.85, 0.40) : colCrimson,
+    color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.85, 0.40) : (isChhathPujaTheme ? rgb(0, 0, 0) : colCrimson),
   });
 
   curY -= 28;
@@ -3910,6 +4259,8 @@ function drawMarketingCardOnPage(
   const colHead = isDarkBgTheme ? rgb(1.0, 0.86, 0.45) : colCrimson;
   const colSub = isDarkBgTheme ? rgb(0.98, 0.92, 0.78) : colTerracottaDk;
 
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name);
+
   // Center-aligned marketing & download block with dedicated contrast card for dark patterned backgrounds
   // Elements are positioned cleanly DOWNWARD from topY to prevent any collision with content above
   const topY = cardTopY !== undefined ? cardTopY : 215;
@@ -3941,7 +4292,7 @@ function drawMarketingCardOnPage(
     size: ebSize,
     font: brandFont,
     fallbackFont: fontPoppins,
-    color: colHead,
+    color: isDarkBgTheme ? rgb(1.0, 0.86, 0.45) : (isChhathPujaTheme ? rgb(0, 0, 0) : colHead),
   });
 
   // 2. TAGLINE (Centered)
@@ -4109,12 +4460,13 @@ async function renderFestivalGuideAndQuizPage(
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
   const { fontCinzel, fontRozha, fontPoppins, fontHimalaya, fontTimes, fontTimesItalic, fontHelvetica, fontHelveticaBold, displayFont, laxmiYantraImage, govardhanKrishnaImage } = fonts;
   const brandFont = fontCinzel || displayFont;
   const isAboutDevanagari = hasDevanagariChar(theme.name) || hasDevanagariChar(theme.subtitle || '');
-  const pageHeadFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
-  const pageSubFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
+  const pageHeadFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isChhathPujaTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : brandFont;
+  const pageSubFont = (isSharadPurnimaTheme || isDiwaliTheme || isGovardhanTheme || isChhathPujaTheme || isAboutDevanagari) ? (fontRozha || fontPoppins || fontHimalaya || brandFont) : fontHelveticaBold;
   const bodyTextFont = fontPoppins || fontHimalaya || fontTimes;
   const bodyBoldFont = fontPoppins || fontHimalaya || fontHelveticaBold;
 
@@ -4126,7 +4478,7 @@ async function renderFestivalGuideAndQuizPage(
   const colAmber = theme.gold || rgb(0.85, 0.70, 0.40);
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
   // Readable palette over the Sharad night-sky and Karwa Chauth red damask background
-  const colHead = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (isGovardhanTheme ? rgb(0.18, 0.44, 0.18) : colCrimson);
+  const colHead = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (isGovardhanTheme ? rgb(0.18, 0.44, 0.18) : (isChhathPujaTheme ? rgb(0.55, 0.18, 0.05) : colCrimson));
   const colSub = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.98, 0.87, 0.64) : colTerracottaDk;
   const colBody = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.97, 0.94, 0.90) : colInk;
   const colSep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : (isGovardhanTheme ? rgb(0.35, 0.55, 0.25) : colPeachDeep);
@@ -4138,7 +4490,9 @@ async function renderFestivalGuideAndQuizPage(
       ? 'शुभ दीपावली — परिचय, सिद्ध लक्ष्मी यन्त्र व सम्पूर्ण पूजा विधि'
       : isGovardhanTheme
         ? 'श्री गोवर्धन पूजा — परिचय, गिरिराज महात्म्य व संपूर्ण पूजा विधि'
-        : `${festClean.toUpperCase()} — ABOUT & DIVINE RITUALS`;
+        : isChhathPujaTheme
+          ? 'छठ महापर्व — परिचय, तिथि व चार दिवसीय पूजा विधि'
+          : `${festClean.toUpperCase()} — ABOUT & DIVINE RITUALS`;
   let curY = drawPageBrandHeader(page, pageWidth, pageHeight, theme, fonts, false, page3HeaderTitle);
 
   // 1. Fetch full About content and enrichment data
@@ -4294,6 +4648,21 @@ async function renderFestivalGuideAndQuizPage(
         desc: 'View the rising moon and husband through the sieve with earthen diya, offer water arghya, and conclude vrat.',
       },
     ];
+  } else if (isChhathPujaTheme) {
+    ritualsList = [
+      {
+        title: 'नहाय-खाय व खरना (पवित्र स्नान एवं 36 घंटे निर्जला व्रत)',
+        desc: 'पवित्र नदी में स्नान कर कद्दू-भात का संकल्प, और खरना की शाम गुड़ की खीर-रोटी का प्रसाद ग्रहण कर निर्जला व्रत का आरंभ।',
+      },
+      {
+        title: 'संध्या अर्घ्य (डूबते सूर्य को अर्घ्य व कोसी जागरण)',
+        desc: 'बांस के सूप में ठेकुआ, फल, नारियल सजाकर कमर तक पवित्र जल में खड़े होकर अस्ताचलगामी सूर्य को दूध व जल से अर्घ्य समर्पण।',
+      },
+      {
+        title: 'उषा अर्घ्य व पारण (उदीयमान सूर्य को अर्घ्य व व्रत पूर्णता)',
+        desc: 'सप्तमी की भोर में उदीयमान भुवन-भास्कर को दूसरा अर्घ्य अर्पित कर 36 घंटे का महाव्रत पूर्ण करें और प्रसाद वितरित करें।',
+      },
+    ];
   } else {
     ritualsList = [
       {
@@ -4316,7 +4685,9 @@ async function renderFestivalGuideAndQuizPage(
     ? 'पर्व परिचय एवं आध्यात्मिक महत्व'
     : isDiwaliTheme
       ? 'दीपावली परिचय एवं आध्यात्मिक रहस्य'
-      : 'ABOUT FESTIVAL & SPIRITUAL ESSENCE';
+      : isChhathPujaTheme
+        ? 'छठ महापर्व परिचय एवं आध्यात्मिक महात्म्य'
+        : 'ABOUT FESTIVAL & SPIRITUAL ESSENCE';
   safeDrawText(page, sec1Heading, {
     x: pMargin,
     y: curY,
@@ -4528,22 +4899,24 @@ async function renderFestivalGuideAndQuizPage(
     const dykFull = `${dykPrefix}${didYouKnowText}`;
     const dykLines = wrapText(dykFull, bodyTextFont, 9.2, contentWidth - 18);
     const dykBoxH = 14 + Math.min(dykLines.length, 2) * 11.5;
-    page.drawRectangle({
-      x: pMargin,
-      y: curY - dykBoxH + 4,
-      width: contentWidth,
-      height: dykBoxH,
-      color: isSharadPurnimaTheme
-        ? rgb(0.07, 0.11, 0.23)
-        : isKarwaChauthTheme
-          ? rgb(0.24, 0.04, 0.06)
-          : rgb(0.995, 0.985, 0.96),
-      borderColor: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colAmber,
-      borderWidth: 0.6,
-    });
+    if (!isChhathPujaTheme) {
+      page.drawRectangle({
+        x: pMargin,
+        y: curY - dykBoxH + 4,
+        width: contentWidth,
+        height: dykBoxH,
+        color: isSharadPurnimaTheme
+          ? rgb(0.07, 0.11, 0.23)
+          : isKarwaChauthTheme
+            ? rgb(0.24, 0.04, 0.06)
+            : rgb(0.995, 0.985, 0.96),
+        borderColor: (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.78, 0.42) : colAmber,
+        borderWidth: 0.6,
+      });
+    }
     dykLines.slice(0, 2).forEach((ln, i) => {
       safeDrawText(page, ln, {
-        x: pMargin + 9,
+        x: isChhathPujaTheme ? pMargin : pMargin + 9,
         y: curY - 6 - i * 11.5,
         size: 9.2,
         font: bodyTextFont,
@@ -4725,8 +5098,11 @@ async function renderFestivalGuideAndQuizPage(
   curY -= (2 * rowSpacing + 22);
 
   // SECTION 4: Centered Brahmand App & QR Download Section
-  // Positioned cleanly with ample clearance below Checklist and above Footer line (y = 58)
-  const mktTopY = Math.max(204, Math.min(215, curY - 14));
+  // Elevated higher for Chhath Puja as requested so QR and text have generous clearance above bottom artwork
+  const isChhath = isChhathPujaThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const mktTopY = isChhath
+    ? Math.max(265, Math.min(285, curY - 14))
+    : Math.max(204, Math.min(215, curY - 14));
   drawMarketingCardOnPage(doc, page, pageWidth, theme, fonts, pMargin, mktTopY);
 
   // Footer on Page 3
@@ -4750,10 +5126,11 @@ function drawPageFooter(
   const isSharadPurnimaTheme = isSharadPurnimaThemeCheck(theme.name);
   const isKarwaChauthTheme = isKarwaChauthThemeCheck(theme.name);
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name);
-  const colPeachDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : rgb(0.961, 0.710, 0.541);
-  const colCrimson = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (theme.primaryAccent || rgb(0.56, 0.11, 0.08));
-  const colInkSoft = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.88, 0.84, 0.76) : rgb(0.18, 0.13, 0.10);
-  const colSageDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.85, 0.70) : rgb(0.20, 0.28, 0.15);
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name);
+  const colPeachDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.85, 0.70, 0.40) : (isChhathPujaTheme ? rgb(0.85, 0.55, 0.20) : rgb(0.961, 0.710, 0.541));
+  const colCrimson = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(1.0, 0.84, 0.45) : (isChhathPujaTheme ? rgb(0, 0, 0) : (theme.primaryAccent || rgb(0.56, 0.11, 0.08)));
+  const colInkSoft = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.88, 0.84, 0.76) : (isChhathPujaTheme ? rgb(0, 0, 0) : rgb(0.18, 0.13, 0.10));
+  const colSageDeep = (isSharadPurnimaTheme || isKarwaChauthTheme) ? rgb(0.92, 0.85, 0.70) : (isChhathPujaTheme ? rgb(0, 0, 0) : rgb(0.20, 0.28, 0.15));
 
   const footY = 18;
   const footerLineY = footY + 40; // 58
@@ -4762,7 +5139,7 @@ function drawPageFooter(
     end: { x: pageWidth - 38, y: footerLineY },
     thickness: 0.8,
     color: colPeachDeep,
-    opacity: isSharadPurnimaTheme ? 0.6 : 0.85,
+    opacity: isSharadPurnimaTheme ? 0.6 : (isChhathPujaTheme ? 0.5 : 0.85),
   });
 
   const fLogoDim = 24;
@@ -4781,7 +5158,7 @@ function drawPageFooter(
     y: footY + 16,
     size: 15.0,
     font: brandFont,
-    color: colCrimson,
+    color: isChhathPujaTheme ? rgb(0, 0, 0) : colCrimson,
   });
 
   page.drawText('https://brahmand.app', {
@@ -4789,7 +5166,7 @@ function drawPageFooter(
     y: footY + 2,
     size: 9.5,
     font: fontTimesItalic,
-    color: colInkSoft,
+    color: isChhathPujaTheme ? rgb(0, 0, 0) : colInkSoft,
   });
 
   try {
@@ -4816,7 +5193,7 @@ function drawPageFooter(
     y: footY + 16,
     size: 8.6,
     font: fontHelveticaBold,
-    color: colSageDeep,
+    color: isChhathPujaTheme ? rgb(0, 0, 0) : colSageDeep,
   });
 
   const subPageText = `PAGE ${pageNum} OF ${totalPages}`;
@@ -4826,7 +5203,7 @@ function drawPageFooter(
     y: footY + 2,
     size: 9.5,
     font: fontHelveticaBold,
-    color: colCrimson,
+    color: isChhathPujaTheme ? rgb(0, 0, 0) : colCrimson,
   });
 }
 
@@ -4847,8 +5224,9 @@ export async function generateFestivalStoryPdf(
   const isDhanterasTheme = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isDiwaliTheme = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
   const isGovardhanTheme = isGovardhanThemeCheck(theme.name, festival?.festival_name || festival?.name);
+  const isChhathPujaTheme = isChhathPujaThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
-  const PDF_BUILD_REV = 'v11_maroon_brand_no_cross';
+  const PDF_BUILD_REV = 'v18_chhath_clean_composed_bg';
   let filename = `${theme.name.replace(/[^a-zA-Z0-9]/g, '_')}_Sampoorna_Katha_${PDF_BUILD_REV}.pdf`;
   if (isKarwaChauthTheme) {
     filename = `Karwa_Chauth_Akhand_Saubhagya_Katha_${PDF_BUILD_REV}.pdf`;
@@ -4869,6 +5247,11 @@ export async function generateFestivalStoryPdf(
     filename = senderName
       ? `Govardhan_Puja_Katha_Wishes_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand_${PDF_BUILD_REV}.pdf`
       : `Govardhan_Puja_Sampoorna_Katha_via_Brahmand_${PDF_BUILD_REV}.pdf`;
+  } else if (isChhathPujaTheme) {
+    const senderName = getPdfPersonalFirstName();
+    filename = senderName
+      ? `Chhath_Puja_Katha_Wishes_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand_${PDF_BUILD_REV}.pdf`
+      : `Chhath_Puja_Sampoorna_Katha_via_Brahmand_${PDF_BUILD_REV}.pdf`;
   }
 
   const targetDir = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
@@ -4886,8 +5269,8 @@ export async function generateFestivalStoryPdf(
     } catch (_checkErr) { }
   }
 
-  // Purge any stale unversioned Dhanteras / Diwali / Govardhan cache files (only in slow generation path)
-  if (targetDir && (isDhanterasTheme || isDiwaliTheme || isGovardhanTheme)) {
+  // Purge any stale unversioned Dhanteras / Diwali / Govardhan / Chhath cache files (only in slow generation path)
+  if (targetDir && (isDhanterasTheme || isDiwaliTheme || isGovardhanTheme || isChhathPujaTheme)) {
     try {
       const dirContents = await FileSystem.readDirectoryAsync(targetDir);
       for (const f of dirContents) {
@@ -4895,7 +5278,8 @@ export async function generateFestivalStoryPdf(
         if (
           ((isDhanterasTheme && fLower.includes('dhanteras')) ||
            (isDiwaliTheme && fLower.includes('diwali')) ||
-           (isGovardhanTheme && (fLower.includes('govardhan') || fLower.includes('annakut')))) &&
+           (isGovardhanTheme && (fLower.includes('govardhan') || fLower.includes('annakut'))) ||
+           (isChhathPujaTheme && (fLower.includes('chhath') || fLower.includes('chath') || fLower.includes('छठ')))) &&
           !f.includes(PDF_BUILD_REV)
         ) {
           await FileSystem.deleteAsync(`${targetDir}${f}`, { idempotent: true });
@@ -4919,7 +5303,7 @@ export async function generateFestivalStoryPdf(
     doc.setSubject(`${cleanTextForPdf(theme.name)} Katha, Puja Vidhi & Mantra`);
     doc.setCreator('Brahmand Platform');
 
-    const fonts = await loadPdfFonts(doc, theme?.name);
+    const fonts = await loadPdfFonts(doc, theme?.name, options?.forceRegenerate);
 
     const pageWidth = 595.28;
     const pageHeight = 841.89;
@@ -5168,35 +5552,114 @@ export async function generateFestivalStoryPdf(
 
 
     // Add a heartfelt concluding blessings banner
-    const blessHeading = isSharadPurnimaTheme
-      ? '॥ मंगल पावन संकल्प एवं दिव्य आशीर्वाद ॥'
-      : (isKarwaChauthTheme ? '॥ पावन करवा चौथ आशीर्वाद एवं संकल्प ॥' : 'DIVINE SANATAN BLESSING & SANKALP');
-    const bhFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || brandFont) : brandFont;
-    const bhW = measureTextWidth(bhFont, blessHeading, 12.0);
-    safeDrawText(curPage, blessHeading, {
-      x: (pageWidth - bhW) / 2,
-      y: curY,
-      size: 12.0,
-      font: bhFont,
-      fallbackFont: fontPoppins,
-      color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldHeader : colCrimson,
-    });
-    curY -= 16;
+    const isChhathBlessTheme = isChhathPujaThemeCheck(theme.name);
+    if (isChhathBlessTheme) {
+      // Dedicated, perfectly aligned Sanatan blessing card for Chhath Puja
+      const bBoxW = contentWidth;
+      const bBoxH = 82;
+      const bBoxX = pMargin;
+      const bBoxY = curY - bBoxH;
 
-    const blessText = cleanTextForPdf(theme.blessing || 'Dharmo Rakshati Rakshitah - May the auspicious grace of this festival illuminate your life.');
-    const bTextFont = (isSharadPurnimaTheme || isKarwaChauthTheme || hasDevanagariChar(blessText)) ? (fontRozha || fontPoppins || brandFont) : fontTimes;
-    const blessLines = wrapText(blessText, bTextFont, 11.2, contentWidth);
-    for (const bLine of blessLines) {
-      const blW = measureTextWidth(bTextFont, bLine, 11.2);
-      safeDrawText(curPage, bLine, {
-        x: (pageWidth - blW) / 2,
-        y: curY,
-        size: 11.2,
-        font: bTextFont,
-        fallbackFont: fontPoppins,
-        color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colIvoryText : colInk,
+      curPage.drawRectangle({
+        x: bBoxX,
+        y: bBoxY,
+        width: bBoxW,
+        height: bBoxH,
+        color: rgb(0.995, 0.975, 0.935), // Warm sanctum ivory
+        opacity: 0.94,
+        borderColor: rgb(0.85, 0.55, 0.15), // Antique gold border
+        borderWidth: 0.8,
       });
-      curY -= 15.0;
+
+      // 1. Heading: ॥ प्रत्यक्ष देव भुवन-भास्कर एवं छठी मइया का पावन आशीर्वाद ॥
+      const blessHeading = '॥  प्रत्यक्ष देव भुवन-भास्कर एवं छठी मइया का पावन आशीर्वाद  ॥';
+      const bhFont = fontRozha || fontPoppins || brandFont;
+      const bhSize = 11.2;
+      const bhW = measureTextWidth(bhFont, blessHeading, bhSize);
+      safeDrawText(curPage, blessHeading, {
+        x: (pageWidth - bhW) / 2,
+        y: bBoxY + bBoxH - 18,
+        size: bhSize,
+        font: bhFont,
+        fallbackFont: fontPoppins,
+        color: rgb(0.55, 0.18, 0.05),
+      });
+
+      // 2. Subtle ornamental gold divider inside the card
+      const divW = 180;
+      const divY = bBoxY + bBoxH - 27;
+      curPage.drawLine({
+        start: { x: cx - divW / 2, y: divY },
+        end: { x: cx + divW / 2, y: divY },
+        thickness: 0.6,
+        color: rgb(0.85, 0.55, 0.15),
+        opacity: 0.75,
+      });
+
+      // 3. Sacred Vedic Shloka Line (Centered)
+      const shlokaLine = 'ॐ सूर्याय नमः  ·  एहि सूर्य सहस्त्रांशो तेजोराशे जगत्पते। अनुकम्पय मां भक्त्या गृहाणार्घ्यं दिवाकर॥';
+      const shFont = fontRozha || fontPoppins || brandFont;
+      const shSize = 9.2;
+      const shW = measureTextWidth(shFont, shlokaLine, shSize);
+      safeDrawText(curPage, shlokaLine, {
+        x: (pageWidth - shW) / 2,
+        y: bBoxY + bBoxH - 45,
+        size: shSize,
+        font: shFont,
+        fallbackFont: fontPoppins,
+        color: rgb(0.48, 0.18, 0.07),
+      });
+
+      // 4. Heartfelt Family Blessing Line (Centered)
+      const blessLine = 'छठी मइया व भुवन-भास्कर आपके सम्पूर्ण परिवार को आरोग्य, सौभाग्य, सुख-समृद्धि एवं दीर्घायु प्रदान करें!';
+      const blFont = fontPoppins || fontHimalaya || fontTimes;
+      const blSize = 9.5;
+      const blW = measureTextWidth(blFont, blessLine, blSize);
+      safeDrawText(curPage, blessLine, {
+        x: (pageWidth - blW) / 2,
+        y: bBoxY + bBoxH - 64,
+        size: blSize,
+        font: blFont,
+        fallbackFont: fontPoppins,
+        color: rgb(0.20, 0.15, 0.10),
+      });
+
+      curY = bBoxY - 14;
+    } else {
+      const blessHeading = isSharadPurnimaTheme
+        ? '॥ मंगल पावन संकल्प एवं दिव्य आशीर्वाद ॥'
+        : isKarwaChauthTheme
+          ? '॥ पावन करवा चौथ आशीर्वाद एवं संकल्प ॥'
+          : 'DIVINE SANATAN BLESSING & SANKALP';
+      const bhFont = (isSharadPurnimaTheme || isKarwaChauthTheme) ? (fontRozha || fontPoppins || brandFont) : brandFont;
+      const bhW = measureTextWidth(bhFont, blessHeading, 12.0);
+
+      const blessText = cleanTextForPdf(theme.blessing || 'Dharmo Rakshati Rakshitah - May the auspicious grace of this festival illuminate your life.');
+      const bTextFont = (isSharadPurnimaTheme || isKarwaChauthTheme || hasDevanagariChar(blessText)) ? (fontRozha || fontPoppins || brandFont) : fontTimes;
+      const blessLines = wrapText(blessText, bTextFont, 10.5, contentWidth);
+
+      safeDrawText(curPage, blessHeading, {
+        x: (pageWidth - bhW) / 2,
+        y: curY,
+        size: 12.0,
+        font: bhFont,
+        fallbackFont: fontPoppins,
+        color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colGoldHeader : colCrimson,
+      });
+      curY -= 16;
+
+      for (const bLine of blessLines) {
+        const blW = measureTextWidth(bTextFont, bLine, 10.5);
+        safeDrawText(curPage, bLine, {
+          x: (pageWidth - blW) / 2,
+          y: curY,
+          size: 10.5,
+          font: bTextFont,
+          fallbackFont: fontPoppins,
+          color: (isSharadPurnimaTheme || isKarwaChauthTheme) ? colIvoryText : colInk,
+        });
+        curY -= 14.5;
+      }
     }
 
     // Calculate total pages: 1 (Artwork Page) + Narrative Katha Pages + 1 (Guide, Rituals & Quiz Page)
@@ -5325,24 +5788,17 @@ export async function getFestivalAudioUri(festival: any): Promise<{ audioUri?: s
     if (typeof directAudio === 'string' && directAudio.trim().length > 0) {
       const cleanUrl = directAudio.trim();
       let localAudioUri: string | undefined = undefined;
-      try {
-        if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
-          const ext = cleanUrl.split('.').pop()?.split('?')[0] || 'mp3';
-          const targetAudioPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}${festSlug}_katha_audio.${ext}`;
+      if (cleanUrl.startsWith('file://')) {
+        localAudioUri = cleanUrl;
+      } else if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+        const ext = cleanUrl.split('.').pop()?.split('?')[0] || 'mp3';
+        const targetAudioPath = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}${festSlug}_katha_audio.${ext}`;
+        try {
           const check = await FileSystem.getInfoAsync(targetAudioPath);
           if (check.exists && (check.size || 0) > 0) {
             localAudioUri = targetAudioPath.startsWith('file://') ? targetAudioPath : `file://${targetAudioPath}`;
-          } else {
-            const downloadRes = await FileSystem.downloadAsync(cleanUrl, targetAudioPath);
-            if (downloadRes?.uri) {
-              localAudioUri = downloadRes.uri.startsWith('file://') ? downloadRes.uri : `file://${downloadRes.uri}`;
-            }
           }
-        } else if (cleanUrl.startsWith('file://')) {
-          localAudioUri = cleanUrl;
-        }
-      } catch (dlErr2) {
-        console.warn('[Audio] Non-critical direct audio download error:', dlErr2);
+        } catch (_e) {}
       }
 
       return {
@@ -5359,6 +5815,19 @@ export async function getFestivalAudioUri(festival: any): Promise<{ audioUri?: s
 }
 
 /**
+ * Non-blocking background prewarm for festival story PDF.
+ * Generates and caches the PDF to disk silently so when the user taps "Share PDF",
+ * the file is already ready and shares immediately in milliseconds.
+ */
+export function prewarmFestivalStoryPdf(festival: any, sectionValue?: string): void {
+  try {
+    setTimeout(() => {
+      generateFestivalStoryPdf(festival, sectionValue).catch(() => {});
+    }, 800);
+  } catch (_e) {}
+}
+
+/**
  * Builds and shares the complete multi-page Festival Katha & Guide PDF via native share dialog.
  * Automatically embeds audio narration link in the share payload without breaking WhatsApp / iOS MIME types.
  */
@@ -5367,9 +5836,8 @@ export async function shareFestivalStoryPdf(
   sectionValue?: string
 ): Promise<{ success: boolean; uri?: string; audioShared?: boolean; error?: string }> {
   try {
-    const isDiwaliPreCheck = isDiwaliThemeCheck(festival?.festival_name || festival?.name || festival?.title);
     const [fileUri, audioInfo] = await Promise.all([
-      generateFestivalStoryPdf(festival, sectionValue, isDiwaliPreCheck ? { forceRegenerate: true } : undefined),
+      generateFestivalStoryPdf(festival, sectionValue),
       getFestivalAudioUri(festival),
     ]);
     const theme = getFestivalTheme(festival, sectionValue);
@@ -5378,6 +5846,7 @@ export async function shareFestivalStoryPdf(
     const isSharadPurnima = isSharadPurnimaThemeCheck(theme.name, festival?.festival_name || festival?.name);
     const isDhanteras = isDhanterasThemeCheck(theme.name, festival?.festival_name || festival?.name);
     const isDiwali = isDiwaliThemeCheck(theme.name, festival?.festival_name || festival?.name);
+    const isChhath = isChhathPujaThemeCheck(theme.name, festival?.festival_name || festival?.name);
 
     const trackingShareUrl = getTrackedBrahmandUrl(theme.name, 'whatsapp_share');
 
@@ -5406,6 +5875,13 @@ export async function shareFestivalStoryPdf(
       filenameBase = senderName
         ? `Diwali_Katha_Pujan_Vidhi_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand`
         : 'Diwali_Katha_Pujan_Vidhi_via_Brahmand';
+    } else if (isChhath) {
+      shareTitle = senderName
+        ? `🌅 छठ महापर्व पावन कथा व सूर्य अर्घ्य विधि — from ${senderName}`
+        : '🌅 छठ महापर्व पावन कथा व सूर्य अर्घ्य विधि — via Brahmand';
+      filenameBase = senderName
+        ? `Chhath_Puja_Katha_from_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}_via_Brahmand`
+        : 'Chhath_Puja_Sampoorna_Katha_via_Brahmand';
     }
 
     let audioLine = '';
@@ -5501,6 +5977,31 @@ export async function shareFestivalStoryPdf(
         audioLine +
         `\n📲 *ब्रह्मांड (Brahmand) App अभी Download करें:* 👇\n` +
         `📍 दैनिक पंचांग, शुभ मुहूर्त, 1000+ मंदिरों के लाइव दर्शन व संपूर्ण वैदिक उत्सवों के लिए:\n` +
+        `🔗 ${trackingShareUrl}`;
+    } else if (isChhath) {
+      const chhathSenderGreeting = senderName
+        ? `🌺 *${senderName} जी एवं परिवार की ओर से लोक आस्था के महापर्व छठ पूजा की हार्दिक शुभकामनाएं!* 🌺\n`
+        : `🌺 *छठ महापर्व की आप सभी को सपरिवार हार्दिक शुभकामनाएं!* 🌺\n`;
+
+      shareMessage =
+        `🌅✨ *छठ महापर्व — नहाय-खाय से उषा अर्घ्य पारण तक सम्पूर्ण अमर गाथा व पूजा विधि* ✨🎋\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        chhathSenderGreeting +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📖 *इस पावन सचित्र ई-बुकलेट (PDF) में संजोया गया है चार दिवसीय छठ महापर्व का सम्पूर्ण विधान व आध्यात्मिक रहस्य!*\n\n` +
+        `🕉 *आराध्य:* प्रत्यक्ष देव भुवन-भास्कर (सूर्य नारायण) एवं षष्ठी देवी (छठी मइया)\n` +
+        `📅 *पर्व अवधि:* कार्तिक शुक्ल चतुर्थी से सप्तमी (13 से 16 नवंबर 2026)\n` +
+        `🙏 *दिव्य आशीर्वाद:* छठी मइया और सूर्य देव आपके परिवार को अखंड आरोग्य, सुख-समृद्धि और दीर्घायु का वरदान प्रदान करें।\n\n` +
+        `✨ *इस सचित्र रंगीन ई-बुकलेट (PDF) में आपके लिए विशेष:* ✨\n` +
+        `🎋 १. *प्रथम दिवस (नहाय-खाय) — पवित्र स्नान, कद्दू-भात व व्रत संकल्प*\n` +
+        `🍯 २. *द्वितीय दिवस (लोहंडा व खरना) — गुड़ की खीर व 36 घंटे निर्जला व्रत आरंभ*\n` +
+        `🌅 ३. *तृतीय दिवस (संध्या अर्घ्य) — अस्ताचलगामी सूर्य को अर्घ्य व कोसी जागरण*\n` +
+        `☀️ ४. *चतुर्थ दिवस (उषा अर्घ्य व पारण) — उदीयमान सूर्य को अर्घ्य व महाव्रत पूर्णता*\n` +
+        `🙏 ५. *सूर्य अर्घ्य वैदिक महामंत्र, षष्ठी स्तोत्र एवं सम्पूर्ण सामग्री चेकलिस्ट*\n\n` +
+        `👉 *परिवार के साथ नीचे दी गई PDF को अभी खोलें (Open करें) और इस पावन पर्व का पुण्य लाभ लें!* 📑✨\n` +
+        audioLine +
+        `\n📲 *ब्रह्मांड (Brahmand) App अभी Download करें:* 👇\n` +
+        `📍 दैनिक पंचांग, 1000+ मंदिरों के लाइव दर्शन व संपूर्ण वैदिक उत्सवों के लिए:\n` +
         `🔗 ${trackingShareUrl}`;
     } else {
       const chaptersHighlights = (theme.chapters || [])

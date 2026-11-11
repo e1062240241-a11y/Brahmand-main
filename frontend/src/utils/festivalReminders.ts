@@ -159,6 +159,12 @@ async function scheduleNotificationsForFestival(
     festivalName.toLowerCase().includes('deepavali') ||
     /दीपावली|दिवाली/i.test(festivalName);
 
+  // Check if this festival is Chhath Puja
+  const isChhath =
+    festivalId.toLowerCase().includes('chhath') ||
+    festivalName.toLowerCase().includes('chhath') ||
+    /छठ/i.test(festivalName);
+
   if (isNavratri) {
     // Schedule dedicated Day 1 to Day 9 notifications for Navratri
     for (const dayNotif of NAVRATRI_DAY_NOTIFICATIONS) {
@@ -443,6 +449,103 @@ async function scheduleNotificationsForFestival(
           `fest_${festivalId}_immediate_${now.toDateString()}`
         );
         if (id) notificationIds.push(id);
+      }
+    }
+  } else if (isChhath) {
+    // Specialized 4-Day Chhath Puja Mahaparv hooks:
+    // Day 1: Nahay Khay, Day 2: Kharna, Day 3: Sandhya Arghya, Day 4: Usha Arghya
+    const chhathNotifData = {
+      type: 'festival_reminder',
+      subType: 'chhath_puja',
+      festivalId,
+      route: '/festival-detail',
+      target: 'chhath_puja',
+    };
+
+    // Main Sandhya Arghya date anchor (Kartik Shukla Shashthi)
+    const mainDate = new Date(festivalDate.getTime());
+
+    // Day 1 — Nahay Khay (2 days prior to Sandhya Arghya) - Morning 7:30 AM
+    const day1NahayKhay = new Date(mainDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+    day1NahayKhay.setHours(7, 30, 0, 0);
+
+    // Day 2 — Kharna (1 day prior to Sandhya Arghya) - Midday 11:30 AM
+    const day2Kharna = new Date(mainDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+    day2Kharna.setHours(11, 30, 0, 0);
+
+    // Day 3 — Sandhya Arghya (Main Shashthi Day) - Afternoon 4:30 PM (ahead of 5:59 PM sunset arghya)
+    const day3SandhyaArghya = new Date(mainDate.getTime());
+    day3SandhyaArghya.setHours(16, 30, 0, 0);
+
+    // Day 4 — Usha Arghya (Day after Sandhya Arghya) - Dawn 5:30 AM (ahead of morning sunrise arghya)
+    const day4UshaArghya = new Date(mainDate.getTime() + 1 * 24 * 60 * 60 * 1000);
+    day4UshaArghya.setHours(5, 30, 0, 0);
+
+    const chhathDays = [
+      {
+        day: 1,
+        dayName: 'Nahay Khay',
+        title: '🌿 छठ की शुरुआत आज से',
+        body: 'आज Nahay Khay है। Brahmand पर आज की पूजा-विधि और तैयारी देखें।',
+        triggerDate: day1NahayKhay,
+        identifier: `fest_${festivalId}_day1_nahay_khay_${festDateStr}`,
+      },
+      {
+        day: 2,
+        dayName: 'Kharna',
+        title: '🌙 आज Kharna है',
+        body: 'शाम की पूजा और Kharna प्रसाद की तैयारी के लिए Brahmand खोलें।',
+        triggerDate: day2Kharna,
+        identifier: `fest_${festivalId}_day2_kharna_${festDateStr}`,
+      },
+      {
+        day: 3,
+        dayName: 'Sandhya Arghya',
+        title: '🌇 अर्घ्य का समय करीब है',
+        body: 'आज सूर्यास्त के समय Sandhya Arghya है।\nआपके स्थान के अनुसार समय: 5:59 PM',
+        triggerDate: day3SandhyaArghya,
+        identifier: `fest_${festivalId}_day3_sandhya_arghya_${festDateStr}`,
+      },
+      {
+        day: 4,
+        dayName: 'Usha Arghya',
+        title: '🌅 सूर्योदय होने वाला है',
+        body: 'आज Usha Arghya के साथ छठ महापर्व का समापन होगा।',
+        triggerDate: day4UshaArghya,
+        identifier: `fest_${festivalId}_day4_usha_arghya_${festDateStr}`,
+      },
+    ];
+
+    for (const d of chhathDays) {
+      if (d.triggerDate > now) {
+        const id = await scheduleLocalNotif(
+          d.title,
+          d.body,
+          { ...chhathNotifData, day: d.day, dayName: d.dayName },
+          d.triggerDate,
+          d.identifier
+        );
+        if (id) notificationIds.push(id);
+      }
+    }
+
+    // Fallback Immediate Trigger if reminder toggled during any active Chhath Puja day
+    const nowDateStr = now.toDateString();
+    for (const d of chhathDays) {
+      if (nowDateStr === d.triggerDate.toDateString()) {
+        const festivalDayEnd = new Date(d.triggerDate.getTime());
+        festivalDayEnd.setHours(23, 59, 59, 999);
+        if (now < festivalDayEnd && !notificationIds.some((nid) => nid.includes(`day${d.day}`))) {
+          const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+          const id = await scheduleLocalNotif(
+            d.title,
+            d.body,
+            { ...chhathNotifData, day: d.day, dayName: d.dayName },
+            immediateTrigger,
+            `fest_${festivalId}_immediate_day${d.day}_${nowDateStr}`
+          );
+          if (id) notificationIds.push(id);
+        }
       }
     }
   } else {

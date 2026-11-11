@@ -14,6 +14,7 @@ import { getFestivalImage } from '../constants/festivalImages';
 import { getFestivalPujaVidhi } from '../data/festivalPujaVidhiData';
 import CelebrationPage from './CelebrationPage';
 import { Navratri9DaysGuide } from './festival/Navratri9DaysGuide';
+import { Chhath4DaysGuide } from './festival/Chhath4DaysGuide';
 import { PersonalizedDhanterasCard } from './PersonalizedDhanterasCard';
 import {
   PersonalizedDiwaliMuhuratCard,
@@ -1171,6 +1172,22 @@ const FestivalSectionDetailCard = ({ festival, section, onBack, onSharePdf, onSh
         />
       </View>
     );
+  }
+
+  // Dedicated Chhath Puja 4-Day Mahaparv Guide Renderer
+  const isChhathPuja =
+    festivalName.toLowerCase().includes('chhath') ||
+    festivalName.toLowerCase().includes('chath') ||
+    /छठ/i.test(festivalName) ||
+    (festival.id && String(festival.id).toLowerCase().includes('chhath'));
+
+  if (
+    isChhathPuja &&
+    (section === '4-Day Mahaparv Guide' ||
+      section.toLowerCase().includes('mahaparv') ||
+      section.toLowerCase().includes('4-day'))
+  ) {
+    return <Chhath4DaysGuide onBack={onBack} />;
   }
 
   // Dedicated Puja Vidhi Renderer

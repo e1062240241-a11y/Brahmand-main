@@ -1,4 +1,6 @@
 import { Avatar } from '../Avatar';
+import { ChhathPujaCornerAvatar } from '../festival/ChhathPujaCornerAvatar';
+import { ChhathPujaHalfSun } from '../festival/ChhathPujaHalfSun';
 import HomeFeedTabs from '../HomeFeedTabs';
 import UiverseNotifyButton from '../UiverseNotifyButton';
 import { FONTS } from '../../constants/theme';
@@ -14,7 +16,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, FEATURE_CARD_WIDTH } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, chhathPujaBannerImage, FEATURE_CARD_WIDTH } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
@@ -456,20 +458,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={styles.profileButton}
+                            <ChhathPujaCornerAvatar
+                                size={Platform.OS === 'android' ? 58 : 64}
                                 onPress={() => {
-                                    try {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    } catch (_e) {}
                                     router.push('/(tabs)/profile');
                                 }}
-                                accessibilityRole="button"
-                                accessibilityLabel="View your profile"
-                            >
-                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 48} />
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         <View style={{
@@ -482,23 +476,29 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                             alignItems: 'center',
                             zIndex: 1,
                         }} pointerEvents="box-none">
-                            <Text
-                                numberOfLines={1}
-                                style={{
-                                    color: '#000',
-                                    textAlign: 'center',
-                                    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                                    fontSize: Platform.OS === 'android' ? 22 : 24,
-                                    fontStyle: 'normal',
-                                    fontWeight: '400',
-                                    letterSpacing: 0.3,
-                                    includeFontPadding: false,
-                                    paddingHorizontal: 2,
-                                    paddingVertical: 2,
-                                }}
-                            >
-                                BRAHMAND
-                            </Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <ChhathPujaHalfSun />
+                                <Text
+                                    numberOfLines={1}
+                                    style={{
+                                        color: '#1A1A1A',
+                                        textAlign: 'center',
+                                        fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
+                                        fontSize: Platform.OS === 'android' ? 22 : 24,
+                                        fontStyle: 'normal',
+                                        fontWeight: '400',
+                                        letterSpacing: 0.6,
+                                        includeFontPadding: false,
+                                        paddingHorizontal: 2,
+                                        marginTop: -2,
+                                        textShadowColor: 'rgba(255, 143, 0, 0.28)',
+                                        textShadowOffset: { width: 0, height: 1 },
+                                        textShadowRadius: 3,
+                                    }}
+                                >
+                                    BRAHMAND
+                                </Text>
+                            </View>
                         </View>
 
                         <View style={styles.headerRight}>
@@ -917,7 +917,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -1112,6 +1112,120 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                 return (
                                     <>
+                                        {/* Banner 1: Chhath Puja Special Festival Banner (First Banner) */}
+                                        <StaticBannerCard
+                                            key="chhath_puja_banner"
+                                            width={bannerCardWidth}
+                                            height={bannerCardHeight}
+                                            source={chhathPujaBannerImage}
+                                            resizeMode="cover"
+                                            accessibilityLabel="Chhath Puja Festival Banner"
+                                            onPress={() => {
+                                                try {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                } catch (_e) { }
+                                                router.push({
+                                                    pathname: '/festival-detail',
+                                                    params: { name: 'Chhath Puja', id: 'chhath_puja' },
+                                                });
+                                            }}
+                                            onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                            onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                        >
+                                            <View style={{ flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' }}>
+                                                <View style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                                                    paddingVertical: 5,
+                                                    paddingHorizontal: 12,
+                                                    borderRadius: 16,
+                                                    borderWidth: 1,
+                                                    borderColor: 'rgba(255, 215, 64, 0.6)',
+                                                    gap: 5,
+                                                }}>
+                                                    <Text style={{ fontSize: 12 }}>🗓️</Text>
+                                                    <Text style={{
+                                                        color: '#FFFDE7',
+                                                        fontSize: 12,
+                                                        fontWeight: '700',
+                                                        letterSpacing: 0.3,
+                                                        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+                                                        textShadowOffset: { width: 0, height: 1 },
+                                                        textShadowRadius: 3,
+                                                    }}>
+                                                        {t('language') === 'hi' ? '13 – 16 नवंबर • महापर्व' : '13 – 16 Nov • Mahaparv'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'flex-end' }}>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        {
+                                                            borderRadius: 22,
+                                                            shadowColor: '#FF6F00',
+                                                            shadowOffset: { width: 0, height: 0 },
+                                                            shadowOpacity: 0.95,
+                                                            shadowRadius: 10,
+                                                            elevation: 8,
+                                                            transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                        }
+                                                    ]}
+                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                    onPressIn={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                    }}
+                                                    onPressOut={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                    }}
+                                                    onPress={() => {
+                                                        try {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                        } catch (_e) { }
+                                                        router.push({
+                                                            pathname: '/festival-detail',
+                                                            params: { name: 'Chhath Puja', id: 'chhath_puja' },
+                                                        });
+                                                    }}
+                                                    accessibilityRole="button"
+                                                    accessibilityLabel={t('language') === 'hi' ? 'छठ पूजा देखें' : 'Explore Festival'}
+                                                >
+                                                    <LinearGradient
+                                                        colors={['#FFA000', '#FF6D00', '#DD2C00']}
+                                                        start={{ x: 0, y: 0 }}
+                                                        end={{ x: 1, y: 0.8 }}
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            paddingVertical: 8,
+                                                            paddingHorizontal: 16,
+                                                            borderRadius: 22,
+                                                            borderWidth: 1.5,
+                                                            borderColor: '#FFF3E0',
+                                                            gap: 5,
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 13, marginRight: 1 }}>🌅</Text>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 13.5,
+                                                                fontWeight: '800',
+                                                                color: '#FFFFFF',
+                                                                letterSpacing: 0.3,
+                                                                includeFontPadding: false,
+                                                                textShadowColor: 'rgba(0, 0, 0, 0.45)',
+                                                                textShadowOffset: { width: 0, height: 1 },
+                                                                textShadowRadius: 3,
+                                                            }}
+                                                        >
+                                                            {t('language') === 'hi' ? 'छठ पूजा देखें' : 'Explore Festival'}
+                                                        </Text>
+                                                        <Ionicons name="chevron-forward" size={14} color="#FFF9C4" />
+                                                    </LinearGradient>
+                                                </Pressable>
+                                            </View>
+                                        </StaticBannerCard>
+
                                         {renderHanumanBanner('hanuman_banner')}
 
                                         <StaticBannerCard
@@ -1291,7 +1405,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1].map((idx) => (
+                            {[0, 1, 2].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
