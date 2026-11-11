@@ -1,4 +1,5 @@
 import { Avatar } from '../Avatar';
+import { BhaiDoojCornerAvatar } from '../festival/BhaiDoojCornerAvatar';
 import HomeFeedTabs from '../HomeFeedTabs';
 import UiverseNotifyButton from '../UiverseNotifyButton';
 import { FONTS } from '../../constants/theme';
@@ -14,7 +15,7 @@ import React from 'react';
 import { useRouter } from 'expo-router';
 import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
-import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, FEATURE_CARD_WIDTH } from './homeConstants';
+import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage, bhaiDoojBannerImage, FEATURE_CARD_WIDTH } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
 import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
@@ -456,20 +457,12 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 <View style={styles.upperContentWrapper}>
                     <View style={styles.header}>
                         <View style={styles.headerLeft}>
-                            <TouchableOpacity
-                                activeOpacity={0.86}
-                                style={styles.profileButton}
+                            <BhaiDoojCornerAvatar
+                                size={Platform.OS === 'android' ? 46 : 50}
                                 onPress={() => {
-                                    try {
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    } catch (_e) {}
                                     router.push('/(tabs)/profile');
                                 }}
-                                accessibilityRole="button"
-                                accessibilityLabel="View your profile"
-                            >
-                                <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 48} />
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         <View style={{
@@ -917,7 +910,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 }, 1500);
                                 const x = e.nativeEvent.contentOffset.x;
                                 const itemWidth = screenWidth - 40 + 12;
-                                const idx = Math.min(1, Math.max(0, Math.round(x / (itemWidth || 1))));
+                                const idx = Math.min(2, Math.max(0, Math.round(x / (itemWidth || 1))));
                                 if (idx !== activeBannerIndex) {
                                     setActiveBannerIndex(idx);
                                 }
@@ -932,15 +925,15 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 const bannerCardHeight = Math.min(Math.round(bannerCardWidth * 0.5), 200);
 
                                 const renderHanumanBanner = (key: string) => (
-                                                <StaticBannerCard
-                                                    key={key}
-                                                    width={bannerCardWidth}
-                                                    height={bannerCardHeight}
-                                                    source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
-                                                    onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
-                                                    onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                                    onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                                                >
+                                    <StaticBannerCard
+                                        key={key}
+                                        width={bannerCardWidth}
+                                        height={bannerCardHeight}
+                                        source={{ uri: 'https://brahmandfeed23.b-cdn.net/assets/hanuman_banner_new.webp' }}
+                                        onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                        onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                        onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                    >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                                             {/* Top Left Content */}
@@ -1112,186 +1105,260 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
 
                                 return (
                                     <>
+                                        {/* Banner 1: Bhai Dooj Special Festival Banner (Front Banner) */}
+                                        <StaticBannerCard
+                                            key="bhai_dooj_banner"
+                                            width={bannerCardWidth}
+                                            height={bannerCardHeight}
+                                            source={bhaiDoojBannerImage}
+                                            resizeMode="cover"
+                                            accessibilityLabel="Bhai Dooj Festival Banner"
+                                            onPress={() => {
+                                                try {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                } catch (_e) { }
+                                                router.push({
+                                                    pathname: '/festival-detail',
+                                                    params: { name: 'Bhai Dooj', id: 'bhai_dooj' },
+                                                });
+                                            }}
+                                            onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                            onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                        >
+                                            {/* Top spacer keeps bottom button pinned via space-between */}
+                                            <View style={{ width: '100%' }} />
+
+                                            {/* Bottom Button Row */}
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', width: '100%', paddingBottom: 0 }}>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        styles.joinJaapButton,
+                                                        {
+                                                            backgroundColor: '#8B0000',
+                                                            height: 36,
+                                                            paddingHorizontal: 14,
+                                                            flexDirection: 'row',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            borderRadius: 20,
+                                                            borderWidth: 1.5,
+                                                            borderColor: '#FFD700',
+                                                            shadowColor: '#8B0000',
+                                                            shadowOffset: { width: 0, height: 2 },
+                                                            shadowOpacity: 0.6,
+                                                            shadowRadius: 5,
+                                                            elevation: 5,
+                                                            transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                        }
+                                                    ]}
+                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                    onPressIn={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                    }}
+                                                    onPressOut={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                    }}
+                                                    onPress={() => {
+                                                        try {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                        } catch (_e) { }
+                                                        router.push({
+                                                            pathname: '/festival-detail',
+                                                            params: { name: 'Bhai Dooj', id: 'bhai_dooj' },
+                                                        });
+                                                    }}
+                                                    accessibilityRole="button"
+                                                    accessibilityLabel={t('language') === 'hi' ? 'त्योहार देखें' : 'Explore Festival'}
+                                                >
+                                                    <Text style={[styles.joinJaapText, { fontSize: 13, fontWeight: '800', color: '#FFF' }]}>
+                                                        {t('language') === 'hi' ? 'त्योहार देखें' : 'Explore Festival'}
+                                                    </Text>
+                                                    <Ionicons name="chevron-forward" size={13} color="#FFE082" />
+                                                </Pressable>
+                                            </View>
+                                        </StaticBannerCard>
+
                                         {renderHanumanBanner('hanuman_banner')}
 
                                         <StaticBannerCard
                                             key="shiva_banner"
                                             width={bannerCardWidth}
                                             height={bannerCardHeight}
-                                source={shivaImage}
-                                onPress={() => handleLiveJaapNavigation('shiva', 'Om Namah Shivay')}
-                                onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
-                                onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
-                            >
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            source={shivaImage}
+                                            onPress={() => handleLiveJaapNavigation('shiva', 'Om Namah Shivay')}
+                                            onPressIn={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = true; }}
+                                            onPressOut={() => { if (isHoldingBannerRef) isHoldingBannerRef.current = false; }}
+                                        >
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
-                                    {/* Top Left Content */}
-                                    <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                                            <Text style={[
-                                                styles.featuredLiveTitle,
-                                                {
-                                                    color: '#FFF',
-                                                    fontFamily: 'System',
-                                                    fontSize: 15,
-                                                    fontStyle: 'normal',
-                                                    fontWeight: '700',
-                                                    letterSpacing: 1,
-                                                    textShadowColor: 'rgba(0,0,0,0.9)',
-                                                    textShadowOffset: { width: 0, height: 1 },
-                                                    textShadowRadius: 6,
-                                                }
-                                            ]}>Mahamrityunjaya Mantra</Text>
-                                        </View>
+                                                {/* Top Left Content */}
+                                                <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                                                        <Text style={[
+                                                            styles.featuredLiveTitle,
+                                                            {
+                                                                color: '#FFF',
+                                                                fontFamily: 'System',
+                                                                fontSize: 15,
+                                                                fontStyle: 'normal',
+                                                                fontWeight: '700',
+                                                                letterSpacing: 1,
+                                                                textShadowColor: 'rgba(0,0,0,0.9)',
+                                                                textShadowOffset: { width: 0, height: 1 },
+                                                                textShadowRadius: 6,
+                                                            }
+                                                        ]}>Mahamrityunjaya Mantra</Text>
+                                                    </View>
 
-                                        <Text style={[styles.featuredDevotees, {
-                                            color: '#FFF',
-                                            fontWeight: '600',
-                                            opacity: 0.9,
-                                            textShadowColor: 'rgba(0,0,0,0.8)',
-                                            textShadowOffset: { width: 0, height: 1 },
-                                            textShadowRadius: 4,
-                                            marginLeft: 14,
-                                            marginTop: 0,
-                                            marginBottom: 2,
-                                            fontSize: 13
-                                        }]}>
-                                            {shivaStatus.isActive
-                                                ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
-                                                : (t('language') === 'hi'
-                                                    // 🧡 Engagement: Reframed transactional completion "जाप पूरा कर चुके हैं" to devotional offering "जाप समर्पित कर चुके हैं"
-                                                    // Lever: Reframing + Devotional Framing + Satsang Social Proof
-                                                    // Why: "समर्पित" evokes sacred offering and devotional sentiment (bhavna) rather than a task completed.
-                                                    // UI: Text-only change, zero new components.
-                                                    ? '1800+ भक्त पहले ही जाप समर्पित कर चुके हैं'
-                                                    : '1800+ devotees already offered jaap')}
-                                        </Text>
+                                                    <Text style={[styles.featuredDevotees, {
+                                                        color: '#FFF',
+                                                        fontWeight: '600',
+                                                        opacity: 0.9,
+                                                        textShadowColor: 'rgba(0,0,0,0.8)',
+                                                        textShadowOffset: { width: 0, height: 1 },
+                                                        textShadowRadius: 4,
+                                                        marginLeft: 14,
+                                                        marginTop: 0,
+                                                        marginBottom: 2,
+                                                        fontSize: 13
+                                                    }]}>
+                                                        {shivaStatus.isActive
+                                                            ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees chanting together'}`
+                                                            : (t('language') === 'hi'
+                                                                // 🧡 Engagement: Reframed transactional completion "जाप पूरा कर चुके हैं" to devotional offering "जाप समर्पित कर चुके हैं"
+                                                                // Lever: Reframing + Devotional Framing + Satsang Social Proof
+                                                                // Why: "समर्पित" evokes sacred offering and devotional sentiment (bhavna) rather than a task completed.
+                                                                // UI: Text-only change, zero new components.
+                                                                ? '1800+ भक्त पहले ही जाप समर्पित कर चुके हैं'
+                                                                : '1800+ devotees already offered jaap')}
+                                                    </Text>
 
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                                            <Text style={[styles.featuredTime, {
-                                                marginTop: 0,
-                                                marginLeft: 4,
-                                                color: '#FFF',
-                                                fontWeight: '600',
-                                                fontSize: 12
-                                            }]}>
-                                                {shivaStatus.isActive
-                                                    ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
-                                                    : (shivaStatus.nextSessionStart
-                                                        ? (t('language') === 'hi'
-                                                            // 🧡 Engagement: Reframed transactional time announcement to spiritual commitment framing
-                                                            // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
-                                                            // Why: Indian users respond to "संकल्प" (devotional pledge) rather than generic schedule info.
-                                                            // UI: Text-only change, zero visual additions.
-                                                            ? `अगला जाप ${formatTime(shivaStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
-                                                            : `Next jaap at ${formatTime(shivaStatus.nextSessionStart)} — Take Sankalpa 🚩`)
-                                                        : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
-                                            </Text>
-                                        </View>
-                                    </View>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                                        <Ionicons name="time-outline" size={13} color="#FFF" />
+                                                        <Text style={[styles.featuredTime, {
+                                                            marginTop: 0,
+                                                            marginLeft: 4,
+                                                            color: '#FFF',
+                                                            fontWeight: '600',
+                                                            fontSize: 12
+                                                        }]}>
+                                                            {shivaStatus.isActive
+                                                                ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
+                                                                : (shivaStatus.nextSessionStart
+                                                                    ? (t('language') === 'hi'
+                                                                        // 🧡 Engagement: Reframed transactional time announcement to spiritual commitment framing
+                                                                        // Lever: Culture/Habit (Sanskara & Sankalpa) + Reframing
+                                                                        // Why: Indian users respond to "संकल्प" (devotional pledge) rather than generic schedule info.
+                                                                        // UI: Text-only change, zero visual additions.
+                                                                        ? `अगला जाप ${formatTime(shivaStatus.nextSessionStart)} बजे — संकल्प लें 🚩`
+                                                                        : `Next jaap at ${formatTime(shivaStatus.nextSessionStart)} — Take Sankalpa 🚩`)
+                                                                    : (t('language') === 'hi' ? 'जल्द ही लाइव — संकल्प लें 🚩' : 'Going live soon — Take Sankalpa 🚩'))}
+                                                        </Text>
+                                                    </View>
+                                                </View>
 
-                                    {/* Top Right LIVE Badge */}
-                                    <View style={[styles.liveBadge, {
-                                        alignSelf: 'flex-start',
-                                        backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
-                                        paddingHorizontal: shivaStatus.isActive ? 8 : 10,
-                                    }]}>
-                                        {shivaStatus.isActive && <View style={styles.liveDot} />}
-                                        <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
-                                            {shivaStatus.isActive
-                                                ? 'LIVE'
-                                                : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
-                                        </Text>
-                                    </View>
-                                </View>
+                                                {/* Top Right LIVE Badge */}
+                                                <View style={[styles.liveBadge, {
+                                                    alignSelf: 'flex-start',
+                                                    backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
+                                                    paddingHorizontal: shivaStatus.isActive ? 8 : 10,
+                                                }]}>
+                                                    {shivaStatus.isActive && <View style={styles.liveDot} />}
+                                                    <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
+                                                        {shivaStatus.isActive
+                                                            ? 'LIVE'
+                                                            : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                                    </Text>
+                                                </View>
+                                            </View>
 
-                                {/* Bottom Button Row */}
-                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.joinJaapButton,
-                                            {
-                                                backgroundColor: '#FF5100',
-                                                display: 'flex',
-                                                width: 138,
-                                                height: 36,
-                                                paddingHorizontal: 12,
-                                                flexDirection: 'row',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                borderRadius: 20,
-                                                borderWidth: 1,
-                                                borderColor: 'rgba(255, 255, 255, 0.4)',
-                                                shadowColor: '#FF5100',
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: 0.5,
-                                                shadowRadius: 5,
-                                                elevation: 4,
-                                                transform: [{ scale: pressed ? 0.95 : 1 }],
-                                            }
-                                        ]}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (_e) { }
-                                            handleLiveJaapNavigation('shiva', 'Om Namah Shivay');
-                                        }}
-                                    >
-                                        <Ionicons name="play" size={12} color="#FFF" />
-                                        <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                                    </Pressable>
+                                            {/* Bottom Button Row */}
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                                <Pressable
+                                                    style={({ pressed }) => [
+                                                        styles.joinJaapButton,
+                                                        {
+                                                            backgroundColor: '#FF5100',
+                                                            display: 'flex',
+                                                            width: 138,
+                                                            height: 36,
+                                                            paddingHorizontal: 12,
+                                                            flexDirection: 'row',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            borderRadius: 20,
+                                                            borderWidth: 1,
+                                                            borderColor: 'rgba(255, 255, 255, 0.4)',
+                                                            shadowColor: '#FF5100',
+                                                            shadowOffset: { width: 0, height: 2 },
+                                                            shadowOpacity: 0.5,
+                                                            shadowRadius: 5,
+                                                            elevation: 4,
+                                                            transform: [{ scale: pressed ? 0.95 : 1 }],
+                                                        }
+                                                    ]}
+                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                    onPressIn={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                    }}
+                                                    onPressOut={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                    }}
+                                                    onPress={() => {
+                                                        try {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                        } catch (_e) { }
+                                                        handleLiveJaapNavigation('shiva', 'Om Namah Shivay');
+                                                    }}
+                                                >
+                                                    <Ionicons name="play" size={12} color="#FFF" />
+                                                    <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                                </Pressable>
 
-                                    <Pressable
-                                        style={({ pressed }) => ({
-                                            backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
-                                            width: 36,
-                                            height: 36,
-                                            borderRadius: 18,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderWidth: 1,
-                                            borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
-                                            transform: [{ scale: pressed ? 0.92 : 1 }],
-                                        })}
-                                        android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
-                                        onPressIn={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = true;
-                                        }}
-                                        onPressOut={() => {
-                                            if (isHoldingBannerRef) isHoldingBannerRef.current = false;
-                                        }}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            } catch (_e) { }
-                                            handleSetReminder('shiva', 'Mahamrityunjaya Mantra');
-                                        }}
-                                    >
-                                        <Ionicons
-                                            name={reminders['shiva'] ? "notifications" : "notifications-outline"}
-                                            size={18}
-                                            color={reminders['shiva'] ? '#FF5100' : '#FFF'}
-                                        />
-                                    </Pressable>
-                                </View>
-                            </StaticBannerCard>
+                                                <Pressable
+                                                    style={({ pressed }) => ({
+                                                        backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: 18,
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center',
+                                                        borderWidth: 1,
+                                                        borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                                        transform: [{ scale: pressed ? 0.92 : 1 }],
+                                                    })}
+                                                    android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: 18 }}
+                                                    onPressIn={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = true;
+                                                    }}
+                                                    onPressOut={() => {
+                                                        if (isHoldingBannerRef) isHoldingBannerRef.current = false;
+                                                    }}
+                                                    onPress={() => {
+                                                        try {
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                        } catch (_e) { }
+                                                        handleSetReminder('shiva', 'Mahamrityunjaya Mantra');
+                                                    }}
+                                                >
+                                                    <Ionicons
+                                                        name={reminders['shiva'] ? "notifications" : "notifications-outline"}
+                                                        size={18}
+                                                        color={reminders['shiva'] ? '#FF5100' : '#FFF'}
+                                                    />
+                                                </Pressable>
+                                            </View>
+                                        </StaticBannerCard>
                                     </>
                                 );
                             })()}
 
                         </ScrollView>
                         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                            {[0, 1].map((idx) => (
+                            {[0, 1, 2].map((idx) => (
                                 <View
                                     key={idx}
                                     style={{
@@ -1370,18 +1437,18 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                 </View>
             </View>
 
-                <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
-                    <HomeFeedTabs
-                        activeTab={activeTab}
-                        onTabChange={(tab: string) => {
-                            requestAnimationFrame(() => {
-                                setActiveTab(tab);
-                            });
-                        }}
-                    />
-                </View>
+            <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
+                <HomeFeedTabs
+                    activeTab={activeTab}
+                    onTabChange={(tab: string) => {
+                        requestAnimationFrame(() => {
+                            setActiveTab(tab);
+                        });
+                    }}
+                />
             </View>
-            );
+        </View>
+    );
 });
 
 export default HomeHeaderComponent;

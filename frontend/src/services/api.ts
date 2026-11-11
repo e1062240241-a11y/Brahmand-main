@@ -2772,12 +2772,30 @@ export const STATIC_DHANTERAS_FESTIVAL: FestivalRawItem = {
   story: 'Dhanteras marks the auspicious appearance of Lord Dhanvantari with the pot of Amrita, alongside Goddess Mahalakshmi and Lord Kubera.',
 };
 
+export const STATIC_BHAI_DOOJ_FESTIVAL: FestivalRawItem = {
+  id: 'bhai_dooj',
+  festival_name: 'Bhai Dooj',
+  name: 'Bhai Dooj',
+  name_hi: 'भाई दूज',
+  title: 'Bhai Dooj',
+  date: '2026-11-12',
+  deity: 'Lord Yama & Goddess Yamuna, Lord Krishna & Subhadra',
+  origin: 'Bhai Dooj celebrates the eternal bond between brothers and sisters, honoring Yamuna welcoming Yama and Subhadra welcoming Krishna.',
+  summary: 'Auspicious festival celebrating the sacred bond of love, trust, and lifelong protection between brothers and sisters.',
+  story: 'On Bhai Dooj (Yama Dwitiya), Yamuna fed her brother Yama, the god of death, who granted a boon that any brother who receives tilak and blessings from his sister on this day shall be blessed with longevity and prosperity.',
+};
+
 const festivalIndexMap = new Map<string, FestivalRawItem>();
 
 // Seed default fast-paths
 festivalIndexMap.set('dhanteras', STATIC_DHANTERAS_FESTIVAL);
 festivalIndexMap.set('dhantrayodashi', STATIC_DHANTERAS_FESTIVAL);
 festivalIndexMap.set('धनतेरस', STATIC_DHANTERAS_FESTIVAL);
+festivalIndexMap.set('bhaidooj', STATIC_BHAI_DOOJ_FESTIVAL);
+festivalIndexMap.set('bhai_dooj', STATIC_BHAI_DOOJ_FESTIVAL);
+festivalIndexMap.set('bhai dooj', STATIC_BHAI_DOOJ_FESTIVAL);
+festivalIndexMap.set('भाई दूज', STATIC_BHAI_DOOJ_FESTIVAL);
+festivalIndexMap.set('bhaiduj', STATIC_BHAI_DOOJ_FESTIVAL);
 
 export const indexFestivalItems = (items: FestivalRawItem[]): void => {
   if (!Array.isArray(items)) return;
@@ -2811,6 +2829,9 @@ export const getFestivalFromIndexO1 = (key?: string | null): FestivalRawItem | n
   if (normalized) return normalized;
   if (clean.includes('dhanteras') || clean.includes('dhantrayodashi') || trimmed.includes('धनतेरस')) {
     return festivalIndexMap.get('dhanteras') || STATIC_DHANTERAS_FESTIVAL;
+  }
+  if (clean.includes('bhaidooj') || clean.includes('bhaiduj') || clean.includes('bhaibeej') || trimmed.includes('भाई दूज')) {
+    return festivalIndexMap.get('bhai_dooj') || STATIC_BHAI_DOOJ_FESTIVAL;
   }
   return null;
 };
