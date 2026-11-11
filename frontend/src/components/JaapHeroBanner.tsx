@@ -31,6 +31,13 @@ export interface JaapHeroBannerProps {
   onPress?: () => void;
 }
 
+const ANDROID_RIPPLE_CONFIG = {
+  color: 'rgba(255, 107, 0, 0.2)',
+  borderless: false,
+};
+
+// Varnish fix: Wrapped JaapHeroBanner with explicit displayName, extracted ANDROID_RIPPLE_CONFIG
+// to module scope, moved inline pressed styles to StyleSheet.create, and added accessibility props.
 export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHeroBannerProps) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -135,11 +142,17 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
 
             <View style={styles.bannerFooter}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  liveActive
+                    ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap')
+                    : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')
+                }
                 style={({ pressed }) => [
                   styles.mockupJoinNowBtn,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                  pressed && styles.mockupJoinNowBtnPressed,
                 ]}
-                android_ripple={{ color: 'rgba(255, 107, 0, 0.2)', borderless: false }}
+                android_ripple={ANDROID_RIPPLE_CONFIG}
                 onPress={handleJoinPress}
               >
                 <LinearGradient
@@ -168,6 +181,8 @@ export const JaapHeroBanner = React.memo(({ now: externalNow, onPress }: JaapHer
     </View>
   );
 });
+
+JaapHeroBanner.displayName = 'JaapHeroBanner';
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -275,6 +290,9 @@ const styles = StyleSheet.create({
     shadowRadius: 7,
     backgroundColor: '#FF6B00',
     overflow: 'hidden',
+  },
+  mockupJoinNowBtnPressed: {
+    opacity: Platform.OS === 'ios' ? 0.8 : 1,
   },
   mockupJoinGradient: {
     flexDirection: 'row',
