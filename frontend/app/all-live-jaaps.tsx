@@ -263,11 +263,14 @@ export default function AllLiveJaapsScreen() {
                   : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} chalisa offered`;
               }
             } else {
+              // 🧡 Engagement: Reframed passive schedule text ("जल्द ही") to devotional commitment ("संकल्प लें")
+              // Lever: Reframing + Sanskara/Sankalpa (Culture/Vow over Passive Broadcast)
+              // UI: Text-only change, zero UI structure modified.
               if (hanumanStatus.nextSessionStart) {
                 const timeStr = formatTimeIST(hanumanStatus.nextSessionStart);
-                liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
+                liveLabel = t('language') === 'hi' ? `संकल्प लें • ${timeStr}` : `SANKALPA • ${timeStr}`;
               } else {
-                liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
+                liveLabel = t('language') === 'hi' ? 'शीघ्र प्रारंभ 🚩' : 'COMING SOON 🚩';
               }
             }
           } else if (isOtherLiveJaap) {
@@ -278,9 +281,9 @@ export default function AllLiveJaapsScreen() {
             } else {
               if (otherStatus.nextSessionStart) {
                 const timeStr = formatTimeIST(otherStatus.nextSessionStart);
-                liveLabel = t('language') === 'hi' ? `जल्द ही • ${timeStr}` : `SOON • ${timeStr}`;
+                liveLabel = t('language') === 'hi' ? `संकल्प लें • ${timeStr}` : `SANKALPA • ${timeStr}`;
               } else {
-                liveLabel = t('language') === 'hi' ? 'जल्द ही' : 'SOON';
+                liveLabel = t('language') === 'hi' ? 'शीघ्र प्रारंभ 🚩' : 'COMING SOON 🚩';
               }
             }
           }
