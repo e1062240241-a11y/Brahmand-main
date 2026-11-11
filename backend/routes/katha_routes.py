@@ -144,7 +144,7 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
     logger.info(f"[BunnyUpload] Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
 
     timeout = aiohttp.ClientTimeout(total=1800, connect=30)  # 30-minute window for multi-GB uploads
-    connector = aiohttp.TCPConnector(ssl=False)
+    connector = aiohttp.TCPConnector()
     with open(local_path, "rb") as f:
         async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
             async with session.put(bunny_url, data=f, headers=headers) as resp:
@@ -314,7 +314,7 @@ async def _sync_episodes_from_bunny_cdn() -> Dict[str, Any]:
     try:
         url = f"https://sg.storage.bunnycdn.com/{BUNNY_STORAGE_ZONE}/katha/acharya_shamik/saavan_katha/"
         headers = {"AccessKey": BUNNY_ACCESS_KEY}
-        connector = aiohttp.TCPConnector(ssl=False)
+        connector = aiohttp.TCPConnector()
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                 if resp.status == 200:

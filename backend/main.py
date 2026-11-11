@@ -344,7 +344,7 @@ _shared_client_session: Optional[aiohttp.ClientSession] = None
 def get_shared_client_session() -> aiohttp.ClientSession:
     global _shared_client_session
     if _shared_client_session is None or _shared_client_session.closed:
-        connector = aiohttp.TCPConnector(ssl=False, limit=100, keepalive_timeout=30)
+        connector = aiohttp.TCPConnector(limit=100, keepalive_timeout=30)
         _shared_client_session = aiohttp.ClientSession(connector=connector)
     return _shared_client_session
 
@@ -6959,7 +6959,7 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
                 "key": api_key,
                 "language": "en",
             }
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(), timeout=aiohttp.ClientTimeout(total=8)) as session:
                 async with session.get(geo_url, params=geo_params) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -6976,7 +6976,7 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
         nom_url = "https://nominatim.openstreetmap.org/search"
         headers = {"User-Agent": "BrahmandApp/1.0 (contact@brahmand.app)"}
         params = {"q": clean_address, "format": "json", "limit": 1}
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(), timeout=aiohttp.ClientTimeout(total=8)) as session:
             async with session.get(nom_url, params=params, headers=headers) as resp:
                 if resp.status == 200:
                     data = await resp.json()
