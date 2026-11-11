@@ -95,11 +95,10 @@ export const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'android' ? 4 : 0,
     },
     headerLeft: {
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        marginLeft: Platform.OS === 'android' ? -6 : -8,
-        marginRight: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: Platform.OS === 'android' ? undefined : 1,
+        marginRight: 10,
     },
     headerRight: {
         flexDirection: 'row',
@@ -169,22 +168,15 @@ export const styles = StyleSheet.create({
         marginHorizontal: -PAGE_PADDING,
     },
     featureCard: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1.2,
-        borderColor: 'rgba(255, 193, 7, 0.45)', // Paytm-style Diwali Golden Trim
-        borderRadius: 16,
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.10)',
+        borderRadius: 15,
         paddingHorizontal: 12,
         flexDirection: 'row',
         alignItems: 'center',
         width: FEATURE_CARD_WIDTH,
         height: FEATURE_CARD_HEIGHT,
-        shadowColor: '#FF6F00', // Festive warm shadow
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.16,
-        shadowRadius: 5,
-        elevation: 3.5,
-        position: 'relative',
-        overflow: 'visible',
     },
     featureCardFestiveCorner: {
         position: 'absolute',
@@ -211,12 +203,6 @@ export const styles = StyleSheet.create({
         borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1.2,
-        borderColor: 'rgba(255, 193, 7, 0.55)', // Auspicious golden halo
-        shadowColor: '#FF9100',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.18,
-        shadowRadius: 3,
     },
     urgentCircle: {
         width: 28,

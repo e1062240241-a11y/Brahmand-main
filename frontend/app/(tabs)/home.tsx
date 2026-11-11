@@ -37,7 +37,6 @@ import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
 import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, getDynamicQuickAccess } from '../../src/components/home/homeConstants';
 import HomeHeaderComponent, { HomeHeaderComponent as NamedHomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
-import { DiwaliCrackerOverlay } from '../../src/components/festival/DiwaliCrackerOverlay';
 
 const ResolvedHomeHeader = (HomeHeaderComponent || NamedHomeHeaderComponent) as React.ComponentType<any>;
 
@@ -2278,9 +2277,6 @@ export default function HomeScreen() {
           isBlocked={blockConfirmData.isBlocked}
         />
       )}
-
-      {/* Automatic Diwali Cracker & True Centered Greeting Overlay (No Background) */}
-      <DiwaliCrackerOverlay />
     </View >
   );
 }
